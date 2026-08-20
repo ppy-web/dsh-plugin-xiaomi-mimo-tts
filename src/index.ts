@@ -157,7 +157,7 @@ export function apply(ctx: Context, config: Config): void {
             authorization: `Bearer ${options.apiKey.trim()}`,
             'content-type': 'application/json',
             accept: 'application/json',
-            'user-agent': 'dsh-plugin-xiaomi-mimo-tts/0.1.0',
+            'user-agent': 'dsh-xiaomi-tts/0.1.0',
           },
           body: JSON.stringify({
             model: options.model,

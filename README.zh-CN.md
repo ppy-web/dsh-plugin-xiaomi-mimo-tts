@@ -1,4 +1,4 @@
-# dsh-plugin-xiaomi-mimo-tts
+# dsh-xiaomi-tts
 
 为 DeepSeek Harness Web 的助手回复添加 Xiaomi MiMo TTS 语音朗读。
 
@@ -58,7 +58,7 @@ Git 安装会运行 `prepare` 生成 `lib/`。如果 pnpm 阻止依赖构建，�
 ## 从 npm 安装
 
 ```bash
-dsh plugin --profile web add dsh-plugin-xiaomi-mimo-tts
+dsh plugin --profile web add dsh-xiaomi-tts
 ```
 
 ## 配置
@@ -135,7 +135,7 @@ cordis.patch.yml      DSH bundle patch
 
 ## 发布到 GitHub / npm 前
 
-1. 确认包名在 npm 可用，或改为你自己的 scope，例如 `@your-name/dsh-plugin-xiaomi-mimo-tts`。
+1. 确认包名在 npm 可用，或改为你自己的 scope，例如 `@your-name/dsh-xiaomi-tts`。
 2. 同步修改：
    - `package.json.name`
    - `cordis.patch.yml` 中的 row `name`

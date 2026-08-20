@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsdown'
 
-const PACKAGE_ID = 'dsh-plugin-xiaomi-mimo-tts'
+const PACKAGE_ID = 'dsh-xiaomi-tts'
 
 const CLIENT_EXTERNALS: readonly string[] = [
   'react',

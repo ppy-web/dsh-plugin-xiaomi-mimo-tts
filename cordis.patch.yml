@@ -2,7 +2,7 @@
 # The one row activates both the Host half and the package's dsh.client Web half.
 - insert:
     - id: xiaomi-mimo-tts
-      name: 'dsh-plugin-xiaomi-mimo-tts'
+      name: 'dsh-xiaomi-tts'
       config:
         apiKey: ''
         baseURL: 'https://api.xiaomimimo.com/v1'

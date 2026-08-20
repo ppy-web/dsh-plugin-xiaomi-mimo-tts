@@ -8,11 +8,12 @@ const host = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
 const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
 
 test('package declares DSH bundle and Web client entries', () => {
+  assert.equal(packageJson.name, 'dsh-xiaomi-tts')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
   assert.equal(packageJson.exports['./client'].default, './lib/client.js')
   assert.match(patch, /id: xiaomi-mimo-tts/)
-  assert.match(patch, /name: 'dsh-plugin-xiaomi-mimo-tts'/)
+  assert.match(patch, /name: 'dsh-xiaomi-tts'/)
 })
 
 test('host output contains protected TTS route and secret settings schema', () => {
@@ -25,5 +26,9 @@ test('host output contains protected TTS route and secret settings schema', () =
 test('client output registers the message action and plugin settings card', () => {
   assert.match(client, /conversation\.chat\.assistant-actions/)
   assert.match(client, /settings\.plugin\.item/)
+  assert.match(client, /locale: NS/)
+  assert.match(client, /aria-expanded": open/)
+  assert.match(client, /settings\.expand/)
+  assert.match(client, /scope\.getSnapshot\(\)/)
   assert.match(client, /window\.__ModuleLoader__\.load/)
 })

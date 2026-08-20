@@ -4,6 +4,7 @@ import {
   IconLoadingOutline16,
   IconPauseOutline16,
   IconPlayOutline16,
+  IconChevronDownOutline14,
   Tooltip,
   extractMarkdownPlainText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -75,6 +76,8 @@ const zh = {
   'settings.failed': '保存失败，请重试。',
   'settings.readOnly': '当前 DSH 设置为只读。',
   'settings.secretPlaceholder': '输入新的 Xiaomi MiMo API Key',
+  'settings.expand': '展开设置',
+  'settings.collapse': '收起设置',
 } as const
 
 const en: Record<keyof typeof zh, string> = {
@@ -102,11 +105,19 @@ const en: Record<keyof typeof zh, string> = {
   'settings.failed': 'Save failed. Try again.',
   'settings.readOnly': 'DSH settings are read-only.',
   'settings.secretPlaceholder': 'Enter a new Xiaomi MiMo API key',
+  'settings.expand': 'Expand settings',
+  'settings.collapse': 'Collapse settings',
 }
 
 type LocaleKey = keyof typeof zh
 
 type Translate = (key: LocaleKey) => string
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    'xiaomi-mimo-tts': LocaleKey
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -125,6 +136,37 @@ function decodeSettings(value: unknown): TtsSettings | undefined {
   if (typeof value.maxTextLength === 'number') decoded.maxTextLength = value.maxTextLength
   if (typeof value.requestTimeoutMs === 'number') decoded.requestTimeoutMs = value.requestTimeoutMs
   return decoded
+}
+
+function useSettingsSnapshot<T>(scope: SettingsScope<T>) {
+  return useSyncExternalStore(
+    (listener) => scope.subscribe(listener),
+    () => scope.getSnapshot(),
+    () => scope.getSnapshot(),
+  )
+}
+
+function formatStartupError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function safeSlotInject(
+  ctx: ClientContext,
+  name: 'conversation.chat.assistant-actions' | 'settings.plugin.item',
+  register: () => (() => void) | Iterable<() => void>,
+): void {
+  try {
+    ctx.slots.inject(name, () => {
+      try {
+        return register()
+      } catch (error) {
+        ctx.logger.error(`dsh-xiaomi-tts: ${name} contribution disabled: ${formatStartupError(error)}`)
+        return () => {}
+      }
+    })
+  } catch (error) {
+    ctx.logger.error(`dsh-xiaomi-tts: ${name} injection disabled: ${formatStartupError(error)}`)
+  }
 }
 
 function messageText(snapshot: ConversationSnapshot, messageId: string): string {
@@ -276,7 +318,7 @@ function ReadAloudAction({ messageId, useSession, playback, settings, t }: ReadA
     time: messageTime(snapshot, messageId),
   }))
   const text = message.text
-  const settingsSnapshot = useSyncExternalStore(settings.subscribe, settings.getSnapshot, settings.getSnapshot)
+  const settingsSnapshot = useSettingsSnapshot(settings)
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
   const autoPlayed = useRef(false)
 
@@ -337,7 +379,7 @@ interface SettingsCardProps {
 }
 
 function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
-  const snapshot = useSyncExternalStore(scope.subscribe, scope.getSnapshot, scope.getSnapshot)
+  const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
   const [apiKey, setApiKey] = useState('')
   const [autoPlay, setAutoPlay] = useState(value?.autoPlay ?? false)
@@ -345,6 +387,7 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
   const [format, setFormat] = useState<'mp3' | 'wav'>(value?.format ?? 'mp3')
   const [instruction, setInstruction] = useState(value?.instruction ?? '')
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     if (value === undefined) return
@@ -372,14 +415,22 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
   }
 
   return (
-    <li className="xmimo-tts-card">
-      <div className="xmimo-tts-card-heading">
-        <div>
-          <h3>{t('settings.title')}</h3>
-          <p>{t('settings.description')}</p>
-        </div>
-      </div>
-      <div className="xmimo-tts-grid">
+    <li className={open ? 'xmimo-tts-card xmimo-tts-card-open' : 'xmimo-tts-card'}>
+      <button
+        type="button"
+        className="xmimo-tts-card-header"
+        aria-expanded={open}
+        aria-label={`${t(open ? 'settings.collapse' : 'settings.expand')}: ${t('settings.title')}`}
+        onClick={() => { setOpen((current) => !current) }}
+      >
+        <span className="xmimo-tts-card-head-text">
+          <span className="xmimo-tts-card-title">{t('settings.title')}</span>
+          <span className="xmimo-tts-card-description">{t('settings.description')}</span>
+        </span>
+        <IconChevronDownOutline14 className={open ? 'xmimo-tts-chevron xmimo-tts-chevron-open' : 'xmimo-tts-chevron'} />
+      </button>
+      {open ? <div className="xmimo-tts-card-body">
+        <div className="xmimo-tts-grid">
         <label>
           <span>{t('settings.apiKey')}</span>
           <input
@@ -422,15 +473,16 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
           <span>{t('settings.instruction')}</span>
           <textarea value={instruction} rows={3} disabled={!snapshot.writable} onChange={(event) => { setInstruction(event.target.value); setState('idle') }} />
         </label>
-      </div>
-      <div className="xmimo-tts-card-actions">
-        {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
-        {state === 'saved' ? <span>{t('settings.saved')}</span> : null}
-        {state === 'failed' ? <span className="xmimo-tts-failed">{t('settings.failed')}</span> : null}
-        <button type="button" disabled={!snapshot.writable || state === 'saving'} onClick={() => { void save() }}>
-          {state === 'saving' ? t('settings.saving') : t('settings.save')}
-        </button>
-      </div>
+        </div>
+        <div className="xmimo-tts-card-actions">
+          {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
+          {state === 'saved' ? <span>{t('settings.saved')}</span> : null}
+          {state === 'failed' ? <span className="xmimo-tts-failed">{t('settings.failed')}</span> : null}
+          <button type="button" disabled={!snapshot.writable || state === 'saving'} onClick={() => { void save() }}>
+            {state === 'saving' ? t('settings.saving') : t('settings.save')}
+          </button>
+        </div>
+      </div> : null}
     </li>
   )
 }
@@ -455,12 +507,11 @@ export function apply(ctx: ClientContext): void {
     const style = document.createElement('style')
     style.dataset.plugin = NS
     style.textContent = `
-      .xmimo-tts-action{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;color:var(--dsw-alias-label-tertiary);background:transparent;cursor:pointer}
+      .xmimo-tts-action{display:inline-flex;flex:0 0 28px;align-items:center;justify-content:center;width:28px;height:28px;box-sizing:border-box;padding:0;border:0;border-radius:6px;color:var(--dsw-alias-label-tertiary);background:transparent;cursor:pointer}
       .xmimo-tts-action:hover,.xmimo-tts-action[aria-pressed=true]{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-fill-l2)}
       .xmimo-tts-action:disabled{cursor:wait;opacity:.65}.xmimo-tts-spin{animation:xmimo-spin 1s linear infinite}@keyframes xmimo-spin{to{transform:rotate(360deg)}}
       .xmimo-tts-inline-error{max-width:220px;color:var(--dsw-alias-state-danger-primary);font-size:12px}
-      .xmimo-tts-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;padding:16px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-l1)}
-      .xmimo-tts-card-heading h3{margin:0;font-size:15px}.xmimo-tts-card-heading p{margin:4px 0 0;color:var(--dsw-alias-label-tertiary);font-size:13px}
+      .xmimo-tts-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-l1);overflow:hidden}.xmimo-tts-card-header{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;color:inherit;text-align:left;background:transparent;font:inherit;cursor:pointer}.xmimo-tts-card-header:hover{background:var(--dsw-alias-interactive-bg-hover)}.xmimo-tts-card-head-text{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-card-title{font-size:15px;font-weight:600}.xmimo-tts-card-description{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:18px}.xmimo-tts-chevron{flex:none;color:var(--dsw-alias-label-tertiary);transition:transform 160ms ease}.xmimo-tts-chevron-open{transform:rotate(180deg)}.xmimo-tts-card-body{padding:0 16px 16px}
       .xmimo-tts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.xmimo-tts-grid label{display:flex;min-width:0;flex-direction:column;gap:6px;font-size:13px}.xmimo-tts-grid input,.xmimo-tts-grid select,.xmimo-tts-grid textarea{box-sizing:border-box;width:100%;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:8px 10px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-l2);font:inherit}.xmimo-tts-grid small{color:var(--dsw-alias-label-tertiary)}
       .xmimo-tts-wide{grid-column:1/-1}.xmimo-tts-checkbox-row{flex-direction:row!important;align-items:flex-start!important}.xmimo-tts-checkbox-row input{width:auto!important;margin-top:3px}.xmimo-tts-checkbox-row span{display:flex;flex-direction:column;gap:4px}
       .xmimo-tts-card-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:16px;font-size:12px;color:var(--dsw-alias-label-tertiary)}.xmimo-tts-card-actions button{border:0;border-radius:8px;padding:8px 14px;color:var(--dsw-alias-label-on-color);background:var(--dsw-alias-state-business-primary);cursor:pointer}.xmimo-tts-card-actions button:disabled{cursor:not-allowed;opacity:.55}.xmimo-tts-failed{color:var(--dsw-alias-state-danger-primary)}
@@ -470,16 +521,18 @@ export function apply(ctx: ClientContext): void {
     return () => style.remove()
   }, 'xiaomi-mimo-tts: styles')
 
-  ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
+  safeSlotInject(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions',
     id: 'xiaomi-mimo-tts',
     order: 20,
+    locale: NS,
     inject: () => ({ playback, settings: scope, t }),
   }, ReadAloudAction))
 
-  ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
+  safeSlotInject(ctx, 'settings.plugin.item', () => ctx.slots.register({
     name: 'settings.plugin.item',
     key: SETTINGS_NAMESPACE,
+    locale: NS,
     inject: () => ({ scope, t }),
   }, SettingsCard))
 }
