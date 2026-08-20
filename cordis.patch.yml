@@ -1,0 +1,15 @@
+# Xiaomi MiMo TTS for DSH Web.
+# The one row activates both the Host half and the package's dsh.client Web half.
+- insert:
+    - id: xiaomi-mimo-tts
+      name: 'dsh-plugin-xiaomi-mimo-tts'
+      config:
+        apiKey: ''
+        baseURL: 'https://api.xiaomimimo.com/v1'
+        model: 'mimo-v2.5-tts'
+        voice: '冰糖'
+        format: 'mp3'
+        autoPlay: false
+        instruction: '请用自然、清晰、语速适中的语气朗读。'
+        maxTextLength: 12000
+        requestTimeoutMs: 120000
