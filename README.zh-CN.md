@@ -4,9 +4,10 @@
 
 ## 功能
 
-- 在每条已完成助手回复正文下方的操作栏中添加“朗读”按钮。
+- 在每条已完成助手回复正文下方的操作栏中按需显示“朗读”按钮（默认关闭）。
 - 调用 Xiaomi MiMo 官方 `mimo-v2.5-tts` 接口，把回复正文转成 MP3 或 WAV 并播放。
 - 在 **设置 → 插件 → 插件配置** 中配置：
+  - 是否显示朗读按钮（默认关闭）
   - Xiaomi MiMo API Key
   - 是否自动播报新回复
   - 内置音色
@@ -71,6 +72,8 @@ dsh plugin --profile web add dsh-xiaomi-tts
 
 填写 API Key，选择音色与格式，再保存。为避免从浏览器读取或显示敏感信息，设置卡不会回显当前密钥；输入新值并保存才会替换已有密钥。
 
+“显示朗读按钮”关闭时，助手回复操作栏不会显示朗读按钮，自动播报也不会触发。
+
 可用内置音色：
 
 - 中文女声：`冰糖`、`茉莉`
@@ -82,6 +85,7 @@ dsh plugin --profile web add dsh-xiaomi-tts
 
 ```yaml
 config:
+  enabled: false
   apiKey: ''
   baseURL: 'https://api.xiaomimimo.com/v1'
   model: 'mimo-v2.5-tts'

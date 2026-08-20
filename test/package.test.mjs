@@ -18,6 +18,7 @@ test('package declares DSH bundle and Web client entries', () => {
 
 test('host output contains protected TTS route and secret settings schema', () => {
   assert.match(host, /xiaomi-mimo-tts\/synthesize/)
+  assert.match(host, /enabled: z\.boolean\(\)\.default\(false\)/)
   assert.match(host, /role\(["']secret["']\)/)
   assert.match(host, /mimo-v2\.5-tts/)
   assert.match(host, /chat\/completions/)
@@ -25,6 +26,7 @@ test('host output contains protected TTS route and secret settings schema', () =
 
 test('client output registers the message action and plugin settings card', () => {
   assert.match(client, /conversation\.chat\.assistant-actions/)
+  assert.match(client, /settingsSnapshot\.value\?\.enabled !== true/)
   assert.match(client, /settings\.plugin\.item/)
   assert.match(client, /locale: NS/)
   assert.match(client, /aria-expanded": open/)

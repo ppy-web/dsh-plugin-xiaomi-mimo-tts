@@ -27,6 +27,7 @@ const SETTINGS_NAMESPACE = 'xiaomi-mimo-tts'
 const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 
 interface TtsSettings {
+  enabled?: boolean
   apiKey?: string
   baseURL?: string
   model?: string
@@ -62,6 +63,8 @@ const zh = {
   'error.play': '浏览器阻止了自动播放，请点击朗读按钮。',
   'settings.title': 'Xiaomi MiMo 语音朗读',
   'settings.description': '在助手回复操作栏中使用 Xiaomi MiMo TTS 生成并播放语音。',
+  'settings.enabled': '显示朗读按钮',
+  'settings.enabledHint': '关闭后不会在助手回复操作栏显示朗读按钮，也不会自动播报。',
   'settings.apiKey': 'API Key',
   'settings.apiKeyHint': '密钥保存在 DSH 设置文件中，传到浏览器前会被脱敏。',
   'settings.apiKeyStatus': '只有输入新值并保存时才会替换现有密钥。',
@@ -91,6 +94,8 @@ const en: Record<keyof typeof zh, string> = {
   'error.play': 'The browser blocked autoplay. Click Read aloud to play it.',
   'settings.title': 'Xiaomi MiMo text to speech',
   'settings.description': 'Generate and play Xiaomi MiMo TTS audio from assistant message actions.',
+  'settings.enabled': 'Show read-aloud button',
+  'settings.enabledHint': 'When disabled, the read-aloud button and automatic speech are both turned off.',
   'settings.apiKey': 'API Key',
   'settings.apiKeyHint': 'Stored in DSH settings and redacted before settings are sent to the browser.',
   'settings.apiKeyStatus': 'An existing key changes only when you save a new value.',
@@ -126,6 +131,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function decodeSettings(value: unknown): TtsSettings | undefined {
   if (!isRecord(value)) return undefined
   const decoded: TtsSettings = {}
+  if (typeof value.enabled === 'boolean') decoded.enabled = value.enabled
   if (typeof value.apiKey === 'string') decoded.apiKey = value.apiKey
   if (typeof value.baseURL === 'string') decoded.baseURL = value.baseURL
   if (typeof value.model === 'string') decoded.model = value.model
@@ -312,7 +318,7 @@ interface ReadAloudActionProps {
   t: Translate
 }
 
-function ReadAloudAction({ messageId, useSession, playback, settings, t }: ReadAloudActionProps): ReactElement {
+function ReadAloudAction({ messageId, useSession, playback, settings, t }: ReadAloudActionProps): ReactElement | null {
   const message = useSession((snapshot) => ({
     text: messageText(snapshot, messageId),
     time: messageTime(snapshot, messageId),
@@ -323,13 +329,16 @@ function ReadAloudAction({ messageId, useSession, playback, settings, t }: ReadA
   const autoPlayed = useRef(false)
 
   useEffect(() => {
-    if (autoPlayed.current || settingsSnapshot.value?.autoPlay !== true || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (autoPlayed.current || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || message.time === null || message.time < playback.autoPlayArmedAt) return
     autoPlayed.current = true
     const cancel = window.setTimeout(() => {
       if (playback.autoPlayArmed) void playback.toggle(messageId, text, true)
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [message.time, messageId, playback, settingsSnapshot.value?.autoPlay, text])
+  }, [message.time, messageId, playback, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+
+  if (settingsSnapshot.value?.enabled !== true) return null
+
   const mine = view.messageId === messageId
   const status = mine ? view.status : 'idle'
   const label = status === 'loading'
@@ -382,6 +391,7 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
   const [apiKey, setApiKey] = useState('')
+  const [enabled, setEnabled] = useState(value?.enabled ?? false)
   const [autoPlay, setAutoPlay] = useState(value?.autoPlay ?? false)
   const [voice, setVoice] = useState(value?.voice ?? '冰糖')
   const [format, setFormat] = useState<'mp3' | 'wav'>(value?.format ?? 'mp3')
@@ -391,6 +401,7 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
 
   useEffect(() => {
     if (value === undefined) return
+    setEnabled(value.enabled ?? false)
     setAutoPlay(value.autoPlay ?? false)
     setVoice(value.voice ?? '冰糖')
     setFormat(value.format ?? 'mp3')
@@ -402,6 +413,7 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
   const save = async (): Promise<void> => {
     setState('saving')
     try {
+      await scope.set('enabled', enabled)
       await scope.set('autoPlay', autoPlay)
       await scope.set('voice', voice)
       await scope.set('format', format)
@@ -443,6 +455,18 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
           />
           <small>{t('settings.apiKeyStatus')}</small>
           <small>{t('settings.apiKeyHint')}</small>
+        </label>
+        <label className="xmimo-tts-checkbox-row">
+          <input
+            type="checkbox"
+            checked={enabled}
+            disabled={!snapshot.writable}
+            onChange={(event) => { setEnabled(event.target.checked); setState('idle') }}
+          />
+          <span>
+            <strong>{t('settings.enabled')}</strong>
+            <small>{t('settings.enabledHint')}</small>
+          </span>
         </label>
         <label className="xmimo-tts-checkbox-row">
           <input

@@ -11,6 +11,7 @@ export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = settingsNamespace('xiaomi-mimo
 export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 
 export const Config = z.object({
+  enabled: z.boolean().default(false),
   apiKey: z.string().role('secret').default(''),
   baseURL: z.string().default('https://api.xiaomimimo.com/v1'),
   model: z.string().default('mimo-v2.5-tts'),
