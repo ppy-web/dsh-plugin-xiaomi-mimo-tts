@@ -13,7 +13,15 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import {
+  TTS_ROUTE,
+  TTS_SETTINGS_NAMESPACE,
+  TTS_VOICES,
+  resolveTtsSettings,
+} from '../shared.js'
+import type { TtsFormat, TtsSettings } from '../shared.js'
 
+/** Client services required by this plugin. */
 export const inject = [
   'slots',
   'locale',
@@ -23,22 +31,6 @@ export const inject = [
 ]
 
 const NS = 'xiaomi-mimo-tts'
-const SETTINGS_NAMESPACE = 'xiaomi-mimo-tts'
-const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
-
-interface TtsSettings {
-  enabled?: boolean
-  apiKey?: string
-  baseURL?: string
-  model?: string
-  voice?: string
-  format?: 'mp3' | 'wav'
-  autoPlay?: boolean
-  instruction?: string
-  maxTextLength?: number
-  requestTimeoutMs?: number
-}
-
 type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error'
 
 interface PlaybackView {
@@ -156,23 +148,26 @@ function formatStartupError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function safeSlotInject(
+function registerSlotContribution(
   ctx: ClientContext,
   name: 'conversation.chat.assistant-actions' | 'settings.plugin.item',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
-  try {
-    ctx.slots.inject(name, () => {
-      try {
-        return register()
-      } catch (error) {
-        ctx.logger.error(`dsh-xiaomi-tts: ${name} contribution disabled: ${formatStartupError(error)}`)
-        return () => {}
-      }
-    })
-  } catch (error) {
-    ctx.logger.error(`dsh-xiaomi-tts: ${name} injection disabled: ${formatStartupError(error)}`)
-  }
+  ctx.effect(() => {
+    try {
+      ctx.slots.inject(name, () => {
+        try {
+          return register()
+        } catch (error) {
+          ctx.logger.error(`dsh-xiaomi-tts: ${name} contribution disabled: ${formatStartupError(error)}`)
+          return () => {}
+        }
+      })
+    } catch (error) {
+      ctx.logger.error(`dsh-xiaomi-tts: ${name} injection disabled: ${formatStartupError(error)}`)
+    }
+    return () => {}
+  }, `xiaomi-mimo-tts: ${name}`)
 }
 
 function messageText(snapshot: ConversationSnapshot, messageId: string): string {
@@ -253,7 +248,9 @@ class PlaybackController {
           const body = await response.json() as { message?: unknown; error?: unknown }
           if (typeof body.message === 'string') message = body.message
           else if (typeof body.error === 'string') message = body.error
-        } catch {}
+        } catch {
+          // Non-JSON error bodies leave the HTTP status as the fallback message.
+        }
         throw new Error(message)
       }
 
@@ -390,22 +387,24 @@ interface SettingsCardProps {
 function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
+  const initial = resolveTtsSettings(value)
   const [apiKey, setApiKey] = useState('')
-  const [enabled, setEnabled] = useState(value?.enabled ?? true)
-  const [autoPlay, setAutoPlay] = useState(value?.autoPlay ?? true)
-  const [voice, setVoice] = useState(value?.voice ?? '冰糖')
-  const [format, setFormat] = useState<'mp3' | 'wav'>(value?.format ?? 'mp3')
-  const [instruction, setInstruction] = useState(value?.instruction ?? '')
+  const [enabled, setEnabled] = useState(initial.enabled)
+  const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
+  const [voice, setVoice] = useState(initial.voice)
+  const [format, setFormat] = useState<TtsFormat>(initial.format)
+  const [instruction, setInstruction] = useState(initial.instruction)
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
     if (value === undefined) return
-    setEnabled(value.enabled ?? true)
-    setAutoPlay(value.enabled === false ? false : value.autoPlay ?? true)
-    setVoice(value.voice ?? '冰糖')
-    setFormat(value.format ?? 'mp3')
-    setInstruction(value.instruction ?? '')
+    const next = resolveTtsSettings(value)
+    setEnabled(next.enabled)
+    setAutoPlay(next.autoPlay)
+    setVoice(next.voice)
+    setFormat(next.format)
+    setInstruction(next.instruction)
   }, [value])
 
   if (snapshot.status === 'unavailable') return null
@@ -502,7 +501,7 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
           <label>
             <span>{t('settings.voice')}</span>
             <select value={voice} disabled={!snapshot.writable} onChange={(event) => { setVoice(event.target.value); setState('idle') }}>
-              {['冰糖', '茉莉', '苏打', '白桦', 'Mia', 'Chloe', 'Milo', 'Dean'].map((item) => <option key={item} value={item}>{item}</option>)}
+              {TTS_VOICES.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
           <label>
@@ -527,6 +526,7 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
   )
 }
 
+/** Register the Web action, settings card, locale dictionaries, and styles. */
 export function apply(ctx: ClientContext): void {
   const locale = ctx.locale as unknown as {
     bind(namespace: string): Translate
@@ -536,7 +536,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => locale.register(NS, { zh, en }), 'xiaomi-mimo-tts: dictionaries')
 
   const scope = ctx.settingsScope.bind<TtsSettings>({
-    namespace: SETTINGS_NAMESPACE,
+    namespace: TTS_SETTINGS_NAMESPACE,
     decode: decodeSettings,
   })
   const playback = new PlaybackController()
@@ -551,7 +551,7 @@ export function apply(ctx: ClientContext): void {
       .xmimo-tts-action:hover,.xmimo-tts-action[aria-pressed=true]{color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-2,#f3f4f6)}
       .xmimo-tts-action:disabled{cursor:wait;opacity:.65}.xmimo-tts-spin{animation:xmimo-spin 1s linear infinite}@keyframes xmimo-spin{to{transform:rotate(360deg)}}
       .xmimo-tts-inline-error{max-width:220px;color:var(--dsw-alias-state-error-primary,#dc2626);font-size:12px}
-      .xmimo-tts-card{list-style:none;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:12px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-1,#fff);overflow:hidden}.xmimo-tts-card:not(.xmimo-tts-card-open){background:var(--dsw-alias-bg-layer-2,#f7f8fa)}.xmimo-tts-card-header{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;color:inherit;text-align:left;background:transparent;font:inherit;cursor:pointer}.xmimo-tts-card-header:hover{background:var(--dsw-alias-bg-layer-2,#f3f4f6)}.xmimo-tts-card-head-text{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-card-title{font-size:15px;font-weight:600}.xmimo-tts-card-description{color:var(--dsw-alias-label-tertiary,#8b93a1);font-size:13px;line-height:18px}.xmimo-tts-chevron{flex:none;color:var(--dsw-alias-label-tertiary,#8b93a1);transition:transform 160ms ease}.xmimo-tts-chevron-open{transform:rotate(180deg)}.xmimo-tts-card-body{padding:0 16px 16px}
+      .xmimo-tts-card{list-style:none;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:12px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-3,#fff);overflow:hidden;transition:border-color 160ms ease,background 160ms ease}.xmimo-tts-card:hover{border-color:var(--dsw-alias-label-dimmed,#c8ccd4)}.xmimo-tts-card-open{background:var(--dsw-alias-bg-layer-2,#f7f8fa)}.xmimo-tts-card-header{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;border-radius:12px;color:inherit;text-align:left;background:transparent;font:inherit;cursor:pointer}.xmimo-tts-card-header:hover{background:var(--dsw-alias-interactive-bg-hover,#f3f4f6)}.xmimo-tts-card-head-text{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-card-title{font-size:15px;font-weight:600}.xmimo-tts-card-description{color:var(--dsw-alias-label-tertiary,#8b93a1);font-size:13px;line-height:18px}.xmimo-tts-chevron{flex:none;color:var(--dsw-alias-label-tertiary,#8b93a1);transition:transform 160ms ease}.xmimo-tts-chevron-open{transform:rotate(180deg)}.xmimo-tts-card-body{border-top:1px solid var(--dsw-alias-border-l2,#e5e7eb);margin:0 16px;padding:0 0 16px}
       .xmimo-tts-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 14px;margin-top:16px;align-items:start}.xmimo-tts-grid label{display:flex;min-width:0;flex-direction:column;gap:6px;font-size:13px}.xmimo-tts-grid input,.xmimo-tts-grid select,.xmimo-tts-grid textarea{box-sizing:border-box;width:100%;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:8px;padding:8px 10px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-2,#f3f4f6);font:inherit}.xmimo-tts-grid select{color-scheme:light dark}.xmimo-tts-grid select option{color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-1,#fff)}.xmimo-tts-grid select:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4f6ef7);outline-offset:1px}.xmimo-tts-grid small{color:var(--dsw-alias-label-tertiary,#8b93a1);line-height:17px}.xmimo-tts-api-key-hints{display:flex;min-width:0;gap:8px;align-items:center}.xmimo-tts-api-key-hints small{min-width:0;white-space:nowrap}.xmimo-tts-wide{grid-column:1/-1}.xmimo-tts-switch-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.xmimo-tts-checkbox-row{flex-direction:row!important;align-items:flex-start!important}.xmimo-tts-checkbox-row input{width:auto!important;flex:none;margin-top:3px}.xmimo-tts-checkbox-row span{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-select-column{display:flex;min-width:0;flex-direction:column;gap:16px}
       .xmimo-tts-card-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:16px;font-size:12px;color:var(--dsw-alias-label-tertiary,#8b93a1)}.xmimo-tts-card-actions button{border:1px solid var(--dsw-alias-brand-primary,#4f6ef7);border-radius:8px;padding:8px 14px;color:var(--dsw-alias-bg-layer-1,#fff);background:var(--dsw-alias-brand-primary,#4f6ef7);cursor:pointer}.xmimo-tts-card-actions button:hover:not(:disabled){filter:brightness(1.08)}.xmimo-tts-card-actions button:disabled{cursor:not-allowed;color:var(--dsw-alias-label-dimmed,#9ca3af);background:var(--dsw-alias-bg-layer-2,#f3f4f6);border-color:var(--dsw-alias-border-l2,#e5e7eb);opacity:1}.xmimo-tts-failed{color:var(--dsw-alias-state-error-primary,#dc2626)}
       @media(max-width:720px){.xmimo-tts-grid{grid-template-columns:1fr}.xmimo-tts-wide{grid-column:auto}.xmimo-tts-switch-row{grid-template-columns:1fr}.xmimo-tts-instruction,.xmimo-tts-select-column{grid-column:auto}.xmimo-tts-api-key-hints{flex-wrap:wrap}.xmimo-tts-api-key-hints small{white-space:normal}}
@@ -560,7 +560,7 @@ export function apply(ctx: ClientContext): void {
     return () => style.remove()
   }, 'xiaomi-mimo-tts: styles')
 
-  safeSlotInject(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
+  registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions',
     id: 'xiaomi-mimo-tts',
     order: 20,
@@ -568,9 +568,9 @@ export function apply(ctx: ClientContext): void {
     inject: () => ({ playback, settings: scope, t }),
   }, ReadAloudAction))
 
-  safeSlotInject(ctx, 'settings.plugin.item', () => ctx.slots.register({
+  registerSlotContribution(ctx, 'settings.plugin.item', () => ctx.slots.register({
     name: 'settings.plugin.item',
-    key: SETTINGS_NAMESPACE,
+    key: TTS_SETTINGS_NAMESPACE,
     locale: NS,
     inject: () => ({ scope, t }),
   }, SettingsCard))

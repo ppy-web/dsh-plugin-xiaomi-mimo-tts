@@ -3,24 +3,29 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import { DEFAULT_TTS_SETTINGS, TTS_FORMATS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE } from './shared.js'
 
+/** Cordis plugin identifier. */
 export const name = 'xiaomi-mimo-tts'
+
+/** Host services required by this plugin. */
 export const inject = ['webServer']
 
-export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = settingsNamespace('xiaomi-mimo-tts')
-export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
+/** Settings namespace registered with the DSH Host. */
+export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = settingsNamespace(TTS_SETTINGS_NAMESPACE)
 
+/** Validated Host settings schema. */
 export const Config = z.object({
-  enabled: z.boolean().default(true),
-  apiKey: z.string().role('secret').default(''),
-  baseURL: z.string().default('https://api.xiaomimimo.com/v1'),
-  model: z.string().default('mimo-v2.5-tts'),
-  voice: z.string().default('冰糖'),
-  format: z.union(['mp3', 'wav'] as const).default('mp3'),
-  autoPlay: z.boolean().default(true),
-  instruction: z.string().default('请用自然、清晰、语速适中的语气朗读。'),
-  maxTextLength: z.number().step(1).min(1).default(12000),
-  requestTimeoutMs: z.number().step(1).min(1000).default(120000),
+  enabled: z.boolean().default(DEFAULT_TTS_SETTINGS.enabled),
+  apiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.apiKey),
+  baseURL: z.string().default(DEFAULT_TTS_SETTINGS.baseURL),
+  model: z.string().default(DEFAULT_TTS_SETTINGS.model),
+  voice: z.string().default(DEFAULT_TTS_SETTINGS.voice),
+  format: z.union(TTS_FORMATS).default(DEFAULT_TTS_SETTINGS.format),
+  autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay),
+  instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction),
+  maxTextLength: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxTextLength),
+  requestTimeoutMs: z.number().step(1).min(1000).default(DEFAULT_TTS_SETTINGS.requestTimeoutMs),
 })
 
 export type Config = ReturnType<typeof Config>
@@ -78,6 +83,7 @@ function apiErrorMessage(status: number, parsed: XiaomiAudioResponse | undefined
     : `Xiaomi MiMo TTS request failed (HTTP ${status})`
 }
 
+/** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
   let current = () => config
 
@@ -87,7 +93,7 @@ export function apply(ctx: Context, config: Config): void {
     },
     onChange() {},
     validate(value) {
-      const base = normalizeBaseURL(value.baseURL ?? 'https://api.xiaomimimo.com/v1')
+      const base = normalizeBaseURL(value.baseURL)
       const endpoint = `${base}/chat/completions`
       if (!URL.canParse(endpoint)) throw new Error('baseURL must be a valid absolute URL')
       if (value.model !== 'mimo-v2.5-tts') {

@@ -5,7 +5,9 @@ import test from 'node:test'
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
 const host = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
+const shared = await readFile(new URL('../lib/shared.js', import.meta.url), 'utf8')
 const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+const { resolveTtsSettings } = await import('../lib/shared.js')
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
@@ -16,13 +18,19 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.match(patch, /name: 'dsh-xiaomi-tts'/)
 })
 
-test('host output contains protected TTS route and secret settings schema', () => {
-  assert.match(host, /xiaomi-mimo-tts\/synthesize/)
-  assert.match(host, /enabled: z\.boolean\(\)\.default\(true\)/)
-  assert.match(host, /autoPlay: z\.boolean\(\)\.default\(true\)/)
-  assert.match(host, /role\(["']secret["']\)/)
+test('host and shared artifacts contain protected TTS route and secret settings schema', () => {
+  assert.match(shared, /xiaomi-mimo-tts\/synthesize/)
+  assert.match(shared, /enabled: true/)
+  assert.match(shared, /autoPlay: true/)
+  assert.match(host, /TTS_ROUTE/)
+  assert.match(host, /role\(['"]secret['"]\)/)
   assert.match(host, /mimo-v2\.5-tts/)
   assert.match(host, /chat\/completions/)
+})
+
+test('resolved settings disable automatic playback when the plugin is disabled', () => {
+  assert.equal(resolveTtsSettings({ enabled: false, autoPlay: true }).autoPlay, false)
+  assert.equal(resolveTtsSettings({ enabled: true, autoPlay: true }).autoPlay, true)
 })
 
 test('client output registers the message action and plugin settings card', () => {
