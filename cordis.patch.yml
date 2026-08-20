@@ -4,13 +4,13 @@
     - id: xiaomi-mimo-tts
       name: 'dsh-xiaomi-tts'
       config:
-        enabled: false
+        enabled: true
         apiKey: ''
         baseURL: 'https://api.xiaomimimo.com/v1'
         model: 'mimo-v2.5-tts'
         voice: '冰糖'
         format: 'mp3'
-        autoPlay: false
+        autoPlay: true
         instruction: '请用自然、清晰、语速适中的语气朗读。'
         maxTextLength: 12000
         requestTimeoutMs: 120000

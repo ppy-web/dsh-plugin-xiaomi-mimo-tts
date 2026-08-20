@@ -68,8 +68,8 @@ const zh = {
   'settings.apiKey': 'API Key',
   'settings.apiKeyHint': '密钥保存在 DSH 设置文件中，传到浏览器前会被脱敏。',
   'settings.apiKeyStatus': '只有输入新值并保存时才会替换现有密钥。',
-  'settings.autoPlay': '自动播报新回复',
-  'settings.autoPlayHint': '浏览器可能因为自动播放策略而拒绝；拒绝后可手动点击朗读。',
+  'settings.autoPlay': '开启自动播报',
+  'settings.autoPlayHint': '开启时会同步显示朗读按钮；浏览器也可能拒绝自动播放。',
   'settings.voice': '内置音色',
   'settings.format': '音频格式',
   'settings.instruction': '朗读风格指令',
@@ -99,8 +99,8 @@ const en: Record<keyof typeof zh, string> = {
   'settings.apiKey': 'API Key',
   'settings.apiKeyHint': 'Stored in DSH settings and redacted before settings are sent to the browser.',
   'settings.apiKeyStatus': 'An existing key changes only when you save a new value.',
-  'settings.autoPlay': 'Automatically read new responses',
-  'settings.autoPlayHint': 'The browser may reject autoplay; use the message action if it does.',
+  'settings.autoPlay': 'Enable automatic read-aloud',
+  'settings.autoPlayHint': 'Enabling it also shows the read-aloud button; the browser may reject autoplay.',
   'settings.voice': 'Built-in voice',
   'settings.format': 'Audio format',
   'settings.instruction': 'Reading style instruction',
@@ -391,8 +391,8 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
   const [apiKey, setApiKey] = useState('')
-  const [enabled, setEnabled] = useState(value?.enabled ?? false)
-  const [autoPlay, setAutoPlay] = useState(value?.autoPlay ?? false)
+  const [enabled, setEnabled] = useState(value?.enabled ?? true)
+  const [autoPlay, setAutoPlay] = useState(value?.autoPlay ?? true)
   const [voice, setVoice] = useState(value?.voice ?? '冰糖')
   const [format, setFormat] = useState<'mp3' | 'wav'>(value?.format ?? 'mp3')
   const [instruction, setInstruction] = useState(value?.instruction ?? '')
@@ -401,8 +401,8 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
 
   useEffect(() => {
     if (value === undefined) return
-    setEnabled(value.enabled ?? false)
-    setAutoPlay(value.autoPlay ?? false)
+    setEnabled(value.enabled ?? true)
+    setAutoPlay(value.enabled === false ? false : value.autoPlay ?? true)
     setVoice(value.voice ?? '冰糖')
     setFormat(value.format ?? 'mp3')
     setInstruction(value.instruction ?? '')
@@ -414,7 +414,7 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
     setState('saving')
     try {
       await scope.set('enabled', enabled)
-      await scope.set('autoPlay', autoPlay)
+      await scope.set('autoPlay', enabled && autoPlay)
       await scope.set('voice', voice)
       await scope.set('format', format)
       await scope.set('instruction', instruction)
@@ -443,7 +443,7 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
       </button>
       {open ? <div className="xmimo-tts-card-body">
         <div className="xmimo-tts-grid">
-        <label>
+        <label className="xmimo-tts-api-key xmimo-tts-wide">
           <span>{t('settings.apiKey')}</span>
           <input
             type="password"
@@ -453,50 +453,66 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
             disabled={!snapshot.writable}
             onChange={(event) => { setApiKey(event.target.value); setState('idle') }}
           />
-          <small>{t('settings.apiKeyStatus')}</small>
-          <small>{t('settings.apiKeyHint')}</small>
-        </label>
-        <label className="xmimo-tts-checkbox-row">
-          <input
-            type="checkbox"
-            checked={enabled}
-            disabled={!snapshot.writable}
-            onChange={(event) => { setEnabled(event.target.checked); setState('idle') }}
-          />
-          <span>
-            <strong>{t('settings.enabled')}</strong>
-            <small>{t('settings.enabledHint')}</small>
+          <span className="xmimo-tts-api-key-hints">
+            <small>{t('settings.apiKeyStatus')}</small>
+            <small>{t('settings.apiKeyHint')}</small>
           </span>
         </label>
-        <label className="xmimo-tts-checkbox-row">
-          <input
-            type="checkbox"
-            checked={autoPlay}
-            disabled={!snapshot.writable}
-            onChange={(event) => { setAutoPlay(event.target.checked); setState('idle') }}
-          />
-          <span>
-            <strong>{t('settings.autoPlay')}</strong>
-            <small>{t('settings.autoPlayHint')}</small>
-          </span>
-        </label>
-        <label>
-          <span>{t('settings.voice')}</span>
-          <select value={voice} disabled={!snapshot.writable} onChange={(event) => { setVoice(event.target.value); setState('idle') }}>
-            {['冰糖', '茉莉', '苏打', '白桦', 'Mia', 'Chloe', 'Milo', 'Dean'].map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-        </label>
-        <label>
-          <span>{t('settings.format')}</span>
-          <select value={format} disabled={!snapshot.writable} onChange={(event) => { setFormat(event.target.value as 'mp3' | 'wav'); setState('idle') }}>
-            <option value="mp3">MP3</option>
-            <option value="wav">WAV</option>
-          </select>
-        </label>
-        <label className="xmimo-tts-wide">
+        <div className="xmimo-tts-switch-row xmimo-tts-wide">
+          <label className="xmimo-tts-checkbox-row">
+            <input
+              type="checkbox"
+              checked={enabled}
+              disabled={!snapshot.writable}
+              onChange={(event) => {
+                const next = event.target.checked
+                setEnabled(next)
+                if (!next) setAutoPlay(false)
+                setState('idle')
+              }}
+            />
+            <span>
+              <strong>{t('settings.enabled')}</strong>
+              <small>{t('settings.enabledHint')}</small>
+            </span>
+          </label>
+          <label className="xmimo-tts-checkbox-row">
+            <input
+              type="checkbox"
+              checked={enabled && autoPlay}
+              disabled={!snapshot.writable}
+              onChange={(event) => {
+                const next = event.target.checked
+                setAutoPlay(next)
+                if (next) setEnabled(true)
+                setState('idle')
+              }}
+            />
+            <span>
+              <strong>{t('settings.autoPlay')}</strong>
+              <small>{t('settings.autoPlayHint')}</small>
+            </span>
+          </label>
+        </div>
+        <label className="xmimo-tts-instruction">
           <span>{t('settings.instruction')}</span>
-          <textarea value={instruction} rows={3} disabled={!snapshot.writable} onChange={(event) => { setInstruction(event.target.value); setState('idle') }} />
+          <textarea value={instruction} rows={6} disabled={!snapshot.writable} onChange={(event) => { setInstruction(event.target.value); setState('idle') }} />
         </label>
+        <div className="xmimo-tts-select-column">
+          <label>
+            <span>{t('settings.voice')}</span>
+            <select value={voice} disabled={!snapshot.writable} onChange={(event) => { setVoice(event.target.value); setState('idle') }}>
+              {['冰糖', '茉莉', '苏打', '白桦', 'Mia', 'Chloe', 'Milo', 'Dean'].map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>{t('settings.format')}</span>
+            <select value={format} disabled={!snapshot.writable} onChange={(event) => { setFormat(event.target.value as 'mp3' | 'wav'); setState('idle') }}>
+              <option value="mp3">MP3</option>
+              <option value="wav">WAV</option>
+            </select>
+          </label>
+        </div>
         </div>
         <div className="xmimo-tts-card-actions">
           {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
@@ -532,14 +548,13 @@ export function apply(ctx: ClientContext): void {
     style.dataset.plugin = NS
     style.textContent = `
       .xmimo-tts-action{display:inline-flex;flex:0 0 28px;align-items:center;justify-content:center;width:28px;height:28px;box-sizing:border-box;padding:0;border:0;border-radius:6px;color:var(--dsw-alias-label-tertiary);background:transparent;cursor:pointer}
-      .xmimo-tts-action:hover,.xmimo-tts-action[aria-pressed=true]{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-fill-l2)}
+      .xmimo-tts-action:hover,.xmimo-tts-action[aria-pressed=true]{color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-2,#f3f4f6)}
       .xmimo-tts-action:disabled{cursor:wait;opacity:.65}.xmimo-tts-spin{animation:xmimo-spin 1s linear infinite}@keyframes xmimo-spin{to{transform:rotate(360deg)}}
-      .xmimo-tts-inline-error{max-width:220px;color:var(--dsw-alias-state-danger-primary);font-size:12px}
-      .xmimo-tts-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-l1);overflow:hidden}.xmimo-tts-card-header{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;color:inherit;text-align:left;background:transparent;font:inherit;cursor:pointer}.xmimo-tts-card-header:hover{background:var(--dsw-alias-interactive-bg-hover)}.xmimo-tts-card-head-text{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-card-title{font-size:15px;font-weight:600}.xmimo-tts-card-description{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:18px}.xmimo-tts-chevron{flex:none;color:var(--dsw-alias-label-tertiary);transition:transform 160ms ease}.xmimo-tts-chevron-open{transform:rotate(180deg)}.xmimo-tts-card-body{padding:0 16px 16px}
-      .xmimo-tts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.xmimo-tts-grid label{display:flex;min-width:0;flex-direction:column;gap:6px;font-size:13px}.xmimo-tts-grid input,.xmimo-tts-grid select,.xmimo-tts-grid textarea{box-sizing:border-box;width:100%;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:8px 10px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-l2);font:inherit}.xmimo-tts-grid small{color:var(--dsw-alias-label-tertiary)}
-      .xmimo-tts-wide{grid-column:1/-1}.xmimo-tts-checkbox-row{flex-direction:row!important;align-items:flex-start!important}.xmimo-tts-checkbox-row input{width:auto!important;margin-top:3px}.xmimo-tts-checkbox-row span{display:flex;flex-direction:column;gap:4px}
-      .xmimo-tts-card-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:16px;font-size:12px;color:var(--dsw-alias-label-tertiary)}.xmimo-tts-card-actions button{border:0;border-radius:8px;padding:8px 14px;color:var(--dsw-alias-label-on-color);background:var(--dsw-alias-state-business-primary);cursor:pointer}.xmimo-tts-card-actions button:disabled{cursor:not-allowed;opacity:.55}.xmimo-tts-failed{color:var(--dsw-alias-state-danger-primary)}
-      @media(max-width:720px){.xmimo-tts-grid{grid-template-columns:1fr}.xmimo-tts-wide{grid-column:auto}}
+      .xmimo-tts-inline-error{max-width:220px;color:var(--dsw-alias-state-error-primary,#dc2626);font-size:12px}
+      .xmimo-tts-card{list-style:none;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:12px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-1,#fff);overflow:hidden}.xmimo-tts-card:not(.xmimo-tts-card-open){background:var(--dsw-alias-bg-layer-2,#f7f8fa)}.xmimo-tts-card-header{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;color:inherit;text-align:left;background:transparent;font:inherit;cursor:pointer}.xmimo-tts-card-header:hover{background:var(--dsw-alias-bg-layer-2,#f3f4f6)}.xmimo-tts-card-head-text{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-card-title{font-size:15px;font-weight:600}.xmimo-tts-card-description{color:var(--dsw-alias-label-tertiary,#8b93a1);font-size:13px;line-height:18px}.xmimo-tts-chevron{flex:none;color:var(--dsw-alias-label-tertiary,#8b93a1);transition:transform 160ms ease}.xmimo-tts-chevron-open{transform:rotate(180deg)}.xmimo-tts-card-body{padding:0 16px 16px}
+      .xmimo-tts-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 14px;margin-top:16px;align-items:start}.xmimo-tts-grid label{display:flex;min-width:0;flex-direction:column;gap:6px;font-size:13px}.xmimo-tts-grid input,.xmimo-tts-grid select,.xmimo-tts-grid textarea{box-sizing:border-box;width:100%;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:8px;padding:8px 10px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-2,#f3f4f6);font:inherit}.xmimo-tts-grid select{color-scheme:light dark}.xmimo-tts-grid select option{color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-1,#fff)}.xmimo-tts-grid select:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4f6ef7);outline-offset:1px}.xmimo-tts-grid small{color:var(--dsw-alias-label-tertiary,#8b93a1);line-height:17px}.xmimo-tts-api-key-hints{display:flex;min-width:0;gap:8px;align-items:center}.xmimo-tts-api-key-hints small{min-width:0;white-space:nowrap}.xmimo-tts-wide{grid-column:1/-1}.xmimo-tts-switch-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.xmimo-tts-checkbox-row{flex-direction:row!important;align-items:flex-start!important}.xmimo-tts-checkbox-row input{width:auto!important;flex:none;margin-top:3px}.xmimo-tts-checkbox-row span{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-select-column{display:flex;min-width:0;flex-direction:column;gap:16px}
+      .xmimo-tts-card-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:16px;font-size:12px;color:var(--dsw-alias-label-tertiary,#8b93a1)}.xmimo-tts-card-actions button{border:1px solid var(--dsw-alias-brand-primary,#4f6ef7);border-radius:8px;padding:8px 14px;color:var(--dsw-alias-bg-layer-1,#fff);background:var(--dsw-alias-brand-primary,#4f6ef7);cursor:pointer}.xmimo-tts-card-actions button:hover:not(:disabled){filter:brightness(1.08)}.xmimo-tts-card-actions button:disabled{cursor:not-allowed;color:var(--dsw-alias-label-dimmed,#9ca3af);background:var(--dsw-alias-bg-layer-2,#f3f4f6);border-color:var(--dsw-alias-border-l2,#e5e7eb);opacity:1}.xmimo-tts-failed{color:var(--dsw-alias-state-error-primary,#dc2626)}
+      @media(max-width:720px){.xmimo-tts-grid{grid-template-columns:1fr}.xmimo-tts-wide{grid-column:auto}.xmimo-tts-switch-row{grid-template-columns:1fr}.xmimo-tts-instruction,.xmimo-tts-select-column{grid-column:auto}.xmimo-tts-api-key-hints{flex-wrap:wrap}.xmimo-tts-api-key-hints small{white-space:normal}}
     `
     document.head.appendChild(style)
     return () => style.remove()

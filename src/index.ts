@@ -11,13 +11,13 @@ export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = settingsNamespace('xiaomi-mimo
 export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 
 export const Config = z.object({
-  enabled: z.boolean().default(false),
+  enabled: z.boolean().default(true),
   apiKey: z.string().role('secret').default(''),
   baseURL: z.string().default('https://api.xiaomimimo.com/v1'),
   model: z.string().default('mimo-v2.5-tts'),
   voice: z.string().default('冰糖'),
   format: z.union(['mp3', 'wav'] as const).default('mp3'),
-  autoPlay: z.boolean().default(false),
+  autoPlay: z.boolean().default(true),
   instruction: z.string().default('请用自然、清晰、语速适中的语气朗读。'),
   maxTextLength: z.number().step(1).min(1).default(12000),
   requestTimeoutMs: z.number().step(1).min(1000).default(120000),
