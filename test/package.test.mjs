@@ -68,6 +68,8 @@ test('client output registers the message action and plugin settings card', () =
   assert.match(client, /settingsSnapshot\.value\?\.enabled !== true/)
   assert.match(client, /checked: enabled && autoPlay/)
   assert.match(client, /xmimo-tts-api-key-hints/)
+  assert.match(client, /platform\.xiaomimimo\.com\/console\/api-keys/)
+  assert.match(client, /noopener noreferrer/)
   assert.match(client, /new-password/)
   assert.match(client, /data-lpignore/)
   assert.match(client, /data-bwignore/)
