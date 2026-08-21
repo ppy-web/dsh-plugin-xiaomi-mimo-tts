@@ -8,9 +8,7 @@
 
 ![Xiaomi MiMo 设置菜单](assets/menu.png)
 
-![朗读按钮](assets/play.png)
-
-![暂停按钮](assets/pause.png)
+![图标示例](assets/image.png)
 
 ## 功能
 
@@ -50,6 +48,21 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```
 
 安装后重启 `dsh web`，打开 **设置 → 插件 → 插件配置 → Xiaomi MiMo 语音朗读**，填写 API Key 并保存。
+
+更新或从本地开发版切换到 npm 版时，必须先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
+
+```powershell
+.\start\dsh-plugin-reinstall.bat 1.1.2
+```
+
+这个脚本会按顺序停止 DSH Web、卸载当前 profile 中的插件、从 npm 安装指定版本并重新启动 DSH Web。若手动操作，请保持相同顺序：
+
+```powershell
+.\start\dsh-web-stop.bat
+dsh plugin --profile web remove dsh-xiaomi-tts
+dsh plugin --profile web add dsh-xiaomi-tts@1.1.2
+.\start\dsh-web-start.bat
+```
 
 ## 配置
 

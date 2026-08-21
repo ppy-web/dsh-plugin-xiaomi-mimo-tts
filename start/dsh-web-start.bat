@@ -9,6 +9,6 @@ if errorlevel 1 (
 )
 
 echo Starting DSH Web with profile "web"...
-start "DSH Web" "%ComSpec%" /k ""dsh.cmd" --profile web"
+start "DSH Web" "%ComSpec%" /k ""dsh.cmd" --profile web --no-open"
 echo DSH Web is starting in a new console window.
 endlocal

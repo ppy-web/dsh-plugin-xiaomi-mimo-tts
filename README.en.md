@@ -8,9 +8,7 @@ Xiaomi MiMo text-to-speech controls for finalized assistant messages in DeepSeek
 
 ![Xiaomi MiMo settings menu](assets/menu.png)
 
-![Read aloud button](assets/play.png)
-
-![Pause button](assets/pause.png)
+![Button](assets/image.png)
 
 ## Features
 
@@ -30,6 +28,21 @@ dsh plugin --profile web add dsh-xiaomi-tts
 ```
 
 Restart `dsh web`, then open **Settings → Plugins → Plugin configuration** and save a Xiaomi MiMo API key.
+
+When updating or switching from the local development link to the npm package, stop DSH Web before changing the profile dependencies. This prevents a running Node process from holding the Windows Junction that pnpm needs to replace:
+
+```powershell
+.\start\dsh-plugin-reinstall.bat 1.1.2
+```
+
+The script stops DSH Web, removes the plugin from the `web` profile, installs the requested npm version, and starts DSH Web again. If you run the steps manually, keep the same order:
+
+```powershell
+.\start\dsh-web-stop.bat
+dsh plugin --profile web remove dsh-xiaomi-tts
+dsh plugin --profile web add dsh-xiaomi-tts@1.1.2
+.\start\dsh-web-start.bat
+```
 
 The settings include the API key, read-aloud button, automatic read-aloud, voice, audio format, and reading instruction. Both switches are enabled by default; disabling the read-aloud button also disables automatic read-aloud, while enabling automatic read-aloud enables the button.
 

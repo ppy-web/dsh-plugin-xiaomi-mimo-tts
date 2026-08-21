@@ -1,6 +1,6 @@
 {
   "name": "dsh-xiaomi-tts",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Xiaomi MiMo text-to-speech controls for DeepSeek Harness Web assistant messages",
   "license": "MIT",
   "type": "module",
@@ -34,7 +34,6 @@
     "lib",
     "cordis.patch.yml",
     "README.md",
-    "README.zh-CN.md",
     "README.en.md",
     "assets",
     "LICENSE"
@@ -58,10 +57,10 @@
     }
   },
   "scripts": {
-    "build": "tsc && tsdown",
+    "build": "tsdown -c tsdown.prepare.config.ts && tsc --emitDeclarationOnly",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run build && node --test test/*.test.mjs",
-    "prepare": "tsdown -c tsdown.prepare.config.ts",
+    "prepare": "tsdown -c tsdown.prepare.config.ts && tsc --emitDeclarationOnly",
     "prepublishOnly": "pnpm run test",
     "pack:check": "pnpm pack --dry-run"
   },

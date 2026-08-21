@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
 const host = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
-const shared = await readFile(new URL('../lib/shared.js', import.meta.url), 'utf8')
 const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
-const { prepareTtsText, resolveTtsSettings } = await import('../lib/shared.js')
+const sharedModule = await import('../lib/shared.js')
+const { prepareTtsText, resolveTtsSettings } = sharedModule
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
@@ -19,15 +19,21 @@ test('package declares DSH bundle and Web client entries', () => {
 })
 
 test('host and shared artifacts contain protected TTS route and secret settings schema', () => {
-  assert.match(shared, /xiaomi-mimo-tts\/synthesize/)
-  assert.match(shared, /enabled: true/)
-  assert.match(shared, /autoPlay: true/)
+  assert.equal(sharedModule.TTS_ROUTE, '/plugins/xiaomi-mimo-tts/synthesize')
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, true)
   assert.match(host, /TTS_ROUTE/)
   assert.match(host, /prepareTtsText/)
-  assert.match(shared, /prepareTtsText/)
   assert.match(host, /role\(['"]secret['"]\)/)
   assert.match(host, /mimo-v2\.5-tts/)
   assert.match(host, /chat\/completions/)
+  assert.doesNotMatch(host, /dsh-xiaomi-tts\/1\.1\.1/)
+  assert.match(host, /createRequire/)
+})
+
+test('build emits only declarations under the private client directory', async () => {
+  const clientArtifacts = (await readdir(new URL('../lib/client', import.meta.url))).sort()
+  assert.deepEqual(clientArtifacts, ['index.d.ts', 'index.d.ts.map'])
 })
 
 test('resolved settings disable automatic playback when the plugin is disabled', () => {

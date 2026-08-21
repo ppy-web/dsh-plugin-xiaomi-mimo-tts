@@ -3,12 +3,15 @@ import clientConfig from './tsdown.config.ts'
 
 export default defineConfig([{
   name: 'dsh-xiaomi-tts',
-  entry: { index: 'src/index.ts' },
+  entry: {
+    index: 'src/index.ts',
+    shared: 'src/shared.ts',
+  },
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',
   target: 'es2024',
   fixedExtension: false,
   dts: false,
-  clean: false,
+  clean: true,
 }, clientConfig])
