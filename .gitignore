@@ -3,3 +3,4 @@ lib/
 *.tgz
 .DS_Store
 coverage/
+.playwright-cli/
