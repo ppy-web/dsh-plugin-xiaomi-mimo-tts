@@ -221,10 +221,6 @@ class PlaybackController {
   private request: AbortController | null = null
   private generation = 0
 
-  get autoPlayArmed(): boolean {
-    return Date.now() - this.autoPlayArmedAt < 30000
-  }
-
   getSnapshot = (): PlaybackView => this.view
 
   subscribe = (listener: () => void): (() => void) => {
@@ -347,13 +343,13 @@ function ReadAloudAction({ messageId, useSession, playback, settings, t }: ReadA
   const text = message.text
   const settingsSnapshot = useSettingsSnapshot(settings)
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
-  const autoPlayed = useRef(false)
+  const autoPlayedMessageId = useRef<string | null>(null)
 
   useEffect(() => {
-    if (autoPlayed.current || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || message.time === null || message.time < playback.autoPlayArmedAt) return
-    autoPlayed.current = true
+    if (autoPlayedMessageId.current === messageId || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || message.time === null || message.time < playback.autoPlayArmedAt) return
+    autoPlayedMessageId.current = messageId
     const cancel = window.setTimeout(() => {
-      if (playback.autoPlayArmed) void playback.toggle(messageId, text, true)
+      void playback.toggle(messageId, text, true)
     }, 0)
     return () => window.clearTimeout(cancel)
   }, [message.time, messageId, playback, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
