@@ -17,6 +17,7 @@ import {
   TTS_ROUTE,
   TTS_SETTINGS_NAMESPACE,
   TTS_VOICES,
+  prepareTtsText,
   resolveTtsSettings,
 } from '../shared.js'
 import type { TtsFormat, TtsSettings } from '../shared.js'
@@ -187,7 +188,7 @@ function messageText(snapshot: ConversationSnapshot, messageId: string): string 
       .filter((block) => block.kind === 'text')
       .map((block) => block.text)
       .join('\n\n')
-    return extractMarkdownPlainText(markdown).trim()
+    return extractMarkdownPlainText(prepareTtsText(markdown)).trim()
   }
   return ''
 }
@@ -336,7 +337,7 @@ function ReadAloudAction({ messageId, useSession, playback, settings, t }: ReadA
   const autoPlayed = useRef(false)
 
   useEffect(() => {
-    if (autoPlayed.current || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (autoPlayed.current || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || message.time === null || message.time < playback.autoPlayArmedAt) return
     autoPlayed.current = true
     const cancel = window.setTimeout(() => {
       if (playback.autoPlayArmed) void playback.toggle(messageId, text, true)
@@ -344,7 +345,7 @@ function ReadAloudAction({ messageId, useSession, playback, settings, t }: ReadA
     return () => window.clearTimeout(cancel)
   }, [message.time, messageId, playback, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
-  if (settingsSnapshot.value?.enabled !== true) return null
+  if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 
   const mine = view.messageId === messageId
   const status = mine ? view.status : 'idle'

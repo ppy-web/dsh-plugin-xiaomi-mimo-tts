@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, TTS_FORMATS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, prepareTtsText, TTS_FORMATS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE } from './shared.js'
 
 /** Cordis plugin identifier. */
 export const name = 'xiaomi-mimo-tts'
@@ -127,7 +127,7 @@ export function apply(ctx: Context, config: Config): void {
         return
       }
 
-      const text = typeof body.text === 'string' ? body.text.trim() : ''
+      const text = typeof body.text === 'string' ? prepareTtsText(body.text) : ''
       const options = current()
 
       if (text.length === 0) {
@@ -164,7 +164,7 @@ export function apply(ctx: Context, config: Config): void {
             authorization: `Bearer ${options.apiKey.trim()}`,
             'content-type': 'application/json',
             accept: 'application/json',
-            'user-agent': 'dsh-xiaomi-tts/0.1.0',
+            'user-agent': 'dsh-xiaomi-tts/1.1.1',
           },
           body: JSON.stringify({
             model: options.model,
