@@ -561,7 +561,14 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
           <input
             type="password"
             value={apiKey}
-            autoComplete="off"
+            name="xmimo-tts-api-key"
+            autoComplete="new-password"
+            autoCorrect="off"
+            spellCheck={false}
+            aria-autocomplete="none"
+            data-1p-ignore="true"
+            data-bwignore="true"
+            data-lpignore="true"
             placeholder={t('settings.secretPlaceholder')}
             disabled={!snapshot.writable}
             onChange={(event) => { setApiKey(event.target.value); markChange('apiKey') }}
