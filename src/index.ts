@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, prepareTtsText, TTS_FORMATS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, prepareTtsText, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -25,8 +25,10 @@ export const Config = z.object({
   enabled: z.boolean().default(DEFAULT_TTS_SETTINGS.enabled),
   apiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.apiKey),
   baseURL: z.string().default(DEFAULT_TTS_SETTINGS.baseURL),
-  model: z.string().default(DEFAULT_TTS_SETTINGS.model),
+  model: z.union(TTS_MODELS).default(DEFAULT_TTS_SETTINGS.model),
   voice: z.string().default(DEFAULT_TTS_SETTINGS.voice),
+  voiceDesignPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignPrompt),
+  voiceDesignCustomPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt),
   format: z.union(TTS_FORMATS).default(DEFAULT_TTS_SETTINGS.format),
   autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay),
   instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction),
@@ -102,8 +104,8 @@ export function apply(ctx: Context, config: Config): void {
       const base = normalizeBaseURL(value.baseURL)
       const endpoint = `${base}/chat/completions`
       if (!URL.canParse(endpoint)) throw new Error('baseURL must be a valid absolute URL')
-      if (value.model !== 'mimo-v2.5-tts') {
-        throw new Error('this plugin currently supports the built-in voice model mimo-v2.5-tts only')
+      if (value.model === 'mimo-v2.5-tts-voicedesign' && value.voiceDesignPrompt.trim().length === 0) {
+        throw new Error('voiceDesignPrompt is required when using mimo-v2.5-tts-voicedesign')
       }
       if (value.format !== 'mp3' && value.format !== 'wav') {
         throw new Error('format must be mp3 or wav')
@@ -157,9 +159,12 @@ export function apply(ctx: Context, config: Config): void {
 
       try {
         const endpoint = `${normalizeBaseURL(options.baseURL)}/chat/completions`
+        const context = options.model === 'mimo-v2.5-tts-voicedesign'
+          ? [options.voiceDesignPrompt.trim(), options.instruction.trim()].filter((item) => item.length > 0).join('\n')
+          : options.instruction.trim()
         const messages: Array<{ role: 'user' | 'assistant'; content: string }> = []
-        if (options.instruction.trim().length > 0) {
-          messages.push({ role: 'user', content: options.instruction.trim() })
+        if (context.length > 0) {
+          messages.push({ role: 'user', content: context })
         }
         messages.push({ role: 'assistant', content: text })
 
@@ -175,10 +180,9 @@ export function apply(ctx: Context, config: Config): void {
           body: JSON.stringify({
             model: options.model,
             messages,
-            audio: {
-              format: options.format,
-              voice: options.voice,
-            },
+            audio: options.model === 'mimo-v2.5-tts-voicedesign'
+              ? { format: options.format }
+              : { format: options.format, voice: options.voice },
             stream: false,
           }),
           signal: controller.signal,

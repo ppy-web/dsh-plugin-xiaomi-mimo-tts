@@ -15,8 +15,10 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import {
   TTS_ROUTE,
+  TTS_MODELS,
   TTS_SETTINGS_NAMESPACE,
   TTS_VOICES,
+  TTS_VOICE_DESIGN_PRESETS,
   prepareTtsText,
   resolveTtsSettings,
 } from '../shared.js'
@@ -65,9 +67,13 @@ const zh = {
   'settings.getApiKey': '获取 API Key',
   'settings.autoPlay': '开启自动播报',
   'settings.autoPlayHint': '开启时会同步显示朗读按钮；浏览器也可能拒绝自动播放。',
+  'settings.model': 'TTS 模型',
+  'settings.presetModel': '预置音色模型',
+  'settings.voiceDesignModel': '自定义音色模型',
   'settings.voice': '内置音色',
+  'settings.voiceDesignPrompt': '自定义音色描述',
+  'settings.voiceDesignPromptHint': '按“年龄段 + 性别、声音质感、语速节奏、情绪底色”描述声音本身；不写场景或动作。',
   'settings.format': '音频格式',
-  'settings.instruction': '朗读风格指令',
   'settings.save': '保存',
   'settings.saving': '保存中…',
   'settings.saved': '已保存',
@@ -102,9 +108,13 @@ const en: Record<keyof typeof zh, string> = {
   'settings.getApiKey': 'Get API Key',
   'settings.autoPlay': 'Enable automatic read-aloud',
   'settings.autoPlayHint': 'Enabling it also shows the read-aloud button; the browser may reject autoplay.',
+  'settings.model': 'TTS model',
+  'settings.presetModel': 'Preset voices',
+  'settings.voiceDesignModel': 'Custom voice design',
   'settings.voice': 'Built-in voice',
+  'settings.voiceDesignPrompt': 'Custom voice description',
+  'settings.voiceDesignPromptHint': 'Describe the voice itself with age/gender, texture, pace, and emotional baseline; avoid scenes or actions.',
   'settings.format': 'Audio format',
-  'settings.instruction': 'Reading style instruction',
   'settings.save': 'Save',
   'settings.saving': 'Saving…',
   'settings.saved': 'Saved',
@@ -139,11 +149,12 @@ function decodeSettings(value: unknown): TtsSettings | undefined {
   if (typeof value.enabled === 'boolean') decoded.enabled = value.enabled
   if (typeof value.apiKey === 'string') decoded.apiKey = value.apiKey
   if (typeof value.baseURL === 'string') decoded.baseURL = value.baseURL
-  if (typeof value.model === 'string') decoded.model = value.model
+  if (TTS_MODELS.includes(value.model as typeof TTS_MODELS[number])) decoded.model = value.model as typeof TTS_MODELS[number]
   if (typeof value.voice === 'string') decoded.voice = value.voice
+  if (typeof value.voiceDesignPrompt === 'string') decoded.voiceDesignPrompt = value.voiceDesignPrompt
+  if (typeof value.voiceDesignCustomPrompt === 'string') decoded.voiceDesignCustomPrompt = value.voiceDesignCustomPrompt
   if (value.format === 'mp3' || value.format === 'wav') decoded.format = value.format
   if (typeof value.autoPlay === 'boolean') decoded.autoPlay = value.autoPlay
-  if (typeof value.instruction === 'string') decoded.instruction = value.instruction
   if (typeof value.maxTextLength === 'number') decoded.maxTextLength = value.maxTextLength
   if (typeof value.requestTimeoutMs === 'number') decoded.requestTimeoutMs = value.requestTimeoutMs
   return decoded
@@ -397,14 +408,20 @@ interface SettingsCardProps {
   t: Translate
 }
 
-type EditableSettingField = 'enabled' | 'autoPlay' | 'voice' | 'format' | 'instruction'
+type EditableSettingField = 'enabled' | 'autoPlay' | 'model' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format'
 type SettingField = EditableSettingField | 'apiKey'
 type DraftChange = { kind: 'set' } | { kind: 'clear' }
 type DraftChanges = Partial<Record<SettingField, DraftChange>>
 type ResolvedSettings = ReturnType<typeof resolveTtsSettings>
 type DraftSettings = Pick<ResolvedSettings, EditableSettingField>
 
-const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'voice', 'format', 'instruction']
+const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'model', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format']
+
+const CUSTOM_VOICE_DESIGN_OPTION = '__custom__'
+
+function isPresetVoiceDesignPrompt(value: string): boolean {
+  return TTS_VOICE_DESIGN_PRESETS.some((item) => item.prompt === value)
+}
 
 function layerSettings(value: unknown): TtsSettings | undefined {
   return isRecord(value) ? value as TtsSettings : undefined
@@ -447,16 +464,18 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
   const [apiKey, setApiKey] = useState('')
   const [enabled, setEnabled] = useState(initial.enabled)
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
+  const [model, setModel] = useState(initial.model)
   const [voice, setVoice] = useState(initial.voice)
+  const [voiceDesignPrompt, setVoiceDesignPrompt] = useState(initial.voiceDesignPrompt)
+  const [voiceDesignCustomPrompt, setVoiceDesignCustomPrompt] = useState(initial.voiceDesignCustomPrompt)
   const [format, setFormat] = useState<TtsFormat>(initial.format)
-  const [instruction, setInstruction] = useState(initial.instruction)
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [open, setOpen] = useState(false)
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, voice, format, instruction }
+  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, model, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -484,9 +503,11 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
     const next = resolveTtsSettings(value)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
+    setModel(next.model)
     setVoice(next.voice)
+    setVoiceDesignPrompt(next.voiceDesignPrompt)
+    setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
     setFormat(next.format)
-    setInstruction(next.instruction)
     setChanges({})
   }, [dirty, value])
 
@@ -501,18 +522,22 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
     markChange(field, 'clear')
     if (field === 'enabled') setEnabled(base.enabled)
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
+    if (field === 'model') setModel(base.model)
     if (field === 'voice') setVoice(base.voice)
+    if (field === 'voiceDesignPrompt') setVoiceDesignPrompt(base.voiceDesignPrompt)
+    if (field === 'voiceDesignCustomPrompt') setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt)
     if (field === 'format') setFormat(base.format)
-    if (field === 'instruction') setInstruction(base.instruction)
   }
 
   const discard = (): void => {
     const next = resolveTtsSettings(scope.getSnapshot().value)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
+    setModel(next.model)
     setVoice(next.voice)
+    setVoiceDesignPrompt(next.voiceDesignPrompt)
+    setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
     setFormat(next.format)
-    setInstruction(next.instruction)
     setApiKey('')
     setChanges({})
     setState('idle')
@@ -633,17 +658,50 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
             </span>
           </label>
         </div>
-        <div className="xmimo-tts-instruction">
-          <SettingFieldHeading label={t('settings.instruction')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('instruction')} resettable disabled={!snapshot.writable} onReset={() => { resetField('instruction') }} />
-          <textarea value={instruction} rows={6} disabled={!snapshot.writable} onChange={(event) => { setInstruction(event.target.value); markChange('instruction') }} />
+        <div className="xmimo-tts-model xmimo-tts-wide">
+          <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('model')} resettable disabled={!snapshot.writable} onReset={() => { resetField('model') }} />
+          <select value={model} disabled={!snapshot.writable} onChange={(event) => { setModel(event.target.value as typeof TTS_MODELS[number]); markChange('model') }}>
+            <option value="mimo-v2.5-tts">{t('settings.presetModel')}</option>
+            <option value="mimo-v2.5-tts-voicedesign">{t('settings.voiceDesignModel')}</option>
+          </select>
         </div>
-        <div className="xmimo-tts-select-column">
-          <div>
+        {model === 'mimo-v2.5-tts-voicedesign' ? <div className="xmimo-tts-voice-design-prompt xmimo-tts-wide">
+          <SettingFieldHeading label={t('settings.voiceDesignPrompt')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceDesignPrompt')} resettable disabled={!snapshot.writable} onReset={() => { resetField('voiceDesignPrompt') }} />
+          <select
+            value={isPresetVoiceDesignPrompt(voiceDesignPrompt) ? voiceDesignPrompt : CUSTOM_VOICE_DESIGN_OPTION}
+            disabled={!snapshot.writable}
+            aria-label={t('settings.voiceDesignPrompt')}
+            onChange={(event) => {
+              const next = event.target.value === CUSTOM_VOICE_DESIGN_OPTION ? voiceDesignCustomPrompt : event.target.value
+              setVoiceDesignPrompt(next)
+              markChange('voiceDesignPrompt')
+            }}
+          >
+            <option value={CUSTOM_VOICE_DESIGN_OPTION}>自定义</option>
+            {TTS_VOICE_DESIGN_PRESETS.map((item) => <option key={item.label} value={item.prompt}>{item.label}</option>)}
+          </select>
+          <textarea
+            value={voiceDesignPrompt}
+            rows={4}
+            disabled={!snapshot.writable}
+            placeholder={t('settings.voiceDesignPromptHint')}
+            onChange={(event) => {
+              const next = event.target.value
+              setVoiceDesignPrompt(next)
+              setVoiceDesignCustomPrompt(next)
+              setChanges((current) => ({ ...current, voiceDesignPrompt: { kind: 'set' }, voiceDesignCustomPrompt: { kind: 'set' } }))
+              setState('idle')
+            }}
+          />
+          <small>{t('settings.voiceDesignPromptHint')}</small>
+        </div> : null}
+        <div className={model === 'mimo-v2.5-tts' ? 'xmimo-tts-select-column xmimo-tts-wide' : 'xmimo-tts-select-column'}>
+          {model === 'mimo-v2.5-tts' ? <div>
             <SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('voice') }} />
             <select value={voice} disabled={!snapshot.writable} onChange={(event) => { setVoice(event.target.value); markChange('voice') }}>
               {TTS_VOICES.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
-          </div>
+          </div> : null}
           <div>
             <SettingFieldHeading label={t('settings.format')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('format') }} />
             <select value={format} disabled={!snapshot.writable} onChange={(event) => { setFormat(event.target.value as 'mp3' | 'wav'); markChange('format') }}>
@@ -693,9 +751,9 @@ export function apply(ctx: ClientContext): void {
       .xmimo-tts-action{width:28px;height:28px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:transparent;border:none;border-radius:28px;justify-content:center;align-items:center;padding:6px;display:inline-flex}.xmimo-tts-action:hover{background:var(--dsw-alias-interactive-bg-hover,#f3f4f6);color:var(--dsw-alias-label-secondary,#5f6875)}.xmimo-tts-action[aria-pressed=true]{background:var(--dsw-alias-interactive-bg-hover,#f3f4f6);color:var(--dsw-alias-label-secondary,#5f6875)}.xmimo-tts-action:disabled{cursor:default;opacity:.45}.xmimo-tts-spin{animation:xmimo-spin 1s linear infinite}@keyframes xmimo-spin{to{transform:rotate(360deg)}}
       .xmimo-tts-inline-error{max-width:220px;color:var(--dsw-alias-state-error-primary,#dc2626);font-size:12px}
       .xmimo-tts-card{list-style:none;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:12px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-3,#fff);overflow:hidden;transition:border-color 160ms ease,background 160ms ease}.xmimo-tts-card:hover{border-color:var(--dsw-alias-label-dimmed,#c8ccd4)}.xmimo-tts-card-open{background:var(--dsw-alias-bg-layer-2,#f7f8fa);border-color:var(--dsw-alias-label-dimmed,#c8ccd4)}.xmimo-tts-card-header{appearance:none;display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;border-radius:12px;color:inherit;text-align:left;background:transparent;font:inherit;cursor:pointer}.xmimo-tts-card-header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4f6ef7);outline-offset:-2px}.xmimo-tts-card-head-text{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px}.xmimo-tts-card-title{font-size:15px;font-weight:600}.xmimo-tts-card-description{color:var(--dsw-alias-label-tertiary,#8b93a1);font-size:13px;line-height:18px}.xmimo-tts-chevron{flex:none;color:var(--dsw-alias-label-tertiary,#8b93a1);transition:transform 160ms ease}.xmimo-tts-chevron-open{transform:rotate(180deg)}.xmimo-tts-pending{flex:none;border-radius:999px;padding:1px 8px;color:var(--dsw-alias-label-secondary,#5f6875);background:var(--dsw-alias-bg-module-platform,#eef0f3);font-size:11px;font-weight:500;line-height:17px}.xmimo-tts-card-body{border-top:1px solid var(--dsw-alias-border-l2,#e5e7eb);margin:0 16px;padding:0 0 16px}
-      .xmimo-tts-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 14px;margin-top:16px;align-items:start}.xmimo-tts-grid label,.xmimo-tts-api-key,.xmimo-tts-instruction,.xmimo-tts-select-column>div{display:flex;min-width:0;flex-direction:column;gap:6px;font-size:13px}.xmimo-tts-grid input,.xmimo-tts-grid select,.xmimo-tts-grid textarea{box-sizing:border-box;width:100%;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:8px;padding:8px 10px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-2,#f3f4f6);font:inherit}.xmimo-tts-grid select{color-scheme:light dark}.xmimo-tts-grid select option{color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-1,#fff)}.xmimo-tts-grid select:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4f6ef7);outline-offset:1px}.xmimo-tts-grid small{color:var(--dsw-alias-label-tertiary,#8b93a1);line-height:17px}.xmimo-tts-field-heading{display:flex;min-width:0;min-height:20px;flex-direction:row!important;align-items:center;justify-content:space-between;gap:8px}.xmimo-tts-field-label{display:inline-flex;min-width:0;align-items:center;gap:8px}.xmimo-tts-api-key-link{color:var(--dsw-alias-brand-primary,#4f6ef7);font-size:12px;text-decoration:none}.xmimo-tts-api-key-link:hover{text-decoration:underline}.xmimo-tts-field-badges{display:flex!important;flex:none;flex-direction:row!important;align-items:center;gap:8px}.xmimo-tts-overridden{border-radius:999px;padding:1px 7px;color:var(--dsw-alias-label-secondary,#5f6875);background:var(--dsw-alias-bg-module-platform,#eef0f3);font-size:11px;line-height:17px}.xmimo-tts-reset{padding:0;border:0;color:var(--dsw-alias-label-secondary,#5f6875);background:transparent;font:inherit;font-size:12px;cursor:pointer}.xmimo-tts-reset:hover:not(:disabled){color:var(--dsw-alias-label-primary,#1f2328)}.xmimo-tts-reset:disabled{cursor:not-allowed;opacity:.45}.xmimo-tts-api-key-hints{display:flex;min-width:0;gap:8px;align-items:center}.xmimo-tts-api-key-hints small{min-width:0;white-space:nowrap}.xmimo-tts-wide{grid-column:1/-1}.xmimo-tts-switch-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.xmimo-tts-checkbox-row{flex-direction:row!important;align-items:flex-start!important}.xmimo-tts-checkbox-row input{width:auto!important;flex:none;margin-top:3px}.xmimo-tts-checkbox-row span{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-select-column{display:flex;min-width:0;flex-direction:column;gap:16px}
+      .xmimo-tts-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 14px;margin-top:16px;align-items:start}.xmimo-tts-grid label,.xmimo-tts-api-key,.xmimo-tts-model,.xmimo-tts-voice-design-prompt,.xmimo-tts-select-column>div{display:flex;min-width:0;flex-direction:column;gap:6px;font-size:13px}.xmimo-tts-grid input,.xmimo-tts-grid select,.xmimo-tts-grid textarea{box-sizing:border-box;width:100%;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:8px;padding:8px 10px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-2,#f3f4f6);font:inherit}.xmimo-tts-grid select{color-scheme:light dark}.xmimo-tts-grid select option{color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-1,#fff)}.xmimo-tts-grid select:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4f6ef7);outline-offset:1px}.xmimo-tts-grid small{color:var(--dsw-alias-label-tertiary,#8b93a1);line-height:17px}.xmimo-tts-field-heading{display:flex;min-width:0;min-height:20px;flex-direction:row!important;align-items:center;justify-content:space-between;gap:8px}.xmimo-tts-field-label{display:inline-flex;min-width:0;align-items:center;gap:8px}.xmimo-tts-api-key-link{color:var(--dsw-alias-brand-primary,#4f6ef7);font-size:12px;text-decoration:none}.xmimo-tts-api-key-link:hover{text-decoration:underline}.xmimo-tts-field-badges{display:flex!important;flex:none;flex-direction:row!important;align-items:center;gap:8px}.xmimo-tts-overridden{border-radius:999px;padding:1px 7px;color:var(--dsw-alias-label-secondary,#5f6875);background:var(--dsw-alias-bg-module-platform,#eef0f3);font-size:11px;line-height:17px}.xmimo-tts-reset{padding:0;border:0;color:var(--dsw-alias-label-secondary,#5f6875);background:transparent;font:inherit;font-size:12px;cursor:pointer}.xmimo-tts-reset:hover:not(:disabled){color:var(--dsw-alias-label-primary,#1f2328)}.xmimo-tts-reset:disabled{cursor:not-allowed;opacity:.45}.xmimo-tts-api-key-hints{display:flex;min-width:0;gap:8px;align-items:center}.xmimo-tts-api-key-hints small{min-width:0;white-space:nowrap}.xmimo-tts-wide{grid-column:1/-1}.xmimo-tts-switch-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.xmimo-tts-checkbox-row{flex-direction:row!important;align-items:flex-start!important}.xmimo-tts-checkbox-row input{width:auto!important;flex:none;margin-top:3px}.xmimo-tts-checkbox-row span{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-select-column{display:flex;min-width:0;flex-direction:row;gap:16px}.xmimo-tts-select-column>div{flex:1}
       .xmimo-tts-card-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--dsw-alias-border-l2,#e5e7eb);font-size:12px;color:var(--dsw-alias-label-tertiary,#8b93a1)}.xmimo-tts-card-actions button{border:1px solid var(--dsw-alias-brand-primary,#4f6ef7);border-radius:8px;padding:5px 14px;color:var(--dsw-alias-bg-layer-1,#fff);background:var(--dsw-alias-brand-primary,#4f6ef7);cursor:pointer;font:inherit}.xmimo-tts-card-actions button:hover:not(:disabled){filter:brightness(1.08)}.xmimo-tts-card-actions button:disabled{cursor:not-allowed;color:var(--dsw-alias-label-dimmed,#9ca3af);background:var(--dsw-alias-bg-layer-2,#f3f4f6);border-color:var(--dsw-alias-border-l2,#e5e7eb);opacity:1}.xmimo-tts-card-actions .xmimo-tts-discard{border-color:var(--dsw-alias-border-l2,#e5e7eb);color:var(--dsw-alias-label-secondary,#5f6875);background:transparent}.xmimo-tts-card-actions .xmimo-tts-discard:hover:not(:disabled){color:var(--dsw-alias-label-primary,#1f2328);border-color:var(--dsw-alias-label-dimmed,#c8ccd4)}.xmimo-tts-failed{color:var(--dsw-alias-state-error-primary,#dc2626)}
-      @media(max-width:720px){.xmimo-tts-grid{grid-template-columns:1fr}.xmimo-tts-wide{grid-column:auto}.xmimo-tts-switch-row{grid-template-columns:1fr}.xmimo-tts-instruction,.xmimo-tts-select-column{grid-column:auto}.xmimo-tts-api-key-hints{flex-wrap:wrap}.xmimo-tts-api-key-hints small{white-space:normal}}
+      @media(max-width:720px){.xmimo-tts-grid{grid-template-columns:1fr}.xmimo-tts-wide{grid-column:auto}.xmimo-tts-switch-row{grid-template-columns:1fr}.xmimo-tts-select-column{grid-column:auto;flex-direction:column}.xmimo-tts-api-key-hints{flex-wrap:wrap}.xmimo-tts-api-key-hints small{white-space:normal}}
     `
     document.head.appendChild(style)
     return () => style.remove()

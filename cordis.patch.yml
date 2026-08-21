@@ -9,6 +9,8 @@
         baseURL: 'https://api.xiaomimimo.com/v1'
         model: 'mimo-v2.5-tts'
         voice: '冰糖'
+        voiceDesignPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。'
+        voiceDesignCustomPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。'
         format: 'mp3'
         autoPlay: true
         instruction: '请用自然、清晰、语速适中的语气朗读。'

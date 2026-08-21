@@ -7,6 +7,27 @@ export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 /** Supported built-in Xiaomi MiMo voices. */
 export const TTS_VOICES = ['冰糖', '茉莉', '苏打', '白桦', 'Mia', 'Chloe', 'Milo', 'Dean'] as const
 
+/** TTS models supported by this plugin. */
+export const TTS_MODELS = ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign'] as const
+
+export type TtsModel = typeof TTS_MODELS[number]
+
+/** Voice-design descriptions adapted from the reference voice-definition page. */
+export const TTS_VOICE_DESIGN_PRESETS = [
+  { label: '元气少女', prompt: '元气少女音色，明亮、轻快、笑意明显，语速偏快，句尾灵动，适合轻松内容和年轻化短视频。' },
+  { label: '邻家女孩', prompt: '年轻女性，声音甜美、软萌、亲近，语速轻快，带一点黏人感和撒娇气质，但保持清晰可懂，适合轻松日常、聊天向内容。' },
+  { label: '新闻播报', prompt: '专业新闻播报音色，中性偏成熟，吐字标准，节奏平稳，情绪克制，适合公告、新闻和正式说明。' },
+  { label: '温柔客服', prompt: '温柔客服女声，亲切、耐心、清晰，语速适中，句尾轻微上扬，听起来可靠且不机械。' },
+  { label: '温柔女友', prompt: '年轻女性，声音温柔、柔软、低饱和，语速偏慢，带轻微耳语感和亲密感，适合情感、治愈和晚间陪伴内容。' },
+  { label: 'ASMR低语', prompt: '年轻女性，声音极度轻柔，像在耳边说话，呼吸感明显，语速慢，适合哄睡、放松和沉浸式内容。' },
+  { label: '少年感男声', prompt: '年轻男性，声音干净明亮，有少年感，语速略快，语气轻松自然，适合短视频口播和产品介绍。' },
+  { label: '纪录片男声', prompt: '成熟男性，低沉稳重，气息稳定，语速中等偏慢，像纪录片旁白，带一点故事感但不过分夸张。' },
+  { label: '古风说书男声', prompt: '古风说书人音色，成熟、有韵味，语速从容，语调起伏带叙事感，适合历史、武侠和传统故事。' },
+  { label: '科技解说男声', prompt: '清晰、理性、现代，语速中等偏快，语气专业但不生硬，适合产品演示和技术说明。' },
+  { label: '电台夜谈男声', prompt: '电台夜谈男声，温暖、低缓、松弛，带轻微气声，语速偏慢，适合情感电台、睡前故事和长篇陪伴内容。' },
+  { label: '悬疑旁白男声', prompt: '悬疑故事旁白，声线偏低，语速克制，停顿明显，带一点紧张感和神秘感，适合悬疑、案件和氛围叙述。' },
+] as const
+
 /** Supported audio formats. */
 export const TTS_FORMATS = ['mp3', 'wav'] as const
 
@@ -117,8 +138,10 @@ export interface TtsSettings {
   enabled?: boolean
   apiKey?: string
   baseURL?: string
-  model?: string
+  model?: TtsModel
   voice?: string
+  voiceDesignPrompt?: string
+  voiceDesignCustomPrompt?: string
   format?: TtsFormat
   autoPlay?: boolean
   instruction?: string
@@ -130,8 +153,10 @@ export interface ResolvedTtsSettings {
   enabled: boolean
   apiKey: string
   baseURL: string
-  model: string
+  model: TtsModel
   voice: string
+  voiceDesignPrompt: string
+  voiceDesignCustomPrompt: string
   format: TtsFormat
   autoPlay: boolean
   instruction: string
@@ -146,6 +171,8 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   baseURL: 'https://api.xiaomimimo.com/v1',
   model: 'mimo-v2.5-tts',
   voice: '冰糖',
+  voiceDesignPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。',
+  voiceDesignCustomPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。',
   format: 'mp3',
   autoPlay: true,
   instruction: '请用自然、清晰、语速适中的语气朗读。',
@@ -156,8 +183,14 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
 /** Resolve an optional settings snapshot into the values used by the form. */
 export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsSettings {
   const resolved = { ...DEFAULT_TTS_SETTINGS, ...value }
+  const voiceDesignCustomPrompt = typeof value?.voiceDesignCustomPrompt === 'string'
+    ? value.voiceDesignCustomPrompt
+    : TTS_VOICE_DESIGN_PRESETS.some((item) => item.prompt === resolved.voiceDesignPrompt)
+      ? DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt
+      : resolved.voiceDesignPrompt
   return {
     ...resolved,
+    voiceDesignCustomPrompt,
     autoPlay: resolved.enabled ? resolved.autoPlay : false,
   }
 }

@@ -20,12 +20,22 @@ test('package declares DSH bundle and Web client entries', () => {
 
 test('host and shared artifacts contain protected TTS route and secret settings schema', () => {
   assert.equal(sharedModule.TTS_ROUTE, '/plugins/xiaomi-mimo-tts/synthesize')
+  assert.deepEqual(sharedModule.TTS_MODELS, ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign'])
+  assert.equal(sharedModule.TTS_VOICE_DESIGN_PRESETS.length, 12)
+  assert.equal(sharedModule.TTS_VOICE_DESIGN_PRESETS[4].label, '温柔女友')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, true)
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.model, 'mimo-v2.5-tts')
+  assert.match(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt, /青年女性/)
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt)
   assert.match(host, /TTS_ROUTE/)
   assert.match(host, /prepareTtsText/)
   assert.match(host, /role\(['"]secret['"]\)/)
   assert.match(host, /mimo-v2\.5-tts/)
+  assert.match(host, /mimo-v2\.5-tts-voicedesign/)
+  assert.match(host, /voiceDesignPrompt/)
+  assert.match(host, /audio: options\.model ===/)
+  assert.match(host, /format: options\.format/)
   assert.match(host, /chat\/completions/)
   assert.doesNotMatch(host, /dsh-xiaomi-tts\/1\.1\.1/)
   assert.match(host, /createRequire/)
@@ -39,6 +49,30 @@ test('build emits only declarations under the private client directory', async (
 test('resolved settings disable automatic playback when the plugin is disabled', () => {
   assert.equal(resolveTtsSettings({ enabled: false, autoPlay: true }).autoPlay, false)
   assert.equal(resolveTtsSettings({ enabled: true, autoPlay: true }).autoPlay, true)
+})
+
+test('resolves the Voice Design settings without exposing a preset voice in the client form', () => {
+  const resolved = resolveTtsSettings({
+    model: 'mimo-v2.5-tts-voicedesign',
+    voiceDesignPrompt: '青年女性，清亮自然，语速适中。',
+  })
+  assert.equal(resolved.model, 'mimo-v2.5-tts-voicedesign')
+  assert.equal(resolved.voiceDesignPrompt, '青年女性，清亮自然，语速适中。')
+  assert.equal(resolved.voiceDesignCustomPrompt, '青年女性，清亮自然，语速适中。')
+  assert.match(client, /settings\.voiceDesignPrompt/)
+  assert.match(client, /mimo-v2\.5-tts-voicedesign/)
+  assert.match(client, /model === ["']mimo-v2\.5-tts-voicedesign["']/)
+  assert.doesNotMatch(client, /settings\.instruction/)
+  assert.doesNotMatch(client, /xmimo-tts-instruction/)
+  assert.match(client, /xmimo-tts-model xmimo-tts-wide/)
+  assert.match(client, /model === ["']mimo-v2\.5-tts["'] \? ["']xmimo-tts-select-column xmimo-tts-wide["']/)
+  assert.match(client, /CUSTOM_VOICE_DESIGN_OPTION = ["']__custom__["']/)
+  assert.match(client, /children: ["']自定义["']/)
+  assert.match(client, /value: isPresetVoiceDesignPrompt\(voiceDesignPrompt\) \? voiceDesignPrompt : CUSTOM_VOICE_DESIGN_OPTION/)
+  assert.match(client, /setVoiceDesignCustomPrompt\(next\)/)
+  assert.match(client, /voiceDesignCustomPrompt/)
+  assert.match(client, /xmimo-tts-select-column\{display:flex;min-width:0;flex-direction:row/)
+  assert.match(client, /xmimo-tts-select-column>div\{flex:1\}/)
 })
 
 test('prepares speech text by keeping prose and normalizing whitespace and punctuation', () => {
