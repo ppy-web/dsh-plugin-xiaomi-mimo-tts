@@ -18,7 +18,7 @@ Xiaomi MiMo text-to-speech controls for finalized assistant messages in DeepSeek
 - Uses Xiaomi MiMo's official `mimo-v2.5-tts` and `mimo-v2.5-tts-voicedesign` Chat Completions-compatible APIs.
 - Switches between preset voices and custom voice design, and configures the API key, autoplay, built-in voice, voice description, and MP3/WAV format under **Settings → Plugins → Plugin configuration**. The voice-design selector defaults to **Custom**; custom text can be edited and saved, then restored after switching to another template.
 - Keeps the API key on the DSH Host. The browser sends only the response text to a same-origin plugin route.
-- Supports pause, resume, regeneration, request errors, and browser autoplay rejection.
+- Supports pause, resume, regeneration, request errors, and browser autoplay rejection. Automatic playback only applies to the latest reply completed by the live run; opening messages from history does not play them.
 - Cleans speech text before sending it to TTS: URLs, file paths, code blocks, emoji, icons, and control characters are removed, and common Chinese punctuation is converted to ASCII punctuation.
 
 Official Xiaomi MiMo TTS reference: <https://mimo.mi.com/static/docs/api/audio/tts.md>

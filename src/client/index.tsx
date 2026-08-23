@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import {
   IconLoadingOutline16,
   IconPauseOutline16,
@@ -213,10 +213,19 @@ function messageTime(snapshot: ConversationSnapshot, messageId: string): number 
   return null
 }
 
+function latestAssistantMessageId(snapshot: ConversationSnapshot): string | null {
+  for (let index = snapshot.nodes.length - 1; index >= 0; index -= 1) {
+    const node = snapshot.nodes[index]
+    if (node?.kind === 'assistant' && node.messageId !== undefined) return node.messageId
+  }
+  return null
+}
+
 class PlaybackController {
   readonly autoPlayArmedAt = Date.now()
   private view: PlaybackView = { messageId: null, status: 'idle', error: null }
   private readonly listeners = new Set<() => void>()
+  private readonly automaticallyPlayed = new Set<string>()
   private current: SynthesizedAudio | null = null
   private request: AbortController | null = null
   private generation = 0
@@ -226,6 +235,13 @@ class PlaybackController {
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  claimAutomaticPlayback(sessionId: string, messageId: string): boolean {
+    const key = `${sessionId}:${messageId}`
+    if (this.automaticallyPlayed.has(key)) return false
+    this.automaticallyPlayed.add(key)
+    return true
   }
 
   async toggle(messageId: string, text: string, automatic: boolean): Promise<void> {
@@ -328,6 +344,7 @@ class PlaybackController {
 }
 
 interface ReadAloudActionProps {
+  sessionId: string
   messageId: string
   useSession: <T>(selector: (snapshot: ConversationSnapshot) => T) => T
   playback: PlaybackController
@@ -335,24 +352,24 @@ interface ReadAloudActionProps {
   t: Translate
 }
 
-function ReadAloudAction({ messageId, useSession, playback, settings, t }: ReadAloudActionProps): ReactElement | null {
+function ReadAloudAction({ sessionId, messageId, useSession, playback, settings, t }: ReadAloudActionProps): ReactElement | null {
   const message = useSession((snapshot) => ({
     text: messageText(snapshot, messageId),
     time: messageTime(snapshot, messageId),
+    latestMessageId: latestAssistantMessageId(snapshot),
+    running: snapshot.running,
   }))
   const text = message.text
   const settingsSnapshot = useSettingsSnapshot(settings)
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
-  const autoPlayedMessageId = useRef<string | null>(null)
 
   useEffect(() => {
-    if (autoPlayedMessageId.current === messageId || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || message.time === null || message.time < playback.autoPlayArmedAt) return
-    autoPlayedMessageId.current = messageId
+    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || !message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
-      void playback.toggle(messageId, text, true)
+      if (playback.claimAutomaticPlayback(sessionId, messageId)) void playback.toggle(messageId, text, true)
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [message.time, messageId, playback, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [message.latestMessageId, message.running, message.time, messageId, playback, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 

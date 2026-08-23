@@ -109,7 +109,7 @@ test('client output registers the message action and plugin settings card', () =
   assert.match(client, /checked: enabled && autoPlay/)
   assert.doesNotMatch(client, /Date\.now\(\) - this\.autoPlayArmedAt < 30000/)
   assert.match(client, /playback\.toggle\(messageId, text, true\)/)
-  assert.match(client, /autoPlayedMessageId/)
+  assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
   assert.match(client, /xmimo-tts-api-key-hints/)
   assert.match(client, /platform\.xiaomimimo\.com\/console\/api-keys/)
   assert.match(client, /noopener noreferrer/)
@@ -133,4 +133,11 @@ test('client output registers the message action and plugin settings card', () =
   assert.match(client, /cursor:default;opacity:\.45/)
   assert.match(client, /scope\.getSnapshot\(\)/)
   assert.match(client, /window\.__ModuleLoader__\.load/)
+})
+
+test('automatic playback only consumes the latest message from a live run once', () => {
+  assert.match(client, /running: snapshot\.running/)
+  assert.match(client, /message\.latestMessageId !== messageId/)
+  assert.match(client, /automaticallyPlayed\.has\(key\)/)
+  assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
 })
