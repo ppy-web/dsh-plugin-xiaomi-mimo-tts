@@ -60,7 +60,7 @@
     "build": "tsdown -c tsdown.prepare.config.ts && tsc --emitDeclarationOnly",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run build && node --test test/*.test.mjs",
-    "prepublishOnly": "pnpm run test",
+    "release:check": "pnpm run test",
     "pack:check": "pnpm pack --dry-run"
   },
   "peerDependencies": {
