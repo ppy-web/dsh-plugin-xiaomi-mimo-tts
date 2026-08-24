@@ -2,6 +2,8 @@
 export declare const TTS_SETTINGS_NAMESPACE = "xiaomi-mimo-tts";
 /** Same-origin route used by the Web client to request synthesized audio. */
 export declare const TTS_ROUTE = "/plugins/xiaomi-mimo-tts/synthesize";
+/** Same-origin route that proxies MiMo PCM16 server-sent audio chunks. */
+export declare const TTS_STREAM_ROUTE = "/plugins/xiaomi-mimo-tts/synthesize-stream";
 /** Supported built-in Xiaomi MiMo voices. */
 export declare const TTS_VOICES: readonly ["冰糖", "茉莉", "苏打", "白桦", "Mia", "Chloe", "Milo", "Dean"];
 /** TTS models supported by this plugin. */
@@ -55,6 +57,27 @@ export type TtsFormat = typeof TTS_FORMATS[number];
  * @returns Text with non-speech content removed and punctuation normalized.
  */
 export declare function prepareTtsText(value: string): string;
+/** Split an accumulated model delta at completed sentence-ending punctuation. */
+export declare function splitCompletedTtsSentences(value: string): {
+    sentences: string[];
+    remainder: string;
+};
+/** Parse complete SSE records while retaining the final partial record for the next network chunk. */
+export declare function parseSseRecords(value: string): {
+    events: string[];
+    remainder: string;
+};
+/** Serializes sentence requests and makes cancellation independent from the playback backend. */
+export declare class AbortableSentenceQueue {
+    private readonly start;
+    private readonly pending;
+    private current;
+    private revision;
+    constructor(start: (sentence: string, signal: AbortSignal) => Promise<void>);
+    enqueue(sentence: string): void;
+    cancel(): void;
+    private pump;
+}
 export interface TtsSettings {
     enabled?: boolean;
     apiKey?: string;

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   IconLoadingOutline16,
   IconPauseOutline16,
@@ -15,12 +15,16 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import {
   TTS_ROUTE,
+  TTS_STREAM_ROUTE,
   TTS_MODELS,
   TTS_SETTINGS_NAMESPACE,
   TTS_VOICES,
   TTS_VOICE_DESIGN_PRESETS,
+  AbortableSentenceQueue,
+  parseSseRecords,
   prepareTtsText,
   resolveTtsSettings,
+  splitCompletedTtsSentences,
 } from '../shared.js'
 import type { TtsFormat, TtsSettings } from '../shared.js'
 
@@ -221,6 +225,209 @@ function latestAssistantMessageId(snapshot: ConversationSnapshot): string | null
   return null
 }
 
+function assistantText(blocks: readonly { kind: string; text?: string }[]): string {
+  return blocks
+    .filter((block): block is { kind: 'text'; text: string } => block.kind === 'text' && typeof block.text === 'string')
+    .map((block) => block.text)
+    .join('\n\n')
+}
+
+interface LiveMessageIdentity {
+  turn: number
+  step: number
+  text: string
+  interrupted: boolean
+}
+
+function finalLiveMessage(snapshot: ConversationSnapshot, turn: number, step: number): LiveMessageIdentity | null {
+  for (let index = snapshot.nodes.length - 1; index >= 0; index -= 1) {
+    const node = snapshot.nodes[index]
+    if (node?.kind === 'assistant' && node.turn === turn && node.step === step) {
+      return {
+        turn: node.turn,
+        step: node.step,
+        text: assistantText(node.blocks),
+        interrupted: node.interrupted === true,
+      }
+    }
+  }
+  return null
+}
+
+function messageLiveIdentity(snapshot: ConversationSnapshot, messageId: string): Pick<LiveMessageIdentity, 'turn' | 'step'> | null {
+  for (const node of snapshot.nodes) {
+    if (node.kind === 'assistant' && node.messageId === messageId) return { turn: node.turn, step: node.step }
+  }
+  return null
+}
+
+function pcmDeltaFromSse(data: string): string | null {
+  if (data === '[DONE]') return null
+  try {
+    const value = JSON.parse(data) as { choices?: Array<{ delta?: { audio?: { data?: unknown } } }> }
+    const pcm = value.choices?.[0]?.delta?.audio?.data
+    return typeof pcm === 'string' && pcm.length > 0 ? pcm : null
+  } catch {
+    return null
+  }
+}
+
+class PcmAudioQueue {
+  private context: AudioContext | null = null
+  private scheduledAt = 0
+  private readonly sources = new Set<AudioBufferSourceNode>()
+  private revision = 0
+  private chain: Promise<void> = Promise.resolve()
+
+  enqueue(base64: string): Promise<void> {
+    const revision = this.revision
+    this.chain = this.chain.then(() => this.schedule(base64, revision)).catch(() => {})
+    return this.chain
+  }
+
+  stop(): void {
+    this.revision += 1
+    this.scheduledAt = 0
+    for (const source of this.sources) source.stop()
+    this.sources.clear()
+  }
+
+  async dispose(): Promise<void> {
+    this.stop()
+    const context = this.context
+    this.context = null
+    if (context !== null && context.state !== 'closed') await context.close()
+  }
+
+  private async schedule(base64: string, revision: number): Promise<void> {
+    if (revision !== this.revision) return
+    const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0))
+    if (bytes.byteLength < 2) return
+    const context = this.getContext()
+    if (context.state !== 'running') await context.resume()
+    if (revision !== this.revision) return
+
+    const sampleCount = Math.floor(bytes.byteLength / 2)
+    const buffer = context.createBuffer(1, sampleCount, 24000)
+    const channel = buffer.getChannelData(0)
+    const pcm = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    for (let index = 0; index < sampleCount; index += 1) channel[index] = pcm.getInt16(index * 2, true) / 0x8000
+
+    const source = context.createBufferSource()
+    source.buffer = buffer
+    source.connect(context.destination)
+    const startAt = Math.max(context.currentTime + 0.03, this.scheduledAt)
+    this.scheduledAt = startAt + buffer.duration
+    this.sources.add(source)
+    source.addEventListener('ended', () => this.sources.delete(source), { once: true })
+    source.start(startAt)
+  }
+
+  private getContext(): AudioContext {
+    if (this.context === null) this.context = new AudioContext()
+    return this.context
+  }
+}
+
+class LiveSpeechController {
+  private readonly audio = new PcmAudioQueue()
+  private readonly queue = new AbortableSentenceQueue((sentence, signal) => this.stream(sentence, signal))
+  private active: string | null = null
+  private observed = ''
+  private consumed = 0
+  private handled = new Set<string>()
+
+  observe(sessionId: string, turn: number, step: number, text: string): void {
+    const key = `${sessionId}:${turn}:${step}`
+    if (this.active !== key || !text.startsWith(this.observed)) this.reset(key)
+    this.observed = text
+    this.drain(false)
+  }
+
+  finish(sessionId: string, final: LiveMessageIdentity): void {
+    const key = `${sessionId}:${final.turn}:${final.step}`
+    if (this.active !== key) return
+    if (final.interrupted) {
+      this.cancelSession(sessionId)
+      return
+    }
+    if (final.text.startsWith(this.observed)) this.observed = final.text
+    this.drain(true)
+    this.handled.add(key)
+  }
+
+  hasHandled(sessionId: string, identity: Pick<LiveMessageIdentity, 'turn' | 'step'> | null): boolean {
+    return identity !== null && this.handled.has(`${sessionId}:${identity.turn}:${identity.step}`)
+  }
+
+  cancelSession(sessionId: string): void {
+    if (this.active?.startsWith(`${sessionId}:`) === true) this.cancel()
+  }
+
+  cancel(): void {
+    this.queue.cancel()
+    this.audio.stop()
+    this.active = null
+    this.observed = ''
+    this.consumed = 0
+  }
+
+  async dispose(): Promise<void> {
+    this.cancel()
+    this.handled.clear()
+    await this.audio.dispose()
+  }
+
+  private reset(key: string): void {
+    this.queue.cancel()
+    this.audio.stop()
+    this.active = key
+    this.observed = ''
+    this.consumed = 0
+  }
+
+  private drain(flush: boolean): void {
+    const { sentences, remainder } = splitCompletedTtsSentences(this.observed.slice(this.consumed))
+    const ready = flush && remainder.trim().length > 0 ? [...sentences, remainder] : sentences
+    this.consumed += sentences.join('').length
+    if (flush) this.consumed = this.observed.length
+    for (const sentence of ready) {
+      const text = extractMarkdownPlainText(prepareTtsText(sentence)).trim()
+      if (text.length > 0) this.queue.enqueue(text)
+    }
+  }
+
+  private async stream(sentence: string, signal: AbortSignal): Promise<void> {
+    const response = await fetch(TTS_STREAM_ROUTE, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: sentence }),
+      signal,
+    })
+    if (!response.ok) throw new Error(`stream-request-${response.status}`)
+    if (response.body === null) throw new Error('stream-response-empty')
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let pending = ''
+    try {
+      while (!signal.aborted) {
+        const result = await reader.read()
+        if (result.done) break
+        pending += decoder.decode(result.value, { stream: true })
+        const parsed = parseSseRecords(pending)
+        pending = parsed.remainder
+        for (const event of parsed.events) {
+          const pcm = pcmDeltaFromSse(event)
+          if (pcm !== null) await this.audio.enqueue(pcm)
+        }
+      }
+    } finally {
+      reader.releaseLock()
+    }
+  }
+}
+
 class PlaybackController {
   readonly autoPlayArmedAt = Date.now()
   private view: PlaybackView = { messageId: null, status: 'idle', error: null }
@@ -385,20 +592,64 @@ function AutoPlayRunObserver({ sessionId, session, playback }: AutoPlayRunObserv
   return null
 }
 
+interface LiveSpeechObserverProps {
+  sessionId: string
+  session: ConversationSnapshot
+  live: LiveSpeechController
+  settings: SettingsScope<TtsSettings>
+}
+
+/** Feed the public `ConversationSnapshot.partial` projection into sentence-level realtime speech. */
+function LiveSpeechObserver({ sessionId, session, live, settings }: LiveSpeechObserverProps): null {
+  const settingsSnapshot = useSettingsSnapshot(settings)
+  const active = useRef<{ turn: number; step: number } | null>(null)
+  const partial = session.partial
+  const partialText = partial === null ? '' : assistantText(partial.blocks)
+
+  useEffect(() => {
+    if (settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true) {
+      live.cancelSession(sessionId)
+      active.current = null
+      return
+    }
+    if (!session.running && partial !== null) {
+      live.cancelSession(sessionId)
+      active.current = null
+      return
+    }
+    if (partial !== null) {
+      active.current = { turn: partial.turn, step: partial.step }
+      live.observe(sessionId, partial.turn, partial.step, partialText)
+      return
+    }
+    if (active.current !== null) {
+      const final = finalLiveMessage(session, active.current.turn, active.current.step)
+      if (final !== null) live.finish(sessionId, final)
+      else if (!session.running) live.cancelSession(sessionId)
+      active.current = null
+    }
+  }, [live, partial, partialText, session, sessionId, session.running, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled])
+
+  useEffect(() => () => live.cancelSession(sessionId), [live, sessionId])
+  return null
+}
+
 interface ReadAloudActionProps {
   sessionId: string
   messageId: string
   useSession: <T>(selector: (snapshot: ConversationSnapshot) => T) => T
   playback: PlaybackController
+  live: LiveSpeechController
   settings: SettingsScope<TtsSettings>
   t: Translate
 }
 
-function ReadAloudAction({ sessionId, messageId, useSession, playback, settings, t }: ReadAloudActionProps): ReactElement | null {
+function ReadAloudAction({ sessionId, messageId, useSession, playback, live, settings, t }: ReadAloudActionProps): ReactElement | null {
   const message = useSession((snapshot) => ({
     text: messageText(snapshot, messageId),
     time: messageTime(snapshot, messageId),
     latestMessageId: latestAssistantMessageId(snapshot),
+    identity: messageLiveIdentity(snapshot, messageId),
     running: snapshot.running,
   }))
   const text = message.text
@@ -406,12 +657,12 @@ function ReadAloudAction({ sessionId, messageId, useSession, playback, settings,
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
 
   useEffect(() => {
-    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || live.hasHandled(sessionId, message.identity) || message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
-      if (playback.claimAutomaticPlayback(sessionId, messageId)) void playback.toggle(messageId, text, true)
+      if (!live.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) void playback.toggle(messageId, text, true)
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [message.latestMessageId, message.running, message.time, messageId, playback, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [live, message.identity, message.latestMessageId, message.running, message.time, messageId, playback, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 
@@ -444,7 +695,7 @@ function ReadAloudAction({ sessionId, messageId, useSession, playback, settings,
           aria-label={label}
           aria-pressed={status === 'playing'}
           disabled={status === 'loading'}
-          onClick={() => { void playback.toggle(messageId, text, false) }}
+          onClick={() => { live.cancel(); void playback.toggle(messageId, text, false) }}
         >
           {status === 'loading'
             ? <IconLoadingOutline16 className="xmimo-tts-spin" />
@@ -796,8 +1047,10 @@ export function apply(ctx: ClientContext): void {
     decode: decodeSettings,
   })
   const playback = new PlaybackController()
+  const live = new LiveSpeechController()
 
   ctx.effect(() => () => playback.dispose(), 'xiaomi-mimo-tts: playback')
+  ctx.effect(() => () => { void live.dispose() }, 'xiaomi-mimo-tts: live playback')
 
   ctx.effect(() => {
     const style = document.createElement('style')
@@ -821,12 +1074,19 @@ export function apply(ctx: ClientContext): void {
     inject: () => ({ playback }),
   }, AutoPlayRunObserver))
 
+  registerSlotContribution(ctx, 'conversation.input.dock', () => ctx.slots.register({
+    name: 'conversation.input.dock',
+    id: 'xiaomi-mimo-tts-live-observer',
+    order: 998,
+    inject: () => ({ live, settings: scope }),
+  }, LiveSpeechObserver))
+
   registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions',
     id: 'xiaomi-mimo-tts',
     order: 20,
     locale: NS,
-    inject: () => ({ playback, settings: scope, t }),
+    inject: () => ({ playback, live, settings: scope, t }),
   }, ReadAloudAction))
 
   registerSlotContribution(ctx, 'settings.plugin.item', () => ctx.slots.register({

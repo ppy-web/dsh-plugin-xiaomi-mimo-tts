@@ -4,6 +4,9 @@ export const TTS_SETTINGS_NAMESPACE = 'xiaomi-mimo-tts'
 /** Same-origin route used by the Web client to request synthesized audio. */
 export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 
+/** Same-origin route that proxies MiMo PCM16 server-sent audio chunks. */
+export const TTS_STREAM_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-stream'
+
 /** Supported built-in Xiaomi MiMo voices. */
 export const TTS_VOICES = ['冰糖', '茉莉', '苏打', '白桦', 'Mia', 'Chloe', 'Milo', 'Dean'] as const
 
@@ -127,11 +130,75 @@ export function prepareTtsText(value: string): string {
     removeTtsSymbols(
       removeTtsMarkup(value)
         .replace(/\\[rn]|\/n/gi, ' ')
-        .replace(/\r\n?/g, '\n'),
+        .replace(/\r\n?|\n/g, '.'),
     ),
   )
 
   return text.replace(/\s+/g, ' ').trim()
+}
+
+/** Split an accumulated model delta at completed sentence-ending punctuation. */
+export function splitCompletedTtsSentences(value: string): { sentences: string[]; remainder: string } {
+  const sentences: string[] = []
+  const boundary = /[。！？!?；;\n]+(?:[”’）】》〕\]}'"]*\s*)/gu
+  let start = 0
+  for (const match of value.matchAll(boundary)) {
+    const end = match.index + match[0].length
+    sentences.push(value.slice(start, end))
+    start = end
+  }
+  return { sentences, remainder: value.slice(start) }
+}
+
+/** Parse complete SSE records while retaining the final partial record for the next network chunk. */
+export function parseSseRecords(value: string): { events: string[]; remainder: string } {
+  const records = value.split(/\r?\n\r?\n/u)
+  const remainder = records.pop() ?? ''
+  const events = records
+    .map((record) => record.split(/\r?\n/u)
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).trimStart())
+      .join('\n'))
+    .filter((record) => record.length > 0)
+  return { events, remainder }
+}
+
+/** Serializes sentence requests and makes cancellation independent from the playback backend. */
+export class AbortableSentenceQueue {
+  private readonly pending: string[] = []
+  private current: AbortController | null = null
+  private revision = 0
+
+  constructor(private readonly start: (sentence: string, signal: AbortSignal) => Promise<void>) {}
+
+  enqueue(sentence: string): void {
+    this.pending.push(sentence)
+    void this.pump()
+  }
+
+  cancel(): void {
+    this.revision += 1
+    this.pending.length = 0
+    this.current?.abort()
+    this.current = null
+  }
+
+  private async pump(): Promise<void> {
+    if (this.current !== null) return
+    const sentence = this.pending.shift()
+    if (sentence === undefined) return
+    const revision = this.revision
+    const controller = new AbortController()
+    this.current = controller
+    try {
+      await this.start(sentence, controller.signal)
+    } catch (error) {
+      if (!controller.signal.aborted) throw error
+    } finally {
+      if (this.current === controller) this.current = null
+      if (revision === this.revision) void this.pump()
+    }
+  }
 }
 
 export interface TtsSettings {

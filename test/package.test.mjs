@@ -9,6 +9,7 @@ const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf
 const sharedModule = await import('../lib/shared.js')
 const { prepareTtsText, resolveTtsSettings } = sharedModule
 
+
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
   assert.equal(packageJson.scripts.prepare, undefined)
@@ -23,6 +24,7 @@ test('package declares DSH bundle and Web client entries', () => {
 
 test('host and shared artifacts contain protected TTS route and secret settings schema', () => {
   assert.equal(sharedModule.TTS_ROUTE, '/plugins/xiaomi-mimo-tts/synthesize')
+  assert.equal(sharedModule.TTS_STREAM_ROUTE, '/plugins/xiaomi-mimo-tts/synthesize-stream')
   assert.deepEqual(sharedModule.TTS_MODELS, ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign'])
   assert.equal(sharedModule.TTS_VOICE_DESIGN_PRESETS.length, 12)
   assert.equal(sharedModule.TTS_VOICE_DESIGN_PRESETS[4].label, '温柔女友')
@@ -42,6 +44,10 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.match(host, /chat\/completions/)
   assert.doesNotMatch(host, /dsh-xiaomi-tts\/1\.1\.1/)
   assert.match(host, /createRequire/)
+  assert.match(host, /TTS_STREAM_ROUTE/)
+  assert.match(host, /format:\s*["']pcm16["']/)
+  assert.match(host, /stream:\s*true/)
+  assert.match(host, /req\.once\(['"]aborted['"]/)
 })
 
 test('build emits only declarations under the private client directory', async () => {
@@ -81,7 +87,7 @@ test('resolves the Voice Design settings without exposing a preset voice in the 
 test('prepares speech text by keeping prose and normalizing whitespace and punctuation', () => {
   assert.equal(
     prepareTtsText('  你好，\n\n世界！\\n下一句。  '),
-    '你好, 世界! 下一句.',
+    '你好..世界! 下一句.',
   )
 })
 
@@ -94,7 +100,7 @@ test('keeps Markdown link labels while removing links, URLs, paths, and code blo
       '```ts\nconst answer = 42\n```',
       '继续说明。',
     ].join('\n')),
-    '请查看 官方文档. 备用地址 和 文件 和. 继续说明.',
+    '请查看 官方文档..备用地址 和.文件 和...继续说明.',
   )
 })
 
@@ -105,8 +111,53 @@ test('removes emoji, icons, invisible characters, and empty filtered content', (
   assert.equal(prepareTtsText('```\nignored\n```'), '')
 })
 
+test('turns physical line breaks into sentence-ending periods', () => {
+  assert.equal(prepareTtsText('第一行\n第二行'), '第一行.第二行')
+})
+
+test('splits accumulated assistant text only at completed sentence boundaries', () => {
+  assert.deepEqual(
+    sharedModule.splitCompletedTtsSentences('第一句。第二句！还没结束'),
+    { sentences: ['第一句。', '第二句！'], remainder: '还没结束' },
+  )
+  assert.deepEqual(
+    sharedModule.splitCompletedTtsSentences('他说：“好了。”\n下一行；'),
+    { sentences: ['他说：“好了。”\n', '下一行；'], remainder: '' },
+  )
+})
+
+test('parses PCM SSE records without consuming a partial network record', () => {
+  assert.deepEqual(
+    sharedModule.parseSseRecords('data: {"choices":[1]}\n\ndata: partial'),
+    { events: ['{"choices":[1]}'], remainder: 'data: partial' },
+  )
+})
+
+test('cancelling the realtime sentence queue aborts the in-flight request and drops queued sentences', async () => {
+  const started = []
+  let signal
+  let finish
+  const queue = new sharedModule.AbortableSentenceQueue((sentence, nextSignal) => {
+    started.push(sentence)
+    signal = nextSignal
+    return new Promise((resolve) => { finish = resolve })
+  })
+  queue.enqueue('第一句。')
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  queue.enqueue('第二句。')
+  queue.cancel()
+  assert.equal(signal.aborted, true)
+  finish()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(started, ['第一句。'])
+})
+
 test('client output registers the message action and plugin settings card', () => {
   assert.match(client, /conversation\.chat\.assistant-actions/)
+  assert.match(client, /ConversationSnapshot\.partial/)
+  assert.match(client, /TTS_STREAM_ROUTE/)
+  assert.match(client, /new AudioContext\(\)/)
+  assert.match(client, /live\.cancel\(\)/)
   assert.match(client, /prepareTtsText/)
   assert.match(client, /settingsSnapshot\.value\?\.enabled !== true/)
   assert.match(client, /checked: enabled && autoPlay/)
