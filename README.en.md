@@ -4,6 +4,8 @@
 
 Xiaomi MiMo text-to-speech controls for finalized assistant messages in DeepSeek Harness Web.
 
+> Powered by Xiaomi MiMo TTS models to turn assistant replies into smooth, clear natural speech. MiMo TTS is currently free for a limited time; refer to Xiaomi MiMo for the current policy.
+
 ## Preview
 
 ![Xiaomi MiMo settings menu](assets/menu.png)
@@ -15,7 +17,8 @@ Xiaomi MiMo text-to-speech controls for finalized assistant messages in DeepSeek
 ## Features
 
 - Adds an optional read-aloud button to the assistant message action strip; it is enabled by default.
-- Uses Xiaomi MiMo's official `mimo-v2.5-tts` and `mimo-v2.5-tts-voicedesign` Chat Completions-compatible APIs; preset-voice autoplay uses streaming PCM16, while manual playback uses MP3 or WAV.
+- Uses Xiaomi MiMo's currently free-for-a-limited-time TTS models: `mimo-v2.5-tts` produces smooth, clear audio; preset-voice autoplay uses streaming PCM16, while manual playback uses MP3 or WAV.
+- Uses `mimo-v2.5-tts-voicedesign` Voice Design to create the voice you want from a text description.
 - Switches between preset voices and custom voice design, and configures the API key, autoplay, built-in voice, voice description, and MP3/WAV format under **Settings → Plugins → Plugin configuration**. The voice-design selector defaults to **Custom**; custom text can be edited and saved, then restored after switching to another template.
 - Keeps the API key on the DSH Host. The browser sends only the response text to a same-origin plugin route.
 - Supports pause, resume, regeneration, request errors, and browser autoplay rejection. Automatic playback only applies to the latest reply completed by the live run; opening messages from history does not play them.
@@ -46,7 +49,7 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.2.0
 .\start\dsh-web-start.bat
 ```
 
-When `mimo-v2.5-tts-voicedesign` is selected, the plugin omits `audio.voice`, sends only the custom voice description as the upstream `user` message, and sends the reply text as the `assistant` message. No preset-voice or general read-aloud style prompt is added. Describe the voice itself in one or two sentences, including age/gender, texture, pace, and emotional baseline; avoid scenes or actions.
+When `mimo-v2.5-tts-voicedesign` is selected, Voice Design creates the voice you want from a text description. The plugin omits `audio.voice`, sends only the custom voice description as the upstream `user` message, and sends the reply text as the `assistant` message. No preset-voice or general read-aloud style prompt is added. Describe the voice itself in one or two sentences, including age/gender, texture, pace, and emotional baseline; avoid scenes or actions.
 
 The settings card also provides common voice-description templates from the reference page; every template remains editable after selection.
 

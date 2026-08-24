@@ -2,6 +2,8 @@
 
 为 DeepSeek Harness Web 的助手回复添加 Xiaomi MiMo TTS 语音朗读。
 
+> 基于 Xiaomi MiMo TTS 大模型，将助手回复转为流畅、清晰的自然语音。MiMo TTS 当前为限时免费服务，具体政策以 Xiaomi MiMo 平台为准。
+
 <p><a href="README.en.md"><strong>English README →</strong></a></p>
 
 ## 预览
@@ -15,7 +17,8 @@
 ## 功能
 
 - 在每条已完成助手回复正文下方的操作栏中按需显示“朗读”按钮（默认开启）。
-- 调用 Xiaomi MiMo 官方 `mimo-v2.5-tts` 或 `mimo-v2.5-tts-voicedesign` 接口；预置音色自动播报使用 PCM16 流式播放，手动朗读使用 MP3 或 WAV。
+- 调用当前限时免费的 Xiaomi MiMo TTS 大模型：`mimo-v2.5-tts` 输出流畅、清晰的音频；预置音色自动播报使用 PCM16 流式播放，手动朗读使用 MP3 或 WAV。
+- 使用 `mimo-v2.5-tts-voicedesign` 的 Voice Design，通过文字描述创造你想要的声音。
 - 在 **设置 → 插件 → 插件配置** 中切换预置音色/自定义音色模型，配置 API Key、自动播报、音色、音色描述和格式。
 - API Key 仅由 DSH Host 读取，浏览器只向同源 Host 路由提交回复正文。
 - 支持暂停、继续、重新生成，以及浏览器自动播放被拦截时的提示；自动播报仅触发当前运行中新完成的最后一条回复，从历史记录打开消息不会播放。
@@ -75,7 +78,7 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.2.0
 - 英文女声：`Mia`、`Chloe`
 - 英文男声：`Milo`、`Dean`
 
-切换到 `mimo-v2.5-tts-voicedesign` 后，插件不会发送 `audio.voice`，而是只把“自定义音色描述”作为上游 `user` 消息，把回复正文作为 `assistant` 消息发送；不会追加预置音色或通用朗读风格提示。音色描述建议写成一到两句，只描述声音本身，例如：
+切换到 `mimo-v2.5-tts-voicedesign` 后，可以通过 Voice Design 用文字创造你想要的声音。插件不会发送 `audio.voice`，而是只把“自定义音色描述”作为上游 `user` 消息，把回复正文作为 `assistant` 消息发送；不会追加预置音色或通用朗读风格提示。音色描述建议写成一到两句，只描述声音本身，例如：
 
 设置卡提供参考页中的常用音色描述模板；下拉框默认选择“自定义”，用户可以直接修改并保存描述。切换到其他模板后再切回“自定义”时，会恢复之前保存的自定义内容。
 
