@@ -7,7 +7,7 @@ const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'u
 const host = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
 const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
 const sharedModule = await import('../lib/shared.js')
-const { prepareTtsText, resolveTtsSettings } = sharedModule
+const { batchTtsStreamText, countTtsSpeechCharacters, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsSettings } = sharedModule
 
 
 test('package declares DSH bundle and Web client entries', () => {
@@ -31,6 +31,7 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.model, 'mimo-v2.5-tts')
+  assert.match(sharedModule.DEFAULT_TTS_SETTINGS.presetStylePrompt, /湖南语感/)
   assert.match(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt, /青年女性/)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt)
   assert.match(host, /TTS_ROUTE/)
@@ -45,6 +46,8 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.doesNotMatch(host, /dsh-xiaomi-tts\/1\.1\.1/)
   assert.match(host, /createRequire/)
   assert.match(host, /TTS_STREAM_ROUTE/)
+  assert.match(host, /presetStylePrompt/)
+  assert.match(host, /mimo-v2\.5-tts-voicedesign"\s*\?\s*options\.voiceDesignPrompt\.trim\(\)\s*:/)
   assert.match(host, /format:\s*["']pcm16["']/)
   assert.match(host, /stream:\s*true/)
   assert.match(host, /req\.once\(['"]aborted['"]/)
@@ -111,6 +114,10 @@ test('removes emoji, icons, invisible characters, and empty filtered content', (
   assert.equal(prepareTtsText('```\nignored\n```'), '')
 })
 
+test('removes decorative Chinese punctuation while preserving sentence boundaries', () => {
+  assert.equal(prepareTtsText('【提示】（请注意）“测试”：你好，世界！《完》'), '提示请注意测试你好,世界!完')
+})
+
 test('turns physical line breaks into sentence-ending periods', () => {
   assert.equal(prepareTtsText('第一行\n第二行'), '第一行.第二行')
 })
@@ -124,6 +131,17 @@ test('splits accumulated assistant text only at completed sentence boundaries', 
     sharedModule.splitCompletedTtsSentences('他说：“好了。”\n下一行；'),
     { sentences: ['他说：“好了。”\n', '下一行；'], remainder: '' },
   )
+})
+
+test('batches short stream sentences until at least twenty spoken characters or final flush', () => {
+  assert.equal(MIN_TTS_STREAM_CHARACTERS, 20)
+  assert.equal(countTtsSpeechCharacters('第一句，包含标点。'), 7)
+  assert.deepEqual(batchTtsStreamText('', '第一句很短。', false), { pending: '第一句很短。', request: null })
+  assert.deepEqual(batchTtsStreamText('第一句很短。', '第二句继续补充一些内容，使总字数达到二十个字。', false), {
+    pending: '',
+    request: '第一句很短。第二句继续补充一些内容，使总字数达到二十个字。',
+  })
+  assert.deepEqual(batchTtsStreamText('不足二十字。', '', true), { pending: '', request: '不足二十字。' })
 })
 
 test('parses PCM SSE records without consuming a partial network record', () => {
@@ -158,6 +176,7 @@ test('client output registers the message action and plugin settings card', () =
   assert.match(client, /TTS_STREAM_ROUTE/)
   assert.match(client, /new AudioContext\(\)/)
   assert.match(client, /live\.cancel\(\)/)
+  assert.doesNotMatch(client, /!session\.running&&partial!==null\)\{live\.cancelSession\(sessionId\)/)
   assert.match(client, /prepareTtsText/)
   assert.match(client, /settingsSnapshot\.value\?\.enabled !== true/)
   assert.match(client, /checked: enabled && autoPlay/)

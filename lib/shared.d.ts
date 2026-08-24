@@ -50,6 +50,8 @@ export declare const TTS_VOICE_DESIGN_PRESETS: readonly [{
 /** Supported audio formats. */
 export declare const TTS_FORMATS: readonly ["mp3", "wav"];
 export type TtsFormat = typeof TTS_FORMATS[number];
+/** Minimum spoken characters to accumulate before starting one PCM stream request. */
+export declare const MIN_TTS_STREAM_CHARACTERS = 20;
 /**
  * Prepare assistant text for speech synthesis without changing the chat transcript.
  *
@@ -61,6 +63,13 @@ export declare function prepareTtsText(value: string): string;
 export declare function splitCompletedTtsSentences(value: string): {
     sentences: string[];
     remainder: string;
+};
+/** Count text-bearing characters only, excluding punctuation and whitespace. */
+export declare function countTtsSpeechCharacters(value: string): number;
+/** Accumulate short sentences so a PCM stream has enough text to sound natural. */
+export declare function batchTtsStreamText(pending: string, next: string, flush: boolean): {
+    pending: string;
+    request: string | null;
 };
 /** Parse complete SSE records while retaining the final partial record for the next network chunk. */
 export declare function parseSseRecords(value: string): {
@@ -86,6 +95,7 @@ export interface TtsSettings {
     voice?: string;
     voiceDesignPrompt?: string;
     voiceDesignCustomPrompt?: string;
+    presetStylePrompt?: string;
     format?: TtsFormat;
     autoPlay?: boolean;
     instruction?: string;
@@ -100,6 +110,7 @@ export interface ResolvedTtsSettings {
     voice: string;
     voiceDesignPrompt: string;
     voiceDesignCustomPrompt: string;
+    presetStylePrompt: string;
     format: TtsFormat;
     autoPlay: boolean;
     instruction: string;

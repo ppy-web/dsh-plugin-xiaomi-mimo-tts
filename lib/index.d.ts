@@ -15,6 +15,7 @@ export declare const Config: z<Schemastery.ObjectS<{
     voice: z<string, string>;
     voiceDesignPrompt: z<string, string>;
     voiceDesignCustomPrompt: z<string, string>;
+    presetStylePrompt: z<string, string>;
     format: z<"mp3" | "wav", "mp3" | "wav">;
     autoPlay: z<boolean, boolean>;
     instruction: z<string, string>;
@@ -28,6 +29,7 @@ export declare const Config: z<Schemastery.ObjectS<{
     voice: z<string, string>;
     voiceDesignPrompt: z<string, string>;
     voiceDesignCustomPrompt: z<string, string>;
+    presetStylePrompt: z<string, string>;
     format: z<"mp3" | "wav", "mp3" | "wav">;
     autoPlay: z<boolean, boolean>;
     instruction: z<string, string>;

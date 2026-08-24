@@ -21,6 +21,7 @@ import {
   TTS_VOICES,
   TTS_VOICE_DESIGN_PRESETS,
   AbortableSentenceQueue,
+  batchTtsStreamText,
   parseSseRecords,
   prepareTtsText,
   resolveTtsSettings,
@@ -335,6 +336,7 @@ class LiveSpeechController {
   private active: string | null = null
   private observed = ''
   private consumed = 0
+  private pendingText = ''
   private handled = new Set<string>()
 
   observe(sessionId: string, turn: number, step: number, text: string): void {
@@ -370,6 +372,7 @@ class LiveSpeechController {
     this.active = null
     this.observed = ''
     this.consumed = 0
+    this.pendingText = ''
   }
 
   async dispose(): Promise<void> {
@@ -384,6 +387,7 @@ class LiveSpeechController {
     this.active = key
     this.observed = ''
     this.consumed = 0
+    this.pendingText = ''
   }
 
   private drain(flush: boolean): void {
@@ -391,10 +395,15 @@ class LiveSpeechController {
     const ready = flush && remainder.trim().length > 0 ? [...sentences, remainder] : sentences
     this.consumed += sentences.join('').length
     if (flush) this.consumed = this.observed.length
-    for (const sentence of ready) {
-      const text = extractMarkdownPlainText(prepareTtsText(sentence)).trim()
-      if (text.length > 0) this.queue.enqueue(text)
-    }
+    for (const sentence of ready) this.stageSentence(sentence, false)
+    if (flush) this.stageSentence('', true)
+  }
+
+  private stageSentence(sentence: string, flush: boolean): void {
+    const text = extractMarkdownPlainText(prepareTtsText(sentence)).trim()
+    const batch = batchTtsStreamText(this.pendingText, text, flush)
+    this.pendingText = batch.pending
+    if (batch.request !== null) this.queue.enqueue(batch.request)
   }
 
   private async stream(sentence: string, signal: AbortSignal): Promise<void> {
@@ -608,11 +617,6 @@ function LiveSpeechObserver({ sessionId, session, live, settings }: LiveSpeechOb
 
   useEffect(() => {
     if (settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true) {
-      live.cancelSession(sessionId)
-      active.current = null
-      return
-    }
-    if (!session.running && partial !== null) {
       live.cancelSession(sessionId)
       active.current = null
       return

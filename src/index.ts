@@ -29,6 +29,7 @@ export const Config = z.object({
   voice: z.string().default(DEFAULT_TTS_SETTINGS.voice),
   voiceDesignPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignPrompt),
   voiceDesignCustomPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt),
+  presetStylePrompt: z.string().default(DEFAULT_TTS_SETTINGS.presetStylePrompt),
   format: z.union(TTS_FORMATS).default(DEFAULT_TTS_SETTINGS.format),
   autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay),
   instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction),
@@ -56,8 +57,8 @@ interface XiaomiAudioResponse {
 
 function requestMessages(options: Config, text: string): Array<{ role: 'user' | 'assistant'; content: string }> {
   const context = options.model === 'mimo-v2.5-tts-voicedesign'
-    ? [options.voiceDesignPrompt.trim(), options.instruction.trim()].filter((item) => item.length > 0).join('\n')
-    : options.instruction.trim()
+    ? options.voiceDesignPrompt.trim()
+    : [options.presetStylePrompt.trim(), options.instruction.trim()].filter((item) => item.length > 0).join('\n')
   const messages: Array<{ role: 'user' | 'assistant'; content: string }> = []
   if (context.length > 0) messages.push({ role: 'user', content: context })
   messages.push({ role: 'assistant', content: text })

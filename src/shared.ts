@@ -36,39 +36,21 @@ export const TTS_FORMATS = ['mp3', 'wav'] as const
 
 export type TtsFormat = typeof TTS_FORMATS[number]
 
+/** Minimum spoken characters to accumulate before starting one PCM stream request. */
+export const MIN_TTS_STREAM_CHARACTERS = 20
+
 const TTS_PUNCTUATION: Record<string, string> = {
   '，': ',',
   '。': '.',
   '！': '!',
   '？': '?',
-  '：': ':',
   '；': ';',
   '、': ',',
-  '（': '(',
-  '）': ')',
-  '【': '[',
-  '】': ']',
-  '［': '[',
-  '］': ']',
-  '“': '"',
-  '”': '"',
-  '‘': "'",
-  '’': "'",
-  '「': '"',
-  '」': '"',
-  '『': '"',
-  '』': '"',
-  '《': '"',
-  '》': '"',
-  '〈': '"',
-  '〉': '"',
-  '…': '...',
-  '—': '-',
-  '–': '-',
-  '－': '-',
-  '～': '~',
   '　': ' ',
 }
+
+/** Decorative punctuation can make TTS emit non-speech artifacts, so omit it entirely. */
+const TTS_NON_SPEECH_PUNCTUATION = /[()（）\[\]【】［］〔〕〖〗{}｛｝「」『』《》〈〉“”‘’"'`<>：:…—–－～]/gu
 
 const TTS_URL_PATTERN = /\b(?:https?|ftp):\/\/[^\s<>()]+|\bwww\.[^\s<>()]+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|cn|net|org|io|ai|dev|me|co|edu|gov|xyz|tech|info|app|site|link)(?:[/:?#][^\s<>()]*)?/giu
 const TTS_WINDOWS_PATH_PATTERN = /(?:\b[A-Za-z]:[\\/]|\\\\)(?:[A-Za-z0-9._ -]+[\\/])*(?:[A-Za-z0-9._ -]+)/gu
@@ -110,8 +92,8 @@ function removeTtsSymbols(value: string): string {
 
 function normalizeTtsPunctuation(value: string): string {
   return value
-    .replace(/[，。！？：；、（）【】［］“”‘’「」『』《》〈〉…—–－～　]/gu, (character) => TTS_PUNCTUATION[character] ?? character)
-    .replace(/\(\s*\)|\[\s*\]|\{\s*\}/g, ' ')
+    .replace(TTS_NON_SPEECH_PUNCTUATION, '')
+    .replace(/[，。！？；、　]/gu, (character) => TTS_PUNCTUATION[character] ?? character)
     .replace(/(^|\s)[,;:!?]+(?=\s|$)/g, '$1')
     .replace(/([,;:])\s*([.!?])/g, '$2')
     .replace(/\s+([,.;:!?])/g, '$1')
@@ -148,6 +130,20 @@ export function splitCompletedTtsSentences(value: string): { sentences: string[]
     start = end
   }
   return { sentences, remainder: value.slice(start) }
+}
+
+/** Count text-bearing characters only, excluding punctuation and whitespace. */
+export function countTtsSpeechCharacters(value: string): number {
+  return Array.from(value).filter((character) => /[\p{L}\p{N}]/u.test(character)).length
+}
+
+/** Accumulate short sentences so a PCM stream has enough text to sound natural. */
+export function batchTtsStreamText(pending: string, next: string, flush: boolean): { pending: string; request: string | null } {
+  const combined = `${pending}${next}`
+  if (countTtsSpeechCharacters(combined) >= MIN_TTS_STREAM_CHARACTERS || (flush && combined.trim().length > 0)) {
+    return { pending: '', request: combined }
+  }
+  return { pending: combined, request: null }
 }
 
 /** Parse complete SSE records while retaining the final partial record for the next network chunk. */
@@ -209,6 +205,7 @@ export interface TtsSettings {
   voice?: string
   voiceDesignPrompt?: string
   voiceDesignCustomPrompt?: string
+  presetStylePrompt?: string
   format?: TtsFormat
   autoPlay?: boolean
   instruction?: string
@@ -224,6 +221,7 @@ export interface ResolvedTtsSettings {
   voice: string
   voiceDesignPrompt: string
   voiceDesignCustomPrompt: string
+  presetStylePrompt: string
   format: TtsFormat
   autoPlay: boolean
   instruction: string
@@ -240,9 +238,10 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   voice: '冰糖',
   voiceDesignPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。',
   voiceDesignCustomPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。',
+  presetStylePrompt: '使用清晰自然的普通话朗读，可带轻微湖南语感，但不影响清晰度。整体声线清冷、克制，略带距离感；发声收敛，气息自然，语速中等偏快，句间停顿干脆。仅在情绪关键词处轻微延长尾音，避免夸张、戏剧化或过度气声。',
   format: 'mp3',
   autoPlay: true,
-  instruction: '请用自然、清晰、语速适中的语气朗读。',
+  instruction: '咬字清楚，普通话里能听出一点湖南口音，轻音和翘舌会稍微有点自己的味道。说话时喉咙有点紧，气息不算特别足，所以听起来会有一点“冷”和“端着”的感觉，中等偏快，句子断得干脆，偶尔会拖长音。情绪底色偏理性、克制，像隔着一层玻璃说话。',
   maxTextLength: 12000,
   requestTimeoutMs: 120000,
 }
