@@ -34,7 +34,7 @@ Restart `dsh web`, then open **Settings → Plugins → Plugin configuration** a
 When updating or switching from the local development link to the npm package, stop DSH Web before changing the profile dependencies. This prevents a running Node process from holding the Windows Junction that pnpm needs to replace:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 2.0.0
+.\start\dsh-plugin-reinstall.bat 2.0.2
 ```
 
 The script stops DSH Web, removes the plugin from the `web` profile, installs the requested npm version, and starts DSH Web again. If you run the steps manually, keep the same order:
@@ -42,7 +42,7 @@ The script stops DSH Web, removes the plugin from the `web` profile, installs th
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@2.0.0
+dsh plugin --profile web add dsh-xiaomi-tts@2.0.2
 .\start\dsh-web-start.bat
 ```
 

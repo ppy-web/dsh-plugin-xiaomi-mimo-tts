@@ -174,7 +174,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: ClientContext,
-  name: 'conversation.chat.assistant-actions' | 'settings.plugin.item',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'settings.plugin.item',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -226,6 +226,9 @@ class PlaybackController {
   private view: PlaybackView = { messageId: null, status: 'idle', error: null }
   private readonly listeners = new Set<() => void>()
   private readonly automaticallyPlayed = new Set<string>()
+  private readonly liveSessions = new Set<string>()
+  private readonly completedSessions = new Set<string>()
+  private readonly completedMessages = new Map<string, string>()
   private current: SynthesizedAudio | null = null
   private request: AbortController | null = null
   private generation = 0
@@ -237,10 +240,29 @@ class PlaybackController {
     return () => this.listeners.delete(listener)
   }
 
+  observeSession(sessionId: string, running: boolean, latestMessageId: string | null): void {
+    if (running) {
+      this.liveSessions.add(sessionId)
+      this.completedSessions.delete(sessionId)
+      this.completedMessages.delete(sessionId)
+      return
+    }
+
+    if (this.liveSessions.delete(sessionId)) {
+      this.completedSessions.add(sessionId)
+    }
+    if (this.completedSessions.has(sessionId) && latestMessageId !== null) {
+      this.completedMessages.set(sessionId, latestMessageId)
+    }
+  }
+
   claimAutomaticPlayback(sessionId: string, messageId: string): boolean {
     const key = `${sessionId}:${messageId}`
+    if (this.completedMessages.get(sessionId) !== messageId) return false
     if (this.automaticallyPlayed.has(key)) return false
     this.automaticallyPlayed.add(key)
+    this.completedSessions.delete(sessionId)
+    this.completedMessages.delete(sessionId)
     return true
   }
 
@@ -323,6 +345,9 @@ class PlaybackController {
   dispose(): void {
     this.generation += 1
     this.stopCurrent()
+    this.liveSessions.clear()
+    this.completedSessions.clear()
+    this.completedMessages.clear()
     this.listeners.clear()
   }
 
@@ -341,6 +366,23 @@ class PlaybackController {
     this.view = view
     for (const listener of this.listeners) listener()
   }
+}
+
+interface AutoPlayRunObserverProps {
+  sessionId: string
+  session: ConversationSnapshot
+  playback: PlaybackController
+}
+
+/** Track live turn completion separately from finalized-message rendering. */
+function AutoPlayRunObserver({ sessionId, session, playback }: AutoPlayRunObserverProps): null {
+  const latestMessageId = latestAssistantMessageId(session)
+
+  useEffect(() => {
+    playback.observeSession(sessionId, session.running, latestMessageId)
+  }, [latestMessageId, playback, session.running, sessionId])
+
+  return null
 }
 
 interface ReadAloudActionProps {
@@ -364,7 +406,7 @@ function ReadAloudAction({ sessionId, messageId, useSession, playback, settings,
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
 
   useEffect(() => {
-    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || !message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
       if (playback.claimAutomaticPlayback(sessionId, messageId)) void playback.toggle(messageId, text, true)
     }, 0)
@@ -771,6 +813,13 @@ export function apply(ctx: ClientContext): void {
     document.head.appendChild(style)
     return () => style.remove()
   }, 'xiaomi-mimo-tts: styles')
+
+  registerSlotContribution(ctx, 'conversation.input.dock', () => ctx.slots.register({
+    name: 'conversation.input.dock',
+    id: 'xiaomi-mimo-tts-autoplay-observer',
+    order: 999,
+    inject: () => ({ playback }),
+  }, AutoPlayRunObserver))
 
   registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions',

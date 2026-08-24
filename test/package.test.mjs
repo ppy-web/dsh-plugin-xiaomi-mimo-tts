@@ -136,8 +136,12 @@ test('client output registers the message action and plugin settings card', () =
 })
 
 test('automatic playback only consumes the latest message from a live run once', () => {
+  assert.match(client, /conversation\.input\.dock/)
+  assert.match(client, /observeSession\(sessionId, session\.running, latestMessageId\)/)
+  assert.match(client, /completedMessages\.get\(sessionId\) !== messageId/)
   assert.match(client, /running: snapshot\.running/)
   assert.match(client, /message\.latestMessageId !== messageId/)
+  assert.match(client, /message\.running \|\|/)
   assert.match(client, /automaticallyPlayed\.has\(key\)/)
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
 })
