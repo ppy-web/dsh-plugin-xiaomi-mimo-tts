@@ -11,6 +11,7 @@ const { prepareTtsText, resolveTtsSettings } = sharedModule
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
+  assert.equal(packageJson.scripts.prepare, undefined)
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
   assert.equal(packageJson.exports['./client'].default, './lib/client.js')
