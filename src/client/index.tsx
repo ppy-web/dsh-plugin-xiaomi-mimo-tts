@@ -75,6 +75,8 @@ const zh = {
   'settings.model': 'TTS 模型',
   'settings.presetModel': '预置音色模型',
   'settings.voiceDesignModel': '自定义音色模型',
+  'settings.modelAutoPlayHintPreset': '预置音色模型支持实时流式播放。',
+  'settings.modelAutoPlayHintVoiceDesign': '自定义音色仅支持在回复完成后自动播放。',
   'settings.voice': '内置音色',
   'settings.voiceDesignPrompt': '自定义音色描述',
   'settings.voiceDesignPromptHint': '按“年龄段 + 性别、声音质感、语速节奏、情绪底色”描述声音本身；不写场景或动作。',
@@ -116,6 +118,8 @@ const en: Record<keyof typeof zh, string> = {
   'settings.model': 'TTS model',
   'settings.presetModel': 'Preset voices',
   'settings.voiceDesignModel': 'Custom voice design',
+  'settings.modelAutoPlayHintPreset': 'Preset voices support realtime streaming playback.',
+  'settings.modelAutoPlayHintVoiceDesign': 'Custom voice design supports automatic playback only after the reply is complete.',
   'settings.voice': 'Built-in voice',
   'settings.voiceDesignPrompt': 'Custom voice description',
   'settings.voiceDesignPromptHint': 'Describe the voice itself with age/gender, texture, pace, and emotional baseline; avoid scenes or actions.',
@@ -234,6 +238,7 @@ function assistantText(blocks: readonly { kind: string; text?: string }[]): stri
 }
 
 interface LiveMessageIdentity {
+  messageId: string
   turn: number
   step: number
   text: string
@@ -243,8 +248,9 @@ interface LiveMessageIdentity {
 function finalLiveMessage(snapshot: ConversationSnapshot, turn: number, step: number): LiveMessageIdentity | null {
   for (let index = snapshot.nodes.length - 1; index >= 0; index -= 1) {
     const node = snapshot.nodes[index]
-    if (node?.kind === 'assistant' && node.turn === turn && node.step === step) {
+    if (node?.kind === 'assistant' && node.messageId !== undefined && node.turn === turn && node.step === step) {
       return {
+        messageId: node.messageId,
         turn: node.turn,
         step: node.step,
         text: assistantText(node.blocks),
@@ -280,6 +286,8 @@ class PcmAudioQueue {
   private revision = 0
   private chain: Promise<void> = Promise.resolve()
 
+  constructor(private readonly onStateChange: (status: PlaybackStatus) => void) {}
+
   enqueue(base64: string): Promise<void> {
     const revision = this.revision
     this.chain = this.chain.then(() => this.schedule(base64, revision)).catch(() => {})
@@ -291,6 +299,21 @@ class PcmAudioQueue {
     this.scheduledAt = 0
     for (const source of this.sources) source.stop()
     this.sources.clear()
+    this.onStateChange('idle')
+  }
+
+  pause(): void {
+    if (this.context?.state === 'running') {
+      void this.context.suspend()
+      this.onStateChange('paused')
+    }
+  }
+
+  resume(): void {
+    if (this.context !== null && this.context.state !== 'running') {
+      void this.context.resume()
+      this.onStateChange('playing')
+    }
   }
 
   async dispose(): Promise<void> {
@@ -320,8 +343,13 @@ class PcmAudioQueue {
     const startAt = Math.max(context.currentTime + 0.03, this.scheduledAt)
     this.scheduledAt = startAt + buffer.duration
     this.sources.add(source)
-    source.addEventListener('ended', () => this.sources.delete(source), { once: true })
+    source.addEventListener('ended', () => {
+      if (revision !== this.revision) return
+      this.sources.delete(source)
+      if (this.sources.size === 0) this.onStateChange('idle')
+    }, { once: true })
     source.start(startAt)
+    this.onStateChange('playing')
   }
 
   private getContext(): AudioContext {
@@ -331,13 +359,21 @@ class PcmAudioQueue {
 }
 
 class LiveSpeechController {
-  private readonly audio = new PcmAudioQueue()
-  private readonly queue = new AbortableSentenceQueue((sentence, signal) => this.stream(sentence, signal))
+  private readonly audio = new PcmAudioQueue((status) => this.setStatus(status))
+  private streamGeneration = 0
+  private queue = this.createQueue()
   private active: string | null = null
   private observed = ''
   private consumed = 0
   private pendingText = ''
   private handled = new Set<string>()
+  private messageId: string | null = null
+  private status: PlaybackStatus = 'idle'
+  private onStateChange: ((messageId: string, status: PlaybackStatus) => void) | null = null
+
+  setStateChangeListener(listener: (messageId: string, status: PlaybackStatus) => void): void {
+    this.onStateChange = listener
+  }
 
   observe(sessionId: string, turn: number, step: number, text: string): void {
     const key = `${sessionId}:${turn}:${step}`
@@ -354,8 +390,17 @@ class LiveSpeechController {
       return
     }
     if (final.text.startsWith(this.observed)) this.observed = final.text
+    this.messageId = final.messageId
+    this.reportStatus()
     this.drain(true)
     this.handled.add(key)
+  }
+
+  toggle(messageId: string): boolean {
+    if (this.messageId !== messageId || (this.status !== 'playing' && this.status !== 'paused')) return false
+    if (this.status === 'playing') this.audio.pause()
+    else this.audio.resume()
+    return true
   }
 
   hasHandled(sessionId: string, identity: Pick<LiveMessageIdentity, 'turn' | 'step'> | null): boolean {
@@ -367,12 +412,14 @@ class LiveSpeechController {
   }
 
   cancel(): void {
-    this.queue.cancel()
+    this.replaceQueue()
     this.audio.stop()
     this.active = null
     this.observed = ''
     this.consumed = 0
     this.pendingText = ''
+    this.messageId = null
+    this.status = 'idle'
   }
 
   async dispose(): Promise<void> {
@@ -382,12 +429,14 @@ class LiveSpeechController {
   }
 
   private reset(key: string): void {
-    this.queue.cancel()
+    this.replaceQueue()
     this.audio.stop()
     this.active = key
     this.observed = ''
     this.consumed = 0
     this.pendingText = ''
+    this.messageId = null
+    this.status = 'idle'
   }
 
   private drain(flush: boolean): void {
@@ -406,34 +455,71 @@ class LiveSpeechController {
     if (batch.request !== null) this.queue.enqueue(batch.request)
   }
 
-  private async stream(sentence: string, signal: AbortSignal): Promise<void> {
-    const response = await fetch(TTS_STREAM_ROUTE, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: sentence }),
-      signal,
-    })
-    if (!response.ok) throw new Error(`stream-request-${response.status}`)
-    if (response.body === null) throw new Error('stream-response-empty')
+  private createQueue(): AbortableSentenceQueue {
+    const generation = this.streamGeneration
+    return new AbortableSentenceQueue((sentence, signal) => this.stream(sentence, signal, generation))
+  }
 
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let pending = ''
+  private replaceQueue(): void {
+    this.streamGeneration += 1
+    this.queue.cancel()
+    this.queue = this.createQueue()
+  }
+
+  private isCurrentStream(generation: number, signal: AbortSignal): boolean {
+    return generation === this.streamGeneration && !signal.aborted
+  }
+
+  private async stream(sentence: string, signal: AbortSignal, generation: number): Promise<void> {
+    if (!this.isCurrentStream(generation, signal)) return
+    this.setStatus('loading')
     try {
-      while (!signal.aborted) {
-        const result = await reader.read()
-        if (result.done) break
-        pending += decoder.decode(result.value, { stream: true })
-        const parsed = parseSseRecords(pending)
-        pending = parsed.remainder
-        for (const event of parsed.events) {
-          const pcm = pcmDeltaFromSse(event)
-          if (pcm !== null) await this.audio.enqueue(pcm)
+      const response = await fetch(TTS_STREAM_ROUTE, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: sentence }),
+        signal,
+      })
+      if (!this.isCurrentStream(generation, signal)) return
+      if (!response.ok) throw new Error(`stream-request-${response.status}`)
+      if (response.body === null) throw new Error('stream-response-empty')
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let pending = ''
+      try {
+        while (this.isCurrentStream(generation, signal)) {
+          const result = await reader.read()
+          if (result.done || !this.isCurrentStream(generation, signal)) break
+          pending += decoder.decode(result.value, { stream: true })
+          const parsed = parseSseRecords(pending)
+          pending = parsed.remainder
+          for (const event of parsed.events) {
+            if (!this.isCurrentStream(generation, signal)) return
+            const pcm = pcmDeltaFromSse(event)
+            if (pcm !== null) {
+              await this.audio.enqueue(pcm)
+              if (!this.isCurrentStream(generation, signal)) return
+            }
+          }
         }
+      } finally {
+        reader.releaseLock()
       }
-    } finally {
-      reader.releaseLock()
+    } catch (error) {
+      if (!this.isCurrentStream(generation, signal)) return
+      this.setStatus('error')
+      throw error
     }
+  }
+
+  private setStatus(status: PlaybackStatus): void {
+    this.status = status
+    this.reportStatus()
+  }
+
+  private reportStatus(): void {
+    if (this.messageId !== null) this.onStateChange?.(this.messageId, this.status)
   }
 }
 
@@ -480,6 +566,10 @@ class PlaybackController {
     this.completedSessions.delete(sessionId)
     this.completedMessages.delete(sessionId)
     return true
+  }
+
+  updateLivePlayback(messageId: string, status: PlaybackStatus): void {
+    if (this.view.messageId === messageId || status !== 'idle') this.publish({ messageId, status, error: status === 'error' ? 'play-failed' : null })
   }
 
   async toggle(messageId: string, text: string, automatic: boolean): Promise<void> {
@@ -611,15 +701,23 @@ interface LiveSpeechObserverProps {
 /** Feed the public `ConversationSnapshot.partial` projection into sentence-level realtime speech. */
 function LiveSpeechObserver({ sessionId, session, live, settings }: LiveSpeechObserverProps): null {
   const settingsSnapshot = useSettingsSnapshot(settings)
+  const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
   const active = useRef<{ turn: number; step: number } | null>(null)
+  const wasRunning = useRef(session.running)
   const partial = session.partial
   const partialText = partial === null ? '' : assistantText(partial.blocks)
 
   useEffect(() => {
-    if (settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true) {
+    const beganRun = session.running && !wasRunning.current
+    wasRunning.current = session.running
+    if (!resolvedSettings.enabled || !resolvedSettings.autoPlay || resolvedSettings.model !== 'mimo-v2.5-tts') {
       live.cancelSession(sessionId)
       active.current = null
       return
+    }
+    if (beganRun) {
+      live.cancelSession(sessionId)
+      active.current = null
     }
     if (partial !== null) {
       active.current = { turn: partial.turn, step: partial.step }
@@ -632,7 +730,7 @@ function LiveSpeechObserver({ sessionId, session, live, settings }: LiveSpeechOb
       else if (!session.running) live.cancelSession(sessionId)
       active.current = null
     }
-  }, [live, partial, partialText, session, sessionId, session.running, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled])
+  }, [live, partial, partialText, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.model, session, sessionId, session.running])
 
   useEffect(() => () => live.cancelSession(sessionId), [live, sessionId])
   return null
@@ -699,7 +797,12 @@ function ReadAloudAction({ sessionId, messageId, useSession, playback, live, set
           aria-label={label}
           aria-pressed={status === 'playing'}
           disabled={status === 'loading'}
-          onClick={() => { live.cancel(); void playback.toggle(messageId, text, false) }}
+          onClick={() => {
+            if (!live.toggle(messageId)) {
+              live.cancel()
+              void playback.toggle(messageId, text, false)
+            }
+          }}
         >
           {status === 'loading'
             ? <IconLoadingOutline16 className="xmimo-tts-spin" />
@@ -974,6 +1077,7 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
             <option value="mimo-v2.5-tts">{t('settings.presetModel')}</option>
             <option value="mimo-v2.5-tts-voicedesign">{t('settings.voiceDesignModel')}</option>
           </select>
+          {enabled && autoPlay ? <small>{t(model === 'mimo-v2.5-tts' ? 'settings.modelAutoPlayHintPreset' : 'settings.modelAutoPlayHintVoiceDesign')}</small> : null}
         </div>
         {model === 'mimo-v2.5-tts-voicedesign' ? <div className="xmimo-tts-voice-design-prompt xmimo-tts-wide">
           <SettingFieldHeading label={t('settings.voiceDesignPrompt')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceDesignPrompt')} resettable disabled={!snapshot.writable} onReset={() => { resetField('voiceDesignPrompt') }} />
@@ -1052,6 +1156,7 @@ export function apply(ctx: ClientContext): void {
   })
   const playback = new PlaybackController()
   const live = new LiveSpeechController()
+  live.setStateChangeListener((messageId, status) => playback.updateLivePlayback(messageId, status))
 
   ctx.effect(() => () => playback.dispose(), 'xiaomi-mimo-tts: playback')
   ctx.effect(() => () => { void live.dispose() }, 'xiaomi-mimo-tts: live playback')

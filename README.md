@@ -57,7 +57,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 更新或从本地开发版切换到 npm 版时，必须先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 2.2.0
+.\start\dsh-plugin-reinstall.bat 2.2.1
 ```
 
 这个脚本会按顺序停止 DSH Web、卸载当前 profile 中的插件、从 npm 安装指定版本并重新启动 DSH Web。若手动操作，请保持相同顺序：
@@ -65,7 +65,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@2.2.0
+dsh plugin --profile web add dsh-xiaomi-tts@2.2.1
 .\start\dsh-web-start.bat
 ```
 
@@ -103,6 +103,10 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.2.0
 - API Key 仅保存在 DSH Host，不会发送给浏览器。
 - 生成语音时，回复正文会发送给 Xiaomi MiMo 服务。
 - 音频只通过临时 Blob URL 播放，不会持久化到磁盘。
+
+## 反馈与支持
+
+欢迎通过 [GitHub Issues](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/issues) 提交问题反馈、功能建议或使用体验。
 
 ## 开发
 

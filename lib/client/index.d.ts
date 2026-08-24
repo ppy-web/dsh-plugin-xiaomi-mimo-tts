@@ -24,6 +24,8 @@ declare const zh: {
     readonly 'settings.model': "TTS 模型";
     readonly 'settings.presetModel': "预置音色模型";
     readonly 'settings.voiceDesignModel': "自定义音色模型";
+    readonly 'settings.modelAutoPlayHintPreset': "预置音色模型支持实时流式播放。";
+    readonly 'settings.modelAutoPlayHintVoiceDesign': "自定义音色仅支持在回复完成后自动播放。";
     readonly 'settings.voice': "内置音色";
     readonly 'settings.voiceDesignPrompt': "自定义音色描述";
     readonly 'settings.voiceDesignPromptHint': "按“年龄段 + 性别、声音质感、语速节奏、情绪底色”描述声音本身；不写场景或动作。";

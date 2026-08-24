@@ -12,40 +12,40 @@ export type TtsModel = typeof TTS_MODELS[number];
 /** Voice-design descriptions adapted from the reference voice-definition page. */
 export declare const TTS_VOICE_DESIGN_PRESETS: readonly [{
     readonly label: "元气少女";
-    readonly prompt: "元气少女音色，明亮、轻快、笑意明显，语速偏快，句尾灵动，适合轻松内容和年轻化短视频。";
+    readonly prompt: "年轻女性，明亮高饱和声线，笑意自然外放，咬字灵巧，语速偏快，语调跳跃有活力，情绪积极爽朗。";
 }, {
     readonly label: "邻家女孩";
-    readonly prompt: "年轻女性，声音甜美、软萌、亲近，语速轻快，带一点黏人感和撒娇气质，但保持清晰可懂，适合轻松日常、聊天向内容。";
+    readonly prompt: "年轻女性，声线柔润清甜，亲近自然不过分撒娇，吐字清晰，语速中等偏快，语调轻松平缓，带一点温柔的生活感。";
 }, {
     readonly label: "新闻播报";
-    readonly prompt: "专业新闻播报音色，中性偏成熟，吐字标准，节奏平稳，情绪克制，适合公告、新闻和正式说明。";
+    readonly prompt: "专业播音女主持音色，成年女性，端庄知性，中低音区稳定饱满，普通话标准，咬字利落，节奏从容，情绪克制而有权威感。";
 }, {
     readonly label: "温柔客服";
-    readonly prompt: "温柔客服女声，亲切、耐心、清晰，语速适中，句尾轻微上扬，听起来可靠且不机械。";
+    readonly prompt: "成年女性，音色温暖明净，亲切耐心，吐字柔和清楚，语速适中，句尾轻微上扬，始终保持可靠、专注的服务感。";
 }, {
     readonly label: "温柔女友";
-    readonly prompt: "年轻女性，声音温柔、柔软、低饱和，语速偏慢，带轻微耳语感和亲密感，适合情感、治愈和晚间陪伴内容。";
+    readonly prompt: "年轻女性，声线柔软细腻，低饱和且带微微暖意，气息自然，语速偏慢，语调轻柔连贯，亲密但不黏腻。";
 }, {
     readonly label: "ASMR低语";
-    readonly prompt: "年轻女性，声音极度轻柔，像在耳边说话，呼吸感明显，语速慢，适合哄睡、放松和沉浸式内容。";
+    readonly prompt: "年轻女性，贴耳低语感，音量轻而集中，气息细微可感，辅音柔化，语速缓慢，停顿松弛，营造安静私密感。";
 }, {
     readonly label: "少年感男声";
-    readonly prompt: "年轻男性，声音干净明亮，有少年感，语速略快，语气轻松自然，适合短视频口播和产品介绍。";
+    readonly prompt: "年轻男性，清亮干净的中高音，气息轻盈，吐字利索，语速偏快，语调自然上扬，带一点未经世故的朝气。";
 }, {
     readonly label: "纪录片男声";
-    readonly prompt: "成熟男性，低沉稳重，气息稳定，语速中等偏慢，像纪录片旁白，带一点故事感但不过分夸张。";
+    readonly prompt: "成熟男性，低沉醇厚，胸腔共鸣稳定，气息舒展，语速中等偏慢，停顿有留白，语调沉稳克制，带叙事纵深感。";
 }, {
     readonly label: "古风说书男声";
-    readonly prompt: "古风说书人音色，成熟、有韵味，语速从容，语调起伏带叙事感，适合历史、武侠和传统故事。";
+    readonly prompt: "成熟男性，浑厚略带沙感，咬字圆润，行腔从容，语速偏慢，抑扬有致但不戏曲化，带阅历感与从容幽默。";
 }, {
     readonly label: "科技解说男声";
-    readonly prompt: "清晰、理性、现代，语速中等偏快，语气专业但不生硬，适合产品演示和技术说明。";
+    readonly prompt: "成年男性，清晰利落的中音，音色干净偏冷，吐字精准，语速中等偏快，逻辑感强，情绪理性、简洁而有现代感。";
 }, {
     readonly label: "电台夜谈男声";
-    readonly prompt: "电台夜谈男声，温暖、低缓、松弛，带轻微气声，语速偏慢，适合情感电台、睡前故事和长篇陪伴内容。";
+    readonly prompt: "成熟男性，温暖低缓，带轻微磁性和松弛气声，语速偏慢，语调贴近耳边但不过度低语，情绪包容安定。";
 }, {
     readonly label: "悬疑旁白男声";
-    readonly prompt: "悬疑故事旁白，声线偏低，语速克制，停顿明显，带一点紧张感和神秘感，适合悬疑、案件和氛围叙述。";
+    readonly prompt: "成熟男性，偏低沉的冷感声线，气息收敛，语速缓慢，停顿明确，语调压低并保留细微起伏，带克制的紧张感。";
 }];
 /** Supported audio formats. */
 export declare const TTS_FORMATS: readonly ["mp3", "wav"];

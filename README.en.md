@@ -37,7 +37,7 @@ Restart `dsh web`, then open **Settings → Plugins → Plugin configuration** a
 When updating or switching from the local development link to the npm package, stop DSH Web before changing the profile dependencies. This prevents a running Node process from holding the Windows Junction that pnpm needs to replace:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 2.2.0
+.\start\dsh-plugin-reinstall.bat 2.2.1
 ```
 
 The script stops DSH Web, removes the plugin from the `web` profile, installs the requested npm version, and starts DSH Web again. If you run the steps manually, keep the same order:
@@ -45,7 +45,7 @@ The script stops DSH Web, removes the plugin from the `web` profile, installs th
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@2.2.0
+dsh plugin --profile web add dsh-xiaomi-tts@2.2.1
 .\start\dsh-web-start.bat
 ```
 
@@ -77,6 +77,10 @@ pnpm pack:check
 - The API key stays on the DSH Host and is never sent to the browser.
 - Response text is sent to Xiaomi MiMo when speech is generated.
 - Audio is played through a temporary Blob URL and is not persisted to disk.
+
+## Feedback and support
+
+Please use [GitHub Issues](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/issues) for bug reports, feature requests, or feedback.
 
 ## License
 
