@@ -22,12 +22,13 @@ import {
   TTS_VOICE_DESIGN_PRESETS,
   AbortableSentenceQueue,
   batchTtsStreamText,
+  classifyLiveSpeechTransition,
   parseSseRecords,
   prepareTtsText,
   resolveTtsSettings,
   splitCompletedTtsSentences,
 } from '../shared.js'
-import type { TtsFormat, TtsSettings } from '../shared.js'
+import type { LiveSpeechCursor, TtsFormat, TtsSettings } from '../shared.js'
 
 /** Client services required by this plugin. */
 export const inject = [
@@ -362,7 +363,7 @@ class LiveSpeechController {
   private readonly audio = new PcmAudioQueue((status) => this.setStatus(status))
   private streamGeneration = 0
   private queue = this.createQueue()
-  private active: string | null = null
+  private active: LiveSpeechCursor | null = null
   private observed = ''
   private consumed = 0
   private pendingText = ''
@@ -376,15 +377,17 @@ class LiveSpeechController {
   }
 
   observe(sessionId: string, turn: number, step: number, text: string): void {
-    const key = `${sessionId}:${turn}:${step}`
-    if (this.active !== key || !text.startsWith(this.observed)) this.reset(key)
+    const next = { sessionId, turn, step }
+    const transition = classifyLiveSpeechTransition(this.active, next)
+    if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(this.observed))) this.reset(next)
+    else if (transition === 'same-turn') this.advanceSegment(next)
     this.observed = text
     this.drain(false)
   }
 
   finish(sessionId: string, final: LiveMessageIdentity): void {
     const key = `${sessionId}:${final.turn}:${final.step}`
-    if (this.active !== key) return
+    if (this.active === null || this.cursorKey(this.active) !== key) return
     if (final.interrupted) {
       this.cancelSession(sessionId)
       return
@@ -408,7 +411,7 @@ class LiveSpeechController {
   }
 
   cancelSession(sessionId: string): void {
-    if (this.active?.startsWith(`${sessionId}:`) === true) this.cancel()
+    if (this.active?.sessionId === sessionId) this.cancel()
   }
 
   cancel(): void {
@@ -428,15 +431,28 @@ class LiveSpeechController {
     await this.audio.dispose()
   }
 
-  private reset(key: string): void {
+  private reset(next: LiveSpeechCursor): void {
     this.replaceQueue()
     this.audio.stop()
-    this.active = key
+    this.beginSegment(next)
+    this.status = 'idle'
+  }
+
+  private advanceSegment(next: LiveSpeechCursor): void {
+    this.drain(true)
+    this.beginSegment(next)
+  }
+
+  private beginSegment(next: LiveSpeechCursor): void {
+    this.active = next
     this.observed = ''
     this.consumed = 0
     this.pendingText = ''
     this.messageId = null
-    this.status = 'idle'
+  }
+
+  private cursorKey(cursor: LiveSpeechCursor): string {
+    return `${cursor.sessionId}:${cursor.turn}:${cursor.step}`
   }
 
   private drain(flush: boolean): void {
@@ -720,6 +736,10 @@ function LiveSpeechObserver({ sessionId, session, live, settings }: LiveSpeechOb
       active.current = null
     }
     if (partial !== null) {
+      if (active.current !== null && (active.current.turn !== partial.turn || active.current.step !== partial.step)) {
+        const previous = finalLiveMessage(session, active.current.turn, active.current.step)
+        if (previous !== null) live.finish(sessionId, previous)
+      }
       active.current = { turn: partial.turn, step: partial.step }
       live.observe(sessionId, partial.turn, partial.step, partialText)
       return

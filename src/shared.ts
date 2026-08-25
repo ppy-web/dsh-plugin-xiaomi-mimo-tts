@@ -159,6 +159,20 @@ export function parseSseRecords(value: string): { events: string[]; remainder: s
   return { events, remainder }
 }
 
+export interface LiveSpeechCursor {
+  sessionId: string
+  turn: number
+  step: number
+}
+
+export type LiveSpeechTransition = 'same-step' | 'same-turn' | 'new-turn'
+
+/** Decide whether a live assistant update extends one message, advances within a turn, or starts a new turn. */
+export function classifyLiveSpeechTransition(current: LiveSpeechCursor | null, next: LiveSpeechCursor): LiveSpeechTransition {
+  if (current === null || current.sessionId !== next.sessionId || current.turn !== next.turn) return 'new-turn'
+  return current.step === next.step ? 'same-step' : 'same-turn'
+}
+
 /** Serializes sentence requests and makes cancellation independent from the playback backend. */
 export class AbortableSentenceQueue {
   private readonly pending: string[] = []

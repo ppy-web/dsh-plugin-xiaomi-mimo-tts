@@ -53,7 +53,7 @@ When `mimo-v2.5-tts-voicedesign` is selected, Voice Design creates the voice you
 
 The settings card also provides common voice-description templates from the reference page; every template remains editable after selection.
 
-Preset voices also receive `presetStylePrompt` as a style instruction. It is sent only with `mimo-v2.5-tts` and does not affect Voice Design. The default favors clear, natural Mandarin, a subtle Hunan inflection, and a cool, restrained delivery.
+Preset voices also receive `presetStylePrompt` as a style instruction. It is sent only with `mimo-v2.5-tts` and does not affect Voice Design. The default favors clear, natural, accurate speech at a moderate pace, with natural pauses, a calm and restrained tone, and no exaggerated expression.
 
 The settings include the API key, read-aloud button, automatic read-aloud, model, voice, custom voice description, and audio format. Both switches are enabled by default; disabling the read-aloud button also disables automatic read-aloud, while enabling automatic read-aloud enables the button.
 

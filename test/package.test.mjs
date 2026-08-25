@@ -6,6 +6,7 @@ const packageJson = JSON.parse(await readFile(new URL('../package.json', import.
 const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
 const host = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
 const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+const clientSource = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
 const sharedModule = await import('../lib/shared.js')
 const { batchTtsStreamText, countTtsSpeechCharacters, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsSettings } = sharedModule
 
@@ -34,7 +35,7 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.model, 'mimo-v2.5-tts')
-  assert.match(sharedModule.DEFAULT_TTS_SETTINGS.presetStylePrompt, /湖南语感/)
+  assert.match(sharedModule.DEFAULT_TTS_SETTINGS.presetStylePrompt, /清晰、自然、准确/)
   assert.match(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt, /青年女性/)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt)
   assert.match(host, /TTS_ROUTE/)
@@ -171,6 +172,19 @@ test('cancelling the realtime sentence queue aborts the in-flight request and dr
   finish()
   await new Promise((resolve) => setTimeout(resolve, 0))
   assert.deepEqual(started, ['第一句。'])
+})
+
+test('live speech only replaces playback when the session or turn changes', () => {
+  const first = { sessionId: 'session-1', turn: 1, step: 1 }
+  assert.equal(sharedModule.classifyLiveSpeechTransition(null, first), 'new-turn')
+  assert.equal(sharedModule.classifyLiveSpeechTransition(first, { ...first }), 'same-step')
+  assert.equal(sharedModule.classifyLiveSpeechTransition(first, { ...first, step: 4 }), 'same-turn')
+  assert.equal(sharedModule.classifyLiveSpeechTransition(first, { ...first, turn: 2, step: 1 }), 'new-turn')
+  assert.equal(sharedModule.classifyLiveSpeechTransition(first, { ...first, sessionId: 'session-2' }), 'new-turn')
+
+  assert.match(clientSource, /transition === 'same-turn'\) this\.advanceSegment\(next\)/)
+  assert.match(clientSource, /private advanceSegment\(next: LiveSpeechCursor\): void \{\s*this\.drain\(true\)\s*this\.beginSegment\(next\)\s*\}/)
+  assert.match(clientSource, /const previous = finalLiveMessage\(session, active\.current\.turn, active\.current\.step\)/)
 })
 
 test('client output registers the message action and plugin settings card', () => {

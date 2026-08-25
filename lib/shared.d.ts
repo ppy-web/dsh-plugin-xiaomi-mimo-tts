@@ -76,6 +76,14 @@ export declare function parseSseRecords(value: string): {
     events: string[];
     remainder: string;
 };
+export interface LiveSpeechCursor {
+    sessionId: string;
+    turn: number;
+    step: number;
+}
+export type LiveSpeechTransition = 'same-step' | 'same-turn' | 'new-turn';
+/** Decide whether a live assistant update extends one message, advances within a turn, or starts a new turn. */
+export declare function classifyLiveSpeechTransition(current: LiveSpeechCursor | null, next: LiveSpeechCursor): LiveSpeechTransition;
 /** Serializes sentence requests and makes cancellation independent from the playback backend. */
 export declare class AbortableSentenceQueue {
     private readonly start;
