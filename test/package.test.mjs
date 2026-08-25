@@ -189,16 +189,16 @@ test('live speech only replaces playback when the session or turn changes', () =
 
 test('client output registers the message action and plugin settings card', () => {
   assert.match(client, /conversation\.chat\.assistant-actions/)
-  assert.match(client, /ConversationSnapshot\.partial/)
+  assert.match(clientSource, /session\.partial/)
   assert.match(client, /TTS_STREAM_ROUTE/)
   assert.match(client, /new AudioContext\(\)/)
   assert.match(client, /live\.cancel\(\)/)
-  assert.doesNotMatch(client, /!session\.running&&partial!==null\)\{live\.cancelSession\(sessionId\)/)
+  assert.doesNotMatch(clientSource, /!session\.running&&partial!==null\)\{live\.cancelSession\(sessionId\)/)
   assert.match(client, /prepareTtsText/)
   assert.match(client, /settingsSnapshot\.value\?\.enabled !== true/)
   assert.match(client, /checked: enabled && autoPlay/)
   assert.doesNotMatch(client, /Date\.now\(\) - this\.autoPlayArmedAt < 30000/)
-  assert.match(client, /playback\.toggle\(messageId, text, true\)/)
+  assert.match(clientSource, /playback\.toggle\(sessionId, messageId, text, true\)/)
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
   assert.match(client, /xmimo-tts-api-key-hints/)
   assert.match(client, /platform\.xiaomimimo\.com\/console\/api-keys/)
@@ -230,7 +230,7 @@ test('client output registers the message action and plugin settings card', () =
 
 test('automatic playback only consumes the latest message from a live run once', () => {
   assert.match(client, /conversation\.input\.dock/)
-  assert.match(client, /observeSession\(sessionId, session\.running, latestMessageId\)/)
+  assert.match(clientSource, /playback\.observeSession\(sessionId, session\.running && runArmed\.current, latestMessageId\)/)
   assert.match(client, /completedMessages\.get\(sessionId\) !== messageId/)
   assert.match(client, /running: snapshot\.running/)
   assert.match(client, /message\.latestMessageId !== messageId/)
@@ -242,8 +242,24 @@ test('automatic playback only consumes the latest message from a live run once',
 test('PCM playback shares the message action state and custom voice design falls back to completed-message autoplay', () => {
   assert.match(client, /live\.setStateChangeListener/)
   assert.match(client, /updateLivePlayback/)
-  assert.match(client, /live\.toggle\(messageId\)/)
+  assert.match(clientSource, /live\.toggle\(sessionId, messageId\)/)
   assert.match(client, /resolvedSettings\.model !== ["']mimo-v2\.5-tts["']/)
+})
+
+test('switching sessions resets every playback path and ignores a run re-entered mid-stream', () => {
+  assert.match(clientSource, /private activeSessionId: string \| null = null/)
+  assert.match(clientSource, /activateSession\(sessionId: string\): void/)
+  assert.match(clientSource, /deactivateSession\(sessionId: string\): void/)
+  assert.match(clientSource, /this\.activeSessionId !== sessionId\) return/)
+  assert.match(clientSource, /setStateChangeListener\(listener: \(sessionId: string, messageId: string, status: PlaybackStatus\)/)
+  assert.match(clientSource, /updateLivePlayback\(sessionId: string, messageId: string, status: PlaybackStatus\)/)
+  assert.match(clientSource, /const runArmed = useRef\(!session\.running\)/)
+  assert.match(clientSource, /if \(!runArmed\.current\) return/)
+  assert.match(clientSource, /live\.deactivateSession\(sessionId\)/)
+  assert.match(clientSource, /playback\.deactivateSession\(sessionId\)/)
+  assert.match(clientSource, /playback\.cancelPlayback\(sessionId\)/)
+  assert.match(clientSource, /generation !== this\.generation \|\| this\.activeSessionId !== sessionId \|\| this\.current\?\.audio !== audio/)
+  assert.match(clientSource, /publish\(\{ sessionId: null, messageId: null, status: 'idle', error: null \}\)/)
 })
 
 test('a new live run cancels the previous PCM generation before its late chunks can be queued', () => {

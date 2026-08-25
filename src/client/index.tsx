@@ -43,6 +43,7 @@ const NS = 'xiaomi-mimo-tts'
 type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error'
 
 interface PlaybackView {
+  sessionId: string | null
   messageId: string | null
   status: PlaybackStatus
   error: string | null
@@ -370,13 +371,27 @@ class LiveSpeechController {
   private handled = new Set<string>()
   private messageId: string | null = null
   private status: PlaybackStatus = 'idle'
-  private onStateChange: ((messageId: string, status: PlaybackStatus) => void) | null = null
+  private sessionId: string | null = null
+  private onStateChange: ((sessionId: string, messageId: string, status: PlaybackStatus) => void) | null = null
 
-  setStateChangeListener(listener: (messageId: string, status: PlaybackStatus) => void): void {
+  setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus) => void): void {
     this.onStateChange = listener
   }
 
+  activateSession(sessionId: string): void {
+    if (this.sessionId === sessionId) return
+    this.cancel()
+    this.sessionId = sessionId
+  }
+
+  deactivateSession(sessionId: string): void {
+    if (this.sessionId !== sessionId) return
+    this.cancel()
+    this.sessionId = null
+  }
+
   observe(sessionId: string, turn: number, step: number, text: string): void {
+    if (this.sessionId !== sessionId) return
     const next = { sessionId, turn, step }
     const transition = classifyLiveSpeechTransition(this.active, next)
     if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(this.observed))) this.reset(next)
@@ -387,7 +402,7 @@ class LiveSpeechController {
 
   finish(sessionId: string, final: LiveMessageIdentity): void {
     const key = `${sessionId}:${final.turn}:${final.step}`
-    if (this.active === null || this.cursorKey(this.active) !== key) return
+    if (this.sessionId !== sessionId || this.active === null || this.cursorKey(this.active) !== key) return
     if (final.interrupted) {
       this.cancelSession(sessionId)
       return
@@ -399,7 +414,8 @@ class LiveSpeechController {
     this.handled.add(key)
   }
 
-  toggle(messageId: string): boolean {
+  toggle(sessionId: string, messageId: string): boolean {
+    if (this.sessionId !== sessionId) return false
     if (this.messageId !== messageId || (this.status !== 'playing' && this.status !== 'paused')) return false
     if (this.status === 'playing') this.audio.pause()
     else this.audio.resume()
@@ -535,13 +551,13 @@ class LiveSpeechController {
   }
 
   private reportStatus(): void {
-    if (this.messageId !== null) this.onStateChange?.(this.messageId, this.status)
+    if (this.sessionId !== null && this.messageId !== null) this.onStateChange?.(this.sessionId, this.messageId, this.status)
   }
 }
 
 class PlaybackController {
   readonly autoPlayArmedAt = Date.now()
-  private view: PlaybackView = { messageId: null, status: 'idle', error: null }
+  private view: PlaybackView = { sessionId: null, messageId: null, status: 'idle', error: null }
   private readonly listeners = new Set<() => void>()
   private readonly automaticallyPlayed = new Set<string>()
   private readonly liveSessions = new Set<string>()
@@ -550,6 +566,7 @@ class PlaybackController {
   private current: SynthesizedAudio | null = null
   private request: AbortController | null = null
   private generation = 0
+  private activeSessionId: string | null = null
 
   getSnapshot = (): PlaybackView => this.view
 
@@ -558,7 +575,37 @@ class PlaybackController {
     return () => this.listeners.delete(listener)
   }
 
+  activateSession(sessionId: string): void {
+    if (this.activeSessionId === sessionId) return
+    this.generation += 1
+    this.stopCurrent()
+    this.liveSessions.clear()
+    this.completedSessions.clear()
+    this.completedMessages.clear()
+    this.activeSessionId = sessionId
+    this.publish({ sessionId: null, messageId: null, status: 'idle', error: null })
+  }
+
+  cancelPlayback(sessionId: string): void {
+    if (this.activeSessionId !== sessionId) return
+    this.generation += 1
+    this.stopCurrent()
+    this.publish({ sessionId: null, messageId: null, status: 'idle', error: null })
+  }
+
+  deactivateSession(sessionId: string): void {
+    if (this.activeSessionId !== sessionId) return
+    this.generation += 1
+    this.stopCurrent()
+    this.liveSessions.clear()
+    this.completedSessions.clear()
+    this.completedMessages.clear()
+    this.activeSessionId = null
+    this.publish({ sessionId: null, messageId: null, status: 'idle', error: null })
+  }
+
   observeSession(sessionId: string, running: boolean, latestMessageId: string | null): void {
+    if (this.activeSessionId !== sessionId) return
     if (running) {
       this.liveSessions.add(sessionId)
       this.completedSessions.delete(sessionId)
@@ -575,6 +622,7 @@ class PlaybackController {
   }
 
   claimAutomaticPlayback(sessionId: string, messageId: string): boolean {
+    if (this.activeSessionId !== sessionId) return false
     const key = `${sessionId}:${messageId}`
     if (this.completedMessages.get(sessionId) !== messageId) return false
     if (this.automaticallyPlayed.has(key)) return false
@@ -584,28 +632,34 @@ class PlaybackController {
     return true
   }
 
-  updateLivePlayback(messageId: string, status: PlaybackStatus): void {
-    if (this.view.messageId === messageId || status !== 'idle') this.publish({ messageId, status, error: status === 'error' ? 'play-failed' : null })
+  updateLivePlayback(sessionId: string, messageId: string, status: PlaybackStatus): void {
+    if (this.activeSessionId !== sessionId) return
+    if (this.view.messageId === messageId || status !== 'idle') this.publish({ sessionId, messageId, status, error: status === 'error' ? 'play-failed' : null })
   }
 
-  async toggle(messageId: string, text: string, automatic: boolean): Promise<void> {
-    if (this.view.messageId === messageId && this.current !== null) {
-      if (this.current.audio.paused) {
+  async toggle(sessionId: string, messageId: string, text: string, automatic: boolean): Promise<void> {
+    if (this.activeSessionId !== sessionId) return
+    if (this.view.sessionId === sessionId && this.view.messageId === messageId && this.current !== null) {
+      const audio = this.current.audio
+      const generation = this.generation
+      if (audio.paused) {
         try {
-          await this.current.audio.play()
-          this.publish({ messageId, status: 'playing', error: null })
+          await audio.play()
+          if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+          this.publish({ sessionId, messageId, status: 'playing', error: null })
         } catch {
-          this.publish({ messageId, status: 'paused', error: automatic ? 'autoplay-blocked' : 'play-failed' })
+          if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+          this.publish({ sessionId, messageId, status: 'paused', error: automatic ? 'autoplay-blocked' : 'play-failed' })
         }
       } else {
-        this.current.audio.pause()
-        this.publish({ messageId, status: 'paused', error: null })
+        audio.pause()
+        this.publish({ sessionId, messageId, status: 'paused', error: null })
       }
       return
     }
 
     if (text.length === 0) {
-      this.publish({ messageId, status: 'error', error: 'no-text' })
+      this.publish({ sessionId, messageId, status: 'error', error: 'no-text' })
       return
     }
 
@@ -613,7 +667,7 @@ class PlaybackController {
     const generation = ++this.generation
     const controller = new AbortController()
     this.request = controller
-    this.publish({ messageId, status: 'loading', error: null })
+    this.publish({ sessionId, messageId, status: 'loading', error: null })
 
     try {
       const response = await fetch(TTS_ROUTE, {
@@ -635,28 +689,31 @@ class PlaybackController {
       }
 
       const blob = await response.blob()
-      if (generation !== this.generation) return
+      if (generation !== this.generation || this.activeSessionId !== sessionId) return
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
       this.current = { url, audio }
       this.request = null
       audio.addEventListener('ended', () => {
-        if (this.current?.audio === audio) this.publish({ messageId, status: 'idle', error: null })
+        if (this.activeSessionId === sessionId && this.current?.audio === audio) this.publish({ sessionId, messageId, status: 'idle', error: null })
       })
       audio.addEventListener('error', () => {
-        if (this.current?.audio === audio) this.publish({ messageId, status: 'error', error: 'play-failed' })
+        if (this.activeSessionId === sessionId && this.current?.audio === audio) this.publish({ sessionId, messageId, status: 'error', error: 'play-failed' })
       })
 
       try {
         await audio.play()
-        this.publish({ messageId, status: 'playing', error: null })
+        if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+        this.publish({ sessionId, messageId, status: 'playing', error: null })
       } catch {
-        this.publish({ messageId, status: 'paused', error: automatic ? 'autoplay-blocked' : 'play-failed' })
+        if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+        this.publish({ sessionId, messageId, status: 'paused', error: automatic ? 'autoplay-blocked' : 'play-failed' })
       }
     } catch (error) {
-      if (controller.signal.aborted || generation !== this.generation) return
+      if (controller.signal.aborted || generation !== this.generation || this.activeSessionId !== sessionId) return
       this.request = null
       this.publish({
+        sessionId,
         messageId,
         status: 'error',
         error: error instanceof Error ? error.message : String(error),
@@ -670,6 +727,7 @@ class PlaybackController {
     this.liveSessions.clear()
     this.completedSessions.clear()
     this.completedMessages.clear()
+    this.activeSessionId = null
     this.listeners.clear()
   }
 
@@ -690,51 +748,57 @@ class PlaybackController {
   }
 }
 
-interface AutoPlayRunObserverProps {
+interface SessionPlaybackObserverProps {
   sessionId: string
   session: ConversationSnapshot
   playback: PlaybackController
-}
-
-/** Track live turn completion separately from finalized-message rendering. */
-function AutoPlayRunObserver({ sessionId, session, playback }: AutoPlayRunObserverProps): null {
-  const latestMessageId = latestAssistantMessageId(session)
-
-  useEffect(() => {
-    playback.observeSession(sessionId, session.running, latestMessageId)
-  }, [latestMessageId, playback, session.running, sessionId])
-
-  return null
-}
-
-interface LiveSpeechObserverProps {
-  sessionId: string
-  session: ConversationSnapshot
   live: LiveSpeechController
   settings: SettingsScope<TtsSettings>
 }
 
-/** Feed the public `ConversationSnapshot.partial` projection into sentence-level realtime speech. */
-function LiveSpeechObserver({ sessionId, session, live, settings }: LiveSpeechObserverProps): null {
+/** Own the active-session boundary and feed its partial assistant output into realtime speech. */
+function SessionPlaybackObserver({ sessionId, session, playback, live, settings }: SessionPlaybackObserverProps): null {
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
   const active = useRef<{ turn: number; step: number } | null>(null)
   const wasRunning = useRef(session.running)
+  const runArmed = useRef(!session.running)
+  const latestMessageId = latestAssistantMessageId(session)
   const partial = session.partial
   const partialText = partial === null ? '' : assistantText(partial.blocks)
 
   useEffect(() => {
+    active.current = null
+    wasRunning.current = session.running
+    runArmed.current = !session.running
+    playback.activateSession(sessionId)
+    live.activateSession(sessionId)
+    return () => {
+      active.current = null
+      live.deactivateSession(sessionId)
+      playback.deactivateSession(sessionId)
+    }
+  }, [live, playback, sessionId])
+
+  useEffect(() => {
     const beganRun = session.running && !wasRunning.current
     wasRunning.current = session.running
+    if (!session.running) runArmed.current = true
+    else if (beganRun) {
+      runArmed.current = true
+      live.cancelSession(sessionId)
+      playback.cancelPlayback(sessionId)
+      active.current = null
+    }
+
+    playback.observeSession(sessionId, session.running && runArmed.current, latestMessageId)
     if (!resolvedSettings.enabled || !resolvedSettings.autoPlay || resolvedSettings.model !== 'mimo-v2.5-tts') {
       live.cancelSession(sessionId)
       active.current = null
+      if (session.running) runArmed.current = false
       return
     }
-    if (beganRun) {
-      live.cancelSession(sessionId)
-      active.current = null
-    }
+    if (!runArmed.current) return
     if (partial !== null) {
       if (active.current !== null && (active.current.turn !== partial.turn || active.current.step !== partial.step)) {
         const previous = finalLiveMessage(session, active.current.turn, active.current.step)
@@ -750,9 +814,8 @@ function LiveSpeechObserver({ sessionId, session, live, settings }: LiveSpeechOb
       else if (!session.running) live.cancelSession(sessionId)
       active.current = null
     }
-  }, [live, partial, partialText, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.model, session, sessionId, session.running])
+  }, [latestMessageId, live, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.model, session, sessionId, session.running])
 
-  useEffect(() => () => live.cancelSession(sessionId), [live, sessionId])
   return null
 }
 
@@ -781,14 +844,14 @@ function ReadAloudAction({ sessionId, messageId, useSession, playback, live, set
   useEffect(() => {
     if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || live.hasHandled(sessionId, message.identity) || message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
-      if (!live.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) void playback.toggle(messageId, text, true)
+      if (!live.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) void playback.toggle(sessionId, messageId, text, true)
     }, 0)
     return () => window.clearTimeout(cancel)
   }, [live, message.identity, message.latestMessageId, message.running, message.time, messageId, playback, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 
-  const mine = view.messageId === messageId
+  const mine = view.sessionId === sessionId && view.messageId === messageId
   const status = mine ? view.status : 'idle'
   const label = status === 'loading'
     ? t('action.loading')
@@ -818,9 +881,9 @@ function ReadAloudAction({ sessionId, messageId, useSession, playback, live, set
           aria-pressed={status === 'playing'}
           disabled={status === 'loading'}
           onClick={() => {
-            if (!live.toggle(messageId)) {
+            if (!live.toggle(sessionId, messageId)) {
               live.cancel()
-              void playback.toggle(messageId, text, false)
+              void playback.toggle(sessionId, messageId, text, false)
             }
           }}
         >
@@ -1176,7 +1239,7 @@ export function apply(ctx: ClientContext): void {
   })
   const playback = new PlaybackController()
   const live = new LiveSpeechController()
-  live.setStateChangeListener((messageId, status) => playback.updateLivePlayback(messageId, status))
+  live.setStateChangeListener((sessionId, messageId, status) => playback.updateLivePlayback(sessionId, messageId, status))
 
   ctx.effect(() => () => playback.dispose(), 'xiaomi-mimo-tts: playback')
   ctx.effect(() => () => { void live.dispose() }, 'xiaomi-mimo-tts: live playback')
@@ -1198,17 +1261,10 @@ export function apply(ctx: ClientContext): void {
 
   registerSlotContribution(ctx, 'conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock',
-    id: 'xiaomi-mimo-tts-autoplay-observer',
-    order: 999,
-    inject: () => ({ playback }),
-  }, AutoPlayRunObserver))
-
-  registerSlotContribution(ctx, 'conversation.input.dock', () => ctx.slots.register({
-    name: 'conversation.input.dock',
-    id: 'xiaomi-mimo-tts-live-observer',
+    id: 'xiaomi-mimo-tts-session-playback-observer',
     order: 998,
-    inject: () => ({ live, settings: scope }),
-  }, LiveSpeechObserver))
+    inject: () => ({ playback, live, settings: scope }),
+  }, SessionPlaybackObserver))
 
   registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions',
