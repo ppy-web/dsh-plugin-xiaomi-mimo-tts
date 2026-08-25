@@ -4,6 +4,8 @@ export declare const TTS_SETTINGS_NAMESPACE = "xiaomi-mimo-tts";
 export declare const TTS_ROUTE = "/plugins/xiaomi-mimo-tts/synthesize";
 /** Same-origin route that proxies MiMo PCM16 server-sent audio chunks. */
 export declare const TTS_STREAM_ROUTE = "/plugins/xiaomi-mimo-tts/synthesize-stream";
+/** Same-origin prefix used by the Web client to load voice-design preset icons. */
+export declare const TTS_VOICE_DESIGN_ASSET_ROUTE = "/plugins/xiaomi-mimo-tts/voice-presets";
 /** Supported built-in Xiaomi MiMo voices. */
 export declare const TTS_VOICES: readonly ["冰糖", "茉莉", "苏打", "白桦", "Mia", "Chloe", "Milo", "Dean"];
 /** TTS models supported by this plugin. */
@@ -11,41 +13,50 @@ export declare const TTS_MODELS: readonly ["mimo-v2.5-tts", "mimo-v2.5-tts-voice
 export type TtsModel = typeof TTS_MODELS[number];
 /** Voice-design descriptions adapted from the reference voice-definition page. */
 export declare const TTS_VOICE_DESIGN_PRESETS: readonly [{
-    readonly label: "元气少女";
-    readonly prompt: "年轻女性，明亮高饱和声线，笑意自然外放，咬字灵巧，语速偏快，语调跳跃有活力，情绪积极爽朗。";
+    readonly id: "energetic-girl";
+    readonly label: "林小满";
+    readonly summary: "女 · 16岁 · 元气少女，明亮高饱和声线";
+    readonly prompt: "年轻女性15-20岁，普通话，明亮高饱和声线，笑意自然外放，咬字灵巧跳跃，语速偏快，语调上扬有活力，情绪积极爽朗，活力播报风格";
 }, {
-    readonly label: "邻家女孩";
-    readonly prompt: "年轻女性，声线柔润清甜，亲近自然不过分撒娇，吐字清晰，语速中等偏快，语调轻松平缓，带一点温柔的生活感。";
+    readonly id: "asmr-whisper";
+    readonly label: "沈听澜";
+    readonly summary: "女 · 19岁 · ASMR低语，轻柔耳语带微弱气息";
+    readonly prompt: "女性18-20岁，轻柔耳语带微弱气息，普通话，声线细腻清晰，私密温柔感，安静平和带轻柔低语，语速缓慢音量很轻，私密低语场景。";
 }, {
-    readonly label: "新闻播报";
-    readonly prompt: "专业播音女主持音色，成年女性，端庄知性，中低音区稳定饱满，普通话标准，咬字利落，节奏从容，情绪克制而有权威感。";
+    readonly id: "gentle-girlfriend";
+    readonly label: "张子莯";
+    readonly summary: "女 · 22岁 · 温柔女友，声线柔软细腻";
+    readonly prompt: "年轻女性16-22岁，声线柔软细腻，低饱和带微微暖意，标准普通话，温柔亲密的邻家风格，语速偏慢，语调轻柔连贯，气息自然流畅，安静私密陪伴场景。";
 }, {
-    readonly label: "温柔客服";
-    readonly prompt: "成年女性，音色温暖明净，亲切耐心，吐字柔和清楚，语速适中，句尾轻微上扬，始终保持可靠、专注的服务感。";
+    readonly id: "girl-next-door";
+    readonly label: "陈念安";
+    readonly summary: "女 · 25岁 · 邻家女孩，柔润清甜带撒娇感";
+    readonly prompt: "年轻女性20-25岁，柔润清甜带撒娇感，普通话，清澈明亮的少女音，轻松温柔的亲近感，轻松平缓带温柔，中等偏快语速中等音量，生活分享场景。";
 }, {
-    readonly label: "温柔女友";
-    readonly prompt: "年轻女性，声线柔软细腻，低饱和且带微微暖意，气息自然，语速偏慢，语调轻柔连贯，亲密但不黏腻。";
+    readonly id: "news-anchor";
+    readonly label: "顾知微";
+    readonly summary: "女 · 35岁 · 新闻播报，声线中低音区饱满清晰";
+    readonly prompt: "专业新闻播音女主持，成年女性30-40岁，普通话标准无口音，声线中低音区饱满清晰，端庄知性沉稳，语气克制权威，语速从容均匀，音量适中稳定，新闻播报与专题解说场景。";
 }, {
-    readonly label: "ASMR低语";
-    readonly prompt: "年轻女性，贴耳低语感，音量轻而集中，气息细微可感，辅音柔化，语速缓慢，停顿松弛，营造安静私密感。";
+    readonly id: "young-man";
+    readonly label: "江予辰";
+    readonly summary: "男 · 19岁 · 青年男声，清亮干净的中高音带少年感";
+    readonly prompt: "男性青年16-22岁，清亮干净的中高音带少年感，普通话标准无口音，轻快明亮的活力声线，气息轻盈吐字利索，语速偏快语调自然上扬，情绪积极阳光带朝气，广告旁白或轻松解说场景。";
 }, {
-    readonly label: "少年感男声";
-    readonly prompt: "年轻男性，清亮干净的中高音，气息轻盈，吐字利索，语速偏快，语调自然上扬，带一点未经世故的朝气。";
+    readonly id: "tech-explainer";
+    readonly label: "周砚川";
+    readonly summary: "男 · 30岁 · 科技解说，清晰利落中音、干净偏冷";
+    readonly prompt: "成年男性25-35岁，清晰利落中音、干净偏冷，标准普通话，精准干练的都市精英感，语速中等偏快、语调平稳，理性简洁、逻辑感强，现代资讯播报或商业讲解场景。";
 }, {
-    readonly label: "纪录片男声";
-    readonly prompt: "成熟男性，低沉醇厚，胸腔共鸣稳定，气息舒展，语速中等偏慢，停顿有留白，语调沉稳克制，带叙事纵深感。";
+    readonly id: "suspense-narrator";
+    readonly label: "裴沉舟";
+    readonly summary: "男 · 35岁 · 悬疑旁白，低沉沉稳带神秘磁性";
+    readonly prompt: "男性中年30-40岁，低沉沉稳带神秘磁性，普通话，压抑克制的叙事风格，语速缓慢均匀，语调低沉平稳，情绪冷静悬疑，旁白解说场景。";
 }, {
-    readonly label: "古风说书男声";
-    readonly prompt: "成熟男性，浑厚略带沙感，咬字圆润，行腔从容，语速偏慢，抑扬有致但不戏曲化，带阅历感与从容幽默。";
-}, {
-    readonly label: "科技解说男声";
-    readonly prompt: "成年男性，清晰利落的中音，音色干净偏冷，吐字精准，语速中等偏快，逻辑感强，情绪理性、简洁而有现代感。";
-}, {
-    readonly label: "电台夜谈男声";
-    readonly prompt: "成熟男性，温暖低缓，带轻微磁性和松弛气声，语速偏慢，语调贴近耳边但不过度低语，情绪包容安定。";
-}, {
-    readonly label: "悬疑旁白男声";
-    readonly prompt: "成熟男性，偏低沉的冷感声线，气息收敛，语速缓慢，停顿明确，语调压低并保留细微起伏，带克制的紧张感。";
+    readonly id: "documentary-narrator";
+    readonly label: "陆远山";
+    readonly summary: "男 · 45岁 · 纪录片，低沉醇厚有胸腔共鸣";
+    readonly prompt: "男性40-50岁，低沉醇厚有胸腔共鸣，普通话，稳重可靠的叙事者风格，语速中等偏慢，语调沉稳克制带叙事纵深感，气息舒展停顿有留白，纪录片旁白或深度访谈场景。";
 }];
 /** Supported audio formats. */
 export declare const TTS_FORMATS: readonly ["mp3", "wav"];

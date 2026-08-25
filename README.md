@@ -57,7 +57,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 更新或从本地开发版切换到 npm 版时，必须先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 2.2.1
+.\start\dsh-plugin-reinstall.bat 2.3.0
 ```
 
 这个脚本会按顺序停止 DSH Web、卸载当前 profile 中的插件、从 npm 安装指定版本并重新启动 DSH Web。若手动操作，请保持相同顺序：
@@ -65,7 +65,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@2.2.1
+dsh plugin --profile web add dsh-xiaomi-tts@2.3.0
 .\start\dsh-web-start.bat
 ```
 
@@ -78,9 +78,9 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.2.1
 - 英文女声：`Mia`、`Chloe`
 - 英文男声：`Milo`、`Dean`
 
-切换到 `mimo-v2.5-tts-voicedesign` 后，可以通过 Voice Design 用文字创造你想要的声音。插件不会发送 `audio.voice`，而是只把“自定义音色描述”作为上游 `user` 消息，把回复正文作为 `assistant` 消息发送；不会追加预置音色或通用朗读风格提示。音色描述建议写成一到两句，只描述声音本身，例如：
+自定义音色（`mimo-v2.5-tts-voicedesign`）
 
-设置卡提供参考页中的常用音色描述模板；下拉框默认选择“自定义”，用户可以直接修改并保存描述。切换到其他模板后再切回“自定义”时，会恢复之前保存的自定义内容。
+为你提供了常用音色描述模板；下拉框默认选择“自定义”，用户可以直接修改并保存描述。切换到其他模板后再切回“自定义”时，会恢复之前保存的自定义内容。
 
 ```text
 青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。
@@ -88,11 +88,7 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.2.1
 
 建议包含年龄段与性别、声音质感、语速节奏和情绪底色，不写场景或动作。预置音色模式仍使用原来的内置音色配置。
 
-预置音色会额外使用 `presetStylePrompt` 作为朗读风格提示词；它仅在 `mimo-v2.5-tts` 下发送，不会影响 Voice Design。默认提示词强调清晰、自然、准确的朗读，语速适中、停顿自然、语气平和克制，并避免夸张表达。
-
-配置项包括 API Key、朗读按钮、自动播报、模型、内置音色、音色描述和音频格式。两个开关默认开启；关闭朗读按钮会同步关闭自动播报，开启自动播报会自动开启朗读按钮。
-
-浏览器可能阻止自动播放；遇到这种情况，请点击回复下方的朗读按钮。
+浏览器可能阻止自动播放；遇到这种情况，请先尝试点击朗读按钮。
 
 ### 朗读文本处理
 

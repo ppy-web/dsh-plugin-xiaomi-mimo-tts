@@ -1,10 +1,11 @@
 import type { Context } from '@deepseek-ai/cordis'
+import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, prepareTtsText, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, prepareTtsText, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -106,6 +107,12 @@ function apiErrorMessage(status: number, parsed: XiaomiAudioResponse | undefined
 export function apply(ctx: Context, config: Config): void {
   let current = () => config
 
+  const voicePresetAssets = new Map(TTS_VOICE_DESIGN_PRESETS.map((preset) => {
+    const path = `${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`
+    const data = readFileSync(new URL(`../assets/voice-presets/${preset.id}.webp`, import.meta.url))
+    return [path, data] as const
+  }))
+
   installSettingsSection(ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
     setSource(source) {
       current = source
@@ -123,6 +130,34 @@ export function apply(ctx: Context, config: Config): void {
       }
     },
   })
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'prefix',
+    path: TTS_VOICE_DESIGN_ASSET_ROUTE,
+    handler(req, res) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405
+        res.setHeader('allow', 'GET, HEAD')
+        res.end()
+        return
+      }
+
+      const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
+      const asset = voicePresetAssets.get(pathname)
+      if (asset === undefined) {
+        res.statusCode = 404
+        res.end()
+        return
+      }
+
+      res.statusCode = 200
+      res.setHeader('content-type', 'image/webp')
+      res.setHeader('content-length', String(asset.byteLength))
+      res.setHeader('cache-control', 'public, max-age=31536000, immutable')
+      res.setHeader('x-content-type-options', 'nosniff')
+      res.end(req.method === 'HEAD' ? undefined : asset)
+    },
+  }), 'xiaomi-mimo-tts: voice preset assets')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',

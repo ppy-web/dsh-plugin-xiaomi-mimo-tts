@@ -22,12 +22,14 @@ declare const zh: {
     readonly 'settings.autoPlay': "开启自动播报";
     readonly 'settings.autoPlayHint': "开启时会同步显示朗读按钮；浏览器也可能拒绝自动播放。";
     readonly 'settings.model': "TTS 模型";
-    readonly 'settings.presetModel': "预置音色模型";
-    readonly 'settings.voiceDesignModel': "自定义音色模型";
+    readonly 'settings.presetModel': "预置音色模型 (mimo-v2.5-tts)";
+    readonly 'settings.voiceDesignModel': "自定义音色模型 (mimo-v2.5-tts-voicedesign)";
     readonly 'settings.modelAutoPlayHintPreset': "预置音色模型支持实时流式播放。";
     readonly 'settings.modelAutoPlayHintVoiceDesign': "自定义音色仅支持在回复完成后自动播放。";
     readonly 'settings.voice': "内置音色";
     readonly 'settings.voiceDesignPrompt': "自定义音色描述";
+    readonly 'settings.customVoiceOption': "自定义";
+    readonly 'settings.customVoiceSummary': "手动编写音色描述";
     readonly 'settings.voiceDesignPromptHint': "按“年龄段 + 性别、声音质感、语速节奏、情绪底色”描述声音本身；不写场景或动作。";
     readonly 'settings.format': "音频格式";
     readonly 'settings.save': "保存";

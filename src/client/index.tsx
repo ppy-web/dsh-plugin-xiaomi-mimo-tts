@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import {
   IconLoadingOutline16,
   IconPauseOutline16,
@@ -18,6 +18,7 @@ import {
   TTS_STREAM_ROUTE,
   TTS_MODELS,
   TTS_SETTINGS_NAMESPACE,
+  TTS_VOICE_DESIGN_ASSET_ROUTE,
   TTS_VOICES,
   TTS_VOICE_DESIGN_PRESETS,
   AbortableSentenceQueue,
@@ -75,12 +76,14 @@ const zh = {
   'settings.autoPlay': '开启自动播报',
   'settings.autoPlayHint': '开启时会同步显示朗读按钮；浏览器也可能拒绝自动播放。',
   'settings.model': 'TTS 模型',
-  'settings.presetModel': '预置音色模型',
-  'settings.voiceDesignModel': '自定义音色模型',
+  'settings.presetModel': '预置音色模型 (mimo-v2.5-tts)',
+  'settings.voiceDesignModel': '自定义音色模型 (mimo-v2.5-tts-voicedesign)',
   'settings.modelAutoPlayHintPreset': '预置音色模型支持实时流式播放。',
   'settings.modelAutoPlayHintVoiceDesign': '自定义音色仅支持在回复完成后自动播放。',
   'settings.voice': '内置音色',
   'settings.voiceDesignPrompt': '自定义音色描述',
+  'settings.customVoiceOption': '自定义',
+  'settings.customVoiceSummary': '手动编写音色描述',
   'settings.voiceDesignPromptHint': '按“年龄段 + 性别、声音质感、语速节奏、情绪底色”描述声音本身；不写场景或动作。',
   'settings.format': '音频格式',
   'settings.save': '保存',
@@ -118,12 +121,14 @@ const en: Record<keyof typeof zh, string> = {
   'settings.autoPlay': 'Enable automatic read-aloud',
   'settings.autoPlayHint': 'Enabling it also shows the read-aloud button; the browser may reject autoplay.',
   'settings.model': 'TTS model',
-  'settings.presetModel': 'Preset voices',
-  'settings.voiceDesignModel': 'Custom voice design',
+  'settings.presetModel': 'Preset voices (mimo-v2.5-tts)',
+  'settings.voiceDesignModel': 'Custom voice design (mimo-v2.5-tts-voicedesign)',
   'settings.modelAutoPlayHintPreset': 'Preset voices support realtime streaming playback.',
   'settings.modelAutoPlayHintVoiceDesign': 'Custom voice design supports automatic playback only after the reply is complete.',
   'settings.voice': 'Built-in voice',
   'settings.voiceDesignPrompt': 'Custom voice description',
+  'settings.customVoiceOption': 'Custom',
+  'settings.customVoiceSummary': 'Write a custom voice description',
   'settings.voiceDesignPromptHint': 'Describe the voice itself with age/gender, texture, pace, and emotional baseline; avoid scenes or actions.',
   'settings.format': 'Audio format',
   'settings.save': 'Save',
@@ -919,6 +924,167 @@ function isPresetVoiceDesignPrompt(value: string): boolean {
   return TTS_VOICE_DESIGN_PRESETS.some((item) => item.prompt === value)
 }
 
+type VoiceDesignPreset = typeof TTS_VOICE_DESIGN_PRESETS[number]
+
+function VoicePresetAvatar({ preset }: { preset: VoiceDesignPreset }): ReactElement {
+  return <img
+    className="xmimo-tts-voice-avatar"
+    src={`${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`}
+    alt=""
+    width={40}
+    height={40}
+    loading="lazy"
+    aria-hidden="true"
+  />
+}
+
+function CustomVoiceAvatar(): ReactElement {
+  return <span className="xmimo-tts-voice-avatar xmimo-tts-custom-voice-avatar" aria-hidden="true">
+    <svg viewBox="0 0 40 40" focusable="false">
+      <circle cx="20" cy="14" r="6" />
+      <path d="M9.5 31.5c1.7-6.2 5.2-9.3 10.5-9.3s8.8 3.1 10.5 9.3" />
+      <path d="M31 8v8M27 12h8" />
+    </svg>
+  </span>
+}
+
+interface VoiceDesignPresetPickerProps {
+  value: string
+  disabled: boolean
+  label: string
+  customLabel: string
+  customSummary: string
+  onChange: (value: string) => void
+}
+
+function VoiceDesignPresetPicker({ value, disabled, label, customLabel, customSummary, onChange }: VoiceDesignPresetPickerProps): ReactElement {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const listboxId = useId()
+  const selectedPresetIndex = TTS_VOICE_DESIGN_PRESETS.findIndex((item) => item.prompt === value)
+  const selectedPreset = selectedPresetIndex < 0 ? undefined : TTS_VOICE_DESIGN_PRESETS[selectedPresetIndex]
+  const selectedOptionIndex = selectedPresetIndex + 1
+  const optionCount = TTS_VOICE_DESIGN_PRESETS.length + 1
+
+  useEffect(() => {
+    if (!open) return
+    const closeOnOutsidePointer = (event: PointerEvent): void => {
+      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
+  }, [open])
+
+  useEffect(() => {
+    if (disabled) setOpen(false)
+  }, [disabled])
+
+  const focusOption = (index: number): void => {
+    const normalized = (index + optionCount) % optionCount
+    requestAnimationFrame(() => optionRefs.current[normalized]?.focus())
+  }
+
+  const openAndFocus = (index: number): void => {
+    setOpen(true)
+    focusOption(index)
+  }
+
+  const choose = (next: string): void => {
+    onChange(next)
+    setOpen(false)
+    requestAnimationFrame(() => triggerRef.current?.focus())
+  }
+
+  const handleTriggerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>): void => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      openAndFocus(selectedOptionIndex)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      openAndFocus(selectedOptionIndex === 0 ? optionCount - 1 : selectedOptionIndex)
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      openAndFocus(0)
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      openAndFocus(optionCount - 1)
+    }
+  }
+
+  const handleOptionKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, index: number): void => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      focusOption(index + 1)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      focusOption(index - 1)
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      focusOption(0)
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      focusOption(optionCount - 1)
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      setOpen(false)
+      triggerRef.current?.focus()
+    } else if (event.key === 'Tab') {
+      setOpen(false)
+    }
+  }
+
+  return <div className="xmimo-tts-voice-picker" ref={rootRef}>
+    <button
+      ref={triggerRef}
+      type="button"
+      className="xmimo-tts-voice-picker-trigger"
+      disabled={disabled}
+      aria-label={label}
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      aria-controls={open ? listboxId : undefined}
+      onClick={() => { setOpen((current) => !current) }}
+      onKeyDown={handleTriggerKeyDown}
+    >
+      {selectedPreset === undefined ? <CustomVoiceAvatar /> : <VoicePresetAvatar preset={selectedPreset} />}
+      <span className="xmimo-tts-voice-option-copy">
+        <strong>{selectedPreset?.label ?? customLabel}</strong>
+        <small>{selectedPreset?.summary ?? customSummary}</small>
+      </span>
+      <IconChevronDownOutline14 className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} />
+    </button>
+    {open ? <div id={listboxId} className="xmimo-tts-voice-picker-menu" role="listbox" aria-label={label}>
+      <button
+        ref={(node) => { optionRefs.current[0] = node }}
+        type="button"
+        role="option"
+        aria-selected={selectedPreset === undefined}
+        className={selectedPreset === undefined ? 'xmimo-tts-voice-option xmimo-tts-voice-option-selected' : 'xmimo-tts-voice-option'}
+        onClick={() => { choose(CUSTOM_VOICE_DESIGN_OPTION) }}
+        onKeyDown={(event) => { handleOptionKeyDown(event, 0) }}
+      >
+        <CustomVoiceAvatar />
+        <span className="xmimo-tts-voice-option-copy"><strong>{customLabel}</strong><small>{customSummary}</small></span>
+      </button>
+      {TTS_VOICE_DESIGN_PRESETS.map((preset, index) => <button
+        key={preset.id}
+        ref={(node) => { optionRefs.current[index + 1] = node }}
+        type="button"
+        role="option"
+        aria-selected={selectedPreset?.id === preset.id}
+        className={selectedPreset?.id === preset.id ? 'xmimo-tts-voice-option xmimo-tts-voice-option-selected' : 'xmimo-tts-voice-option'}
+        onClick={() => { choose(preset.prompt) }}
+        onKeyDown={(event) => { handleOptionKeyDown(event, index + 1) }}
+      >
+        <VoicePresetAvatar preset={preset} />
+        <span className="xmimo-tts-voice-option-copy"><strong>{preset.label}</strong><small>{preset.summary}</small></span>
+      </button>)}
+    </div> : null}
+  </div>
+}
+
 function layerSettings(value: unknown): TtsSettings | undefined {
   return isRecord(value) ? value as TtsSettings : undefined
 }
@@ -1164,19 +1330,18 @@ function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
         </div>
         {model === 'mimo-v2.5-tts-voicedesign' ? <div className="xmimo-tts-voice-design-prompt xmimo-tts-wide">
           <SettingFieldHeading label={t('settings.voiceDesignPrompt')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceDesignPrompt')} resettable disabled={!snapshot.writable} onReset={() => { resetField('voiceDesignPrompt') }} />
-          <select
+          <VoiceDesignPresetPicker
             value={isPresetVoiceDesignPrompt(voiceDesignPrompt) ? voiceDesignPrompt : CUSTOM_VOICE_DESIGN_OPTION}
             disabled={!snapshot.writable}
-            aria-label={t('settings.voiceDesignPrompt')}
-            onChange={(event) => {
-              const next = event.target.value === CUSTOM_VOICE_DESIGN_OPTION ? voiceDesignCustomPrompt : event.target.value
+            label={t('settings.voiceDesignPrompt')}
+            customLabel={t('settings.customVoiceOption')}
+            customSummary={t('settings.customVoiceSummary')}
+            onChange={(value) => {
+              const next = value === CUSTOM_VOICE_DESIGN_OPTION ? voiceDesignCustomPrompt : value
               setVoiceDesignPrompt(next)
               markChange('voiceDesignPrompt')
             }}
-          >
-            <option value={CUSTOM_VOICE_DESIGN_OPTION}>自定义</option>
-            {TTS_VOICE_DESIGN_PRESETS.map((item) => <option key={item.label} value={item.prompt}>{item.label}</option>)}
-          </select>
+          />
           <textarea
             value={voiceDesignPrompt}
             rows={4}
@@ -1252,6 +1417,7 @@ export function apply(ctx: ClientContext): void {
       .xmimo-tts-inline-error{max-width:220px;color:var(--dsw-alias-state-error-primary,#dc2626);font-size:12px}
       .xmimo-tts-card{list-style:none;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:12px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-3,#fff);overflow:hidden;transition:border-color 160ms ease,background 160ms ease}.xmimo-tts-card:hover{border-color:var(--dsw-alias-label-dimmed,#c8ccd4)}.xmimo-tts-card-open{background:var(--dsw-alias-bg-layer-2,#f7f8fa);border-color:var(--dsw-alias-label-dimmed,#c8ccd4)}.xmimo-tts-card-header{appearance:none;display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;border-radius:12px;color:inherit;text-align:left;background:transparent;font:inherit;cursor:pointer}.xmimo-tts-card-header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4f6ef7);outline-offset:-2px}.xmimo-tts-card-head-text{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px}.xmimo-tts-card-title{font-size:15px;font-weight:600}.xmimo-tts-card-description{color:var(--dsw-alias-label-tertiary,#8b93a1);font-size:13px;line-height:18px}.xmimo-tts-chevron{flex:none;color:var(--dsw-alias-label-tertiary,#8b93a1);transition:transform 160ms ease}.xmimo-tts-chevron-open{transform:rotate(180deg)}.xmimo-tts-pending{flex:none;border-radius:999px;padding:1px 8px;color:var(--dsw-alias-label-secondary,#5f6875);background:var(--dsw-alias-bg-module-platform,#eef0f3);font-size:11px;font-weight:500;line-height:17px}.xmimo-tts-card-body{border-top:1px solid var(--dsw-alias-border-l2,#e5e7eb);margin:0 16px;padding:0 0 16px}
       .xmimo-tts-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 14px;margin-top:16px;align-items:start}.xmimo-tts-grid label,.xmimo-tts-api-key,.xmimo-tts-model,.xmimo-tts-voice-design-prompt,.xmimo-tts-select-column>div{display:flex;min-width:0;flex-direction:column;gap:6px;font-size:13px}.xmimo-tts-grid input,.xmimo-tts-grid select,.xmimo-tts-grid textarea{box-sizing:border-box;width:100%;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:8px;padding:8px 10px;color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-2,#f3f4f6);font:inherit}.xmimo-tts-grid select{color-scheme:light dark}.xmimo-tts-grid select option{color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-1,#fff)}.xmimo-tts-grid select:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4f6ef7);outline-offset:1px}.xmimo-tts-grid small{color:var(--dsw-alias-label-tertiary,#8b93a1);line-height:17px}.xmimo-tts-field-heading{display:flex;min-width:0;min-height:20px;flex-direction:row!important;align-items:center;justify-content:space-between;gap:8px}.xmimo-tts-field-label{display:inline-flex;min-width:0;align-items:center;gap:8px}.xmimo-tts-api-key-link{color:var(--dsw-alias-brand-primary,#4f6ef7);font-size:12px;text-decoration:none}.xmimo-tts-api-key-link:hover{text-decoration:underline}.xmimo-tts-field-badges{display:flex!important;flex:none;flex-direction:row!important;align-items:center;gap:8px}.xmimo-tts-overridden{border-radius:999px;padding:1px 7px;color:var(--dsw-alias-label-secondary,#5f6875);background:var(--dsw-alias-bg-module-platform,#eef0f3);font-size:11px;line-height:17px}.xmimo-tts-reset{padding:0;border:0;color:var(--dsw-alias-label-secondary,#5f6875);background:transparent;font:inherit;font-size:12px;cursor:pointer}.xmimo-tts-reset:hover:not(:disabled){color:var(--dsw-alias-label-primary,#1f2328)}.xmimo-tts-reset:disabled{cursor:not-allowed;opacity:.45}.xmimo-tts-api-key-hints{display:flex;min-width:0;gap:8px;align-items:center}.xmimo-tts-api-key-hints small{min-width:0;white-space:nowrap}.xmimo-tts-wide{grid-column:1/-1}.xmimo-tts-switch-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.xmimo-tts-checkbox-row{flex-direction:row!important;align-items:flex-start!important}.xmimo-tts-checkbox-row input{width:auto!important;flex:none;margin-top:3px}.xmimo-tts-checkbox-row span{display:flex;min-width:0;flex-direction:column;gap:4px}.xmimo-tts-select-column{display:flex;min-width:0;flex-direction:row;gap:16px}.xmimo-tts-select-column>div{flex:1}
+      .xmimo-tts-voice-picker{display:flex;min-width:0;flex-direction:column;gap:6px}.xmimo-tts-voice-picker-trigger,.xmimo-tts-voice-option{box-sizing:border-box;display:flex;width:100%;min-width:0;align-items:center;gap:10px;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);color:var(--dsw-alias-label-primary,#1f2328);background:var(--dsw-alias-bg-layer-2,#f3f4f6);font:inherit;text-align:left;cursor:pointer}.xmimo-tts-voice-picker-trigger{min-height:54px;border-radius:10px;padding:6px 10px}.xmimo-tts-voice-picker-trigger:hover:not(:disabled){border-color:var(--dsw-alias-label-dimmed,#c8ccd4);background:var(--dsw-alias-interactive-bg-hover,#eef0f3)}.xmimo-tts-voice-picker-trigger:focus-visible,.xmimo-tts-voice-option:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#4f6ef7);outline-offset:1px}.xmimo-tts-voice-picker-trigger:disabled{cursor:not-allowed;opacity:.55}.xmimo-tts-voice-avatar{box-sizing:border-box;display:block;width:40px;height:40px;flex:none;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#e5e7eb) 80%,transparent);border-radius:50%;object-fit:cover;background:var(--dsw-alias-bg-layer-1,#fff)}.xmimo-tts-custom-voice-avatar{display:grid;place-items:center;color:var(--dsw-alias-brand-primary,#4f6ef7);background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4f6ef7) 12%,var(--dsw-alias-bg-layer-1,#fff))}.xmimo-tts-custom-voice-avatar svg{width:30px;height:30px;overflow:visible}.xmimo-tts-custom-voice-avatar circle{fill:currentColor}.xmimo-tts-custom-voice-avatar path{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.xmimo-tts-voice-option-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:1px}.xmimo-tts-voice-option-copy strong{overflow:hidden;font-size:13px;font-weight:600;line-height:18px;text-overflow:ellipsis;white-space:nowrap}.xmimo-tts-voice-option-copy small{overflow:hidden;font-size:12px;text-overflow:ellipsis;white-space:nowrap}.xmimo-tts-voice-picker-chevron{flex:none;color:var(--dsw-alias-label-tertiary,#8b93a1);transition:transform 160ms ease}.xmimo-tts-voice-picker-chevron-open{transform:rotate(180deg)}.xmimo-tts-voice-picker-menu{display:grid;max-height:310px;overflow:auto;overscroll-behavior:contain;border:1px solid var(--dsw-alias-border-l2,#e5e7eb);border-radius:10px;padding:5px;background:var(--dsw-alias-bg-layer-1,#fff);box-shadow:0 10px 28px rgba(15,23,42,.12)}.xmimo-tts-voice-option{min-height:50px;border:0;border-radius:7px;padding:5px 7px;background:transparent}.xmimo-tts-voice-option:hover,.xmimo-tts-voice-option:focus-visible{background:var(--dsw-alias-interactive-bg-hover,#f3f4f6)}.xmimo-tts-voice-option-selected{background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4f6ef7) 10%,transparent)}
       .xmimo-tts-card-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--dsw-alias-border-l2,#e5e7eb);font-size:12px;color:var(--dsw-alias-label-tertiary,#8b93a1)}.xmimo-tts-card-actions button{border:1px solid var(--dsw-alias-brand-primary,#4f6ef7);border-radius:8px;padding:5px 14px;color:var(--dsw-alias-bg-layer-1,#fff);background:var(--dsw-alias-brand-primary,#4f6ef7);cursor:pointer;font:inherit}.xmimo-tts-card-actions button:hover:not(:disabled){filter:brightness(1.08)}.xmimo-tts-card-actions button:disabled{cursor:not-allowed;color:var(--dsw-alias-label-dimmed,#9ca3af);background:var(--dsw-alias-bg-layer-2,#f3f4f6);border-color:var(--dsw-alias-border-l2,#e5e7eb);opacity:1}.xmimo-tts-card-actions .xmimo-tts-discard{border-color:var(--dsw-alias-border-l2,#e5e7eb);color:var(--dsw-alias-label-secondary,#5f6875);background:transparent}.xmimo-tts-card-actions .xmimo-tts-discard:hover:not(:disabled){color:var(--dsw-alias-label-primary,#1f2328);border-color:var(--dsw-alias-label-dimmed,#c8ccd4)}.xmimo-tts-failed{color:var(--dsw-alias-state-error-primary,#dc2626)}
       @media(max-width:720px){.xmimo-tts-grid{grid-template-columns:1fr}.xmimo-tts-wide{grid-column:auto}.xmimo-tts-switch-row{grid-template-columns:1fr}.xmimo-tts-select-column{grid-column:auto;flex-direction:column}.xmimo-tts-api-key-hints{flex-wrap:wrap}.xmimo-tts-api-key-hints small{white-space:normal}}
     `

@@ -2,7 +2,7 @@
 
 <p><a href="README.md"><strong>中文说明 →</strong></a></p>
 
-Xiaomi MiMo text-to-speech controls for finalized assistant messages in DeepSeek Harness Web.
+Add Xiaomi MiMo TTS read-aloud playback to assistant replies in DeepSeek Harness Web.
 
 > Powered by Xiaomi MiMo TTS models to turn assistant replies into smooth, clear natural speech. MiMo TTS is currently free for a limited time; refer to Xiaomi MiMo for the current policy.
 
@@ -16,52 +16,93 @@ Xiaomi MiMo text-to-speech controls for finalized assistant messages in DeepSeek
 
 ## Features
 
-- Adds an optional read-aloud button to the assistant message action strip; it is enabled by default.
-- Uses Xiaomi MiMo's currently free-for-a-limited-time TTS models: `mimo-v2.5-tts` produces smooth, clear audio; preset-voice autoplay uses streaming PCM16, while manual playback uses MP3 or WAV.
+- Shows a read-aloud button below each completed assistant reply body when needed; enabled by default.
+- Uses Xiaomi MiMo's currently limited-time-free TTS models: `mimo-v2.5-tts` outputs smooth, clear audio; preset-voice autoplay uses streaming PCM16, while manual playback uses MP3 or WAV.
 - Uses `mimo-v2.5-tts-voicedesign` Voice Design to create the voice you want from a text description.
-- Switches between preset voices and custom voice design, and configures the API key, autoplay, built-in voice, voice description, and MP3/WAV format under **Settings → Plugins → Plugin configuration**. The voice-design selector defaults to **Custom**; custom text can be edited and saved, then restored after switching to another template.
-- Keeps the API key on the DSH Host. The browser sends only the response text to a same-origin plugin route.
-- Supports pause, resume, regeneration, request errors, and browser autoplay rejection. Automatic playback only applies to the latest reply completed by the live run; opening messages from history does not play them.
-- Cleans speech text before sending it to TTS: URLs, file paths, code blocks, emoji, icons, and control characters are removed, and common Chinese punctuation is converted to ASCII punctuation.
+- Lets you switch between the preset-voice model and the custom voice-design model under **Settings → Plugins → Plugin configuration**, and configure the API key, autoplay, voice, voice description, and format.
+- Keeps the API key on the DSH Host. The browser sends only the reply body text to a same-origin Host route.
+- Supports pause, resume, regeneration, and autoplay-blocked prompts. Automatic playback only triggers for the latest reply newly completed in the current run; opening messages from history does not play them.
+- Aggressively cleans speech text before sending it to TTS: URLs, file paths, code blocks, emoji, icons, and control characters are removed, and common Chinese punctuation is converted to ASCII punctuation.
 
-Official Xiaomi MiMo TTS reference: <https://mimo.mi.com/static/docs/api/audio/tts.md>
+## Requirements
+
+- `@deepseek-ai/dsh` `0.1.0-rc.7` or a compatible version
+- Node.js 22+
+- Xiaomi MiMo API Key
+
+Official Xiaomi MiMo TTS API reference: <https://mimo.mi.com/static/docs/api/audio/tts.md>
 
 ## Install
+
+Install from npm:
 
 ```bash
 dsh plugin --profile web add dsh-xiaomi-tts
 ```
 
-Restart `dsh web`, then open **Settings → Plugins → Plugin configuration** and save a Xiaomi MiMo API key.
+Install from a local directory:
+
+```bash
+dsh plugin --profile web add ./dsh-plugin-xiaomi-mimo-tts
+```
+
+Install from GitHub:
+
+```bash
+dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
+```
+
+After installation, restart `dsh web`, then open **Settings → Plugins → Plugin configuration → Xiaomi MiMo Read Aloud**, enter the API key, and save.
 
 When updating or switching from the local development link to the npm package, stop DSH Web before changing the profile dependencies. This prevents a running Node process from holding the Windows Junction that pnpm needs to replace:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 2.2.1
+.\start\dsh-plugin-reinstall.bat 2.3.0
 ```
 
-The script stops DSH Web, removes the plugin from the `web` profile, installs the requested npm version, and starts DSH Web again. If you run the steps manually, keep the same order:
+The script stops DSH Web, removes the current plugin from the profile, installs the requested npm version, and starts DSH Web again. If you run the steps manually, keep the same order:
 
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@2.2.1
+dsh plugin --profile web add dsh-xiaomi-tts@2.3.0
 .\start\dsh-web-start.bat
 ```
 
-When `mimo-v2.5-tts-voicedesign` is selected, Voice Design creates the voice you want from a text description. The plugin omits `audio.voice`, sends only the custom voice description as the upstream `user` message, and sends the reply text as the `assistant` message. No preset-voice or general read-aloud style prompt is added. Describe the voice itself in one or two sentences, including age/gender, texture, pace, and emotional baseline; avoid scenes or actions.
+## Configuration
 
-The settings card also provides common voice-description templates from the reference page; every template remains editable after selection.
+Available built-in voices for `mimo-v2.5-tts`:
 
-Preset voices also receive `presetStylePrompt` as a style instruction. It is sent only with `mimo-v2.5-tts` and does not affect Voice Design. The default favors clear, natural, accurate speech at a moderate pace, with natural pauses, a calm and restrained tone, and no exaggerated expression.
+- Chinese female: `冰糖`, `茉莉`
+- Chinese male: `苏打`, `白桦`
+- English female: `Mia`, `Chloe`
+- English male: `Milo`, `Dean`
 
-The settings include the API key, read-aloud button, automatic read-aloud, model, voice, custom voice description, and audio format. Both switches are enabled by default; disabling the read-aloud button also disables automatic read-aloud, while enabling automatic read-aloud enables the button.
+Custom voice design with `mimo-v2.5-tts-voicedesign`
 
-Browsers may block autoplay. If that happens, click the read-aloud button below a response.
+The plugin provides common voice-description templates. The selector defaults to **Custom**, so users can edit and save the description directly. After switching to another template and back to **Custom**, the previously saved custom content is restored.
+
+```text
+Young adult woman, bright and approachable voice, clear articulation, moderate pace, gentle and restrained emotional tone.
+```
+
+It is recommended to describe age and gender, vocal texture, speaking pace, and emotional baseline, while avoiding scenes or actions. Preset-voice mode still uses the built-in voice configuration.
+
+Browsers may block autoplay. If that happens, click the read-aloud button first.
 
 ### Speech text preprocessing
 
-Read-aloud uses cleaned text and does not modify the assistant reply shown in the chat. Markdown links keep their readable labels while their targets are removed; URLs, file paths, complete code blocks, emoji, icons, zero-width characters, and control characters are not sent to Xiaomi MiMo. Parentheses, brackets, book-title marks, quotation marks, and other non-boundary punctuation are removed; retained boundary punctuation is converted to ASCII. Streaming playback accumulates at least 20 spoken characters, then sends any remaining shorter text when the reply ends.
+Read-aloud uses only the cleaned reply body and does not modify the assistant message shown in the chat. Markdown links keep their readable labels while their targets are removed; URLs, file paths, complete code blocks, emoji, icons, zero-width characters, and control characters are not sent to Xiaomi MiMo. Parentheses, brackets, book-title marks, quotation marks, and other non-boundary punctuation are removed; retained sentence-boundary punctuation is converted to ASCII. Streaming playback accumulates at least 20 speakable characters, then sends any remaining shorter text when the reply ends.
+
+## Privacy
+
+- The API key stays on the DSH Host and is never sent to the browser.
+- Reply text is sent to Xiaomi MiMo when speech is generated.
+- Audio is played through a temporary Blob URL and is not persisted to disk.
+
+## Feedback and support
+
+Please use [GitHub Issues](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/issues) for bug reports, feature requests, or feedback.
 
 ## Development
 
@@ -71,16 +112,6 @@ pnpm typecheck
 pnpm test
 pnpm pack:check
 ```
-
-## Privacy
-
-- The API key stays on the DSH Host and is never sent to the browser.
-- Response text is sent to Xiaomi MiMo when speech is generated.
-- Audio is played through a temporary Blob URL and is not persisted to disk.
-
-## Feedback and support
-
-Please use [GitHub Issues](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/issues) for bug reports, feature requests, or feedback.
 
 ## License
 
