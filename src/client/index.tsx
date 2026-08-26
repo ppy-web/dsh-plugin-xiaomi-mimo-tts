@@ -42,10 +42,12 @@ export const inject = [
 
 const NS = 'xiaomi-mimo-tts'
 type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error'
+type PlaybackSource = 'live' | 'complete' | null
 
 interface PlaybackView {
   sessionId: string | null
   messageId: string | null
+  source: PlaybackSource
   status: PlaybackStatus
   error: string | null
 }
@@ -53,6 +55,8 @@ interface PlaybackView {
 interface SynthesizedAudio {
   url: string
   audio: HTMLAudioElement
+  onEnded: () => void
+  onError: () => void
 }
 
 const zh = {
@@ -60,6 +64,8 @@ const zh = {
   'action.pause': '暂停朗读',
   'action.resume': '继续朗读',
   'action.loading': '正在生成语音',
+  'action.cancel': '取消语音生成',
+  'action.stop': '停止朗读',
   'action.retry': '重新生成语音',
   'error.noText': '这条回复没有可朗读的正文。',
   'error.request': '语音生成失败。',
@@ -105,6 +111,8 @@ const en: Record<keyof typeof zh, string> = {
   'action.pause': 'Pause speech',
   'action.resume': 'Resume speech',
   'action.loading': 'Generating speech',
+  'action.cancel': 'Cancel speech generation',
+  'action.stop': 'Stop speech',
   'action.retry': 'Generate speech again',
   'error.noText': 'This response has no readable body text.',
   'error.request': 'Speech generation failed.',
@@ -286,41 +294,41 @@ function pcmDeltaFromSse(data: string): string | null {
   }
 }
 
+interface PcmAudioQueueCallbacks {
+  onBusyChange: (busy: boolean) => void
+  onPlaybackStart: () => void
+}
+
 class PcmAudioQueue {
   private context: AudioContext | null = null
   private scheduledAt = 0
   private readonly sources = new Set<AudioBufferSourceNode>()
   private revision = 0
   private chain: Promise<void> = Promise.resolve()
+  private busy = false
 
-  constructor(private readonly onStateChange: (status: PlaybackStatus) => void) {}
+  constructor(private readonly callbacks: PcmAudioQueueCallbacks) {}
 
   enqueue(base64: string): Promise<void> {
     const revision = this.revision
-    this.chain = this.chain.then(() => this.schedule(base64, revision)).catch(() => {})
-    return this.chain
+    const run = this.chain.then(() => this.schedule(base64, revision))
+    this.chain = run.catch(() => {})
+    return run
   }
 
   stop(): void {
     this.revision += 1
     this.scheduledAt = 0
-    for (const source of this.sources) source.stop()
+    this.chain = Promise.resolve()
+    for (const source of this.sources) {
+      try {
+        source.stop()
+      } catch {
+        // A source may already have ended while the stop path is running.
+      }
+    }
     this.sources.clear()
-    this.onStateChange('idle')
-  }
-
-  pause(): void {
-    if (this.context?.state === 'running') {
-      void this.context.suspend()
-      this.onStateChange('paused')
-    }
-  }
-
-  resume(): void {
-    if (this.context !== null && this.context.state !== 'running') {
-      void this.context.resume()
-      this.onStateChange('playing')
-    }
+    this.setBusy(false)
   }
 
   async dispose(): Promise<void> {
@@ -353,10 +361,22 @@ class PcmAudioQueue {
     source.addEventListener('ended', () => {
       if (revision !== this.revision) return
       this.sources.delete(source)
-      if (this.sources.size === 0) this.onStateChange('idle')
+      if (this.sources.size === 0) this.setBusy(false)
     }, { once: true })
-    source.start(startAt)
-    this.onStateChange('playing')
+    try {
+      source.start(startAt)
+    } catch (error) {
+      this.sources.delete(source)
+      throw error
+    }
+    this.setBusy(true)
+    this.callbacks.onPlaybackStart()
+  }
+
+  private setBusy(busy: boolean): void {
+    if (this.busy === busy) return
+    this.busy = busy
+    this.callbacks.onBusyChange(busy)
   }
 
   private getContext(): AudioContext {
@@ -366,7 +386,13 @@ class PcmAudioQueue {
 }
 
 class LiveSpeechController {
-  private readonly audio = new PcmAudioQueue((status) => this.setStatus(status))
+  private readonly audio = new PcmAudioQueue({
+    onBusyChange: (busy) => {
+      this.audioBusy = busy
+      this.maybeFinishPlayback()
+    },
+    onPlaybackStart: () => this.setStatus('playing'),
+  })
   private streamGeneration = 0
   private queue = this.createQueue()
   private active: LiveSpeechCursor | null = null
@@ -377,6 +403,9 @@ class LiveSpeechController {
   private messageId: string | null = null
   private status: PlaybackStatus = 'idle'
   private sessionId: string | null = null
+  private requestBusy = false
+  private audioBusy = false
+  private blockedTurn: string | null = null
   private onStateChange: ((sessionId: string, messageId: string, status: PlaybackStatus) => void) | null = null
 
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus) => void): void {
@@ -398,6 +427,9 @@ class LiveSpeechController {
   observe(sessionId: string, turn: number, step: number, text: string): void {
     if (this.sessionId !== sessionId) return
     const next = { sessionId, turn, step }
+    const turnKey = `${sessionId}:${turn}`
+    if (this.blockedTurn === turnKey) return
+    if (this.blockedTurn !== null && this.blockedTurn !== turnKey) this.blockedTurn = null
     const transition = classifyLiveSpeechTransition(this.active, next)
     if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(this.observed))) this.reset(next)
     else if (transition === 'same-turn') this.advanceSegment(next)
@@ -407,6 +439,10 @@ class LiveSpeechController {
 
   finish(sessionId: string, final: LiveMessageIdentity): void {
     const key = `${sessionId}:${final.turn}:${final.step}`
+    if (this.blockedTurn === `${sessionId}:${final.turn}`) {
+      this.handled.add(key)
+      return
+    }
     if (this.sessionId !== sessionId || this.active === null || this.cursorKey(this.active) !== key) return
     if (final.interrupted) {
       this.cancelSession(sessionId)
@@ -419,31 +455,25 @@ class LiveSpeechController {
     this.handled.add(key)
   }
 
-  toggle(sessionId: string, messageId: string): boolean {
-    if (this.sessionId !== sessionId) return false
-    if (this.messageId !== messageId || (this.status !== 'playing' && this.status !== 'paused')) return false
-    if (this.status === 'playing') this.audio.pause()
-    else this.audio.resume()
+  stop(sessionId: string): boolean {
+    if (this.sessionId !== sessionId || this.active === null || (this.status !== 'loading' && this.status !== 'playing')) return false
+    this.blockedTurn = `${sessionId}:${this.active.turn}`
+    this.resetState()
     return true
   }
 
   hasHandled(sessionId: string, identity: Pick<LiveMessageIdentity, 'turn' | 'step'> | null): boolean {
-    return identity !== null && this.handled.has(`${sessionId}:${identity.turn}:${identity.step}`)
+    if (identity === null) return false
+    return this.blockedTurn === `${sessionId}:${identity.turn}` || this.handled.has(`${sessionId}:${identity.turn}:${identity.step}`)
   }
 
   cancelSession(sessionId: string): void {
-    if (this.active?.sessionId === sessionId) this.cancel()
+    if (this.sessionId === sessionId) this.cancel()
   }
 
   cancel(): void {
-    this.replaceQueue()
-    this.audio.stop()
-    this.active = null
-    this.observed = ''
-    this.consumed = 0
-    this.pendingText = ''
-    this.messageId = null
-    this.status = 'idle'
+    this.blockedTurn = null
+    this.resetState()
   }
 
   async dispose(): Promise<void> {
@@ -455,21 +485,32 @@ class LiveSpeechController {
   private reset(next: LiveSpeechCursor): void {
     this.replaceQueue()
     this.audio.stop()
-    this.beginSegment(next)
-    this.status = 'idle'
+    this.beginSegment(next, false)
+    this.setStatus('idle')
   }
 
   private advanceSegment(next: LiveSpeechCursor): void {
     this.drain(true)
-    this.beginSegment(next)
+    this.beginSegment(next, true)
   }
 
-  private beginSegment(next: LiveSpeechCursor): void {
+  private beginSegment(next: LiveSpeechCursor, preserveMessageId: boolean): void {
     this.active = next
     this.observed = ''
     this.consumed = 0
     this.pendingText = ''
+    if (!preserveMessageId) this.messageId = null
+  }
+
+  private resetState(): void {
+    this.replaceQueue()
+    this.audio.stop()
+    this.active = null
+    this.observed = ''
+    this.consumed = 0
+    this.pendingText = ''
     this.messageId = null
+    this.setStatus('idle')
   }
 
   private cursorKey(cursor: LiveSpeechCursor): string {
@@ -494,11 +535,25 @@ class LiveSpeechController {
 
   private createQueue(): AbortableSentenceQueue {
     const generation = this.streamGeneration
-    return new AbortableSentenceQueue((sentence, signal) => this.stream(sentence, signal, generation))
+    return new AbortableSentenceQueue(
+      (sentence, signal) => this.stream(sentence, signal, generation),
+      {
+        onBusyChange: (busy) => {
+          if (generation !== this.streamGeneration) return
+          this.requestBusy = busy
+          if (busy && this.status === 'idle') this.setStatus('loading')
+          this.maybeFinishPlayback()
+        },
+        onError: (error) => {
+          if (generation === this.streamGeneration) this.handleStreamError(error)
+        },
+      },
+    )
   }
 
   private replaceQueue(): void {
     this.streamGeneration += 1
+    this.requestBusy = false
     this.queue.cancel()
     this.queue = this.createQueue()
   }
@@ -509,7 +564,6 @@ class LiveSpeechController {
 
   private async stream(sentence: string, signal: AbortSignal, generation: number): Promise<void> {
     if (!this.isCurrentStream(generation, signal)) return
-    this.setStatus('loading')
     try {
       const response = await fetch(TTS_STREAM_ROUTE, {
         method: 'POST',
@@ -544,13 +598,24 @@ class LiveSpeechController {
         reader.releaseLock()
       }
     } catch (error) {
-      if (!this.isCurrentStream(generation, signal)) return
-      this.setStatus('error')
-      throw error
+      if (this.isCurrentStream(generation, signal)) throw error
     }
   }
 
+  private handleStreamError(error: unknown): void {
+    if (this.active !== null) this.blockedTurn = `${this.active.sessionId}:${this.active.turn}`
+    this.setStatus('error')
+    this.replaceQueue()
+    this.audio.stop()
+    void error
+  }
+
+  private maybeFinishPlayback(): void {
+    if (!this.requestBusy && !this.audioBusy && (this.status === 'loading' || this.status === 'playing')) this.setStatus('idle')
+  }
+
   private setStatus(status: PlaybackStatus): void {
+    if (this.status === status) return
     this.status = status
     this.reportStatus()
   }
@@ -562,7 +627,7 @@ class LiveSpeechController {
 
 class PlaybackController {
   readonly autoPlayArmedAt = Date.now()
-  private view: PlaybackView = { sessionId: null, messageId: null, status: 'idle', error: null }
+  private view: PlaybackView = { sessionId: null, messageId: null, source: null, status: 'idle', error: null }
   private readonly listeners = new Set<() => void>()
   private readonly automaticallyPlayed = new Set<string>()
   private readonly liveSessions = new Set<string>()
@@ -588,14 +653,14 @@ class PlaybackController {
     this.completedSessions.clear()
     this.completedMessages.clear()
     this.activeSessionId = sessionId
-    this.publish({ sessionId: null, messageId: null, status: 'idle', error: null })
+    this.publish(this.emptyView())
   }
 
   cancelPlayback(sessionId: string): void {
     if (this.activeSessionId !== sessionId) return
     this.generation += 1
     this.stopCurrent()
-    this.publish({ sessionId: null, messageId: null, status: 'idle', error: null })
+    this.publish(this.emptyView())
   }
 
   deactivateSession(sessionId: string): void {
@@ -606,7 +671,7 @@ class PlaybackController {
     this.completedSessions.clear()
     this.completedMessages.clear()
     this.activeSessionId = null
-    this.publish({ sessionId: null, messageId: null, status: 'idle', error: null })
+    this.publish(this.emptyView())
   }
 
   observeSession(sessionId: string, running: boolean, latestMessageId: string | null): void {
@@ -639,32 +704,36 @@ class PlaybackController {
 
   updateLivePlayback(sessionId: string, messageId: string, status: PlaybackStatus): void {
     if (this.activeSessionId !== sessionId) return
-    if (this.view.messageId === messageId || status !== 'idle') this.publish({ sessionId, messageId, status, error: status === 'error' ? 'play-failed' : null })
+    if (status === 'idle') {
+      if (this.view.source === 'live' && this.view.messageId === messageId) this.publish(this.emptyView())
+      return
+    }
+    if (this.view.source !== 'complete') this.publish({ sessionId, messageId, source: 'live', status, error: status === 'error' ? 'play-failed' : null })
   }
 
   async toggle(sessionId: string, messageId: string, text: string, automatic: boolean): Promise<void> {
     if (this.activeSessionId !== sessionId) return
-    if (this.view.sessionId === sessionId && this.view.messageId === messageId && this.current !== null) {
+    if (this.view.source === 'complete' && this.view.sessionId === sessionId && this.view.messageId === messageId && this.current !== null) {
       const audio = this.current.audio
       const generation = this.generation
       if (audio.paused) {
         try {
           await audio.play()
           if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
-          this.publish({ sessionId, messageId, status: 'playing', error: null })
+          this.publish({ sessionId, messageId, source: 'complete', status: 'playing', error: null })
         } catch {
           if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
-          this.publish({ sessionId, messageId, status: 'paused', error: automatic ? 'autoplay-blocked' : 'play-failed' })
+          this.publish({ sessionId, messageId, source: 'complete', status: 'paused', error: automatic ? 'autoplay-blocked' : 'play-failed' })
         }
       } else {
         audio.pause()
-        this.publish({ sessionId, messageId, status: 'paused', error: null })
+        this.publish({ sessionId, messageId, source: 'complete', status: 'paused', error: null })
       }
       return
     }
 
     if (text.length === 0) {
-      this.publish({ sessionId, messageId, status: 'error', error: 'no-text' })
+      this.publish({ sessionId, messageId, source: 'complete', status: 'error', error: 'no-text' })
       return
     }
 
@@ -672,7 +741,7 @@ class PlaybackController {
     const generation = ++this.generation
     const controller = new AbortController()
     this.request = controller
-    this.publish({ sessionId, messageId, status: 'loading', error: null })
+    this.publish({ sessionId, messageId, source: 'complete', status: 'loading', error: null })
 
     try {
       const response = await fetch(TTS_ROUTE, {
@@ -697,22 +766,32 @@ class PlaybackController {
       if (generation !== this.generation || this.activeSessionId !== sessionId) return
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
-      this.current = { url, audio }
+      const current: SynthesizedAudio = {
+        url,
+        audio,
+        onEnded: () => {
+          if (this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+          this.releaseCurrentAudio(audio)
+          this.publish(this.emptyView())
+        },
+        onError: () => {
+          if (this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+          this.releaseCurrentAudio(audio)
+          this.publish({ sessionId, messageId, source: 'complete', status: 'error', error: 'play-failed' })
+        },
+      }
+      this.current = current
       this.request = null
-      audio.addEventListener('ended', () => {
-        if (this.activeSessionId === sessionId && this.current?.audio === audio) this.publish({ sessionId, messageId, status: 'idle', error: null })
-      })
-      audio.addEventListener('error', () => {
-        if (this.activeSessionId === sessionId && this.current?.audio === audio) this.publish({ sessionId, messageId, status: 'error', error: 'play-failed' })
-      })
+      audio.addEventListener('ended', current.onEnded)
+      audio.addEventListener('error', current.onError)
 
       try {
         await audio.play()
         if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
-        this.publish({ sessionId, messageId, status: 'playing', error: null })
+        this.publish({ sessionId, messageId, source: 'complete', status: 'playing', error: null })
       } catch {
         if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
-        this.publish({ sessionId, messageId, status: 'paused', error: automatic ? 'autoplay-blocked' : 'play-failed' })
+        this.publish({ sessionId, messageId, source: 'complete', status: 'paused', error: automatic ? 'autoplay-blocked' : 'play-failed' })
       }
     } catch (error) {
       if (controller.signal.aborted || generation !== this.generation || this.activeSessionId !== sessionId) return
@@ -720,6 +799,7 @@ class PlaybackController {
       this.publish({
         sessionId,
         messageId,
+        source: 'complete',
         status: 'error',
         error: error instanceof Error ? error.message : String(error),
       })
@@ -739,15 +819,31 @@ class PlaybackController {
   private stopCurrent(): void {
     this.request?.abort()
     this.request = null
-    if (this.current !== null) {
-      this.current.audio.pause()
-      this.current.audio.removeAttribute('src')
-      URL.revokeObjectURL(this.current.url)
-      this.current = null
-    }
+    if (this.current !== null) this.releaseCurrentAudio(this.current.audio)
+  }
+
+  private releaseCurrentAudio(audio: HTMLAudioElement): void {
+    if (this.current?.audio !== audio) return
+    const current = this.current
+    this.current = null
+    audio.removeEventListener('ended', current.onEnded)
+    audio.removeEventListener('error', current.onError)
+    audio.pause()
+    audio.removeAttribute('src')
+    audio.load()
+    URL.revokeObjectURL(current.url)
+  }
+
+  private emptyView(): PlaybackView {
+    return { sessionId: null, messageId: null, source: null, status: 'idle', error: null }
   }
 
   private publish(view: PlaybackView): void {
+    if (this.view.sessionId === view.sessionId
+      && this.view.messageId === view.messageId
+      && this.view.source === view.source
+      && this.view.status === view.status
+      && this.view.error === view.error) return
     this.view = view
     for (const listener of this.listeners) listener()
   }
@@ -858,10 +954,12 @@ function ReadAloudAction({ sessionId, messageId, useSession, playback, live, set
 
   const mine = view.sessionId === sessionId && view.messageId === messageId
   const status = mine ? view.status : 'idle'
+  const source = mine ? view.source : null
+  const liveActive = source === 'live' && (status === 'loading' || status === 'playing')
   const label = status === 'loading'
-    ? t('action.loading')
+    ? liveActive ? t('action.cancel') : t('action.loading')
     : status === 'playing'
-      ? t('action.pause')
+      ? liveActive ? t('action.stop') : t('action.pause')
       : status === 'paused'
         ? t('action.resume')
         : status === 'error'
@@ -883,13 +981,16 @@ function ReadAloudAction({ sessionId, messageId, useSession, playback, live, set
           type="button"
           className="xmimo-tts-action"
           aria-label={label}
-          aria-pressed={status === 'playing'}
-          disabled={status === 'loading'}
+          aria-pressed={status === 'playing' || liveActive}
+          disabled={status === 'loading' && !liveActive}
           onClick={() => {
-            if (!live.toggle(sessionId, messageId)) {
-              live.cancel()
-              void playback.toggle(sessionId, messageId, text, false)
+            if (mine && source === 'live' && (status === 'loading' || status === 'playing')) {
+              live.stop(sessionId)
+              playback.cancelPlayback(sessionId)
+              return
             }
+            live.cancelSession(sessionId)
+            void playback.toggle(sessionId, messageId, text, false)
           }}
         >
           {status === 'loading'

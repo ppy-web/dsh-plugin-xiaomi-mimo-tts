@@ -96,15 +96,22 @@ export type LiveSpeechTransition = 'same-step' | 'same-turn' | 'new-turn';
 /** Decide whether a live assistant update extends one message, advances within a turn, or starts a new turn. */
 export declare function classifyLiveSpeechTransition(current: LiveSpeechCursor | null, next: LiveSpeechCursor): LiveSpeechTransition;
 /** Serializes sentence requests and makes cancellation independent from the playback backend. */
+export interface AbortableSentenceQueueOptions {
+    onBusyChange?: (busy: boolean) => void;
+    onError?: (error: unknown) => void;
+}
 export declare class AbortableSentenceQueue {
     private readonly start;
+    private readonly options;
     private readonly pending;
     private current;
     private revision;
-    constructor(start: (sentence: string, signal: AbortSignal) => Promise<void>);
+    private busy;
+    constructor(start: (sentence: string, signal: AbortSignal) => Promise<void>, options?: AbortableSentenceQueueOptions);
     enqueue(sentence: string): void;
     cancel(): void;
     private pump;
+    private setBusy;
 }
 export interface TtsSettings {
     enabled?: boolean;

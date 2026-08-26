@@ -131,8 +131,9 @@ test('removes emoji, icons, invisible characters, and empty filtered content', (
   assert.equal(prepareTtsText('```\nignored\n```'), '')
 })
 
-test('removes decorative Chinese punctuation while preserving sentence boundaries', () => {
-  assert.equal(prepareTtsText('【提示】（请注意）“测试”：你好，世界！《完》'), '提示请注意测试你好,世界!完')
+test('normalizes Chinese parentheses and keeps ASCII colons', () => {
+  assert.equal(prepareTtsText('【提示】（请注意）“测试”：你好，世界！《完》'), '提示,请注意,测试你好,世界!完')
+  assert.equal(prepareTtsText('现在是08:31，请准时开始。'), '现在是08:31,请准时开始.')
 })
 
 test('turns physical line breaks into sentence-ending periods', () => {
@@ -187,6 +188,36 @@ test('cancelling the realtime sentence queue aborts the in-flight request and dr
   assert.deepEqual(started, ['第一句。'])
 })
 
+test('realtime sentence queue stays busy across sentences and stops after one request error', async () => {
+  const busy = []
+  const started = []
+  const finishers = []
+  const queue = new sharedModule.AbortableSentenceQueue((sentence) => {
+    started.push(sentence)
+    return new Promise((resolve) => finishers.push(resolve))
+  }, { onBusyChange: (value) => busy.push(value) })
+  queue.enqueue('第一句。')
+  queue.enqueue('第二句。')
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(busy, [true])
+  finishers.shift()()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(started, ['第一句。', '第二句。'])
+  finishers.shift()()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(busy, [true, false])
+
+  const errors = []
+  const failed = new sharedModule.AbortableSentenceQueue(async () => {
+    throw new Error('stream failed')
+  }, { onBusyChange: (value) => busy.push(value), onError: (error) => errors.push(error.message) })
+  failed.enqueue('失败句。')
+  failed.enqueue('不会继续。')
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(errors, ['stream failed'])
+  assert.equal(busy.at(-1), false)
+})
+
 test('live speech only replaces playback when the session or turn changes', () => {
   const first = { sessionId: 'session-1', turn: 1, step: 1 }
   assert.equal(sharedModule.classifyLiveSpeechTransition(null, first), 'new-turn')
@@ -196,8 +227,9 @@ test('live speech only replaces playback when the session or turn changes', () =
   assert.equal(sharedModule.classifyLiveSpeechTransition(first, { ...first, sessionId: 'session-2' }), 'new-turn')
 
   assert.match(clientSource, /transition === 'same-turn'\) this\.advanceSegment\(next\)/)
-  assert.match(clientSource, /private advanceSegment\(next: LiveSpeechCursor\): void \{\s*this\.drain\(true\)\s*this\.beginSegment\(next\)\s*\}/)
+  assert.match(clientSource, /private advanceSegment\(next: LiveSpeechCursor\): void \{\s*this\.drain\(true\)\s*this\.beginSegment\(next, true\)\s*\}/)
   assert.match(clientSource, /const previous = finalLiveMessage\(session, active\.current\.turn, active\.current\.step\)/)
+  assert.match(clientSource, /private messageId: string \| null = null/)
 })
 
 test('client output registers the message action and plugin settings card', () => {
@@ -205,7 +237,7 @@ test('client output registers the message action and plugin settings card', () =
   assert.match(clientSource, /session\.partial/)
   assert.match(client, /TTS_STREAM_ROUTE/)
   assert.match(client, /new AudioContext\(\)/)
-  assert.match(client, /live\.cancel\(\)/)
+  assert.match(clientSource, /live\.cancelSession\(sessionId\)/)
   assert.doesNotMatch(clientSource, /!session\.running&&partial!==null\)\{live\.cancelSession\(sessionId\)/)
   assert.match(client, /prepareTtsText/)
   assert.match(client, /settingsSnapshot\.value\?\.enabled !== true/)
@@ -255,7 +287,9 @@ test('automatic playback only consumes the latest message from a live run once',
 test('PCM playback shares the message action state and custom voice design falls back to completed-message autoplay', () => {
   assert.match(client, /live\.setStateChangeListener/)
   assert.match(client, /updateLivePlayback/)
-  assert.match(clientSource, /live\.toggle\(sessionId, messageId\)/)
+  assert.match(clientSource, /live\.stop\(sessionId\)/)
+  assert.match(clientSource, /source === 'live'/)
+  assert.match(clientSource, /disabled=\{status === 'loading' && !liveActive\}/)
   assert.match(client, /resolvedSettings\.model !== ["']mimo-v2\.5-tts["']/)
 })
 
@@ -272,7 +306,7 @@ test('switching sessions resets every playback path and ignores a run re-entered
   assert.match(clientSource, /playback\.deactivateSession\(sessionId\)/)
   assert.match(clientSource, /playback\.cancelPlayback\(sessionId\)/)
   assert.match(clientSource, /generation !== this\.generation \|\| this\.activeSessionId !== sessionId \|\| this\.current\?\.audio !== audio/)
-  assert.match(clientSource, /publish\(\{ sessionId: null, messageId: null, status: 'idle', error: null \}\)/)
+  assert.match(clientSource, /source: null, status: 'idle'/)
 })
 
 test('a new live run cancels the previous PCM generation before its late chunks can be queued', () => {
@@ -281,4 +315,15 @@ test('a new live run cancels the previous PCM generation before its late chunks 
   assert.match(client, /isCurrentStream\(generation, signal\)/)
   assert.match(client, /beganRun/)
   assert.match(client, /revision !== this\.revision/)
+})
+
+test('live playback has one stable status window and a terminal stop/error path', () => {
+  assert.match(clientSource, /onPlaybackStart: \(\) => this\.setStatus\('playing'\)/)
+  assert.match(clientSource, /private maybeFinishPlayback\(\): void/)
+  assert.match(clientSource, /if \(!this\.requestBusy && !this\.audioBusy && \(this\.status === 'loading' \|\| this\.status === 'playing'\)\)/)
+  assert.match(clientSource, /private blockedTurn: string \| null = null/)
+  assert.match(clientSource, /this\.blockedTurn === turnKey/)
+  assert.match(clientSource, /private handleStreamError\(error: unknown\): void/)
+  assert.match(clientSource, /private releaseCurrentAudio\(audio: HTMLAudioElement\): void/)
+  assert.match(clientSource, /this\.audio\.stop\(\)/)
 })

@@ -6,6 +6,8 @@ declare const zh: {
     readonly 'action.pause': "暂停朗读";
     readonly 'action.resume': "继续朗读";
     readonly 'action.loading': "正在生成语音";
+    readonly 'action.cancel': "取消语音生成";
+    readonly 'action.stop': "停止朗读";
     readonly 'action.retry': "重新生成语音";
     readonly 'error.noText': "这条回复没有可朗读的正文。";
     readonly 'error.request': "语音生成失败。";

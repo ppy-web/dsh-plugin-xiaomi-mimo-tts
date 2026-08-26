@@ -46,11 +46,13 @@ const TTS_PUNCTUATION: Record<string, string> = {
   '？': '?',
   '；': ';',
   '、': ',',
+  '（': ',',
+  '）': ',',
   '　': ' ',
 }
 
 /** Decorative punctuation can make TTS emit non-speech artifacts, so omit it entirely. */
-const TTS_NON_SPEECH_PUNCTUATION = /[()（）\[\]【】［］〔〕〖〗{}｛｝「」『』《》〈〉“”‘’"'`<>：:…—–－～]/gu
+const TTS_NON_SPEECH_PUNCTUATION = /[()\[\]【】［］〔〕〖〗{}｛｝「」『』《》〈〉“”‘’"'`<>：…—–－～]/gu
 
 const TTS_URL_PATTERN = /\b(?:https?|ftp):\/\/[^\s<>()]+|\bwww\.[^\s<>()]+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|cn|net|org|io|ai|dev|me|co|edu|gov|xyz|tech|info|app|site|link)(?:[/:?#][^\s<>()]*)?/giu
 const TTS_WINDOWS_PATH_PATTERN = /(?:\b[A-Za-z]:[\\/]|\\\\)(?:[A-Za-z0-9._ -]+[\\/])*(?:[A-Za-z0-9._ -]+)/gu
@@ -93,7 +95,7 @@ function removeTtsSymbols(value: string): string {
 function normalizeTtsPunctuation(value: string): string {
   return value
     .replace(TTS_NON_SPEECH_PUNCTUATION, '')
-    .replace(/[，。！？；、　]/gu, (character) => TTS_PUNCTUATION[character] ?? character)
+    .replace(/[，。！？；、（）　]/gu, (character) => TTS_PUNCTUATION[character] ?? character)
     .replace(/(^|\s)[,;:!?]+(?=\s|$)/g, '$1')
     .replace(/([,;:])\s*([.!?])/g, '$2')
     .replace(/\s+([,.;:!?])/g, '$1')
@@ -174,15 +176,25 @@ export function classifyLiveSpeechTransition(current: LiveSpeechCursor | null, n
 }
 
 /** Serializes sentence requests and makes cancellation independent from the playback backend. */
+export interface AbortableSentenceQueueOptions {
+  onBusyChange?: (busy: boolean) => void
+  onError?: (error: unknown) => void
+}
+
 export class AbortableSentenceQueue {
   private readonly pending: string[] = []
   private current: AbortController | null = null
   private revision = 0
+  private busy = false
 
-  constructor(private readonly start: (sentence: string, signal: AbortSignal) => Promise<void>) {}
+  constructor(
+    private readonly start: (sentence: string, signal: AbortSignal) => Promise<void>,
+    private readonly options: AbortableSentenceQueueOptions = {},
+  ) {}
 
   enqueue(sentence: string): void {
     this.pending.push(sentence)
+    this.setBusy(true)
     void this.pump()
   }
 
@@ -191,23 +203,42 @@ export class AbortableSentenceQueue {
     this.pending.length = 0
     this.current?.abort()
     this.current = null
+    this.setBusy(false)
   }
 
   private async pump(): Promise<void> {
     if (this.current !== null) return
     const sentence = this.pending.shift()
-    if (sentence === undefined) return
+    if (sentence === undefined) {
+      this.setBusy(false)
+      return
+    }
     const revision = this.revision
     const controller = new AbortController()
     this.current = controller
     try {
       await this.start(sentence, controller.signal)
     } catch (error) {
-      if (!controller.signal.aborted) throw error
+      if (!controller.signal.aborted && revision === this.revision) {
+        this.pending.length = 0
+        this.revision += 1
+        this.options.onError?.(error)
+      }
     } finally {
       if (this.current === controller) this.current = null
-      if (revision === this.revision) void this.pump()
+      if (revision === this.revision) {
+        if (this.pending.length > 0) void this.pump()
+        else this.setBusy(false)
+      } else {
+        this.setBusy(false)
+      }
     }
+  }
+
+  private setBusy(busy: boolean): void {
+    if (this.busy === busy) return
+    this.busy = busy
+    this.options.onBusyChange?.(busy)
   }
 }
 
