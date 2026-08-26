@@ -1,16 +1,21 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { readFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, prepareTtsText, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, prepareTtsText, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
   ? `dsh-xiaomi-tts/${packageJson.version}`
   : 'dsh-xiaomi-tts'
+const PACKAGE_NAME = 'dsh-xiaomi-tts'
+const WEB_PROFILE_NAME = 'web'
 
 /** Cordis plugin identifier. */
 export const name = 'xiaomi-mimo-tts'
@@ -103,9 +108,93 @@ function apiErrorMessage(status: number, parsed: XiaomiAudioResponse | undefined
     : `Xiaomi MiMo TTS request failed (HTTP ${status})`
 }
 
+interface ProfileManifest {
+  dependencies?: Record<string, string>
+}
+
+interface CommandResult {
+  ok: boolean
+  output: string
+  error?: string
+}
+
+function webProfileDirectory(): string {
+  const dshHome = process.env.DSH_HOME?.trim() || join(homedir(), '.dsh')
+  return join(dshHome, 'profiles', WEB_PROFILE_NAME)
+}
+
+function readWebProfileManifest(): ProfileManifest | undefined {
+  const path = join(webProfileDirectory(), 'package.json')
+  if (!existsSync(path)) return undefined
+  try {
+    const source = readFileSync(path, 'utf8').replace(/^\uFEFF/u, '')
+    return JSON.parse(source) as ProfileManifest
+  } catch {
+    return undefined
+  }
+}
+
+function resolveDshCommand(): { command: string; args: string[] } | undefined {
+  const entry = process.argv[1]
+  if (typeof entry === 'string' && /[\\/]node_modules[\\/]@deepseek-ai[\\/]dsh[\\/]lib[\\/]bin\.js$/iu.test(entry)) {
+    return { command: process.execPath, args: [entry] }
+  }
+
+  const executable = process.execPath.split(/[\\/]/u).at(-1) ?? ''
+  if (/^dsh(?:\.exe)?$/iu.test(executable)) return { command: process.execPath, args: [] }
+  return undefined
+}
+
+function uninstallFromWebProfile(): Promise<CommandResult> {
+  const manifest = readWebProfileManifest()
+  if (manifest === undefined) {
+    return Promise.resolve({ ok: false, output: '', error: 'DSH Web profile manifest was not found or could not be read.' })
+  }
+  if (!Object.hasOwn(manifest.dependencies ?? {}, PACKAGE_NAME)) {
+    return Promise.resolve({ ok: false, output: '', error: `${PACKAGE_NAME} is not installed as a Web profile dependency.` })
+  }
+
+  const dsh = resolveDshCommand()
+  if (dsh === undefined) {
+    return Promise.resolve({ ok: false, output: '', error: 'Could not resolve the running DSH executable.' })
+  }
+
+  return new Promise((resolve) => {
+    const child = spawn(dsh.command, [
+      ...dsh.args,
+      'plugin',
+      '--profile',
+      WEB_PROFILE_NAME,
+      'remove',
+      PACKAGE_NAME,
+    ], {
+      cwd: webProfileDirectory(),
+      env: { ...process.env, CI: 'true' },
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let output = ''
+    child.stdout?.setEncoding('utf8')
+    child.stderr?.setEncoding('utf8')
+    child.stdout?.on('data', (chunk: string) => { output += chunk })
+    child.stderr?.on('data', (chunk: string) => { output += chunk })
+    child.once('error', (error) => {
+      resolve({ ok: false, output: output.trim(), error: error.message })
+    })
+    child.once('close', (code) => {
+      resolve({
+        ok: code === 0,
+        output: output.trim(),
+        ...(code === 0 ? {} : { error: `DSH plugin removal exited with code ${String(code)}.` }),
+      })
+    })
+  })
+}
+
 /** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
   let current = () => config
+  let uninstalling: Promise<CommandResult> | undefined
 
   const voicePresetAssets = new Map(TTS_VOICE_DESIGN_PRESETS.map((preset) => {
     const path = `${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`
@@ -130,6 +219,45 @@ export function apply(ctx: Context, config: Config): void {
       }
     },
   })
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: TTS_UNINSTALL_ROUTE,
+    async handler(req, res) {
+      if (req.method !== 'POST') {
+        res.setHeader('allow', 'POST')
+        json(res, 405, { ok: false, error: 'method-not-allowed' })
+        return
+      }
+
+      const fetchSite = req.headers['sec-fetch-site']
+      if (fetchSite !== undefined && fetchSite !== 'same-origin') {
+        json(res, 403, { ok: false, error: 'same-origin-required' })
+        return
+      }
+      const contentType = req.headers['content-type'] ?? ''
+      if (!contentType.toLowerCase().startsWith('application/json')) {
+        json(res, 415, { ok: false, error: 'application-json-required' })
+        return
+      }
+
+      try {
+        await readJsonBody(req, 1024)
+      } catch {
+        json(res, 400, { ok: false, error: 'invalid-json' })
+        return
+      }
+
+      uninstalling ??= uninstallFromWebProfile()
+      const result = await uninstalling
+      if (!result.ok) uninstalling = undefined
+      json(res, result.ok ? 200 : 500, {
+        ok: result.ok,
+        requiresRestart: result.ok,
+        ...(result.error === undefined ? {} : { error: result.error }),
+      })
+    },
+  }), 'xiaomi-mimo-tts: self-uninstall route')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',

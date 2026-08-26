@@ -4,6 +4,7 @@ import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
 import {
   TTS_MODELS,
+  TTS_UNINSTALL_ROUTE,
   TTS_VOICES,
   resolveTtsSettings,
 } from '../shared.js'
@@ -79,6 +80,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
   const [format, setFormat] = useState<TtsFormat>(initial.format)
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
   const [open, setOpen] = useState(false)
 
   const accepted = resolveTtsSettings(value)
@@ -177,6 +179,22 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     }
   }
 
+  const uninstall = async (): Promise<void> => {
+    setUninstallState('uninstalling')
+    try {
+      const response = await fetch(TTS_UNINSTALL_ROUTE, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      })
+      const result = await response.json() as { ok?: unknown }
+      if (!response.ok || result.ok !== true) throw new Error('plugin-uninstall-failed')
+      setUninstallState('uninstalled')
+    } catch {
+      setUninstallState('failed')
+    }
+  }
+
   return (
     <li className={open ? 'xmimo-tts-card xmimo-tts-card-open' : 'xmimo-tts-card'}>
       <button
@@ -226,6 +244,9 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
         </div>
         <div className="xmimo-tts-switch-row xmimo-tts-wide">
           <label className="xmimo-tts-checkbox-row">
+            <span className="xmimo-tts-switch-copy">
+              <SettingFieldHeading label={t('settings.enabled')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('enabled') }} />
+            </span>
             <input
               type="checkbox"
               checked={enabled}
@@ -240,12 +261,12 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
                 setState('idle')
               }}
             />
-            <span>
-              <SettingFieldHeading label={t('settings.enabled')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('enabled') }} />
-              <small>{t('settings.enabledHint')}</small>
-            </span>
+            <span className="xmimo-tts-switch-control" aria-hidden="true" />
           </label>
           <label className="xmimo-tts-checkbox-row">
+            <span className="xmimo-tts-switch-copy">
+              <SettingFieldHeading label={t('settings.autoPlay')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('autoPlay') }} />
+            </span>
             <input
               type="checkbox"
               checked={enabled && autoPlay}
@@ -260,10 +281,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
                 setState('idle')
               }}
             />
-            <span>
-              <SettingFieldHeading label={t('settings.autoPlay')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('autoPlay') }} />
-              <small>{t('settings.autoPlayHint')}</small>
-            </span>
+            <span className="xmimo-tts-switch-control" aria-hidden="true" />
           </label>
         </div>
         <div className="xmimo-tts-model xmimo-tts-wide">
@@ -320,7 +338,37 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
         </div>
         </div>
         <div className="xmimo-tts-card-actions">
+          {uninstallState === 'confirming'
+            ? (
+              <span className="xmimo-tts-uninstall-confirmation">
+                <span>{t('settings.uninstallQuestion')}</span>
+                <span className="xmimo-tts-uninstall-choice">
+                  <button type="button" onClick={() => { void uninstall() }}>{t('settings.uninstallConfirm')}</button>
+                  <button type="button" onClick={() => { setUninstallState('idle') }}>{t('settings.uninstallCancel')}</button>
+                </span>
+              </span>
+              )
+            : (
+              <button
+                type="button"
+                className="xmimo-tts-uninstall"
+                disabled={uninstallState === 'uninstalling' || uninstallState === 'uninstalled'}
+                onClick={() => { setUninstallState('confirming') }}
+              >
+                {uninstallState === 'uninstalling' ? t('settings.uninstalling') : t('settings.uninstall')}
+              </button>
+              )}
+          <a
+            className="xmimo-tts-star"
+            href="https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t('settings.star')}
+          </a>
           {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
+          {uninstallState === 'uninstalled' ? <span role="status">{t('settings.uninstalled')}</span> : null}
+          {uninstallState === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.uninstallFailed')}</span> : null}
           {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
           {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}
           <button type="button" className="xmimo-tts-discard" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={discard}>
