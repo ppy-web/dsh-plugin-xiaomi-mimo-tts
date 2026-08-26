@@ -13,7 +13,8 @@ const { batchTtsStreamText, countTtsSpeechCharacters, MIN_TTS_STREAM_CHARACTERS,
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
-  assert.equal(packageJson.scripts.prepare, undefined)
+  assert.equal(packageJson.scripts.prepare, 'pnpm run build')
+  assert.equal(packageJson.scripts.prepack, 'pnpm run build')
   assert.equal(packageJson.scripts.prepublishOnly, undefined)
   assert.equal(packageJson.scripts['release:check'], 'pnpm run test')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')

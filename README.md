@@ -113,6 +113,8 @@ pnpm test
 pnpm pack:check
 ```
 
+`lib/` 是构建产物，不纳入日常代码提交。提交功能时只更新源码和测试；升级版本并执行 `pnpm pack` 或 `pnpm publish` 时，`prepack` 会自动重新生成发布包。直接从 GitHub 安装时，`prepare` 会在安装阶段构建该产物。
+
 ## 许可证
 
 MIT
