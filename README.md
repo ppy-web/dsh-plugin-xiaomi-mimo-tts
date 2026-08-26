@@ -71,14 +71,14 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.3.0
 
 ## 配置
 
-可用内置音色（`mimo-v2.5-tts`）：
+**内置音色（`mimo-v2.5-tts`）**：
 
 - 中文女声：`冰糖`、`茉莉`
 - 中文男声：`苏打`、`白桦`
 - 英文女声：`Mia`、`Chloe`
 - 英文男声：`Milo`、`Dean`
 
-自定义音色（`mimo-v2.5-tts-voicedesign`）
+**自定义音色（`mimo-v2.5-tts-voicedesign`）**
 
 为你提供了常用音色描述模板；下拉框默认选择“自定义”，用户可以直接修改并保存描述。切换到其他模板后再切回“自定义”时，会恢复之前保存的自定义内容。
 
@@ -103,6 +103,72 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.3.0
 ## 反馈与支持
 
 欢迎通过 [GitHub Issues](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/issues) 提交问题反馈、功能建议或使用体验。
+
+## 架构
+
+- `src/index.ts`：Host 入口，注册 Schemastery 设置、Voice Design 静态资源，以及完整音频和 PCM/SSE 流式合成路由。
+- `src/shared.ts`：Host 与 Client 共用的领域契约，包括配置类型、默认值、文本清洗、分句、流式批处理和 SSE 解析。
+- `src/client/index.tsx`：Web Client 组合入口，只负责绑定 DSH 服务、注册 Slot、注入样式和托管控制器生命周期。
+- `src/client/conversation.tsx`：React 会话适配层，订阅 DSH 会话快照并渲染朗读操作。
+- `src/client/settings-card.tsx` 与 `voice-design-picker.tsx`：插件设置表单和 Voice Design 音色选择 UI。
+- `src/client/live-speech-controller.ts`、`pcm-audio-queue.ts` 与 `playback-controller.ts`：分别管理实时朗读状态机、Web Audio PCM 调度和完整音频播放。
+- `src/client/settings-scope.ts`：使用 `useSyncExternalStore` 将 DSH Settings Scope 安全接入 React。
+
+```mermaid
+flowchart TD
+    DSH["DeepSeek Harness"]
+
+    subgraph Host["Host 插件"]
+        HI["src/index.ts<br/>设置与路由注册"]
+        SETTINGS["DSH Settings"]
+        ROUTES["完整音频 / PCM SSE 路由"]
+        ASSETS["Voice Design 静态资源"]
+    end
+
+    subgraph Shared["共享领域层"]
+        SH["src/shared.ts<br/>配置、文本处理、分句与 SSE"]
+    end
+
+    subgraph Client["Web Client"]
+        ENTRY["client/index.tsx<br/>组合入口"]
+        LOCALE["localization.ts"]
+        STYLE["styles.ts"]
+        SCOPE["settings-scope.ts<br/>useSyncExternalStore"]
+        FORM["settings-card.tsx"]
+        PICKER["voice-design-picker.tsx"]
+        CONV["conversation.tsx<br/>会话观察与朗读按钮"]
+
+        subgraph Audio["音频运行时"]
+            LIVE["live-speech-controller.ts<br/>流式语音状态机"]
+            PCM["pcm-audio-queue.ts<br/>Web Audio PCM 调度"]
+            COMPLETE["playback-controller.ts<br/>完整音频播放"]
+        end
+    end
+
+    API["Xiaomi MiMo API"]
+
+    DSH --> HI
+    DSH --> ENTRY
+    SH --> HI
+    SH --> SCOPE
+    SH --> CONV
+    SH --> LIVE
+    HI --> SETTINGS
+    HI --> ROUTES
+    HI --> ASSETS
+    ROUTES --> API
+    ENTRY --> LOCALE
+    ENTRY --> STYLE
+    ENTRY --> SCOPE
+    ENTRY --> FORM
+    ENTRY --> CONV
+    FORM --> PICKER
+    CONV --> LIVE
+    CONV --> COMPLETE
+    LIVE --> PCM
+    LIVE --> ROUTES
+    COMPLETE --> ROUTES
+```
 
 ## 开发
 

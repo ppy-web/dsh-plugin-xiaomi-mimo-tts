@@ -6,7 +6,10 @@ const packageJson = JSON.parse(await readFile(new URL('../package.json', import.
 const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
 const host = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
 const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
-const clientSource = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
+const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.url)))
+  .filter((name) => /\.(?:ts|tsx)$/.test(name))
+  .sort()
+const clientSource = (await Promise.all(clientSourceFiles.map((name) => readFile(new URL(`../src/client/${name}`, import.meta.url), 'utf8')))).join('\n')
 const sharedModule = await import('../lib/shared.js')
 const { batchTtsStreamText, countTtsSpeechCharacters, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsSettings } = sharedModule
 
@@ -68,9 +71,23 @@ test('ships one optimized icon for every Voice Design preset', async () => {
   assert.deepEqual(iconFiles, sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => `${item.id}.webp`).sort())
 })
 
-test('build emits only declarations under the private client directory', async () => {
+test('build emits declarations only for the private client modules', async () => {
   const clientArtifacts = (await readdir(new URL('../lib/client', import.meta.url))).sort()
-  assert.deepEqual(clientArtifacts, ['index.d.ts', 'index.d.ts.map'])
+  assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map')))
+  assert.deepEqual(
+    clientArtifacts.filter((name) => name.endsWith('.d.ts')),
+    ['conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'voice-design-picker.d.ts'],
+  )
+})
+
+test('keeps the client entry focused on DSH composition', async () => {
+  const entry = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
+  assert.ok(entry.split(/\r?\n/).length < 150)
+  assert.match(entry, /from '\.\/playback\.js'/)
+  assert.match(entry, /from '\.\/conversation\.js'/)
+  assert.match(entry, /from '\.\/settings-card\.js'/)
+  assert.doesNotMatch(entry, /class PcmAudioQueue/)
+  assert.doesNotMatch(entry, /function SettingsCard/)
 })
 
 test('resolved settings disable automatic playback when the plugin is disabled', () => {
