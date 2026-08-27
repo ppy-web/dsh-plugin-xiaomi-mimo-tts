@@ -321,13 +321,13 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
           />
           <small>{t('settings.voiceDesignPromptHint')}</small>
         </div> : null}
-        <div className={model === 'mimo-v2.5-tts' ? 'xmimo-tts-select-column xmimo-tts-wide' : 'xmimo-tts-select-column'}>
-          {model === 'mimo-v2.5-tts' ? <div>
+        {model === 'mimo-v2.5-tts' ? <div className="xmimo-tts-select-column xmimo-tts-wide">
+          <div>
             <SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('voice') }} />
             <select value={voice} disabled={!snapshot.writable} onChange={(event) => { setVoice(event.target.value); markChange('voice') }}>
               {TTS_VOICES.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
-          </div> : null}
+          </div>
           <div>
             <SettingFieldHeading label={t('settings.format')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('format') }} />
             <select value={format} disabled={!snapshot.writable} onChange={(event) => { setFormat(event.target.value as 'mp3' | 'wav'); markChange('format') }}>
@@ -335,7 +335,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
               <option value="wav">WAV</option>
             </select>
           </div>
-        </div>
+        </div> : null}
         </div>
         <div className="xmimo-tts-card-actions">
           {uninstallState === 'confirming'

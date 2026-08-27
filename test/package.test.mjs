@@ -113,7 +113,7 @@ test('resolves the Voice Design settings without exposing a preset voice in the 
   assert.doesNotMatch(client, /settings\.instruction/)
   assert.doesNotMatch(client, /xmimo-tts-instruction/)
   assert.match(client, /xmimo-tts-model xmimo-tts-wide/)
-  assert.match(client, /model === ["']mimo-v2\.5-tts["'] \? ["']xmimo-tts-select-column xmimo-tts-wide["']/)
+  assert.match(clientSource, /model === 'mimo-v2\.5-tts' \? <div className="xmimo-tts-select-column xmimo-tts-wide">/)
   assert.match(client, /CUSTOM_VOICE_DESIGN_OPTION = ["']__custom__["']/)
   assert.match(clientSource, /function VoiceDesignPresetPicker/)
   assert.match(clientSource, /aria-haspopup="listbox"/)
