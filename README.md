@@ -56,7 +56,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 更新或从本地开发版切换到 npm 版时，必须先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 2.3.1
+.\start\dsh-plugin-reinstall.bat 2.3.2
 ```
 
 这个脚本会按顺序停止 DSH Web、卸载当前 profile 中的插件、从 npm 安装指定版本并重新启动 DSH Web。若手动操作，请保持相同顺序：
@@ -64,7 +64,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@2.3.1
+dsh plugin --profile web add dsh-xiaomi-tts@2.3.2
 .\start\dsh-web-start.bat
 ```
 

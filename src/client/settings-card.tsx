@@ -6,6 +6,8 @@ import {
   TTS_MODELS,
   TTS_API_KEY_STATUS_ROUTE,
   TTS_UNINSTALL_ROUTE,
+  TTS_UPDATE_ROUTE,
+  TTS_VERSION,
   TTS_VOICES,
   isSupportedTtsApiKey,
   resolveTtsSettings,
@@ -32,6 +34,12 @@ type ResolvedSettings = ReturnType<typeof resolveTtsSettings>
 type DraftSettings = Pick<ResolvedSettings, EditableSettingField>
 
 const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'model', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format']
+const RELEASES_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/releases'
+
+function hostRoute(path: string): string {
+  const relative = path.replace(/^\/+/, '')
+  return typeof document === 'undefined' ? `/${relative}` : new URL(relative, document.baseURI).pathname
+}
 
 
 function layerSettings(value: unknown): TtsSettings | undefined {
@@ -85,6 +93,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
   const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
   const [open, setOpen] = useState(false)
   const [apiKeyStatus, setApiKeyStatus] = useState<'loading' | 'missing' | 'supported' | 'unsupported'>('loading')
+  const [latestVersion, setLatestVersion] = useState<string | null>(null)
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
@@ -140,6 +149,22 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
       })
     return () => { active = false }
   }, [snapshot.status, value])
+
+  useEffect(() => {
+    if (!open) return
+    let active = true
+    void fetch(hostRoute(TTS_UPDATE_ROUTE), { cache: 'no-store', headers: { accept: 'application/json' } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('version-check-failed')
+        return await response.json() as { latestVersion?: unknown; updateAvailable?: unknown }
+      })
+      .then((result) => {
+        if (!active) return
+        setLatestVersion(result.updateAvailable === true && typeof result.latestVersion === 'string' ? result.latestVersion : null)
+      })
+      .catch(() => { if (active) setLatestVersion(null) })
+    return () => { active = false }
+  }, [open])
 
   useEffect(() => {
     if (dirty) return
@@ -215,7 +240,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
   const uninstall = async (): Promise<void> => {
     setUninstallState('uninstalling')
     try {
-      const response = await fetch(TTS_UNINSTALL_ROUTE, {
+      const response = await fetch(hostRoute(TTS_UNINSTALL_ROUTE), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: '{}',
@@ -238,7 +263,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
         onClick={() => { setOpen((current) => !current) }}
       >
         <span className="xmimo-tts-card-head-text">
-          <span className="xmimo-tts-card-title">{t('settings.title')}</span>
+          <span className="xmimo-tts-card-title">{t('settings.title')} <small className="xmimo-tts-version">v{TTS_VERSION}</small></span>
           <span className="xmimo-tts-card-description">{t('settings.description')}</span>
         </span>
         {dirty ? <span className="xmimo-tts-pending" role="status">{t('settings.unsaved')}</span> : null}
@@ -370,6 +395,9 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
         </div> : null}
         </div>
         <div className="xmimo-tts-card-actions">
+          {uninstallState === 'idle' && latestVersion !== null
+            ? <a className="xmimo-tts-update" href={RELEASES_URL} target="_blank" rel="noopener noreferrer">{t('settings.updateAvailable')}</a>
+            : null}
           {uninstallState === 'confirming'
             ? (
               <span className="xmimo-tts-uninstall-confirmation">
@@ -396,7 +424,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
             target="_blank"
             rel="noopener noreferrer"
           >
-            {t('settings.star')}
+            {t('settings.source')}
           </a>
           {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
           {uninstallState === 'uninstalled' ? <span role="status">{t('settings.uninstalled')}</span> : null}

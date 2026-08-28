@@ -11,20 +11,33 @@ const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.u
   .sort()
 const clientSource = (await Promise.all(clientSourceFiles.map((name) => readFile(new URL(`../src/client/${name}`, import.meta.url), 'utf8')))).join('\n')
 const sharedModule = await import('../lib/shared.js')
-const { batchTtsStreamText, countTtsSpeechCharacters, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, TOKEN_PLAN_TTS_BASE_URL } = sharedModule
+const { batchTtsStreamText, countTtsSpeechCharacters, isNewerTtsVersion, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
 
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
+  assert.equal(TTS_VERSION, packageJson.version)
   assert.equal(packageJson.scripts.prepare, 'pnpm run build')
   assert.equal(packageJson.scripts.prepack, 'pnpm run build')
   assert.equal(packageJson.scripts.prepublishOnly, undefined)
   assert.equal(packageJson.scripts['release:check'], 'pnpm run test')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
+  assert.equal(TTS_UPDATE_ROUTE, '/plugins/xiaomi-mimo-tts/update')
   assert.equal(packageJson.exports['./client'].default, './lib/client.js')
   assert.match(patch, /id: xiaomi-mimo-tts/)
   assert.match(patch, /name: 'dsh-xiaomi-tts'/)
+})
+
+test('only offers strictly newer stable or prerelease versions', () => {
+  assert.equal(isNewerTtsVersion('2.3.2', '2.3.1'), true)
+  assert.equal(isNewerTtsVersion('2.3.1', '2.3.1'), false)
+  assert.equal(isNewerTtsVersion('2.3.0', '2.3.1'), false)
+  assert.equal(isNewerTtsVersion('2.4.0-beta.1', '2.4.0-beta.0'), true)
+  assert.equal(isNewerTtsVersion('2.4.0-beta.1', '2.4.0-beta'), true)
+  assert.equal(isNewerTtsVersion('2.4.0-beta', '2.4.0-beta.1'), false)
+  assert.equal(isNewerTtsVersion('2.4.0', '2.4.0-beta.9'), true)
+  assert.equal(isNewerTtsVersion('latest', '2.3.1'), false)
 })
 
 test('host and shared artifacts contain protected TTS route and secret settings schema', () => {
@@ -64,7 +77,20 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.match(host, /TTS_STREAM_ROUTE/)
   assert.match(host, /TTS_UNINSTALL_ROUTE/)
   assert.match(host, /same-origin-required/)
+  assert.match(host, /json\(res, result\.ok \? 200 : 500/)
+  assert.match(host, /["']--lockfile-only["']/)
+  const uninstallHost = host.slice(host.indexOf('function scheduleProfileLinkCleanup'), host.indexOf('/** Register the TTS settings'))
+  assert.doesNotMatch(uninstallHost, /taskkill\.exe/)
   assert.match(host, /plugin["']?,\s*["']--profile["']?,\s*WEB_PROFILE_NAME,\s*["']remove["']?,\s*PACKAGE_NAME/s)
+  assert.doesNotMatch(client, /dsh-market\/uninstall/)
+  assert.match(client, /hostRoute\(TTS_UNINSTALL_ROUTE\)/)
+  assert.match(host, /process\.kill\(parentPid,\s*0\)/)
+  assert.match(host, /item\.isSymbolicLink\(\)/)
+  assert.match(host, /rmSync\(linkPath,\s*\{\s*force:\s*true\s*\}\)/)
+  assert.doesNotMatch(host, /updateWebProfile/)
+  assert.match(client, /✨查看源码/)
+  assert.match(client, /🎉新版已发布/)
+  assert.match(client, /dsh-plugin-xiaomi-mimo-tts\/releases/)
   assert.match(host, /presetStylePrompt/)
   assert.match(host, /mimo-v2\.5-tts-voicedesign"\s*\?\s*options\.voiceDesignPrompt\.trim\(\)\s*:/)
   assert.match(host, /format:\s*["']pcm16["']/)

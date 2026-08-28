@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, TTS_API_KEY_STATUS_ROUTE, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, TTS_API_KEY_STATUS_ROUTE, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -16,6 +16,7 @@ const USER_AGENT = typeof packageJson.version === 'string'
   : 'dsh-xiaomi-tts'
 const PACKAGE_NAME = 'dsh-xiaomi-tts'
 const WEB_PROFILE_NAME = 'web'
+const NPM_LATEST_URL = 'https://registry.npmjs.org/dsh-xiaomi-tts/latest'
 
 /** Cordis plugin identifier. */
 export const name = 'xiaomi-mimo-tts'
@@ -108,14 +109,15 @@ function apiErrorMessage(status: number, parsed: XiaomiAudioResponse | undefined
     : `Xiaomi MiMo TTS request failed (HTTP ${status})`
 }
 
-interface ProfileManifest {
-  dependencies?: Record<string, string>
-}
-
 interface CommandResult {
   ok: boolean
   output: string
   error?: string
+}
+
+interface ProfileManifest {
+  dependencies?: Record<string, string>
+  dsh?: { profile?: { bundles?: string[] } }
 }
 
 function webProfileDirectory(): string {
@@ -127,8 +129,7 @@ function readWebProfileManifest(): ProfileManifest | undefined {
   const path = join(webProfileDirectory(), 'package.json')
   if (!existsSync(path)) return undefined
   try {
-    const source = readFileSync(path, 'utf8').replace(/^\uFEFF/u, '')
-    return JSON.parse(source) as ProfileManifest
+    return JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/u, '')) as ProfileManifest
   } catch {
     return undefined
   }
@@ -145,21 +146,93 @@ function resolveDshCommand(): { command: string; args: string[] } | undefined {
   return undefined
 }
 
-function uninstallFromWebProfile(): Promise<CommandResult> {
+async function latestTtsVersion(): Promise<string | null> {
+  try {
+    const response = await fetch(NPM_LATEST_URL, {
+      headers: { accept: 'application/json', 'user-agent': USER_AGENT },
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!response.ok) return null
+    const body = await response.json() as { version?: unknown }
+    return typeof body.version === 'string' ? body.version : null
+  } catch {
+    return null
+  }
+}
+
+function scheduleProfileLinkCleanup(profileRoot: string): Promise<void> {
+  const cleanupScript = String.raw`
+const { lstatSync, rmSync } = require('node:fs')
+const { join } = require('node:path')
+const [parentPidSource, profileRoot, packageName] = process.argv.slice(1)
+const parentPid = Number(parentPidSource)
+const linkPath = join(profileRoot, 'node_modules', packageName)
+let cleanupAttempts = 0
+
+function cleanupLink() {
+  cleanupAttempts += 1
+  try {
+    const item = lstatSync(linkPath)
+    if (!item.isSymbolicLink()) process.exit(2)
+    rmSync(linkPath, { force: true })
+    process.exit(0)
+  } catch (error) {
+    if (error && error.code === 'ENOENT') process.exit(0)
+    if (cleanupAttempts >= 40) process.exit(1)
+    setTimeout(cleanupLink, 500)
+  }
+}
+
+function waitForParentExit() {
+  try {
+    process.kill(parentPid, 0)
+    setTimeout(waitForParentExit, 1000)
+  } catch {
+    cleanupLink()
+  }
+}
+
+waitForParentExit()
+`
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['-e', cleanupScript, String(process.pid), profileRoot, PACKAGE_NAME], {
+      cwd: profileRoot,
+      env: { ...process.env, CI: 'true' },
+      windowsHide: true,
+      detached: true,
+      stdio: 'ignore',
+    })
+    child.once('error', reject)
+    child.once('spawn', () => {
+      child.unref()
+      resolve()
+    })
+  })
+}
+
+async function uninstallFromWebProfile(): Promise<CommandResult> {
   const manifest = readWebProfileManifest()
   if (manifest === undefined) {
-    return Promise.resolve({ ok: false, output: '', error: 'DSH Web profile manifest was not found or could not be read.' })
+    return { ok: false, output: '', error: 'DSH Web profile manifest was not found or could not be read.' }
   }
-  if (!Object.hasOwn(manifest.dependencies ?? {}, PACKAGE_NAME)) {
-    return Promise.resolve({ ok: false, output: '', error: `${PACKAGE_NAME} is not installed as a Web profile dependency.` })
+  const installed = Object.hasOwn(manifest.dependencies ?? {}, PACKAGE_NAME)
+    || manifest.dsh?.profile?.bundles?.includes(PACKAGE_NAME) === true
+  if (!installed) {
+    try {
+      await scheduleProfileLinkCleanup(webProfileDirectory())
+      return { ok: true, output: 'The plugin was already removed from the Web profile; link cleanup is scheduled after this process exits.' }
+    } catch (error) {
+      return { ok: false, output: '', error: error instanceof Error ? error.message : String(error) }
+    }
   }
 
   const dsh = resolveDshCommand()
   if (dsh === undefined) {
-    return Promise.resolve({ ok: false, output: '', error: 'Could not resolve the running DSH executable.' })
+    return { ok: false, output: '', error: 'Could not resolve the running DSH executable.' }
   }
 
-  return new Promise((resolve) => {
+  const result = await new Promise<CommandResult>((resolve) => {
     const child = spawn(dsh.command, [
       ...dsh.args,
       'plugin',
@@ -167,6 +240,7 @@ function uninstallFromWebProfile(): Promise<CommandResult> {
       WEB_PROFILE_NAME,
       'remove',
       PACKAGE_NAME,
+      '--lockfile-only',
     ], {
       cwd: webProfileDirectory(),
       env: { ...process.env, CI: 'true' },
@@ -189,6 +263,21 @@ function uninstallFromWebProfile(): Promise<CommandResult> {
       })
     })
   })
+
+  if (!result.ok) return result
+  const updatedManifest = readWebProfileManifest()
+  if (updatedManifest === undefined
+    || Object.hasOwn(updatedManifest.dependencies ?? {}, PACKAGE_NAME)
+    || updatedManifest.dsh?.profile?.bundles?.includes(PACKAGE_NAME) === true) {
+    return { ok: false, output: result.output, error: 'DSH did not remove the plugin from the Web profile.' }
+  }
+
+  try {
+    await scheduleProfileLinkCleanup(webProfileDirectory())
+    return { ok: true, output: result.output }
+  } catch (error) {
+    return { ok: false, output: result.output, error: error instanceof Error ? error.message : String(error) }
+  }
 }
 
 /** Register the TTS settings and same-origin synthesis route. */
@@ -219,6 +308,20 @@ export function apply(ctx: Context, config: Config): void {
       }
     },
   })
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: TTS_UPDATE_ROUTE,
+    async handler(req, res) {
+      if (req.method !== 'GET') {
+        res.setHeader('allow', 'GET')
+        json(res, 405, { error: 'method-not-allowed' })
+        return
+      }
+      const latest = await latestTtsVersion()
+      json(res, 200, { currentVersion: TTS_VERSION, latestVersion: latest, updateAvailable: latest !== null && isNewerTtsVersion(latest, TTS_VERSION) })
+    },
+  }), 'xiaomi-mimo-tts: update status route')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
