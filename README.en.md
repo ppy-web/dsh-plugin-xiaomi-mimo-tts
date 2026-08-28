@@ -1,3 +1,5 @@
+![social](assets/social.png)
+
 # dsh-xiaomi-tts
 
 [![npm version](https://img.shields.io/npm/v/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)

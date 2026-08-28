@@ -1,3 +1,5 @@
+![social](assets/social.png)
+
 # dsh-xiaomi-tts
 
 [![npm version](https://img.shields.io/npm/v/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
@@ -92,7 +94,7 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.3.2
 
 浏览器可能阻止自动播放；遇到这种情况，请先尝试点击朗读按钮。
 
-### 朗读文本处理
+## 朗读文本处理
 
 朗读只使用清理后的正文，不会修改聊天记录中显示的助手回复。Markdown 链接会保留可读标题并删除链接地址；网址、文件路径、完整代码块、表情符号、图标、零宽字符和控制字符不会发送给 Xiaomi MiMo。括号、方括号、书名号、引号等非断句符号会删除；保留的断句标点会转换为 ASCII 英文标点。流式朗读会累计至少 20 个可朗读字符，回复结束时再发送不足 20 个字符的剩余内容。
 
