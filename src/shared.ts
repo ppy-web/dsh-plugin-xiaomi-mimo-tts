@@ -10,8 +10,14 @@ export const TTS_STREAM_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-stream'
 /** Same-origin route that removes this plugin from the DSH Web profile. */
 export const TTS_UNINSTALL_ROUTE = '/plugins/xiaomi-mimo-tts/uninstall'
 
+/** Same-origin route that reports API key configuration status without exposing the key. */
+export const TTS_API_KEY_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-status'
+
 /** Same-origin prefix used by the Web client to load voice-design preset icons. */
 export const TTS_VOICE_DESIGN_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-presets'
+
+/** Default Xiaomi endpoint for Token Plan API keys. */
+export const TOKEN_PLAN_TTS_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
 
 /** Supported built-in Xiaomi MiMo voices. */
 export const TTS_VOICES = ['冰糖', '茉莉', '苏打', '白桦', 'Mia', 'Chloe', 'Milo', 'Dean'] as const
@@ -292,6 +298,19 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   instruction: '请忠实朗读原文，根据文本语气自然表达，不添加或改写内容。',
   maxTextLength: 12000,
   requestTimeoutMs: 120000,
+}
+
+/** Select the Xiaomi endpoint from the API key while preserving custom settings for other keys. */
+export function resolveTtsBaseURL(apiKey: string, configuredBaseURL: string): string {
+  return apiKey.trim().startsWith('tp-')
+    ? TOKEN_PLAN_TTS_BASE_URL
+    : configuredBaseURL
+}
+
+/** Whether an API key selects one of the Xiaomi endpoints supported by this plugin. */
+export function isSupportedTtsApiKey(apiKey: string): boolean {
+  const normalized = apiKey.trim()
+  return normalized.startsWith('sk-') || normalized.startsWith('tp-')
 }
 
 /** Resolve an optional settings snapshot into the values used by the form. */

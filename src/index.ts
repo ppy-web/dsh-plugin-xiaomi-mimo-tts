@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, prepareTtsText, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, TTS_API_KEY_STATUS_ROUTE, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -222,6 +222,24 @@ export function apply(ctx: Context, config: Config): void {
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
+    path: TTS_API_KEY_STATUS_ROUTE,
+    handler(req, res) {
+      if (req.method !== 'GET') {
+        res.setHeader('allow', 'GET')
+        json(res, 405, { error: 'method-not-allowed' })
+        return
+      }
+
+      const apiKey = current().apiKey.trim()
+      json(res, 200, {
+        configured: apiKey.length > 0,
+        supported: apiKey.length > 0 && isSupportedTtsApiKey(apiKey),
+      })
+    },
+  }), 'xiaomi-mimo-tts: API key status route')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
     path: TTS_UNINSTALL_ROUTE,
     async handler(req, res) {
       if (req.method !== 'POST') {
@@ -332,7 +350,7 @@ export function apply(ctx: Context, config: Config): void {
       const timeout = setTimeout(() => controller.abort(), options.requestTimeoutMs)
 
       try {
-        const endpoint = `${normalizeBaseURL(options.baseURL)}/chat/completions`
+        const endpoint = `${normalizeBaseURL(resolveTtsBaseURL(options.apiKey, options.baseURL))}/chat/completions`
         const response = await fetch(endpoint, {
           method: 'POST',
           redirect: 'error',
@@ -461,7 +479,7 @@ export function apply(ctx: Context, config: Config): void {
       res.once('close', abortOnDisconnect)
 
       try {
-        const response = await fetch(`${normalizeBaseURL(options.baseURL)}/chat/completions`, {
+        const response = await fetch(`${normalizeBaseURL(resolveTtsBaseURL(options.apiKey, options.baseURL))}/chat/completions`, {
           method: 'POST',
           redirect: 'error',
           headers: {

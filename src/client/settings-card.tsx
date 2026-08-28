@@ -4,8 +4,10 @@ import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
 import {
   TTS_MODELS,
+  TTS_API_KEY_STATUS_ROUTE,
   TTS_UNINSTALL_ROUTE,
   TTS_VOICES,
+  isSupportedTtsApiKey,
   resolveTtsSettings,
 } from '../shared.js'
 import type { TtsFormat, TtsSettings } from '../shared.js'
@@ -82,6 +84,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
   const [open, setOpen] = useState(false)
+  const [apiKeyStatus, setApiKeyStatus] = useState<'loading' | 'missing' | 'supported' | 'unsupported'>('loading')
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
@@ -107,6 +110,36 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     ? hasOverride('apiKey')
     : changes.apiKey?.kind === 'set' && apiKey.trim().length > 0
   const dirty = EDITABLE_SETTING_FIELDS.some(fieldDirty) || apiKeyDirty === true
+  const enteredApiKey = apiKey.trim()
+  const apiKeyWarning = enteredApiKey.length > 0
+    ? !isSupportedTtsApiKey(enteredApiKey)
+    : apiKeyStatus === 'missing' || apiKeyStatus === 'unsupported'
+  const apiKeyMessage = enteredApiKey.length > 0
+    ? isSupportedTtsApiKey(enteredApiKey) ? t('settings.apiKeyStatus') : t('settings.apiKeyUnsupported')
+    : apiKeyStatus === 'missing'
+      ? t('settings.apiKeyMissing')
+      : apiKeyStatus === 'unsupported'
+        ? t('settings.apiKeyUnsupported')
+        : t('settings.apiKeyStatus')
+
+  useEffect(() => {
+    if (snapshot.status === 'unavailable') return
+    let active = true
+    setApiKeyStatus('loading')
+    void fetch(TTS_API_KEY_STATUS_ROUTE, { headers: { accept: 'application/json' } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('api-key-status-failed')
+        return await response.json() as { configured?: unknown; supported?: unknown }
+      })
+      .then((status) => {
+        if (!active) return
+        setApiKeyStatus(status.configured !== true ? 'missing' : status.supported === true ? 'supported' : 'unsupported')
+      })
+      .catch(() => {
+        if (active) setApiKeyStatus('missing')
+      })
+    return () => { active = false }
+  }, [snapshot.status, value])
 
   useEffect(() => {
     if (dirty) return
@@ -237,10 +270,9 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
             disabled={!snapshot.writable}
             onChange={(event) => { setApiKey(event.target.value); markChange('apiKey') }}
           />
-          <span className="xmimo-tts-api-key-hints">
-            <small>{t('settings.apiKeyStatus')}</small>
-            <small>{t('settings.apiKeyHint')}</small>
-          </span>
+          <small className={apiKeyWarning ? 'xmimo-tts-api-key-warning' : undefined} role={apiKeyWarning ? 'alert' : undefined}>
+            {apiKeyMessage}
+          </small>
         </div>
         <div className="xmimo-tts-switch-row xmimo-tts-wide">
           <label className="xmimo-tts-checkbox-row">

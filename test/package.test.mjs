@@ -11,7 +11,7 @@ const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.u
   .sort()
 const clientSource = (await Promise.all(clientSourceFiles.map((name) => readFile(new URL(`../src/client/${name}`, import.meta.url), 'utf8')))).join('\n')
 const sharedModule = await import('../lib/shared.js')
-const { batchTtsStreamText, countTtsSpeechCharacters, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsSettings } = sharedModule
+const { batchTtsStreamText, countTtsSpeechCharacters, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, TOKEN_PLAN_TTS_BASE_URL } = sharedModule
 
 
 test('package declares DSH bundle and Web client entries', () => {
@@ -31,6 +31,7 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.TTS_ROUTE, '/plugins/xiaomi-mimo-tts/synthesize')
   assert.equal(sharedModule.TTS_STREAM_ROUTE, '/plugins/xiaomi-mimo-tts/synthesize-stream')
   assert.equal(sharedModule.TTS_UNINSTALL_ROUTE, '/plugins/xiaomi-mimo-tts/uninstall')
+  assert.equal(sharedModule.TTS_API_KEY_STATUS_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-status')
   assert.equal(sharedModule.TTS_VOICE_DESIGN_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-presets')
   assert.deepEqual(sharedModule.TTS_MODELS, ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign'])
   assert.equal(sharedModule.TTS_VOICE_DESIGN_PRESETS.length, 9)
@@ -46,6 +47,7 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.match(sharedModule.DEFAULT_TTS_SETTINGS.presetStylePrompt, /清晰、自然、准确/)
   assert.match(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt, /青年女性/)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt)
+  assert.equal(TOKEN_PLAN_TTS_BASE_URL, 'https://token-plan-cn.xiaomimimo.com/v1')
   assert.match(host, /TTS_ROUTE/)
   assert.match(host, /prepareTtsText/)
   assert.match(host, /role\(['"]secret['"]\)/)
@@ -55,6 +57,8 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.match(host, /audio: options\.model ===/)
   assert.match(host, /format: options\.format/)
   assert.match(host, /chat\/completions/)
+  assert.match(host, /resolveTtsBaseURL\(options\.apiKey, options\.baseURL\)/)
+  assert.match(host, /TTS_API_KEY_STATUS_ROUTE/)
   assert.doesNotMatch(host, /dsh-xiaomi-tts\/1\.1\.1/)
   assert.match(host, /createRequire/)
   assert.match(host, /TTS_STREAM_ROUTE/)
@@ -68,6 +72,13 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.match(host, /req\.once\(['"]aborted['"]/)
   assert.match(host, /voice preset assets/)
   assert.match(host, /image\/webp/)
+})
+
+test('selects the Token Plan endpoint from tp-prefixed API keys', () => {
+  assert.equal(resolveTtsBaseURL('tp-example', 'https://api.xiaomimimo.com/v1'), TOKEN_PLAN_TTS_BASE_URL)
+  assert.equal(resolveTtsBaseURL('  tp-example  ', 'https://api.xiaomimimo.com/v1'), TOKEN_PLAN_TTS_BASE_URL)
+  assert.equal(resolveTtsBaseURL('sk-example', 'https://api.xiaomimimo.com/v1'), 'https://api.xiaomimimo.com/v1')
+  assert.equal(resolveTtsBaseURL('custom-example', 'https://custom.example/v1'), 'https://custom.example/v1')
 })
 
 test('ships one optimized icon for every Voice Design preset', async () => {
@@ -267,7 +278,14 @@ test('client output registers the message action and plugin settings card', () =
   assert.doesNotMatch(client, /Date\.now\(\) - this\.autoPlayArmedAt < 30000/)
   assert.match(clientSource, /playback\.toggle\(sessionId, messageId, text, true\)/)
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
-  assert.match(client, /xmimo-tts-api-key-hints/)
+  assert.doesNotMatch(client, /settings\.apiKeyHint/)
+  assert.match(clientSource, /const apiKeyMessage = enteredApiKey\.length > 0/)
+  assert.match(clientSource, /isSupportedTtsApiKey\(enteredApiKey\) \? t\('settings\.apiKeyStatus'\) : t\('settings\.apiKeyUnsupported'\)/)
+  assert.match(clientSource, /settings\.apiKeyMissing/)
+  assert.match(clientSource, /settings\.apiKeyUnsupported/)
+  assert.match(clientSource, /settings\.apiKeyStatus/)
+  assert.match(clientSource, /fetch\(TTS_API_KEY_STATUS_ROUTE/)
+  assert.match(clientSource, /apiKeyStatus === 'missing' \|\| apiKeyStatus === 'unsupported'/)
   assert.match(client, /platform\.xiaomimimo\.com\/console\/api-keys/)
   assert.match(client, /noopener noreferrer/)
   assert.match(client, /new-password/)
