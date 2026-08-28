@@ -1,5 +1,8 @@
 # dsh-xiaomi-tts
 
+[![npm version](https://img.shields.io/npm/v/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
+[![GitHub stars](https://img.shields.io/github/stars/ppy-web/dsh-plugin-xiaomi-mimo-tts.svg)](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts)
+
 <p><a href="README.md"><strong>中文说明 →</strong></a></p>
 
 Add Xiaomi MiMo TTS read-aloud playback to assistant replies in DeepSeek Harness Web.
