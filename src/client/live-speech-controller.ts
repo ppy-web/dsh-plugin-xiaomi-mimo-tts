@@ -14,13 +14,21 @@ import type { LiveMessageIdentity, PlaybackStatus } from './playback-types.js'
 
 function pcmDeltaFromSse(data: string): string | null {
   if (data === '[DONE]') return null
-  try {
-    const value = JSON.parse(data) as { choices?: Array<{ delta?: { audio?: { data?: unknown } } }> }
-    const pcm = value.choices?.[0]?.delta?.audio?.data
-    return typeof pcm === 'string' && pcm.length > 0 ? pcm : null
-  } catch {
-    return null
+  const value = JSON.parse(data) as {
+    choices?: Array<{ delta?: { audio?: { data?: unknown } } }>
+    error?: string | { message?: string }
   }
+  const upstreamError = typeof value.error === 'string' ? value.error : value.error?.message
+  if (upstreamError !== undefined) throw new Error(upstreamError)
+  const pcm = value.choices?.[0]?.delta?.audio?.data
+  return typeof pcm === 'string' && pcm.length > 0 ? pcm : null
+}
+
+interface CompletedStreamPlayback {
+  sessionId: string
+  messageId: string
+  audioStarted: boolean
+  fallback: () => void
 }
 
 export class LiveSpeechController {
@@ -44,10 +52,34 @@ export class LiveSpeechController {
   private requestBusy = false
   private audioBusy = false
   private blockedTurn: string | null = null
+  private completed: CompletedStreamPlayback | null = null
   private onStateChange: ((sessionId: string, messageId: string, status: PlaybackStatus) => void) | null = null
 
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus) => void): void {
     this.onStateChange = listener
+  }
+
+  setMaxPausedPcmBytes(value: number): void { this.audio.setMaxPausedPcmBytes(value) }
+
+  async pause(sessionId: string): Promise<boolean> {
+    if (this.sessionId !== sessionId || this.status !== 'playing') return false
+    await this.audio.pause()
+    this.setStatus('paused')
+    return true
+  }
+
+  async resume(sessionId: string): Promise<boolean> {
+    if (this.sessionId !== sessionId || this.status !== 'paused') return false
+    try {
+      await this.audio.resume()
+      this.setStatus('playing')
+      return true
+    } catch {
+      this.setStatus('error')
+      this.replaceQueue()
+      this.audio.stop()
+      return false
+    }
   }
 
   activateSession(sessionId: string): void {
@@ -75,6 +107,16 @@ export class LiveSpeechController {
     this.drain(false)
   }
 
+  /** Stream one already-completed preset-model reply as PCM, falling back only before playback starts. */
+  playCompleted(sessionId: string, messageId: string, text: string, fallback: () => void): void {
+    if (this.sessionId !== sessionId || text.length === 0) return
+    this.resetState()
+    this.completed = { sessionId, messageId, audioStarted: false, fallback }
+    this.messageId = messageId
+    this.setStatus('loading')
+    this.queue.enqueue(text)
+  }
+
   finish(sessionId: string, final: LiveMessageIdentity): void {
     const key = `${sessionId}:${final.turn}:${final.step}`
     if (this.blockedTurn === `${sessionId}:${final.turn}`) {
@@ -94,8 +136,8 @@ export class LiveSpeechController {
   }
 
   stop(sessionId: string): boolean {
-    if (this.sessionId !== sessionId || this.active === null || (this.status !== 'loading' && this.status !== 'playing')) return false
-    this.blockedTurn = `${sessionId}:${this.active.turn}`
+    if (this.sessionId !== sessionId || (this.status !== 'loading' && this.status !== 'playing')) return false
+    if (this.active !== null) this.blockedTurn = `${sessionId}:${this.active.turn}`
     this.resetState()
     return true
   }
@@ -133,6 +175,7 @@ export class LiveSpeechController {
   }
 
   private beginSegment(next: LiveSpeechCursor, preserveMessageId: boolean): void {
+    this.completed = null
     this.active = next
     this.observed = ''
     this.consumed = 0
@@ -147,8 +190,9 @@ export class LiveSpeechController {
     this.observed = ''
     this.consumed = 0
     this.pendingText = ''
-    this.messageId = null
     this.setStatus('idle')
+    this.messageId = null
+    this.completed = null
   }
 
   private cursorKey(cursor: LiveSpeechCursor): string {
@@ -216,6 +260,18 @@ export class LiveSpeechController {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let pending = ''
+      let receivedPcm = false
+      const consume = async (events: string[]): Promise<void> => {
+        for (const event of events) {
+          if (!this.isCurrentStream(generation, signal)) return
+          const pcm = pcmDeltaFromSse(event)
+          if (pcm !== null) {
+            await this.audio.enqueue(pcm)
+            receivedPcm = true
+            if (!this.isCurrentStream(generation, signal)) return
+          }
+        }
+      }
       try {
         while (this.isCurrentStream(generation, signal)) {
           const result = await reader.read()
@@ -223,24 +279,27 @@ export class LiveSpeechController {
           pending += decoder.decode(result.value, { stream: true })
           const parsed = parseSseRecords(pending)
           pending = parsed.remainder
-          for (const event of parsed.events) {
-            if (!this.isCurrentStream(generation, signal)) return
-            const pcm = pcmDeltaFromSse(event)
-            if (pcm !== null) {
-              await this.audio.enqueue(pcm)
-              if (!this.isCurrentStream(generation, signal)) return
-            }
-          }
+          await consume(parsed.events)
         }
+        pending += decoder.decode()
+        if (pending.trim().length > 0) await consume(parseSseRecords(`${pending}\n\n`).events)
       } finally {
         reader.releaseLock()
       }
+      if (!receivedPcm && this.isCurrentStream(generation, signal)) throw new Error('stream-audio-empty')
     } catch (error) {
       if (this.isCurrentStream(generation, signal)) throw error
     }
   }
 
   private handleStreamError(error: unknown): void {
+    const completed = this.completed
+    if (completed !== null && !completed.audioStarted) {
+      const fallback = completed.fallback
+      this.resetState()
+      fallback()
+      return
+    }
     if (this.active !== null) this.blockedTurn = `${this.active.sessionId}:${this.active.turn}`
     this.setStatus('error')
     this.replaceQueue()
@@ -255,6 +314,7 @@ export class LiveSpeechController {
   private setStatus(status: PlaybackStatus): void {
     if (this.status === status) return
     this.status = status
+    if (status === 'playing' && this.completed !== null) this.completed.audioStarted = true
     this.reportStatus()
   }
 

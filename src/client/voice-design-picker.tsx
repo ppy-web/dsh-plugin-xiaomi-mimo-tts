@@ -13,7 +13,7 @@ type VoiceDesignPreset = typeof TTS_VOICE_DESIGN_PRESETS[number]
 
 function VoicePresetAvatar({ preset }: { preset: VoiceDesignPreset }): ReactElement {
   return <img
-    className="xmimo-tts-voice-avatar"
+    className="xmimo-tts-builtin-voice-avatar"
     src={`${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`}
     alt=""
     width={40}
@@ -24,7 +24,7 @@ function VoicePresetAvatar({ preset }: { preset: VoiceDesignPreset }): ReactElem
 }
 
 function CustomVoiceAvatar(): ReactElement {
-  return <span className="xmimo-tts-voice-avatar xmimo-tts-custom-voice-avatar" aria-hidden="true">
+  return <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-custom-voice-avatar" aria-hidden="true">
     <svg viewBox="0 0 40 40" focusable="false">
       <circle cx="20" cy="14" r="6" />
       <path d="M9.5 31.5c1.7-6.2 5.2-9.3 10.5-9.3s8.8 3.1 10.5 9.3" />
@@ -32,6 +32,8 @@ function CustomVoiceAvatar(): ReactElement {
     </svg>
   </span>
 }
+
+function VoicePresetCheck(): ReactElement { return <svg className="xmimo-tts-builtin-voice-check" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" /><path d="m3.5 7 2.1 2.1 4.9-4.7" /></svg> }
 
 interface VoiceDesignPresetPickerProps {
   value: string
@@ -120,7 +122,7 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
     }
   }
 
-  return <div className="xmimo-tts-voice-picker" ref={rootRef}>
+  return <div className="xmimo-tts-voice-picker xmimo-tts-builtin-voice-picker" ref={rootRef}>
     <button
       ref={triggerRef}
       type="button"
@@ -140,18 +142,19 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
       </span>
       <IconChevronDownOutline14 className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} />
     </button>
-    {open ? <div id={listboxId} className="xmimo-tts-voice-picker-menu" role="listbox" aria-label={label}>
+    {open ? <div id={listboxId} className="xmimo-tts-voice-picker-menu xmimo-tts-builtin-voice-menu" role="listbox" aria-label={label}>
       <button
         ref={(node) => { optionRefs.current[0] = node }}
         type="button"
         role="option"
         aria-selected={selectedPreset === undefined}
-        className={selectedPreset === undefined ? 'xmimo-tts-voice-option xmimo-tts-voice-option-selected' : 'xmimo-tts-voice-option'}
+        className={selectedPreset === undefined ? 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-selected xmimo-tts-builtin-voice-option-custom' : 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-custom'}
         onClick={() => { choose(CUSTOM_VOICE_DESIGN_OPTION) }}
         onKeyDown={(event) => { handleOptionKeyDown(event, 0) }}
       >
         <CustomVoiceAvatar />
         <span className="xmimo-tts-voice-option-copy"><strong>{customLabel}</strong><small>{customSummary}</small></span>
+        {selectedPreset === undefined ? <VoicePresetCheck /> : null}
       </button>
       {TTS_VOICE_DESIGN_PRESETS.map((preset, index) => <button
         key={preset.id}
@@ -159,12 +162,13 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
         type="button"
         role="option"
         aria-selected={selectedPreset?.id === preset.id}
-        className={selectedPreset?.id === preset.id ? 'xmimo-tts-voice-option xmimo-tts-voice-option-selected' : 'xmimo-tts-voice-option'}
+        className={selectedPreset?.id === preset.id ? 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-selected' : 'xmimo-tts-builtin-voice-option'}
         onClick={() => { choose(preset.prompt) }}
         onKeyDown={(event) => { handleOptionKeyDown(event, index + 1) }}
       >
         <VoicePresetAvatar preset={preset} />
         <span className="xmimo-tts-voice-option-copy"><strong>{preset.label}</strong><small>{preset.summary}</small></span>
+        {selectedPreset?.id === preset.id ? <VoicePresetCheck /> : null}
       </button>)}
     </div> : null}
   </div>

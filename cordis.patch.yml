@@ -12,8 +12,11 @@
         voiceDesignPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。'
         voiceDesignCustomPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。'
         presetStylePrompt: '使用清晰、自然、准确的声音朗读，语速适中，停顿自然，语气平和克制，避免夸张表达。'
-        format: 'mp3'
+        format: 'pcm'
         autoPlay: true
         instruction: '请忠实朗读原文，根据文本语气自然表达，不添加或改写内容。'
         maxTextLength: 12000
         requestTimeoutMs: 120000
+        maxMp3AudioBytes: 33554432
+        maxWavAudioBytes: 134217728
+        maxPausedPcmBytes: 33554432

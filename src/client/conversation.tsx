@@ -85,6 +85,7 @@ interface SessionPlaybackObserverProps {
 export function SessionPlaybackObserver({ sessionId, session, playback, live, settings }: SessionPlaybackObserverProps): null {
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
+  live.setMaxPausedPcmBytes(resolvedSettings.maxPausedPcmBytes)
   const active = useRef<{ turn: number; step: number } | null>(null)
   const wasRunning = useRef(session.running)
   const runArmed = useRef(!session.running)
@@ -117,7 +118,7 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, se
     }
 
     playback.observeSession(sessionId, session.running && runArmed.current, latestMessageId)
-    if (!resolvedSettings.enabled || !resolvedSettings.autoPlay || resolvedSettings.model !== 'mimo-v2.5-tts') {
+    if (!resolvedSettings.enabled || !resolvedSettings.autoPlay || resolvedSettings.model !== 'mimo-v2.5-tts' || resolvedSettings.format !== 'pcm') {
       live.cancelSession(sessionId)
       active.current = null
       if (session.running) runArmed.current = false
@@ -139,7 +140,7 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, se
       else if (!session.running) live.cancelSession(sessionId)
       active.current = null
     }
-  }, [latestMessageId, live, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.model, session, sessionId, session.running])
+  }, [latestMessageId, live, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.format, resolvedSettings.model, session, sessionId, session.running])
 
   return null
 }
@@ -164,15 +165,28 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
   }))
   const text = message.text
   const settingsSnapshot = useSettingsSnapshot(settings)
+  const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
+
+  const playCompletedReply = (automatic: boolean): void => {
+    if (resolvedSettings.model === 'mimo-v2.5-tts' && resolvedSettings.format === 'pcm') {
+      playback.cancelPlayback(sessionId)
+      live.playCompleted(sessionId, messageId, text, () => {
+        void playback.toggle(sessionId, messageId, text, automatic)
+      })
+      return
+    }
+    live.cancelSession(sessionId)
+    void playback.toggle(sessionId, messageId, text, automatic)
+  }
 
   useEffect(() => {
     if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || live.hasHandled(sessionId, message.identity) || message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
-      if (!live.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) void playback.toggle(sessionId, messageId, text, true)
+      if (!live.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) playCompletedReply(true)
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [live, message.identity, message.latestMessageId, message.running, message.time, messageId, playback, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [live, message.identity, message.latestMessageId, message.running, message.time, messageId, playback, resolvedSettings.format, resolvedSettings.model, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 
@@ -208,13 +222,17 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
           aria-pressed={status === 'playing' || liveActive}
           disabled={status === 'loading' && !liveActive}
           onClick={() => {
-            if (mine && source === 'live' && (status === 'loading' || status === 'playing')) {
-              live.stop(sessionId)
-              playback.cancelPlayback(sessionId)
+            if (mine && source === 'live') {
+              if (status === 'loading') { live.stop(sessionId); playback.cancelPlayback(sessionId) }
+              else if (status === 'playing') void live.pause(sessionId)
+              else if (status === 'paused') void live.resume(sessionId)
               return
             }
-            live.cancelSession(sessionId)
-            void playback.toggle(sessionId, messageId, text, false)
+            if (mine && source === 'complete') {
+              void playback.toggle(sessionId, messageId, text, false)
+              return
+            }
+            playCompletedReply(false)
           }}
         >
           {status === 'loading'

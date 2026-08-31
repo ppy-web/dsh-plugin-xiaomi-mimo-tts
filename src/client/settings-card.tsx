@@ -3,17 +3,17 @@ import { useEffect, useState } from 'react'
 import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
 import {
+  TTS_FORMATS,
   TTS_MODELS,
   TTS_API_KEY_STATUS_ROUTE,
   TTS_UNINSTALL_ROUTE,
   TTS_UPDATE_ROUTE,
-  TTS_VERSION,
-  TTS_VOICES,
   isSupportedTtsApiKey,
   resolveTtsSettings,
 } from '../shared.js'
 import type { TtsFormat, TtsSettings } from '../shared.js'
 import type { Translate } from './localization.js'
+import { BuiltInVoicePicker } from './built-in-voice-picker.js'
 import { isRecord, useSettingsSnapshot } from './settings-scope.js'
 import {
   CUSTOM_VOICE_DESIGN_OPTION,
@@ -85,9 +85,9 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
   const [model, setModel] = useState(initial.model)
   const [voice, setVoice] = useState(initial.voice)
+  const [format, setFormat] = useState(initial.format)
   const [voiceDesignPrompt, setVoiceDesignPrompt] = useState(initial.voiceDesignPrompt)
   const [voiceDesignCustomPrompt, setVoiceDesignCustomPrompt] = useState(initial.voiceDesignCustomPrompt)
-  const [format, setFormat] = useState<TtsFormat>(initial.format)
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
@@ -173,9 +173,9 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     setAutoPlay(next.autoPlay)
     setModel(next.model)
     setVoice(next.voice)
+    setFormat(next.format)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
-    setFormat(next.format)
     setChanges({})
   }, [dirty, value])
 
@@ -192,9 +192,9 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
     if (field === 'model') setModel(base.model)
     if (field === 'voice') setVoice(base.voice)
+    if (field === 'format') setFormat(base.format)
     if (field === 'voiceDesignPrompt') setVoiceDesignPrompt(base.voiceDesignPrompt)
     if (field === 'voiceDesignCustomPrompt') setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt)
-    if (field === 'format') setFormat(base.format)
   }
 
   const discard = (): void => {
@@ -203,9 +203,9 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     setAutoPlay(next.autoPlay)
     setModel(next.model)
     setVoice(next.voice)
+    setFormat(next.format)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
-    setFormat(next.format)
     setApiKey('')
     setChanges({})
     setState('idle')
@@ -263,7 +263,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
         onClick={() => { setOpen((current) => !current) }}
       >
         <span className="xmimo-tts-card-head-text">
-          <span className="xmimo-tts-card-title">{t('settings.title')} <small className="xmimo-tts-version">v{TTS_VERSION}</small></span>
+          <span className="xmimo-tts-card-title">{t('settings.title')}</span>
           <span className="xmimo-tts-card-description">{t('settings.description')}</span>
         </span>
         {dirty ? <span className="xmimo-tts-pending" role="status">{t('settings.unsaved')}</span> : null}
@@ -298,48 +298,6 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
           <small className={apiKeyWarning ? 'xmimo-tts-api-key-warning' : undefined} role={apiKeyWarning ? 'alert' : undefined}>
             {apiKeyMessage}
           </small>
-        </div>
-        <div className="xmimo-tts-switch-row xmimo-tts-wide">
-          <label className="xmimo-tts-checkbox-row">
-            <span className="xmimo-tts-switch-copy">
-              <SettingFieldHeading label={t('settings.enabled')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('enabled') }} />
-            </span>
-            <input
-              type="checkbox"
-              checked={enabled}
-              disabled={!snapshot.writable}
-              onChange={(event) => {
-                const next = event.target.checked
-                setEnabled(next)
-                if (!next) {
-                  setAutoPlay(false)
-                  setChanges((current) => ({ ...current, enabled: { kind: 'set' }, autoPlay: { kind: 'set' } }))
-                } else markChange('enabled')
-                setState('idle')
-              }}
-            />
-            <span className="xmimo-tts-switch-control" aria-hidden="true" />
-          </label>
-          <label className="xmimo-tts-checkbox-row">
-            <span className="xmimo-tts-switch-copy">
-              <SettingFieldHeading label={t('settings.autoPlay')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('autoPlay') }} />
-            </span>
-            <input
-              type="checkbox"
-              checked={enabled && autoPlay}
-              disabled={!snapshot.writable}
-              onChange={(event) => {
-                const next = event.target.checked
-                setAutoPlay(next)
-                if (next) {
-                  setEnabled(true)
-                  setChanges((current) => ({ ...current, autoPlay: { kind: 'set' }, enabled: { kind: 'set' } }))
-                } else markChange('autoPlay')
-                setState('idle')
-              }}
-            />
-            <span className="xmimo-tts-switch-control" aria-hidden="true" />
-          </label>
         </div>
         <div className="xmimo-tts-model xmimo-tts-wide">
           <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('model')} resettable disabled={!snapshot.writable} onReset={() => { resetField('model') }} />
@@ -378,21 +336,26 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
           />
           <small>{t('settings.voiceDesignPromptHint')}</small>
         </div> : null}
-        {model === 'mimo-v2.5-tts' ? <div className="xmimo-tts-select-column xmimo-tts-wide">
-          <div>
-            <SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('voice') }} />
-            <select value={voice} disabled={!snapshot.writable} onChange={(event) => { setVoice(event.target.value); markChange('voice') }}>
-              {TTS_VOICES.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
+        {model === 'mimo-v2.5-tts' ? <>
+          <div className="xmimo-tts-voice xmimo-tts-wide">
+            <SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voice')} resettable disabled={!snapshot.writable} onReset={() => { resetField('voice') }} />
+            <BuiltInVoicePicker value={voice} disabled={!snapshot.writable} label={t('settings.voice')} onChange={(next) => { setVoice(next); markChange('voice') }} />
           </div>
-          <div>
-            <SettingFieldHeading label={t('settings.format')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('format') }} />
-            <select value={format} disabled={!snapshot.writable} onChange={(event) => { setFormat(event.target.value as 'mp3' | 'wav'); markChange('format') }}>
-              <option value="mp3">MP3</option>
-              <option value="wav">WAV</option>
-            </select>
+          <div className="xmimo-tts-format xmimo-tts-wide">
+            <SettingFieldHeading label={t('settings.format')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('format')} resettable disabled={!snapshot.writable} onReset={() => { resetField('format') }} />
+            <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.format')}>
+              {TTS_FORMATS.map((item) => <label key={item} className={format === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
+                <input type="radio" name="xmimo-tts-format" value={item} checked={format === item} disabled={!snapshot.writable} onChange={() => { setFormat(item as TtsFormat); markChange('format') }} />
+                <span>{item.toUpperCase()}</span>
+              </label>)}
+            </div>
+            <small>{t(format === 'pcm' ? 'settings.formatPcmHint' : format === 'mp3' ? 'settings.formatMp3Hint' : 'settings.formatWavHint')}</small>
           </div>
-        </div> : null}
+        </> : null}
+        <div className="xmimo-tts-switch-row xmimo-tts-wide">
+          <label className="xmimo-tts-checkbox-row"><span className="xmimo-tts-switch-copy"><SettingFieldHeading label={t('settings.enabled')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('enabled') }} /></span><input type="checkbox" checked={enabled} disabled={!snapshot.writable} onChange={(event) => { const next = event.target.checked; setEnabled(next); if (!next) { setAutoPlay(false); setChanges((current) => ({ ...current, enabled: { kind: 'set' }, autoPlay: { kind: 'set' } })) } else markChange('enabled'); setState('idle') }} /><span className="xmimo-tts-switch-control" aria-hidden="true" /></label>
+          <label className="xmimo-tts-checkbox-row"><span className="xmimo-tts-switch-copy"><SettingFieldHeading label={t('settings.autoPlay')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={false} resettable={false} disabled={!snapshot.writable} onReset={() => { resetField('autoPlay') }} /></span><input type="checkbox" checked={enabled && autoPlay} disabled={!snapshot.writable} onChange={(event) => { const next = event.target.checked; setAutoPlay(next); if (next) { setEnabled(true); setChanges((current) => ({ ...current, autoPlay: { kind: 'set' }, enabled: { kind: 'set' } })) } else markChange('autoPlay'); setState('idle') }} /><span className="xmimo-tts-switch-control" aria-hidden="true" /></label>
+        </div>
         </div>
         <div className="xmimo-tts-card-actions">
           {uninstallState === 'idle' && latestVersion !== null

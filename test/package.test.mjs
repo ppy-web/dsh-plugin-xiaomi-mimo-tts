@@ -46,20 +46,31 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.TTS_UNINSTALL_ROUTE, '/plugins/xiaomi-mimo-tts/uninstall')
   assert.equal(sharedModule.TTS_API_KEY_STATUS_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-status')
   assert.equal(sharedModule.TTS_VOICE_DESIGN_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-presets')
+  assert.equal(sharedModule.TTS_VOICE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-avatars')
   assert.deepEqual(sharedModule.TTS_MODELS, ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign'])
-  assert.equal(sharedModule.TTS_VOICE_DESIGN_PRESETS.length, 9)
+  assert.deepEqual(sharedModule.TTS_FORMATS, ['pcm', 'mp3', 'wav'])
+  assert.deepEqual(sharedModule.TTS_VOICE_PRESETS.map((item) => item.value), ['冰糖', 'Mia', '茉莉', 'Chloe', '苏打', 'Milo', '白桦', 'Dean'])
+  assert.equal(new Set(sharedModule.TTS_VOICE_PRESETS.map((item) => item.id)).size, sharedModule.TTS_VOICE_PRESETS.length)
+  assert.equal(sharedModule.TTS_VOICE_DESIGN_PRESETS.length, 10)
   assert.equal(new Set(sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => item.id)).size, sharedModule.TTS_VOICE_DESIGN_PRESETS.length)
   assert.equal(new Set(sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => item.prompt)).size, sharedModule.TTS_VOICE_DESIGN_PRESETS.length)
-  assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.every((item) => !item.prompt.includes('适合')))
-  assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.every((item) => /^[女男] · \d{2}岁 · .+$/.test(item.summary)))
-  assert.match(sharedModule.TTS_VOICE_DESIGN_PRESETS.find((item) => item.id === 'news-anchor').prompt, /专业新闻播音女主持，成年女性30-40岁/)
-  assert.deepEqual(sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => item.label), ['林小满', '沈听澜', `张子\u83af`, '陈念安', '顾知微', '江予辰', '周砚川', '裴沉舟', '陆远山'])
+  assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.every((item) => typeof item.label === 'string' && item.label.trim().length > 0 && typeof item.summary === 'string' && item.summary.trim().length > 0 && typeof item.prompt === 'string' && item.prompt.trim().length > 0))
+  assert.deepEqual(sharedModule.TTS_VOICE_DESIGN_PRESETS.find((item) => item.id === 'energetic-girl'), {
+    id: 'energetic-girl',
+    label: '鲸鱼娘',
+    summary: '爱吃白米饭',
+    prompt: '年轻女性16-22岁，标准普通话，清透甜美的中高音，音色明亮而不尖锐，带一点轻盈柔软的空气感；吐字清楚、节奏灵动，语速中等偏快，语调自然上扬，情绪开朗亲切又略带俏皮，整体听感温柔、有陪伴感。',
+  })
+  assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.some((item) => item.id === 'liang-wenfeng'))
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.model, 'mimo-v2.5-tts')
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.format, 'pcm')
   assert.match(sharedModule.DEFAULT_TTS_SETTINGS.presetStylePrompt, /清晰、自然、准确/)
   assert.match(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt, /青年女性/)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt)
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.maxMp3AudioBytes, 32 * 1024 * 1024)
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.maxWavAudioBytes, 128 * 1024 * 1024)
   assert.equal(TOKEN_PLAN_TTS_BASE_URL, 'https://token-plan-cn.xiaomimimo.com/v1')
   assert.match(host, /TTS_ROUTE/)
   assert.match(host, /prepareTtsText/)
@@ -68,7 +79,8 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.match(host, /mimo-v2\.5-tts-voicedesign/)
   assert.match(host, /voiceDesignPrompt/)
   assert.match(host, /audio: options\.model ===/)
-  assert.match(host, /format: options\.format/)
+  assert.match(host, /completeAudioFormat\(options\)/)
+  assert.match(host, /options\.format === ["']wav["'] \? ["']wav["'] : ["']mp3["']/)
   assert.match(host, /chat\/completions/)
   assert.match(host, /resolveTtsBaseURL\(options\.apiKey, options\.baseURL\)/)
   assert.match(host, /TTS_API_KEY_STATUS_ROUTE/)
@@ -96,7 +108,16 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.match(host, /format:\s*["']pcm16["']/)
   assert.match(host, /stream:\s*true/)
   assert.match(host, /req\.once\(['"]aborted['"]/)
+  assert.match(host, /maxMp3AudioBytes/)
+  assert.match(host, /maxWavAudioBytes/)
+  assert.match(host, /xiaomi-response-too-large/)
+  assert.match(host, /invalid-audio-base64/)
+  assert.match(host, /audio-too-large/)
+  assert.match(host, /invalid-audio-format/)
+  assert.match(host, /res\.once\(['"]close['"]/)
+  assert.match(host, /!res\.writableEnded/)
   assert.match(host, /voice preset assets/)
+  assert.match(host, /built-in voice assets/)
   assert.match(host, /image\/webp/)
 })
 
@@ -107,9 +128,36 @@ test('selects the Token Plan endpoint from tp-prefixed API keys', () => {
   assert.equal(resolveTtsBaseURL('custom-example', 'https://custom.example/v1'), 'https://custom.example/v1')
 })
 
+test('accepts only canonical padded Base64 and calculates its decoded size', () => {
+  assert.equal(sharedModule.strictBase64DecodedLength('SUQz'), 3)
+  assert.equal(sharedModule.strictBase64DecodedLength('UklGRg=='), 4)
+  assert.equal(sharedModule.strictBase64DecodedLength('YQ=='), 1)
+  assert.equal(sharedModule.strictBase64DecodedLength('YWI='), 2)
+  assert.equal(sharedModule.strictBase64DecodedLength(''), null)
+  assert.equal(sharedModule.strictBase64DecodedLength('abc'), null)
+  assert.equal(sharedModule.strictBase64DecodedLength('ab=c'), null)
+  assert.equal(sharedModule.strictBase64DecodedLength('YW Jj'), null)
+  assert.equal(sharedModule.strictBase64DecodedLength('YWJj\n'), null)
+})
+
 test('ships one optimized icon for every Voice Design preset', async () => {
   const iconFiles = (await readdir(new URL('../assets/voice-presets/', import.meta.url))).sort()
   assert.deepEqual(iconFiles, sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => `${item.id}.webp`).sort())
+  for (const file of iconFiles) {
+    const data = await readFile(new URL(`../assets/voice-presets/${file}`, import.meta.url))
+    assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+    assert.equal(data.toString('ascii', 8, 12), 'WEBP')
+  }
+})
+
+test('ships one official avatar for every built-in voice', async () => {
+  const avatarFiles = (await readdir(new URL('../assets/voice-avatars/', import.meta.url))).sort()
+  assert.deepEqual(avatarFiles, sharedModule.TTS_VOICE_PRESETS.map((item) => `${item.id}.webp`).sort())
+  for (const file of avatarFiles) {
+    const data = await readFile(new URL(`../assets/voice-avatars/${file}`, import.meta.url))
+    assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+    assert.equal(data.toString('ascii', 8, 12), 'WEBP')
+  }
 })
 
 test('build emits declarations only for the private client modules', async () => {
@@ -117,7 +165,7 @@ test('build emits declarations only for the private client modules', async () =>
   assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map')))
   assert.deepEqual(
     clientArtifacts.filter((name) => name.endsWith('.d.ts')),
-    ['conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'voice-design-picker.d.ts'],
+    ['built-in-voice-picker.d.ts', 'conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'voice-design-picker.d.ts'],
   )
 })
 
@@ -150,7 +198,7 @@ test('resolves the Voice Design settings without exposing a preset voice in the 
   assert.doesNotMatch(client, /settings\.instruction/)
   assert.doesNotMatch(client, /xmimo-tts-instruction/)
   assert.match(client, /xmimo-tts-model xmimo-tts-wide/)
-  assert.match(clientSource, /model === 'mimo-v2\.5-tts' \? <div className="xmimo-tts-select-column xmimo-tts-wide">/)
+  assert.match(clientSource, /model === 'mimo-v2\.5-tts' \? <>/)
   assert.match(client, /CUSTOM_VOICE_DESIGN_OPTION = ["']__custom__["']/)
   assert.match(clientSource, /function VoiceDesignPresetPicker/)
   assert.match(clientSource, /aria-haspopup="listbox"/)
@@ -159,8 +207,16 @@ test('resolves the Voice Design settings without exposing a preset voice in the 
   assert.match(clientSource, /value=\{isPresetVoiceDesignPrompt\(voiceDesignPrompt\) \? voiceDesignPrompt : CUSTOM_VOICE_DESIGN_OPTION\}/)
   assert.match(client, /setVoiceDesignCustomPrompt\(next\)/)
   assert.match(client, /voiceDesignCustomPrompt/)
-  assert.match(client, /xmimo-tts-select-column\{display:flex;min-width:0;flex-direction:row/)
-  assert.match(client, /xmimo-tts-select-column>div\{flex:1\}/)
+  assert.match(clientSource, /settings\.formatPcmHint/)
+  assert.match(clientSource, /useState\(initial\.format\)/)
+  assert.match(clientSource, /<BuiltInVoicePicker value=\{voice\}/)
+  assert.match(clientSource, /TTS_VOICE_ASSET_ROUTE/)
+  assert.match(clientSource, /xmimo-tts-builtin-voice-menu/)
+  assert.doesNotMatch(client, /xmimo-tts-select-column/)
+  assert.match(client, /xmimo-tts-voice\{display:flex;min-width:0;flex-direction:column/)
+  assert.match(client, /PCM（流式播放）/)
+  assert.match(client, /MP3（完整音频）/)
+  assert.match(client, /WAV（完整音频）/)
 })
 
 test('prepares speech text by keeping prose and normalizing whitespace and punctuation', () => {
@@ -302,7 +358,7 @@ test('client output registers the message action and plugin settings card', () =
   assert.match(client, /settingsSnapshot\.value\?\.enabled !== true/)
   assert.match(client, /checked: enabled && autoPlay/)
   assert.doesNotMatch(client, /Date\.now\(\) - this\.autoPlayArmedAt < 30000/)
-  assert.match(clientSource, /playback\.toggle\(sessionId, messageId, text, true\)/)
+  assert.match(clientSource, /playCompletedReply\(true\)/)
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
   assert.doesNotMatch(client, /settings\.apiKeyHint/)
   assert.match(clientSource, /const apiKeyMessage = enteredApiKey\.length > 0/)
@@ -355,13 +411,22 @@ test('automatic playback only consumes the latest message from a live run once',
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
 })
 
-test('PCM playback shares the message action state and custom voice design falls back to completed-message autoplay', () => {
+test('completed preset replies stream only for PCM and complete formats keep pause and resume', () => {
   assert.match(client, /live\.setStateChangeListener/)
   assert.match(client, /updateLivePlayback/)
   assert.match(clientSource, /live\.stop\(sessionId\)/)
   assert.match(clientSource, /source === 'live'/)
   assert.match(clientSource, /disabled=\{status === 'loading' && !liveActive\}/)
-  assert.match(client, /resolvedSettings\.model !== ["']mimo-v2\.5-tts["']/)
+  assert.match(clientSource, /resolvedSettings\.model === 'mimo-v2\.5-tts'/)
+  assert.match(clientSource, /live\.playCompleted\(sessionId, messageId, text/)
+  assert.match(clientSource, /playback\.toggle\(sessionId, messageId, text, automatic\)/)
+  assert.match(clientSource, /if \(resolvedSettings\.model === 'mimo-v2\.5-tts' && resolvedSettings\.format === 'pcm'\)[\s\S]*live\.playCompleted[\s\S]*return\s*}\s*live\.cancelSession\(sessionId\)\s*void playback\.toggle/)
+  assert.match(clientSource, /resolvedSettings\.format !== 'pcm'/)
+  assert.match(clientSource, /if \(audio\.paused\)[\s\S]*await audio\.play\(\)[\s\S]*else \{\s*audio\.pause\(\)/)
+  assert.match(clientSource, /private completed: CompletedStreamPlayback \| null = null/)
+  assert.match(clientSource, /if \(completed !== null && !completed\.audioStarted\)/)
+  assert.match(clientSource, /if \(!receivedPcm && this\.isCurrentStream/)
+  assert.match(clientSource, /status === 'playing' && this\.completed !== null/)
 })
 
 test('switching sessions resets every playback path and ignores a run re-entered mid-stream', () => {

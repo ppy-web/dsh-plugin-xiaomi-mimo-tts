@@ -1,6 +1,6 @@
 {
   "name": "dsh-xiaomi-tts",
-  "version": "2.3.2",
+  "version": "2.3.3",
   "description": "Xiaomi MiMo text-to-speech controls for DeepSeek Harness Web assistant messages",
   "license": "MIT",
   "type": "module",

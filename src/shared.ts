@@ -14,7 +14,7 @@ export const TTS_UNINSTALL_ROUTE = '/plugins/xiaomi-mimo-tts/uninstall'
 export const TTS_UPDATE_ROUTE = '/plugins/xiaomi-mimo-tts/update'
 
 /** Keep the UI version visible without making the browser bundle load package.json. */
-export const TTS_VERSION = '2.3.2'
+export const TTS_VERSION = '2.3.3'
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/
 
@@ -51,11 +51,26 @@ export const TTS_API_KEY_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-status
 /** Same-origin prefix used by the Web client to load voice-design preset icons. */
 export const TTS_VOICE_DESIGN_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-presets'
 
+/** Same-origin prefix used by the Web client to load official built-in voice avatars. */
+export const TTS_VOICE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-avatars'
+
 /** Default Xiaomi endpoint for Token Plan API keys. */
 export const TOKEN_PLAN_TTS_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
 
 /** Supported built-in Xiaomi MiMo voices. */
 export const TTS_VOICES = ['冰糖', '茉莉', '苏打', '白桦', 'Mia', 'Chloe', 'Milo', 'Dean'] as const
+
+/** Built-in voice metadata mirrored from Xiaomi MiMo's official selector. */
+export const TTS_VOICE_PRESETS = [
+  { id: 'bingtang', value: '冰糖', summary: '活泼少女' },
+  { id: 'mia', value: 'Mia', summary: 'Lively girl' },
+  { id: 'moli', value: '茉莉', summary: '知性女声' },
+  { id: 'chloe', value: 'Chloe', summary: 'Witty Grace' },
+  { id: 'suda', value: '苏打', summary: '阳光少年' },
+  { id: 'milo', value: 'Milo', summary: 'Sunny boy' },
+  { id: 'baihua', value: '白桦', summary: '成熟男声' },
+  { id: 'dean', value: 'Dean', summary: 'Steady Gentle' },
+] as const
 
 /** TTS models supported by this plugin. */
 export const TTS_MODELS = ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign'] as const
@@ -64,24 +79,35 @@ export type TtsModel = typeof TTS_MODELS[number]
 
 /** Voice-design descriptions adapted from the reference voice-definition page. */
 export const TTS_VOICE_DESIGN_PRESETS = [
-  { id: 'energetic-girl', label: '林小满', summary: '女 · 16岁 · 元气少女，明亮高饱和声线', prompt: '年轻女性15-20岁，普通话，明亮高饱和声线，笑意自然外放，咬字灵巧跳跃，语速偏快，语调上扬有活力，情绪积极爽朗，活力播报风格' },
-  { id: 'asmr-whisper', label: '沈听澜', summary: '女 · 19岁 · ASMR低语，轻柔耳语带微弱气息', prompt: '女性18-20岁，轻柔耳语带微弱气息，普通话，声线细腻清晰，私密温柔感，安静平和带轻柔低语，语速缓慢音量很轻，私密低语场景。' },
-  { id: 'gentle-girlfriend', label: '张子莯', summary: '女 · 22岁 · 温柔女友，声线柔软细腻', prompt: '年轻女性16-22岁，声线柔软细腻，低饱和带微微暖意，标准普通话，温柔亲密的邻家风格，语速偏慢，语调轻柔连贯，气息自然流畅，安静私密陪伴场景。' },
-  { id: 'girl-next-door', label: '陈念安', summary: '女 · 25岁 · 邻家女孩，柔润清甜带撒娇感', prompt: '年轻女性20-25岁，柔润清甜带撒娇感，普通话，清澈明亮的少女音，轻松温柔的亲近感，轻松平缓带温柔，中等偏快语速中等音量，生活分享场景。' },
-  { id: 'news-anchor', label: '顾知微', summary: '女 · 35岁 · 新闻播报，声线中低音区饱满清晰', prompt: '专业新闻播音女主持，成年女性30-40岁，普通话标准无口音，声线中低音区饱满清晰，端庄知性沉稳，语气克制权威，语速从容均匀，音量适中稳定，新闻播报与专题解说场景。' },
-  { id: 'young-man', label: '江予辰', summary: '男 · 19岁 · 青年男声，清亮干净的中高音带少年感', prompt: '男性青年16-22岁，清亮干净的中高音带少年感，普通话标准无口音，轻快明亮的活力声线，气息轻盈吐字利索，语速偏快语调自然上扬，情绪积极阳光带朝气，广告旁白或轻松解说场景。' },
-  { id: 'tech-explainer', label: '周砚川', summary: '男 · 30岁 · 科技解说，清晰利落中音、干净偏冷', prompt: '成年男性25-35岁，清晰利落中音、干净偏冷，标准普通话，精准干练的都市精英感，语速中等偏快、语调平稳，理性简洁、逻辑感强，现代资讯播报或商业讲解场景。' },
-  { id: 'suspense-narrator', label: '裴沉舟', summary: '男 · 35岁 · 悬疑旁白，低沉沉稳带神秘磁性', prompt: '男性中年30-40岁，低沉沉稳带神秘磁性，普通话，压抑克制的叙事风格，语速缓慢均匀，语调低沉平稳，情绪冷静悬疑，旁白解说场景。' },
-  { id: 'documentary-narrator', label: '陆远山', summary: '男 · 45岁 · 纪录片，低沉醇厚有胸腔共鸣', prompt: '男性40-50岁，低沉醇厚有胸腔共鸣，普通话，稳重可靠的叙事者风格，语速中等偏慢，语调沉稳克制带叙事纵深感，气息舒展停顿有留白，纪录片旁白或深度访谈场景。' },
+  { id: 'energetic-girl', label: '鲸鱼娘', summary: '爱吃白米饭', prompt: '年轻女性16-22岁，标准普通话，清透甜美的中高音，音色明亮而不尖锐，带一点轻盈柔软的空气感；吐字清楚、节奏灵动，语速中等偏快，语调自然上扬，情绪开朗亲切又略带俏皮，整体听感温柔、有陪伴感。' },
+  { id: 'liang-wenfeng', label: '梁文峰', summary: '理性克制', prompt: '成年男性 35–40 岁，普通话，温和克制的中低音，声线清晰自然，声音偏亮不沉闷，略带书卷气和理工感，语速中等偏慢，停顿审慎，表达理性简洁，情绪稳定，不夸张。' },
+  { id: 'asmr-whisper', label: '沈听澜', summary: 'ASMR低语', prompt: '女性18-20岁，轻柔耳语带微弱气息，普通话，声线细腻清晰，私密温柔感，安静平和带轻柔低语，语速缓慢音量很轻，私密低语场景。' },
+  { id: 'young-man', label: '江予辰', summary: '阳光少年', prompt: '男性青年16-22岁，清亮干净的中高音带少年感，普通话标准无口音，轻快明亮的活力声线，气息轻盈吐字利索，语速偏快语调自然上扬，情绪积极阳光带朝气，广告旁白或轻松解说场景。' },
+  { id: 'gentle-girlfriend', label: '张子苜', summary: '温柔陪伴', prompt: '年轻女性16-22岁，声线柔软细腻，低饱和带微微暖意，标准普通话，温柔亲密的邻家风格，语速偏慢，语调轻柔连贯，气息自然流畅，安静私密陪伴场景。' },
+  { id: 'tech-explainer', label: '周砚川', summary: '科技解说', prompt: '成年男性25-35岁，清晰利落中音、干净偏冷，标准普通话，精准干练的都市精英感，语速中等偏快、语调平稳，理性简洁、逻辑感强，现代资讯播报或商业讲解场景。' },
+  { id: 'girl-next-door', label: '陈念安', summary: '邻家甜声', prompt: '年轻女性20-25岁，柔润清甜带撒娇感，普通话，清澈明亮的少女音，轻松温柔的亲近感，轻松平缓带温柔，中等偏快语速中等音量，生活分享场景。' },
+  { id: 'documentary-narrator', label: '陆远山', summary: '纪录片旁白', prompt: '男性40-50岁，低沉醇厚有胸腔共鸣，普通话，稳重可靠的叙事者风格，语速中等偏慢，语调沉稳克制带叙事纵深感，气息舒展停顿有留白，纪录片旁白或深度访谈场景。' },
+  { id: 'news-anchor', label: '顾知微', summary: '沉稳播报', prompt: '专业新闻播音女主持，成年女性30-40岁，普通话标准无口音，声线中低音区饱满清晰，端庄知性沉稳，语气克制权威，语速从容均匀，音量适中稳定，新闻播报与专题解说场景。' },
+  { id: 'suspense-narrator', label: '裴沉舟', summary: '悬疑旁白', prompt: '男性中年30-40岁，低沉沉稳带神秘磁性，普通话，压抑克制的叙事风格，语速缓慢均匀，语调低沉平稳，情绪冷静悬疑，旁白解说场景。' },
 ] as const
 
 /** Supported audio formats. */
-export const TTS_FORMATS = ['mp3', 'wav'] as const
+export const TTS_FORMATS = ['pcm', 'mp3', 'wav'] as const
 
 export type TtsFormat = typeof TTS_FORMATS[number]
 
 /** Minimum spoken characters to accumulate before starting one PCM stream request. */
 export const MIN_TTS_STREAM_CHARACTERS = 20
+
+/** Maximum decoded complete MP3 payload accepted from Xiaomi MiMo. */
+export const DEFAULT_MAX_MP3_AUDIO_BYTES = 32 * 1024 * 1024
+
+/** Maximum decoded complete WAV payload accepted from Xiaomi MiMo. */
+export const DEFAULT_MAX_WAV_AUDIO_BYTES = 128 * 1024 * 1024
+export const DEFAULT_MAX_PAUSED_PCM_BYTES = 32 * 1024 * 1024
+
+/** Extra JSON envelope allowance around a Base64 audio payload. */
+export const TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES = 1024 * 1024
 
 const TTS_PUNCTUATION: Record<string, string> = {
   '，': ',',
@@ -181,6 +207,14 @@ export function splitCompletedTtsSentences(value: string): { sentences: string[]
 /** Count text-bearing characters only, excluding punctuation and whitespace. */
 export function countTtsSpeechCharacters(value: string): number {
   return Array.from(value).filter((character) => /[\p{L}\p{N}]/u.test(character)).length
+}
+
+/** Return the exact decoded size of canonical padded Base64, or null when invalid. */
+export function strictBase64DecodedLength(value: string): number | null {
+  if (value.length === 0 || value.length % 4 !== 0) return null
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value)) return null
+  const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0
+  return (value.length / 4) * 3 - padding
 }
 
 /** Accumulate short sentences so a PCM stream has enough text to sound natural. */
@@ -300,6 +334,9 @@ export interface TtsSettings {
   instruction?: string
   maxTextLength?: number
   requestTimeoutMs?: number
+  maxMp3AudioBytes?: number
+  maxWavAudioBytes?: number
+  maxPausedPcmBytes?: number
 }
 
 export interface ResolvedTtsSettings {
@@ -316,6 +353,9 @@ export interface ResolvedTtsSettings {
   instruction: string
   maxTextLength: number
   requestTimeoutMs: number
+  maxMp3AudioBytes: number
+  maxWavAudioBytes: number
+  maxPausedPcmBytes: number
 }
 
 /** Defaults shared by the Schemastery config and the Web settings form. */
@@ -328,11 +368,14 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   voiceDesignPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。',
   voiceDesignCustomPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。',
   presetStylePrompt: '使用清晰、自然、准确的声音朗读，语速适中，停顿自然，语气平和克制，避免夸张表达。',
-  format: 'mp3',
+  format: 'pcm',
   autoPlay: true,
   instruction: '请忠实朗读原文，根据文本语气自然表达，不添加或改写内容。',
   maxTextLength: 12000,
   requestTimeoutMs: 120000,
+  maxMp3AudioBytes: DEFAULT_MAX_MP3_AUDIO_BYTES,
+  maxWavAudioBytes: DEFAULT_MAX_WAV_AUDIO_BYTES,
+  maxPausedPcmBytes: DEFAULT_MAX_PAUSED_PCM_BYTES,
 }
 
 /** Select the Xiaomi endpoint from the API key while preserving custom settings for other keys. */

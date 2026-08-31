@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, TTS_API_KEY_STATUS_ROUTE, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -42,6 +42,9 @@ export const Config = z.object({
   instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction),
   maxTextLength: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxTextLength),
   requestTimeoutMs: z.number().step(1).min(1000).default(DEFAULT_TTS_SETTINGS.requestTimeoutMs),
+  maxMp3AudioBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxMp3AudioBytes),
+  maxWavAudioBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxWavAudioBytes),
+  maxPausedPcmBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxPausedPcmBytes),
 })
 
 export type Config = ReturnType<typeof Config>
@@ -107,6 +110,75 @@ function apiErrorMessage(status: number, parsed: XiaomiAudioResponse | undefined
   return detail && detail.length > 0
     ? detail
     : `Xiaomi MiMo TTS request failed (HTTP ${status})`
+}
+
+type CompleteAudioAbortReason = 'client-disconnect' | 'timeout' | null
+
+class CompleteAudioResponseError extends Error {
+  constructor(readonly code: 'xiaomi-response-too-large' | 'invalid-audio-base64' | 'audio-too-large' | 'invalid-audio-format') {
+    super(code)
+  }
+}
+
+type CompleteAudioFormat = 'mp3' | 'wav'
+
+function completeAudioFormat(options: Config): CompleteAudioFormat {
+  return options.format === 'wav' ? 'wav' : 'mp3'
+}
+
+function completeAudioLimit(options: Config, format: CompleteAudioFormat): number {
+  return format === 'mp3' ? options.maxMp3AudioBytes : options.maxWavAudioBytes
+}
+
+function completeAudioJsonLimit(audioLimit: number): number {
+  return 4 * Math.ceil(audioLimit / 3) + TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES
+}
+
+async function readLimitedXiaomiResponse(response: Response, limit: number, controller: AbortController): Promise<XiaomiAudioResponse | undefined> {
+  const contentLength = response.headers.get('content-length')
+  if (contentLength !== null && /^\d+$/u.test(contentLength) && Number(contentLength) > limit) {
+    controller.abort()
+    throw new CompleteAudioResponseError('xiaomi-response-too-large')
+  }
+  if (response.body === null) return undefined
+
+  const reader = response.body.getReader()
+  const chunks: Buffer[] = []
+  let size = 0
+  try {
+    while (true) {
+      const chunk = await reader.read()
+      if (chunk.done) break
+      size += chunk.value.byteLength
+      if (size > limit) {
+        controller.abort()
+        throw new CompleteAudioResponseError('xiaomi-response-too-large')
+      }
+      chunks.push(Buffer.from(chunk.value))
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  if (chunks.length === 0) return undefined
+  try {
+    return JSON.parse(Buffer.concat(chunks, size).toString('utf8')) as XiaomiAudioResponse
+  } catch {
+    return undefined
+  }
+}
+
+function decodeCompleteAudio(value: string, format: CompleteAudioFormat, limit: number): Buffer {
+  const expectedLength = strictBase64DecodedLength(value)
+  if (expectedLength === null) throw new CompleteAudioResponseError('invalid-audio-base64')
+  if (expectedLength > limit) throw new CompleteAudioResponseError('audio-too-large')
+
+  const audio = Buffer.from(value, 'base64')
+  if (audio.byteLength !== expectedLength) throw new CompleteAudioResponseError('invalid-audio-base64')
+  const validFormat = format === 'wav'
+    ? audio.byteLength >= 12 && audio.toString('ascii', 0, 4) === 'RIFF' && audio.toString('ascii', 8, 12) === 'WAVE'
+    : audio.byteLength >= 2 && (audio.toString('ascii', 0, 3) === 'ID3' || (audio[0] === 0xFF && (audio[1]! & 0xE0) === 0xE0))
+  if (!validFormat) throw new CompleteAudioResponseError('invalid-audio-format')
+  return audio
 }
 
 interface CommandResult {
@@ -290,6 +362,11 @@ export function apply(ctx: Context, config: Config): void {
     const data = readFileSync(new URL(`../assets/voice-presets/${preset.id}.webp`, import.meta.url))
     return [path, data] as const
   }))
+  const voiceAssets = new Map(TTS_VOICE_PRESETS.map((preset) => {
+    const path = `${TTS_VOICE_ASSET_ROUTE}/${preset.id}.webp`
+    const data = readFileSync(new URL(`../assets/voice-avatars/${preset.id}.webp`, import.meta.url))
+    return [path, data] as const
+  }))
 
   installSettingsSection(ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
     setSource(source) {
@@ -303,8 +380,8 @@ export function apply(ctx: Context, config: Config): void {
       if (value.model === 'mimo-v2.5-tts-voicedesign' && value.voiceDesignPrompt.trim().length === 0) {
         throw new Error('voiceDesignPrompt is required when using mimo-v2.5-tts-voicedesign')
       }
-      if (value.format !== 'mp3' && value.format !== 'wav') {
-        throw new Error('format must be mp3 or wav')
+      if (!TTS_FORMATS.includes(value.format)) {
+        throw new Error('format must be pcm, mp3, or wav')
       }
     },
   })
@@ -409,6 +486,34 @@ export function apply(ctx: Context, config: Config): void {
   }), 'xiaomi-mimo-tts: voice preset assets')
 
   ctx.effect(() => ctx.webServer.register({
+    kind: 'prefix',
+    path: TTS_VOICE_ASSET_ROUTE,
+    handler(req, res) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405
+        res.setHeader('allow', 'GET, HEAD')
+        res.end()
+        return
+      }
+
+      const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
+      const asset = voiceAssets.get(pathname)
+      if (asset === undefined) {
+        res.statusCode = 404
+        res.end()
+        return
+      }
+
+      res.statusCode = 200
+      res.setHeader('content-type', 'image/webp')
+      res.setHeader('content-length', String(asset.byteLength))
+      res.setHeader('cache-control', 'public, max-age=31536000, immutable')
+      res.setHeader('x-content-type-options', 'nosniff')
+      res.end(req.method === 'HEAD' ? undefined : asset)
+    },
+  }), 'xiaomi-mimo-tts: built-in voice assets')
+
+  ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: TTS_ROUTE,
     async handler(req, res) {
@@ -450,9 +555,22 @@ export function apply(ctx: Context, config: Config): void {
       }
 
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), options.requestTimeoutMs)
+      let abortReason: CompleteAudioAbortReason = null
+      const abort = (reason: Exclude<CompleteAudioAbortReason, null>): void => {
+        if (controller.signal.aborted) return
+        abortReason = reason
+        controller.abort()
+      }
+      const timeout = setTimeout(() => abort('timeout'), options.requestTimeoutMs)
+      const abortOnRequest = () => abort('client-disconnect')
+      const abortOnResponseClose = () => {
+        if (!res.writableEnded) abort('client-disconnect')
+      }
+      req.once('aborted', abortOnRequest)
+      res.once('close', abortOnResponseClose)
 
       try {
+        const format = completeAudioFormat(options)
         const endpoint = `${normalizeBaseURL(resolveTtsBaseURL(options.apiKey, options.baseURL))}/chat/completions`
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -467,19 +585,15 @@ export function apply(ctx: Context, config: Config): void {
             model: options.model,
             messages: requestMessages(options, text),
             audio: options.model === 'mimo-v2.5-tts-voicedesign'
-              ? { format: options.format }
-              : { format: options.format, voice: options.voice },
+              ? { format }
+              : { format, voice: options.voice },
             stream: false,
           }),
           signal: controller.signal,
         })
 
-        let parsed: XiaomiAudioResponse | undefined
-        try {
-          parsed = await response.json() as XiaomiAudioResponse
-        } catch {
-          parsed = undefined
-        }
+        const audioLimit = completeAudioLimit(options, format)
+        const parsed = await readLimitedXiaomiResponse(response, completeAudioJsonLimit(audioLimit), controller)
 
         if (!response.ok) {
           json(res, response.status, {
@@ -498,38 +612,27 @@ export function apply(ctx: Context, config: Config): void {
           return
         }
 
-        let audio: Buffer
-        try {
-          audio = Buffer.from(audioBase64, 'base64')
-        } catch {
-          json(res, 502, {
-            error: 'invalid-audio-base64',
-            message: 'Xiaomi MiMo returned invalid Base64 audio data',
-          })
-          return
-        }
-
-        if (audio.byteLength === 0) {
-          json(res, 502, {
-            error: 'empty-audio',
-            message: 'Xiaomi MiMo returned an empty audio payload',
-          })
-          return
-        }
+        const audio = decodeCompleteAudio(audioBase64, format, audioLimit)
 
         res.statusCode = 200
-        res.setHeader('content-type', options.format === 'mp3' ? 'audio/mpeg' : 'audio/wav')
+        res.setHeader('content-type', format === 'mp3' ? 'audio/mpeg' : 'audio/wav')
         res.setHeader('content-length', String(audio.byteLength))
         res.setHeader('cache-control', 'no-store')
         res.end(audio)
       } catch (error) {
-        const aborted = controller.signal.aborted
-        json(res, aborted ? 504 : 502, {
-          error: aborted ? 'xiaomi-timeout' : 'xiaomi-request-failed',
+        if (abortReason === 'client-disconnect' || res.destroyed || res.writableEnded) return
+        if (error instanceof CompleteAudioResponseError) {
+          json(res, 502, { error: error.code, message: error.message })
+          return
+        }
+        json(res, abortReason === 'timeout' ? 504 : 502, {
+          error: abortReason === 'timeout' ? 'xiaomi-timeout' : 'xiaomi-request-failed',
           message: error instanceof Error ? error.message : String(error),
         })
       } finally {
         clearTimeout(timeout)
+        req.off('aborted', abortOnRequest)
+        res.off('close', abortOnResponseClose)
       }
     },
   }), 'xiaomi-mimo-tts: synthesis route')

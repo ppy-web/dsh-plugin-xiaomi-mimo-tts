@@ -22,10 +22,10 @@
 ## 功能
 
 - 在对话操作栏中显示“朗读”按钮（默认开启）。
-- 使用 `mimo-v2.5-tts` 输出流畅、清晰的音频；支持 PCM16 流式播放，手动点击朗读使用 MP3 或 WAV。
+- 使用 `mimo-v2.5-tts` 输出流畅、清晰的音频；可选择 PCM 流式播放或 MP3/WAV 完整音频。
 - 使用 `mimo-v2.5-tts-voicedesign` 通过文字描述创造你想要的声音。
-- 支持切换预置音色/自定义音色模型，配置 API Key、自动播报、音色、音色描述和格式。
-- 丰富的预置音色，自由切换和修复。
+- 支持切换预置音色/自定义音色模型，配置 API Key、自动播报、音色、音频格式和音色描述。
+- 丰富的自定义音色模板，自由切换和修改。
 - 自动清洗需要朗读的文本：移除网址、文件路径、代码块、表情符号、图标和控制字符等。
 
 ## 环境要求
@@ -61,7 +61,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 更新或从本地开发版切换到 npm 版时，必须先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 2.3.2
+.\start\dsh-plugin-reinstall.bat 2.3.3
 ```
 
 这个脚本会按顺序停止 DSH Web、卸载当前 profile 中的插件、从 npm 安装指定版本并重新启动 DSH Web。若手动操作，请保持相同顺序：
@@ -69,7 +69,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@2.3.2
+dsh plugin --profile web add dsh-xiaomi-tts@2.3.3
 .\start\dsh-web-start.bat
 ```
 
@@ -81,6 +81,8 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.3.2
 - 中文男声：`苏打`、`白桦`
 - 英文女声：`Mia`、`Chloe`
 - 英文男声：`Milo`、`Dean`
+
+预置模型默认选择 `PCM（流式播放）`：完整回复会在音频分片到达时立即开始播放，等待更短，但暂不支持暂停和续播；首个分片前失败时会回退 MP3。选择 `MP3（完整音频）` 或 `WAV（完整音频）` 时，会等待完整文件生成后播放，并支持暂停和继续；MP3 体积更小，WAV 保留无损音频但体积更大。
 
 **自定义音色（`mimo-v2.5-tts-voicedesign`）**
 
@@ -96,13 +98,15 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.3.2
 
 ## 朗读文本处理
 
-朗读只使用清理后的正文，不会修改聊天记录中显示的助手回复。Markdown 链接会保留可读标题并删除链接地址；网址、文件路径、完整代码块、表情符号、图标、零宽字符和控制字符不会发送给 Xiaomi MiMo。括号、方括号、书名号、引号等非断句符号会删除；保留的断句标点会转换为 ASCII 英文标点。流式朗读会累计至少 20 个可朗读字符，回复结束时再发送不足 20 个字符的剩余内容。
+朗读只使用清理后的正文，不会修改聊天记录中显示的助手回复。Markdown 链接会保留可读标题并删除链接地址；网址、文件路径、完整代码块、表情符号、图标、零宽字符和控制字符不会发送给 Xiaomi MiMo。括号、方括号、书名号、引号等非断句符号会删除；保留的断句标点会转换为 ASCII 英文标点。仅当预置模型选择 PCM 时，回复生成期间的流式朗读才会累计至少 20 个可朗读字符再发起请求；对已经完成的回复，插件会把完整文本作为一次 PCM/SSE 请求发送并立即播放返回的音频分片。选择 MP3 或 WAV 时始终请求完整音频。
+
+完整音频响应默认限制为 MP3 32 MiB、WAV 128 MiB，可在 Cordis 配置中通过 `maxMp3AudioBytes` 和 `maxWavAudioBytes` 调整。Host 会在解析 JSON 和 Base64 解码前执行大小检查。
 
 ## 隐私
 
 - API Key 仅保存在 DSH Host，不会发送给浏览器。
 - 生成语音时，回复正文会发送给 Xiaomi MiMo 服务。
-- 音频只通过临时 Blob URL 播放，不会持久化到磁盘。
+- 音频只在浏览器内存中通过 Web Audio 或临时 Blob URL 播放，不会持久化到磁盘。
 
 ## 反馈与支持
 
@@ -110,11 +114,11 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.3.2
 
 ## 架构
 
-- `src/index.ts`：Host 入口，注册 Schemastery 设置、Voice Design 静态资源，以及完整音频和 PCM/SSE 流式合成路由。
+- `src/index.ts`：Host 入口，注册 Schemastery 设置、两类音色静态资源，以及完整音频和 PCM/SSE 流式合成路由。
 - `src/shared.ts`：Host 与 Client 共用的领域契约，包括配置类型、默认值、文本清洗、分句、流式批处理和 SSE 解析。
 - `src/client/index.tsx`：Web Client 组合入口，只负责绑定 DSH 服务、注册 Slot、注入样式和托管控制器生命周期。
 - `src/client/conversation.tsx`：React 会话适配层，订阅 DSH 会话快照并渲染朗读操作。
-- `src/client/settings-card.tsx` 与 `voice-design-picker.tsx`：插件设置表单和 Voice Design 音色选择 UI。
+- `src/client/settings-card.tsx`、`built-in-voice-picker.tsx` 与 `voice-design-picker.tsx`：插件设置表单、官方内置音色面板和 Voice Design 音色选择 UI。
 - `src/client/live-speech-controller.ts`、`pcm-audio-queue.ts` 与 `playback-controller.ts`：分别管理实时朗读状态机、Web Audio PCM 调度和完整音频播放。
 - `src/client/settings-scope.ts`：使用 `useSyncExternalStore` 将 DSH Settings Scope 安全接入 React。
 
