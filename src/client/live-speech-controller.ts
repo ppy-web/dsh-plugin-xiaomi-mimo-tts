@@ -200,9 +200,10 @@ export class LiveSpeechController {
   }
 
   private drain(flush: boolean): void {
-    const { sentences, remainder } = splitCompletedTtsSentences(this.observed.slice(this.consumed))
-    const ready = flush && remainder.trim().length > 0 ? [...sentences, remainder] : sentences
-    this.consumed += sentences.join('').length
+    const { sentences, remainder, consumed, inCode } = splitCompletedTtsSentences(this.observed.slice(this.consumed))
+    // Never read an unclosed code block aloud, even on flush.
+    const ready = flush && !inCode && remainder.trim().length > 0 ? [...sentences, remainder] : sentences
+    this.consumed += consumed
     if (flush) this.consumed = this.observed.length
     for (const sentence of ready) this.stageSentence(sentence, false)
     if (flush) this.stageSentence('', true)

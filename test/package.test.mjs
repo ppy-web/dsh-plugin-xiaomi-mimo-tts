@@ -246,6 +246,12 @@ test('removes emoji, icons, invisible characters, and empty filtered content', (
   assert.equal(prepareTtsText('```\nignored\n```'), '')
 })
 
+test('removes multi-segment paths but keeps single-segment path-like words', () => {
+  assert.equal(prepareTtsText(String.raw`复制到 D:\backup\notes.txt 完成`), '复制到 完成')
+  assert.equal(prepareTtsText('路径 /usr/local/bin/app 已就绪'), '路径 已就绪')
+  assert.equal(prepareTtsText('单段 /usr 和 /home 应保留'), '单段 /usr 和 /home 应保留')
+})
+
 test('normalizes Chinese parentheses and keeps ASCII colons', () => {
   assert.equal(prepareTtsText('【提示】（请注意）“测试”：你好，世界！《完》'), '提示,请注意,测试你好,世界!完')
   assert.equal(prepareTtsText('现在是08:31，请准时开始。'), '现在是08:31,请准时开始.')
@@ -256,14 +262,41 @@ test('turns physical line breaks into sentence-ending periods', () => {
 })
 
 test('splits accumulated assistant text only at completed sentence boundaries', () => {
-  assert.deepEqual(
-    sharedModule.splitCompletedTtsSentences('第一句。第二句！还没结束'),
-    { sentences: ['第一句。', '第二句！'], remainder: '还没结束' },
-  )
-  assert.deepEqual(
-    sharedModule.splitCompletedTtsSentences('他说：“好了。”\n下一行；'),
-    { sentences: ['他说：“好了。”\n', '下一行；'], remainder: '' },
-  )
+  const r1 = sharedModule.splitCompletedTtsSentences('第一句。第二句！还没结束')
+  assert.deepEqual({ sentences: r1.sentences, remainder: r1.remainder }, { sentences: ['第一句。', '第二句！'], remainder: '还没结束' })
+  assert.equal(r1.inCode, false)
+  assert.equal(r1.consumed, '第一句。第二句！'.length)
+
+  const r2 = sharedModule.splitCompletedTtsSentences('他说：“好了。”\n下一行；')
+  assert.deepEqual({ sentences: r2.sentences, remainder: r2.remainder }, { sentences: ['他说：“好了。”\n', '下一行；'], remainder: '' })
+  assert.equal(r2.inCode, false)
+  assert.equal(r2.consumed, '他说：“好了。”\n下一行；'.length)
+})
+
+test('skips complete fenced code blocks and holds unclosed ones', () => {
+  // Complete fenced block: code is dropped entirely.
+  const r1 = sharedModule.splitCompletedTtsSentences('你好。\n```python\nprint("hi")\n```\n继续。')
+  assert.deepEqual(r1.sentences, ['你好。\n', '继续。'])
+  assert.equal(r1.remainder, '')
+  assert.equal(r1.inCode, false)
+  assert.equal(r1.consumed, '你好。\n```python\nprint("hi")\n```\n继续。'.length)
+
+  // Unclosed fence: held as remainder, inCode=true, consumed stops before the fence.
+  const r2 = sharedModule.splitCompletedTtsSentences('你好。\n```python\nprint("hi")')
+  assert.deepEqual(r2.sentences, ['你好。\n'])
+  assert.equal(r2.remainder, '```python\nprint("hi")')
+  assert.equal(r2.inCode, true)
+  assert.equal(r2.consumed, '你好。\n'.length)
+
+  // Tilde fences work too.
+  const r3 = sharedModule.splitCompletedTtsSentences('开头。\n~~~bash\necho x\n~~~\n结尾。')
+  assert.deepEqual(r3.sentences, ['开头。\n', '结尾。'])
+  assert.equal(r3.inCode, false)
+
+  // No fences at all — unchanged behaviour.
+  const r4 = sharedModule.splitCompletedTtsSentences('仅文本。没有代码。')
+  assert.deepEqual(r4.sentences, ['仅文本。', '没有代码。'])
+  assert.equal(r4.inCode, false)
 })
 
 test('batches short stream sentences until at least twenty spoken characters or final flush', () => {

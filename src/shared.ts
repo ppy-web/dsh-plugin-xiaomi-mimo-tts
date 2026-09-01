@@ -125,10 +125,22 @@ const TTS_PUNCTUATION: Record<string, string> = {
 const TTS_NON_SPEECH_PUNCTUATION = /[()\[\]【】［］〔〕〖〗{}｛｝「」『』《》〈〉“”‘’"'`<>：…—–－～]/gu
 
 const TTS_URL_PATTERN = /\b(?:https?|ftp):\/\/[^\s<>()]+|\bwww\.[^\s<>()]+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|cn|net|org|io|ai|dev|me|co|edu|gov|xyz|tech|info|app|site|link)(?:[/:?#][^\s<>()]*)?/giu
-const TTS_WINDOWS_PATH_PATTERN = /(?:\b[A-Za-z]:[\\/]|\\\\)(?:[A-Za-z0-9._ -]+[\\/])*(?:[A-Za-z0-9._ -]+)/gu
-const TTS_UNIX_PATH_PATTERN = /\/(?:[A-Za-z0-9._-]+\/)*(?:[A-Za-z0-9._-]+)/gu
+const TTS_WINDOWS_PATH_PATTERN = /(?:\b[A-Za-z]:[\\/]|\\\\)(?:[A-Za-z0-9._ -]+[\\/])+(?:[A-Za-z0-9._ -]+)/gu
+const TTS_UNIX_PATH_PATTERN = /\/(?:[A-Za-z0-9._-]+\/)+(?:[A-Za-z0-9._-]+)/gu
 const TTS_RELATIVE_PATH_PATTERN = /(?:\.\.?[\\/])(?:[A-Za-z0-9._-]+[\\/])*(?:[A-Za-z0-9._-]+(?:\.[A-Za-z0-9_-]+)?)/gu
 const TTS_PROJECT_PATH_PATTERN = /\b(?:[A-Za-z0-9_-]+[\\/])+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gu
+
+/** Combined Markdown syntax and path removal in a single pass. */
+const MARKDOWN_CODE_BLOCK_RE = /```[\s\S]*?```|~~~[\s\S]*?~~~/g
+const MARKDOWN_INDENTED_CODE_RE = /(^|\n)(?: {4}|\t)[^\n]*(?=\n|$)/g
+const MARKDOWN_IMAGE_RE = /!\[([^\]\r\n]*)\]\([^\)\r\n]*\)/g
+const MARKDOWN_LINK_RE = /\[([^\]\r\n]*)\]\([^\)\r\n]*\)/g
+const MARKDOWN_HTML_TAG_RE = /<[^>\r\n]*>/g
+const MARKDOWN_HEADING_RE = /(^|\n)\s{0,3}#{1,6}\s+/g
+const MARKDOWN_LIST_RE = /(^|\n)\s*(?:[-*+]|\d+[.)])\s+/g
+const MARKDOWN_BLOCKQUOTE_RE = /(^|\n)\s*>\s?/g
+const MARKDOWN_INLINE_FORMAT_RE = /`+|[*_~]{1,3}/g
+const MARKDOWN_TABLE_SEP_RE = /[|]/g
 
 function removeTtsPaths(value: string): string {
   return value
@@ -140,17 +152,16 @@ function removeTtsPaths(value: string): string {
 
 function removeTtsMarkup(value: string): string {
   let text = value
-    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, ' ')
-    .replace(/(^|\n)(?: {4}|\t)[^\n]*(?=\n|$)/g, '$1')
-    .replace(/!\[([^\]\r\n]*)\]\([^\)\r\n]*\)/g, ' ')
-    .replace(/\[([^\]\r\n]*)\]\([^\)\r\n]*\)/g, '$1')
-    .replace(/<[^>\r\n]*>/g, ' ')
-    .replace(/(^|\n)\s{0,3}#{1,6}\s+/g, '$1')
-    .replace(/(^|\n)\s*(?:[-*+]|\d+[.)])\s+/g, '$1')
-    .replace(/(^|\n)\s*>\s?/g, '$1')
-    .replace(/`+/g, '')
-    .replace(/[*_~]{1,3}/g, '')
-    .replace(/[|]/g, ' ')
+    .replace(MARKDOWN_CODE_BLOCK_RE, ' ')
+    .replace(MARKDOWN_INDENTED_CODE_RE, '$1')
+    .replace(MARKDOWN_IMAGE_RE, ' ')
+    .replace(MARKDOWN_LINK_RE, '$1')
+    .replace(MARKDOWN_HTML_TAG_RE, ' ')
+    .replace(MARKDOWN_HEADING_RE, '$1')
+    .replace(MARKDOWN_LIST_RE, '$1')
+    .replace(MARKDOWN_BLOCKQUOTE_RE, '$1')
+    .replace(MARKDOWN_INLINE_FORMAT_RE, '')
+    .replace(MARKDOWN_TABLE_SEP_RE, ' ')
 
   text = text.replace(TTS_URL_PATTERN, ' ')
   return removeTtsPaths(text)
@@ -162,6 +173,7 @@ function removeTtsSymbols(value: string): string {
     .replace(/(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Emoji_Modifier}|\p{So}|\uFE0E|\uFE0F|\u200D|\u20E3)/gu, ' ')
 }
 
+/** Combined punctuation normalization: collapse adjacent punctuation, remove non-speech characters, and normalize Chinese punctuation. */
 function normalizeTtsPunctuation(value: string): string {
   return value
     .replace(TTS_NON_SPEECH_PUNCTUATION, '')
@@ -191,22 +203,79 @@ export function prepareTtsText(value: string): string {
   return text.replace(/\s+/g, ' ').trim()
 }
 
-/** Split an accumulated model delta at completed sentence-ending punctuation. */
-export function splitCompletedTtsSentences(value: string): { sentences: string[]; remainder: string } {
-  const sentences: string[] = []
-  const boundary = /[。！？!?；;\n]+(?:[”’）】》〕\]}'"]*\s*)/gu
-  let start = 0
-  for (const match of value.matchAll(boundary)) {
-    const end = match.index + match[0].length
-    sentences.push(value.slice(start, end))
-    start = end
+/** Locate fenced code blocks in raw streaming text so their content is never read aloud. */
+function findFencedCodeRegions(value: string): { regions: Array<[number, number]>; pendingStart: number | null } {
+  const regions: Array<[number, number]> = []
+  let pendingStart: number | null = null
+  const fence = /(^|\n)[ \t]{0,3}(`{3,}|~{3,})[^\r\n]*/g
+  let open: { start: number; char: string } | null = null
+  for (const match of value.matchAll(fence)) {
+    const lineStart = match.index + (match[1] === '\n' ? 1 : 0)
+    const char = match[2][0]
+    if (open === null) {
+      open = { start: lineStart, char }
+    } else if (open.char === char) {
+      regions.push([open.start, match.index + match[0].length])
+      open = null
+    }
   }
-  return { sentences, remainder: value.slice(start) }
+  if (open !== null) pendingStart = open.start
+  return { regions, pendingStart }
+}
+
+export interface TtsSentenceSplit {
+  sentences: string[]
+  remainder: string
+  /** How many characters of the input were consumed (sentences plus skipped code blocks). */
+  consumed: number
+  /** True when the remainder is an unclosed code block that must not be read aloud. */
+  inCode: boolean
+}
+
+/** Split an accumulated model delta at completed sentence-ending punctuation, skipping fenced code blocks whole. */
+export function splitCompletedTtsSentences(value: string): TtsSentenceSplit {
+  const { regions, pendingStart } = findFencedCodeRegions(value)
+  const limit = pendingStart ?? value.length
+  const boundary = /[。！？!?；;\n]+(?:[”’）】》〕\]}'"]*\s*)/gu
+  const sentences: string[] = []
+  let sentenceStart = 0
+  let consumed = 0
+
+  const splitSegment = (from: number, to: number): void => {
+    boundary.lastIndex = from
+    let match: RegExpExecArray | null
+    while ((match = boundary.exec(value)) !== null) {
+      const end = match.index + match[0].length
+      if (end > to) break
+      // A boundary match that is only whitespace (e.g. a lone newline after a code
+      // fence) must not become a sentence of its own, or TTS would read a stray dot.
+      const sentence = value.slice(sentenceStart, end)
+      if (sentence.trim().length > 0) sentences.push(sentence)
+      sentenceStart = end
+      consumed = end
+    }
+  }
+
+  let pos = 0
+  for (const [start, end] of regions) {
+    if (start >= limit) break
+    if (pos < start) splitSegment(pos, Math.min(start, limit))
+    sentenceStart = Math.max(sentenceStart, end)
+    consumed = Math.max(consumed, end)
+    pos = end
+  }
+  if (pos < limit) splitSegment(pos, limit)
+
+  if (pendingStart !== null) {
+    // An unclosed fence must stay buffered until it closes; never read it aloud.
+    return { sentences, remainder: value.slice(pendingStart), consumed: pendingStart, inCode: true }
+  }
+  return { sentences, remainder: value.slice(consumed), consumed, inCode: false }
 }
 
 /** Count text-bearing characters only, excluding punctuation and whitespace. */
 export function countTtsSpeechCharacters(value: string): number {
-  return Array.from(value).filter((character) => /[\p{L}\p{N}]/u.test(character)).length
+  return (value.match(/[\p{L}\p{N}]/gu) ?? []).length
 }
 
 /** Return the exact decoded size of canonical padded Base64, or null when invalid. */

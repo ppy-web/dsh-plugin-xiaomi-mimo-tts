@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTS 文本过滤器 · 测试面板</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; color: #1f2937; }
+
+  header { background: #4f6ef7; color: #fff; padding: 18px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header .stats { font-size: 13px; opacity: .85; }
+
+  .toolbar { padding: 12px 24px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .toolbar button { padding: 8px 20px; border: 0; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  #runBtn { background: #4f6ef7; color: #fff; }
+  #runBtn:hover { filter: brightness(1.08); }
+  #runBtn:disabled { opacity: .5; cursor: not-allowed; }
+  .toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #6b7280; }
+  .toolbar .status { flex: 1; text-align: right; font-size: 13px; color: #6b7280; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+
+  .section { margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff; }
+  .section-header { padding: 10px 16px; background: #f9fafb; font-size: 13px; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+  .section-header .meta { font-weight: 400; color: #9ca3af; font-size: 12px; }
+
+  .columns { display: grid; grid-template-columns: 1fr 1fr; }
+  .col { padding: 14px 16px; min-height: 40px; font-size: 13px; line-height: 1.7; word-break: break-word; }
+  .col-left { background: #fafbfc; border-right: 1px solid #e5e7eb; white-space: pre-wrap; font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; font-size: 12.5px; }
+  .col-right { background: #fff; white-space: pre-wrap; }
+  .col-right .empty { color: #9ca3af; font-style: italic; }
+
+  .col-left .fence { background: #e0e7ff; border-radius: 3px; padding: 0 4px; }
+  .col-left .nl { color: #d1d5db; user-select: none; }
+  .col-left .tab, .col-left .sp { background: #e5e7eb; border-radius: 2px; }
+
+  .summary { margin-top: 20px; padding: 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; }
+  .summary table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .summary th, .summary td { padding: 6px 12px; text-align: left; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  .summary th { font-weight: 600; color: #6b7280; font-size: 12px; background: #fafbfc; }
+  .summary tr:last-child td { border-bottom: 0; }
+  .summary .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .summary pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: #fafbfc; border-radius: 6px; padding: 8px 10px; margin: 2px 0; }
+
+  @media (max-width: 768px) {
+    .columns { grid-template-columns: 1fr; }
+    .col-left { border-right: 0; border-bottom: 1px solid #e5e7eb; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧪 TTS 文本过滤器 · 测试面板</h1>
+  <span class="stats" id="headerStats">加载中…</span>
+</header>
+<div class="toolbar">
+  <button id="runBtn" type="button" onclick="runAll()">▶ 运行测试</button>
+  <label><input type="checkbox" id="autoRun" checked> 加载后自动运行</label>
+  <span class="status" id="status"></span>
+</div>
+<div class="container" id="app"></div>
+
+<script>
+'use strict';
+
+let sections = [];
+let results = [];
+
+function escapeHtml(s) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Render original markdown text with visible whitespace and highlighted fences.
+function formatOriginal(text) {
+  return escapeHtml(text)
+    .replace(/(```|~~~)/g, '<span class="fence">$1</span>')
+    .replace(/\n/g, '<span class="nl">¶</span>\n');
+}
+
+function renderSections() {
+  const app = document.getElementById('app');
+  let html = '';
+  for (let i = 0; i < sections.length; i++) {
+    const s = sections[i];
+    const out = results[i];
+    const outHtml = out === undefined
+      ? '<span class="empty">等待测试…</span>'
+      : (out.length > 0 ? escapeHtml(out) : '<span class="empty">(全部移除)</span>');
+    html += '<div class="section">'
+      + '<div class="section-header"><span>' + (i + 1) + '. ' + escapeHtml(s.title) + '</span>'
+      + '<span class="meta" id="meta-' + i + '">' + s.content.length + ' 字</span></div>'
+      + '<div class="columns">'
+      + '<div class="col col-left" id="orig-' + i + '">' + formatOriginal(s.content) + '</div>'
+      + '<div class="col col-right" id="result-' + i + '">' + outHtml + '</div>'
+      + '</div></div>';
+  }
+  app.innerHTML = html;
+}
+
+function updateMeta() {
+  let totalIn = 0, totalOut = 0, done = 0;
+  for (let i = 0; i < sections.length; i++) {
+    if (results[i] === undefined) continue;
+    totalIn += sections[i].content.length;
+    totalOut += results[i].length;
+    done++;
+    const el = document.getElementById('meta-' + i);
+    if (el) el.textContent = sections[i].content.length + ' 字 → ' + results[i].length + ' 字';
+  }
+  const pct = totalIn > 0 ? ((1 - totalOut / totalIn) * 100).toFixed(1) : '-';
+  document.getElementById('headerStats').textContent = sections.length + ' 段, 共 ' + totalIn + ' 字';
+  document.getElementById('status').textContent = '完成 ' + done + '/' + sections.length
+    + ': 输入 ' + totalIn + ' 字 → 输出 ' + totalOut + ' 字 (精简 ' + pct + '%)';
+}
+
+async function runAll() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('status').textContent = '过滤中…';
+  try {
+    const resp = await fetch('/api/filter-batch', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ texts: sections.map(s => s.content) }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    results = data.results;
+    renderSections();
+    updateMeta();
+  } catch (e) {
+    document.getElementById('status').textContent = '请求失败: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function init() {
+  try {
+    const resp = await fetch('/api/fixture');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    sections = data.sections || [];
+    results = [];
+    renderSections();
+    updateMeta();
+    if (document.getElementById('autoRun').checked) await runAll();
+  } catch (e) {
+    document.getElementById('status').textContent = '加载失败: ' + e.message;
+    document.getElementById('headerStats').textContent = '错误';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
