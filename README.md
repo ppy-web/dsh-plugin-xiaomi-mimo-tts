@@ -12,12 +12,10 @@
 <p><a href="README.en.md"><strong>English README →</strong></a></p>
 
 ## 预览
-
-![Xiaomi MiMo 设置菜单](assets/menu.png)
-
-![自定义音色](assets/preset.png)
-
-![图标示例](assets/image.png)
+| 预置音色 | 自定义音色 |
+|:---:|:---:|
+| ![Xiaomi MiMo 设置菜单](assets/menu.png) | ![自定义音色](assets/preset.png) |
+| ![图标示例](assets/image.png) |
 
 ## 功能
 
@@ -36,7 +34,7 @@
 
 官方 TTS API 文档：<https://mimo.mi.com/static/docs/api/audio/tts.md>
 
-## 安装
+## 安装与使用
 
 从 npm 安装 **（推荐）**：
 
@@ -56,9 +54,11 @@ dsh plugin --profile web add ./dsh-plugin-xiaomi-mimo-tts
 dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```
 
-安装后重启 `dsh web`，打开 **设置 → 插件 → 插件配置 → 语音朗读(Xiaomi MiMo)**，填写 API Key 并保存。插件会根据 API Key 前缀自动选择服务端点：`sk-` 使用标准端点，`tp-` 使用 Token Plan 兼容端点，无需额外配置。
+安装后重启 `dsh web`，打开 **设置 → 插件 → 插件配置 → 语音朗读(Xiaomi MiMo)**，[获取并填写 API Key](https://platform.xiaomimimo.com/console/api-keys) 。插件会根据 API Key 前缀自动选择服务端点：`sk-` 使用标准端点，`tp-` 使用 Token Plan 兼容端点，无需额外配置。
 
-更新或从本地开发版切换到 npm 版时，必须先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
+点击 **保存** 即可愉快滴使用啦
+
+> 更新或从本地开发版切换到 npm 版时，必须先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
 
 ```powershell
 .\start\dsh-plugin-reinstall.bat 2.3.3
@@ -94,7 +94,6 @@ dsh plugin --profile web add dsh-xiaomi-tts@2.3.3
 
 建议包含年龄段与性别、声音质感、语速节奏和情绪底色，不写场景或动作。预置音色模式仍使用原来的内置音色配置。
 
-浏览器可能阻止自动播放；遇到这种情况，请先尝试点击朗读按钮。
 
 ## 朗读文本处理
 
