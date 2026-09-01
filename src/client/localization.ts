@@ -45,7 +45,7 @@ export const zh = {
   'settings.voiceDesignPlaybackMode': '朗读方式',
   'settings.voiceDesignPlaybackComplete': '完整朗读',
   'settings.voiceDesignPlaybackSegmented': '分片朗读',
-  'settings.voiceDesignPlaybackCompleteHint': '整篇生成后播放，语调连续性更好。',
+  'settings.voiceDesignPlaybackCompleteHint': '整篇生成后播放，语调连续性更好。长文本会出现模型幻觉。',
   'settings.voiceDesignPlaybackSegmentedHint': '适合长文本，分段生成、更快播放。但会重新推导音色细节，语调连续性略差。',
   'settings.save': '保存',
   'settings.saving': '保存中…',
