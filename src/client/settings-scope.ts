@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
-import { TTS_FORMATS, TTS_MODELS } from '../shared.js'
+import { TTS_FORMATS, TTS_MODELS, TTS_VOICE_DESIGN_PLAYBACK_MODES } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -18,6 +18,7 @@ export function decodeSettings(value: unknown): TtsSettings | undefined {
   if (typeof value.voiceDesignPrompt === 'string') decoded.voiceDesignPrompt = value.voiceDesignPrompt
   if (typeof value.voiceDesignCustomPrompt === 'string') decoded.voiceDesignCustomPrompt = value.voiceDesignCustomPrompt
   if (TTS_FORMATS.includes(value.format as typeof TTS_FORMATS[number])) decoded.format = value.format as typeof TTS_FORMATS[number]
+  if (TTS_VOICE_DESIGN_PLAYBACK_MODES.includes(value.voiceDesignPlaybackMode as typeof TTS_VOICE_DESIGN_PLAYBACK_MODES[number])) decoded.voiceDesignPlaybackMode = value.voiceDesignPlaybackMode as typeof TTS_VOICE_DESIGN_PLAYBACK_MODES[number]
   if (typeof value.autoPlay === 'boolean') decoded.autoPlay = value.autoPlay
   if (typeof value.maxTextLength === 'number') decoded.maxTextLength = value.maxTextLength
   if (typeof value.requestTimeoutMs === 'number') decoded.requestTimeoutMs = value.requestTimeoutMs

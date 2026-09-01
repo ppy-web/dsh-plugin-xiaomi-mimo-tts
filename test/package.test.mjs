@@ -11,7 +11,7 @@ const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.u
   .sort()
 const clientSource = (await Promise.all(clientSourceFiles.map((name) => readFile(new URL(`../src/client/${name}`, import.meta.url), 'utf8')))).join('\n')
 const sharedModule = await import('../lib/shared.js')
-const { batchTtsStreamText, countTtsSpeechCharacters, isNewerTtsVersion, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
+const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
 
 
 test('package declares DSH bundle and Web client entries', () => {
@@ -224,6 +224,24 @@ test('prepares speech text by keeping prose and normalizing whitespace and punct
     prepareTtsText('  你好，\n\n世界！\\n下一句。  '),
     '你好..世界! 下一句.',
   )
+})
+
+test('splits VoiceDesign text at natural boundaries within the request limit', () => {
+  const text = Array.from({ length: 8 }, (_, index) => `第${index + 1}句内容足够长，用于验证分片朗读的语义边界。`).join('')
+  const segments = splitTtsSegments(text, 60, 80)
+  assert.ok(segments.length > 1)
+  assert.equal(segments.join(''), prepareTtsText(text))
+  assert.ok(segments.every((segment) => countTtsSpeechCharacters(segment) <= 80))
+})
+
+test('keeps default VoiceDesign segments conservative', () => {
+  assert.equal(DEFAULT_TTS_SEGMENT_CHARACTERS, 120)
+  assert.equal(MAX_TTS_SEGMENT_CHARACTERS, 180)
+})
+
+test('resolves complete VoiceDesign playback by default', () => {
+  assert.equal(resolveTtsSettings({}).voiceDesignPlaybackMode, 'complete')
+  assert.equal(resolveTtsSettings({ voiceDesignPlaybackMode: 'segmented' }).voiceDesignPlaybackMode, 'segmented')
 })
 
 test('keeps Markdown link labels while removing links, URLs, paths, and code blocks', () => {

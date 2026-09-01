@@ -1,4 +1,4 @@
-import { TTS_ROUTE } from '../shared.js'
+import { splitTtsSegments, TTS_ROUTE } from '../shared.js'
 import type { PlaybackStatus, PlaybackView } from './playback-types.js'
 
 interface SynthesizedAudio {
@@ -17,6 +17,8 @@ export class PlaybackController {
   private readonly completedSessions = new Set<string>()
   private readonly completedMessages = new Map<string, string>()
   private current: SynthesizedAudio | null = null
+  private segmentQueue: HTMLAudioElement[] = []
+  private segmentedState: { sessionId: string; messageId: string; segments: string[]; index: number } | null = null
   private request: AbortController | null = null
   private generation = 0
   private activeSessionId: string | null = null
@@ -32,6 +34,7 @@ export class PlaybackController {
     if (this.activeSessionId === sessionId) return
     this.generation += 1
     this.stopCurrent()
+    this.segmentedState = null
     this.liveSessions.clear()
     this.completedSessions.clear()
     this.completedMessages.clear()
@@ -41,6 +44,7 @@ export class PlaybackController {
 
   cancelPlayback(sessionId: string): void {
     if (this.activeSessionId !== sessionId) return
+    this.segmentedState = null
     this.generation += 1
     this.stopCurrent()
     this.publish(this.emptyView())
@@ -50,6 +54,7 @@ export class PlaybackController {
     if (this.activeSessionId !== sessionId) return
     this.generation += 1
     this.stopCurrent()
+    this.segmentedState = null
     this.liveSessions.clear()
     this.completedSessions.clear()
     this.completedMessages.clear()
@@ -92,6 +97,74 @@ export class PlaybackController {
       return
     }
     if (this.view.source !== 'complete') this.publish({ sessionId, messageId, source: 'live', status, error: status === 'error' ? 'play-failed' : null })
+  }
+
+  pauseSegmented(sessionId: string, messageId: string): void {
+    if (this.activeSessionId !== sessionId || this.view.source !== 'segmented' || this.view.messageId !== messageId) return
+    this.generation += 1
+    this.stopCurrent()
+    this.publish({ sessionId, messageId, source: 'segmented', status: 'paused', error: null })
+  }
+
+  async segmented(sessionId: string, messageId: string, text: string, automatic: boolean): Promise<void> {
+    if (this.activeSessionId !== sessionId) return
+    const previous = this.segmentedState
+    const resume = previous !== null && previous.sessionId === sessionId && previous.messageId === messageId
+    this.stopCurrent()
+    const segments = resume ? previous.segments : splitTtsSegments(text)
+    const startIndex = resume ? previous.index : 0
+    if (segments.length === 0) {
+      this.publish({ sessionId, messageId, source: 'segmented', status: 'error', error: 'no-text' })
+      return
+    }
+    this.segmentedState = { sessionId, messageId, segments, index: startIndex }
+    const generation = ++this.generation
+    const controller = new AbortController()
+    this.request = controller
+    this.publish({ sessionId, messageId, source: 'segmented', status: 'loading', error: null })
+    try {
+      const synthesize = async (segment: string): Promise<Blob> => {
+        let lastError: unknown = null
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            const response = await fetch(TTS_ROUTE, {
+              method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: segment, format: 'wav' }), signal: controller.signal,
+            })
+            if (!response.ok) throw new Error(`segment-request-${response.status}`)
+            return await response.blob()
+          } catch (error) { lastError = error }
+        }
+        throw lastError instanceof Error ? lastError : new Error('segment-request-failed')
+      }
+      let nextAudio = synthesize(segments[startIndex]!)
+      for (let index = startIndex; index < segments.length; index += 1) {
+        const blob = await nextAudio
+        if (generation !== this.generation || this.activeSessionId !== sessionId) return
+        if (this.segmentedState !== null) this.segmentedState.index = index
+        if (index + 1 < segments.length) nextAudio = synthesize(segments[index + 1]!)
+        const audio = new Audio(URL.createObjectURL(blob))
+        this.segmentQueue.push(audio)
+        await new Promise<void>((resolve, reject) => {
+          const cleanup = (): void => { audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed) }
+          const ended = (): void => { cleanup(); URL.revokeObjectURL(audio.src); resolve() }
+          const failed = (): void => { cleanup(); URL.revokeObjectURL(audio.src); reject(new Error('segment-play-failed')) }
+          audio.addEventListener('ended', ended)
+          audio.addEventListener('error', failed)
+          void audio.play().then(() => {
+            if (generation === this.generation && this.activeSessionId === sessionId) this.publish({ sessionId, messageId, source: 'segmented', status: 'playing', error: null })
+          }).catch(() => reject(new Error(automatic ? 'autoplay-blocked' : 'play-failed')))
+        })
+        this.segmentQueue = this.segmentQueue.filter((item) => item !== audio)
+      }
+      if (generation === this.generation && this.activeSessionId === sessionId) {
+        this.segmentedState = null
+        this.publish(this.emptyView())
+      }
+    } catch (error) {
+      if (!controller.signal.aborted && generation === this.generation && this.activeSessionId === sessionId) this.publish({ sessionId, messageId, source: 'segmented', status: 'error', error: error instanceof Error ? error.message : String(error) })
+    } finally {
+      if (generation === this.generation) this.request = null
+    }
   }
 
   async toggle(sessionId: string, messageId: string, text: string, automatic: boolean): Promise<void> {
@@ -192,6 +265,7 @@ export class PlaybackController {
   dispose(): void {
     this.generation += 1
     this.stopCurrent()
+    this.segmentedState = null
     this.liveSessions.clear()
     this.completedSessions.clear()
     this.completedMessages.clear()
@@ -202,6 +276,11 @@ export class PlaybackController {
   private stopCurrent(): void {
     this.request?.abort()
     this.request = null
+    for (const audio of this.segmentQueue) {
+      audio.pause()
+      URL.revokeObjectURL(audio.src)
+    }
+    this.segmentQueue = []
     if (this.current !== null) this.releaseCurrentAudio(this.current.audio)
   }
 

@@ -96,6 +96,15 @@ export const TTS_FORMATS = ['pcm', 'mp3', 'wav'] as const
 
 export type TtsFormat = typeof TTS_FORMATS[number]
 
+/** Voice-design playback strategies. Segmented playback keeps each upstream request short. */
+export const TTS_VOICE_DESIGN_PLAYBACK_MODES = ['complete', 'segmented'] as const
+
+export type TtsVoiceDesignPlaybackMode = typeof TTS_VOICE_DESIGN_PLAYBACK_MODES[number]
+
+export const DEFAULT_TTS_SEGMENT_CHARACTERS = 120
+export const MAX_TTS_SEGMENT_CHARACTERS = 180
+export const MIN_TTS_SEGMENT_CHARACTERS = 40
+
 /** Minimum spoken characters to accumulate before starting one PCM stream request. */
 export const MIN_TTS_STREAM_CHARACTERS = 20
 
@@ -278,6 +287,48 @@ export function countTtsSpeechCharacters(value: string): number {
   return (value.match(/[\p{L}\p{N}]/gu) ?? []).length
 }
 
+/** Split cleaned speech text on natural boundaries while bounding VoiceDesign requests. */
+export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHARACTERS, maximum = MAX_TTS_SEGMENT_CHARACTERS): string[] {
+  const text = prepareTtsText(value)
+  if (text.length === 0) return []
+  const preferred = Math.max(MIN_TTS_SEGMENT_CHARACTERS, Math.min(target, maximum))
+  const pieces = text.match(/[^.!?;]+[.!?;]*|[.!?;]+/gu) ?? [text]
+  const segments: string[] = []
+  let pending = ''
+  const append = (piece: string): void => {
+    const candidate = `${pending}${piece}`.trim()
+    if (candidate.length === 0) return
+    if (countTtsSpeechCharacters(candidate) <= maximum) {
+      pending = candidate
+      if (countTtsSpeechCharacters(pending) >= preferred) {
+        segments.push(pending)
+        pending = ''
+      }
+      return
+    }
+    if (pending.length > 0) {
+      segments.push(pending)
+      pending = ''
+    }
+    let rest = piece.trim()
+    while (countTtsSpeechCharacters(rest) > maximum) {
+      let cut = Math.min(rest.length, maximum)
+      const boundary = Math.max(rest.lastIndexOf(',', cut), rest.lastIndexOf(' ', cut), rest.lastIndexOf(':', cut))
+      if (boundary >= MIN_TTS_SEGMENT_CHARACTERS) cut = boundary + 1
+      segments.push(rest.slice(0, cut).trim())
+      rest = rest.slice(cut).trim()
+    }
+    pending = rest
+  }
+  for (const piece of pieces) append(piece)
+  if (pending.length > 0) {
+    const last = segments.at(-1)
+    if (last !== undefined && countTtsSpeechCharacters(pending) < MIN_TTS_SEGMENT_CHARACTERS && countTtsSpeechCharacters(`${last}${pending}`) <= maximum) segments[segments.length - 1] = `${last}${pending}`
+    else segments.push(pending)
+  }
+  return segments
+}
+
 /** Return the exact decoded size of canonical padded Base64, or null when invalid. */
 export function strictBase64DecodedLength(value: string): number | null {
   if (value.length === 0 || value.length % 4 !== 0) return null
@@ -399,6 +450,7 @@ export interface TtsSettings {
   voiceDesignCustomPrompt?: string
   presetStylePrompt?: string
   format?: TtsFormat
+  voiceDesignPlaybackMode?: TtsVoiceDesignPlaybackMode
   autoPlay?: boolean
   instruction?: string
   maxTextLength?: number
@@ -418,6 +470,7 @@ export interface ResolvedTtsSettings {
   voiceDesignCustomPrompt: string
   presetStylePrompt: string
   format: TtsFormat
+  voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
   autoPlay: boolean
   instruction: string
   maxTextLength: number
@@ -438,6 +491,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   voiceDesignCustomPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。',
   presetStylePrompt: '使用清晰、自然、准确的声音朗读，语速适中，停顿自然，语气平和克制，避免夸张表达。',
   format: 'pcm',
+  voiceDesignPlaybackMode: 'complete',
   autoPlay: true,
   instruction: '请忠实朗读原文，根据文本语气自然表达，不添加或改写内容。',
   maxTextLength: 12000,

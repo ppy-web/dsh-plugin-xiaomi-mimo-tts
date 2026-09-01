@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -38,6 +38,7 @@ export const Config = z.object({
   voiceDesignCustomPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt),
   presetStylePrompt: z.string().default(DEFAULT_TTS_SETTINGS.presetStylePrompt),
   format: z.union(TTS_FORMATS).default(DEFAULT_TTS_SETTINGS.format),
+  voiceDesignPlaybackMode: z.union(TTS_VOICE_DESIGN_PLAYBACK_MODES).default(DEFAULT_TTS_SETTINGS.voiceDesignPlaybackMode),
   autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay),
   instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction),
   maxTextLength: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxTextLength),
@@ -51,6 +52,8 @@ export type Config = ReturnType<typeof Config>
 
 interface SynthesizeBody {
   text?: unknown
+  /** Segmented VoiceDesign playback requests WAV for reliable per-segment decoding. */
+  format?: unknown
 }
 
 interface XiaomiAudioResponse {
@@ -570,7 +573,7 @@ export function apply(ctx: Context, config: Config): void {
       res.once('close', abortOnResponseClose)
 
       try {
-        const format = completeAudioFormat(options)
+        const format = body.format === 'wav' ? 'wav' : completeAudioFormat(options)
         const endpoint = `${normalizeBaseURL(resolveTtsBaseURL(options.apiKey, options.baseURL))}/chat/completions`
         const response = await fetch(endpoint, {
           method: 'POST',

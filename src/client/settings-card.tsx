@@ -10,8 +10,9 @@ import {
   TTS_UPDATE_ROUTE,
   isSupportedTtsApiKey,
   resolveTtsSettings,
+  TTS_VOICE_DESIGN_PLAYBACK_MODES,
 } from '../shared.js'
-import type { TtsFormat, TtsSettings } from '../shared.js'
+import type { TtsFormat, TtsSettings, TtsVoiceDesignPlaybackMode } from '../shared.js'
 import type { Translate } from './localization.js'
 import { BuiltInVoicePicker } from './built-in-voice-picker.js'
 import { isRecord, useSettingsSnapshot } from './settings-scope.js'
@@ -26,14 +27,14 @@ interface SettingsCardProps {
   t: Translate
 }
 
-type EditableSettingField = 'enabled' | 'autoPlay' | 'model' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format'
+type EditableSettingField = 'enabled' | 'autoPlay' | 'model' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format' | 'voiceDesignPlaybackMode'
 type SettingField = EditableSettingField | 'apiKey'
 type DraftChange = { kind: 'set' } | { kind: 'clear' }
 type DraftChanges = Partial<Record<SettingField, DraftChange>>
 type ResolvedSettings = ReturnType<typeof resolveTtsSettings>
 type DraftSettings = Pick<ResolvedSettings, EditableSettingField>
 
-const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'model', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format']
+const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'model', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format', 'voiceDesignPlaybackMode']
 const RELEASES_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/releases'
 
 function hostRoute(path: string): string {
@@ -86,6 +87,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
   const [model, setModel] = useState(initial.model)
   const [voice, setVoice] = useState(initial.voice)
   const [format, setFormat] = useState(initial.format)
+  const [voiceDesignPlaybackMode, setVoiceDesignPlaybackMode] = useState(initial.voiceDesignPlaybackMode)
   const [voiceDesignPrompt, setVoiceDesignPrompt] = useState(initial.voiceDesignPrompt)
   const [voiceDesignCustomPrompt, setVoiceDesignCustomPrompt] = useState(initial.voiceDesignCustomPrompt)
   const [changes, setChanges] = useState<DraftChanges>({})
@@ -97,7 +99,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, model, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format }
+  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, model, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format, voiceDesignPlaybackMode }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -174,6 +176,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     setModel(next.model)
     setVoice(next.voice)
     setFormat(next.format)
+    setVoiceDesignPlaybackMode(next.voiceDesignPlaybackMode)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
     setChanges({})
@@ -193,6 +196,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     if (field === 'model') setModel(base.model)
     if (field === 'voice') setVoice(base.voice)
     if (field === 'format') setFormat(base.format)
+    if (field === 'voiceDesignPlaybackMode') setVoiceDesignPlaybackMode(base.voiceDesignPlaybackMode)
     if (field === 'voiceDesignPrompt') setVoiceDesignPrompt(base.voiceDesignPrompt)
     if (field === 'voiceDesignCustomPrompt') setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt)
   }
@@ -204,6 +208,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     setModel(next.model)
     setVoice(next.voice)
     setFormat(next.format)
+    setVoiceDesignPlaybackMode(next.voiceDesignPlaybackMode)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
     setApiKey('')
@@ -335,6 +340,16 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
             }}
           />
           <small>{t('settings.voiceDesignPromptHint')}</small>
+          <div className="xmimo-tts-format xmimo-tts-wide">
+            <SettingFieldHeading label={t('settings.voiceDesignPlaybackMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceDesignPlaybackMode')} resettable disabled={!snapshot.writable} onReset={() => { resetField('voiceDesignPlaybackMode') }} />
+            <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.voiceDesignPlaybackMode')}>
+              {TTS_VOICE_DESIGN_PLAYBACK_MODES.map((item) => <label key={item} className={voiceDesignPlaybackMode === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
+                <input type="radio" name="xmimo-tts-voice-design-playback" value={item} checked={voiceDesignPlaybackMode === item} disabled={!snapshot.writable} onChange={() => { setVoiceDesignPlaybackMode(item as TtsVoiceDesignPlaybackMode); markChange('voiceDesignPlaybackMode') }} />
+                <span>{t(item === 'complete' ? 'settings.voiceDesignPlaybackComplete' : 'settings.voiceDesignPlaybackSegmented')}</span>
+              </label>)}
+            </div>
+            <small>{t(voiceDesignPlaybackMode === 'complete' ? 'settings.voiceDesignPlaybackCompleteHint' : 'settings.voiceDesignPlaybackSegmentedHint')}</small>
+          </div>
         </div> : null}
         {model === 'mimo-v2.5-tts' ? <>
           <div className="xmimo-tts-voice xmimo-tts-wide">

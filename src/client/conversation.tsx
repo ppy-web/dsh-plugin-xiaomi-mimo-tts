@@ -169,6 +169,11 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
 
   const playCompletedReply = (automatic: boolean): void => {
+    if (resolvedSettings.model === 'mimo-v2.5-tts-voicedesign' && resolvedSettings.voiceDesignPlaybackMode === 'segmented') {
+      live.cancelSession(sessionId)
+      void playback.segmented(sessionId, messageId, text, automatic)
+      return
+    }
     if (resolvedSettings.model === 'mimo-v2.5-tts' && resolvedSettings.format === 'pcm') {
       playback.cancelPlayback(sessionId)
       live.playCompleted(sessionId, messageId, text, () => {
@@ -186,7 +191,7 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
       if (!live.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) playCompletedReply(true)
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [live, message.identity, message.latestMessageId, message.running, message.time, messageId, playback, resolvedSettings.format, resolvedSettings.model, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [live, message.identity, message.latestMessageId, message.running, message.time, messageId, playback, resolvedSettings.format, resolvedSettings.model, resolvedSettings.voiceDesignPlaybackMode, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 
@@ -230,6 +235,11 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
             }
             if (mine && source === 'complete') {
               void playback.toggle(sessionId, messageId, text, false)
+              return
+            }
+            if (mine && source === 'segmented') {
+              if (status === 'playing' || status === 'loading') playback.pauseSegmented(sessionId, messageId)
+              else if (status === 'paused') void playback.segmented(sessionId, messageId, text, false)
               return
             }
             playCompletedReply(false)
