@@ -187,6 +187,7 @@ test('keeps detailed voice settings behind one collapsible panel', () => {
   assert.match(settingsCardSource, /settings\.detailedVoiceConfig/)
   assert.match(settingsCardSource, /aria-expanded=\{detailsOpen\}/)
   assert.match(stylesSource, /xmimo-tts-details-toggle/)
+  assert.match(stylesSource, /xmimo-tts-details\+\.xmimo-tts-card-actions\{border-top:0\}/)
 })
 
 test('model picker matches the built-in voice picker selection treatment', () => {
