@@ -53,11 +53,15 @@ export class LiveSpeechController {
   private audioBusy = false
   private blockedTurn: string | null = null
   private completed: CompletedStreamPlayback | null = null
+  private audioStarted = false
+  private fallbackHandler: ((cursor: LiveSpeechCursor, text: string) => void) | null = null
   private onStateChange: ((sessionId: string, messageId: string, status: PlaybackStatus) => void) | null = null
 
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus) => void): void {
     this.onStateChange = listener
   }
+
+  setFallbackHandler(handler: ((cursor: LiveSpeechCursor, text: string) => void) | null): void { this.fallbackHandler = handler }
 
   setMaxPausedPcmBytes(value: number): void { this.audio.setMaxPausedPcmBytes(value) }
 
@@ -112,6 +116,7 @@ export class LiveSpeechController {
     if (this.sessionId !== sessionId || text.length === 0) return
     this.resetState()
     this.completed = { sessionId, messageId, audioStarted: false, fallback }
+    this.audioStarted = false
     this.messageId = messageId
     this.setStatus('loading')
     this.queue.enqueue(text)
@@ -176,6 +181,7 @@ export class LiveSpeechController {
 
   private beginSegment(next: LiveSpeechCursor, preserveMessageId: boolean): void {
     this.completed = null
+    if (!preserveMessageId) this.audioStarted = false
     this.active = next
     this.observed = ''
     this.consumed = 0
@@ -193,6 +199,7 @@ export class LiveSpeechController {
     this.setStatus('idle')
     this.messageId = null
     this.completed = null
+    this.audioStarted = false
   }
 
   private cursorKey(cursor: LiveSpeechCursor): string {
@@ -294,11 +301,20 @@ export class LiveSpeechController {
   }
 
   private handleStreamError(error: unknown): void {
+    const autoplayBlocked = typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'NotAllowedError'
     const completed = this.completed
-    if (completed !== null && !completed.audioStarted) {
+    if (!autoplayBlocked && completed !== null && !completed.audioStarted) {
       const fallback = completed.fallback
       this.resetState()
       fallback()
+      return
+    }
+    if (!autoplayBlocked && this.active !== null && !this.audioStarted && this.fallbackHandler !== null) {
+      const fallback = this.fallbackHandler
+      const cursor = this.active
+      const text = this.observed
+      this.resetState()
+      fallback(cursor, text)
       return
     }
     if (this.active !== null) this.blockedTurn = `${this.active.sessionId}:${this.active.turn}`
@@ -315,7 +331,10 @@ export class LiveSpeechController {
   private setStatus(status: PlaybackStatus): void {
     if (this.status === status) return
     this.status = status
-    if (status === 'playing' && this.completed !== null) this.completed.audioStarted = true
+    if (status === 'playing') {
+      this.audioStarted = true
+      if (this.completed !== null) this.completed.audioStarted = true
+    }
     this.reportStatus()
   }
 

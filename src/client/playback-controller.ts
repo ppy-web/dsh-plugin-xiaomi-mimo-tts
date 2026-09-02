@@ -90,13 +90,13 @@ export class PlaybackController {
     return true
   }
 
-  updateLivePlayback(sessionId: string, messageId: string, status: PlaybackStatus): void {
+  updateLivePlayback(sessionId: string, messageId: string, status: PlaybackStatus, source: 'live' | 'system' = 'live', error: string | null = null): void {
     if (this.activeSessionId !== sessionId) return
     if (status === 'idle') {
-      if (this.view.source === 'live' && this.view.messageId === messageId) this.publish(this.emptyView())
+      if (this.view.source === source && this.view.messageId === messageId) this.publish(this.emptyView())
       return
     }
-    if (this.view.source !== 'complete') this.publish({ sessionId, messageId, source: 'live', status, error: status === 'error' ? 'play-failed' : null })
+    if (this.view.source !== 'complete') this.publish({ sessionId, messageId, source, status, error: status === 'error' ? (error ?? 'play-failed') : null })
   }
 
   pauseSegmented(sessionId: string, messageId: string): void {
@@ -106,7 +106,7 @@ export class PlaybackController {
     this.publish({ sessionId, messageId, source: 'segmented', status: 'paused', error: null })
   }
 
-  async segmented(sessionId: string, messageId: string, text: string, automatic: boolean): Promise<void> {
+  async segmented(sessionId: string, messageId: string, text: string, automatic: boolean, fallback?: () => void): Promise<void> {
     if (this.activeSessionId !== sessionId) return
     const previous = this.segmentedState
     const resume = previous !== null && previous.sessionId === sessionId && previous.messageId === messageId
@@ -121,6 +121,7 @@ export class PlaybackController {
     const generation = ++this.generation
     const controller = new AbortController()
     this.request = controller
+    let audioStarted = false
     this.publish({ sessionId, messageId, source: 'segmented', status: 'loading', error: null })
     try {
       const synthesize = async (segment: string): Promise<Blob> => {
@@ -151,7 +152,10 @@ export class PlaybackController {
           audio.addEventListener('ended', ended)
           audio.addEventListener('error', failed)
           void audio.play().then(() => {
-            if (generation === this.generation && this.activeSessionId === sessionId) this.publish({ sessionId, messageId, source: 'segmented', status: 'playing', error: null })
+            if (generation === this.generation && this.activeSessionId === sessionId) {
+              audioStarted = true
+              this.publish({ sessionId, messageId, source: 'segmented', status: 'playing', error: null })
+            }
           }).catch(() => reject(new Error(automatic ? 'autoplay-blocked' : 'play-failed')))
         })
         this.segmentQueue = this.segmentQueue.filter((item) => item !== audio)
@@ -161,13 +165,21 @@ export class PlaybackController {
         this.publish(this.emptyView())
       }
     } catch (error) {
-      if (!controller.signal.aborted && generation === this.generation && this.activeSessionId === sessionId) this.publish({ sessionId, messageId, source: 'segmented', status: 'error', error: error instanceof Error ? error.message : String(error) })
+      if (!controller.signal.aborted && generation === this.generation && this.activeSessionId === sessionId) {
+        if (!audioStarted && fallback !== undefined) {
+          this.segmentedState = null
+          this.publish(this.emptyView())
+          fallback()
+          return
+        }
+        this.publish({ sessionId, messageId, source: 'segmented', status: 'error', error: error instanceof Error ? error.message : String(error) })
+      }
     } finally {
       if (generation === this.generation) this.request = null
     }
   }
 
-  async toggle(sessionId: string, messageId: string, text: string, automatic: boolean): Promise<void> {
+  async toggle(sessionId: string, messageId: string, text: string, automatic: boolean, fallback?: () => void): Promise<void> {
     if (this.activeSessionId !== sessionId) return
     if (this.view.source === 'complete' && this.view.sessionId === sessionId && this.view.messageId === messageId && this.current !== null) {
       const audio = this.current.audio
@@ -197,6 +209,7 @@ export class PlaybackController {
     const generation = ++this.generation
     const controller = new AbortController()
     this.request = controller
+    let audioCreated = false
     this.publish({ sessionId, messageId, source: 'complete', status: 'loading', error: null })
 
     try {
@@ -222,6 +235,7 @@ export class PlaybackController {
       if (generation !== this.generation || this.activeSessionId !== sessionId) return
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
+      audioCreated = true
       const current: SynthesizedAudio = {
         url,
         audio,
@@ -251,6 +265,12 @@ export class PlaybackController {
       }
     } catch (error) {
       if (controller.signal.aborted || generation !== this.generation || this.activeSessionId !== sessionId) return
+      if (!audioCreated && fallback !== undefined) {
+        this.request = null
+        this.publish(this.emptyView())
+        fallback()
+        return
+      }
       this.request = null
       this.publish({
         sessionId,

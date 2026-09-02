@@ -1,5 +1,5 @@
 export type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error'
-export type PlaybackSource = 'live' | 'complete' | 'segmented' | null
+export type PlaybackSource = 'live' | 'complete' | 'segmented' | 'system' | null
 
 export interface PlaybackView {
   sessionId: string | null

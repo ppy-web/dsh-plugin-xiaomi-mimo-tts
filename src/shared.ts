@@ -54,6 +54,9 @@ export const TTS_VOICE_DESIGN_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-pres
 /** Same-origin prefix used by the Web client to load official built-in voice avatars. */
 export const TTS_VOICE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-avatars'
 
+/** Same-origin route used by the Web client to load the four-state character toggle sheet. */
+export const TTS_TOGGLE_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/toggle-characters.png'
+
 /** Default Xiaomi endpoint for Token Plan API keys. */
 export const TOKEN_PLAN_TTS_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
 
@@ -73,9 +76,14 @@ export const TTS_VOICE_PRESETS = [
 ] as const
 
 /** TTS models supported by this plugin. */
-export const TTS_MODELS = ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign'] as const
+export const TTS_MODELS = ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign', 'browser-local-fallback'] as const
 
 export type TtsModel = typeof TTS_MODELS[number]
+
+/** Browser-local speech orchestration strategies. */
+export const TTS_LOCAL_SPEECH_MODES = ['auto', 'local-first', 'disabled'] as const
+
+export type TtsLocalSpeechMode = typeof TTS_LOCAL_SPEECH_MODES[number]
 
 /** Voice-design descriptions adapted from the reference voice-definition page. */
 export const TTS_VOICE_DESIGN_PRESETS = [
@@ -445,6 +453,8 @@ export interface TtsSettings {
   apiKey?: string
   baseURL?: string
   model?: TtsModel
+  localSpeechMode?: TtsLocalSpeechMode
+  localVoiceURI?: string
   voice?: string
   voiceDesignPrompt?: string
   voiceDesignCustomPrompt?: string
@@ -465,6 +475,8 @@ export interface ResolvedTtsSettings {
   apiKey: string
   baseURL: string
   model: TtsModel
+  localSpeechMode: TtsLocalSpeechMode
+  localVoiceURI: string
   voice: string
   voiceDesignPrompt: string
   voiceDesignCustomPrompt: string
@@ -486,6 +498,8 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   apiKey: '',
   baseURL: 'https://api.xiaomimimo.com/v1',
   model: 'mimo-v2.5-tts',
+  localSpeechMode: 'auto',
+  localVoiceURI: '',
   voice: '冰糖',
   voiceDesignPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。',
   voiceDesignCustomPrompt: '青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。',
@@ -517,6 +531,7 @@ export function isSupportedTtsApiKey(apiKey: string): boolean {
 /** Resolve an optional settings snapshot into the values used by the form. */
 export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsSettings {
   const resolved = { ...DEFAULT_TTS_SETTINGS, ...value }
+  const model = resolved.model === 'browser-local-fallback' ? 'mimo-v2.5-tts' : resolved.model
   const voiceDesignCustomPrompt = typeof value?.voiceDesignCustomPrompt === 'string'
     ? value.voiceDesignCustomPrompt
     : TTS_VOICE_DESIGN_PRESETS.some((item) => item.prompt === resolved.voiceDesignPrompt)
@@ -524,6 +539,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
       : resolved.voiceDesignPrompt
   return {
     ...resolved,
+    model,
     voiceDesignCustomPrompt,
     autoPlay: resolved.enabled ? resolved.autoPlay : false,
   }

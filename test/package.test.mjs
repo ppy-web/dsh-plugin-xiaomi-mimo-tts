@@ -10,6 +10,9 @@ const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.u
   .filter((name) => /\.(?:ts|tsx)$/.test(name))
   .sort()
 const clientSource = (await Promise.all(clientSourceFiles.map((name) => readFile(new URL(`../src/client/${name}`, import.meta.url), 'utf8')))).join('\n')
+const settingsCardSource = await readFile(new URL('../src/client/settings-card.tsx', import.meta.url), 'utf8')
+const localizationSource = await readFile(new URL('../src/client/localization.ts', import.meta.url), 'utf8')
+const stylesSource = await readFile(new URL('../src/client/styles.ts', import.meta.url), 'utf8')
 const sharedModule = await import('../lib/shared.js')
 const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
 
@@ -47,7 +50,9 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.TTS_API_KEY_STATUS_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-status')
   assert.equal(sharedModule.TTS_VOICE_DESIGN_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-presets')
   assert.equal(sharedModule.TTS_VOICE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-avatars')
-  assert.deepEqual(sharedModule.TTS_MODELS, ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign'])
+  assert.equal(sharedModule.TTS_TOGGLE_CHARACTER_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/toggle-characters.png')
+  assert.deepEqual(sharedModule.TTS_MODELS, ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign', 'browser-local-fallback'])
+  assert.deepEqual(sharedModule.TTS_LOCAL_SPEECH_MODES, ['auto', 'local-first', 'disabled'])
   assert.deepEqual(sharedModule.TTS_FORMATS, ['pcm', 'mp3', 'wav'])
   assert.deepEqual(sharedModule.TTS_VOICE_PRESETS.map((item) => item.value), ['冰糖', 'Mia', '茉莉', 'Chloe', '苏打', 'Milo', '白桦', 'Dean'])
   assert.equal(new Set(sharedModule.TTS_VOICE_PRESETS.map((item) => item.id)).size, sharedModule.TTS_VOICE_PRESETS.length)
@@ -65,6 +70,8 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.model, 'mimo-v2.5-tts')
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.localSpeechMode, 'auto')
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.localVoiceURI, '')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.format, 'pcm')
   assert.match(sharedModule.DEFAULT_TTS_SETTINGS.presetStylePrompt, /清晰、自然、准确/)
   assert.match(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt, /青年女性/)
@@ -160,12 +167,44 @@ test('ships one official avatar for every built-in voice', async () => {
   }
 })
 
+test('ships the transparent four-state character toggle sheet', async () => {
+  const data = await readFile(new URL('../assets/ui/toggle-characters.png', import.meta.url))
+  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
+  assert.equal(data.readUInt32BE(16), 656)
+  assert.equal(data.readUInt32BE(20), 600)
+  assert.match(settingsCardSource, /function CharacterToggle/)
+  assert.match(settingsCardSource, /kind="voice" checked=\{enabled\}/)
+  assert.match(settingsCardSource, /kind="autoplay" checked=\{enabled && autoPlay\}/)
+  assert.match(settingsCardSource, /type="checkbox" checked=\{checked\} disabled=\{disabled\}/)
+  assert.match(stylesSource, /xmimo-tts-character-voice-on\{background-position:left top\}/)
+  assert.match(stylesSource, /xmimo-tts-character-autoplay-off\{background-position:right bottom\}/)
+})
+
+test('keeps detailed voice settings behind one collapsible panel', () => {
+  assert.doesNotMatch(settingsCardSource, /enabledOnHint|enabledOffHint|autoPlayOnHint|autoPlayOffHint/)
+  assert.doesNotMatch(localizationSource, /enabledOnHint|enabledOffHint|autoPlayOnHint|autoPlayOffHint/)
+  assert.match(settingsCardSource, /detailsOpen/)
+  assert.match(settingsCardSource, /settings\.detailedVoiceConfig/)
+  assert.match(settingsCardSource, /aria-expanded=\{detailsOpen\}/)
+  assert.match(stylesSource, /xmimo-tts-details-toggle/)
+})
+
+test('model picker matches the built-in voice picker selection treatment', () => {
+  assert.match(settingsCardSource, /function ModelPicker/)
+  assert.doesNotMatch(settingsCardSource, /<select value=\{model\}/)
+  assert.match(settingsCardSource, /xmimo-tts-builtin-voice-trigger/)
+  assert.match(settingsCardSource, /xmimo-tts-builtin-voice-menu xmimo-tts-model-menu/)
+  assert.match(settingsCardSource, /role="option"[\s\S]*aria-selected=\{option\.value === value\}/)
+  assert.match(settingsCardSource, /xmimo-tts-builtin-voice-option-selected/)
+  assert.match(settingsCardSource, /xmimo-tts-builtin-voice-check/)
+})
+
 test('build emits declarations only for the private client modules', async () => {
   const clientArtifacts = (await readdir(new URL('../lib/client', import.meta.url))).sort()
   assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map')))
   assert.deepEqual(
     clientArtifacts.filter((name) => name.endsWith('.d.ts')),
-    ['built-in-voice-picker.d.ts', 'conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'voice-design-picker.d.ts'],
+    ['built-in-voice-picker.d.ts', 'conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'voice-design-picker.d.ts'],
   )
 })
 
@@ -182,6 +221,7 @@ test('keeps the client entry focused on DSH composition', async () => {
 test('resolved settings disable automatic playback when the plugin is disabled', () => {
   assert.equal(resolveTtsSettings({ enabled: false, autoPlay: true }).autoPlay, false)
   assert.equal(resolveTtsSettings({ enabled: true, autoPlay: true }).autoPlay, true)
+  assert.equal(resolveTtsSettings({ model: 'browser-local-fallback' }).model, 'mimo-v2.5-tts')
 })
 
 test('resolves the Voice Design settings without exposing a preset voice in the client form', () => {
@@ -471,13 +511,36 @@ test('completed preset replies stream only for PCM and complete formats keep pau
   assert.match(clientSource, /resolvedSettings\.model === 'mimo-v2\.5-tts'/)
   assert.match(clientSource, /live\.playCompleted\(sessionId, messageId, text/)
   assert.match(clientSource, /playback\.toggle\(sessionId, messageId, text, automatic\)/)
-  assert.match(clientSource, /if \(resolvedSettings\.model === 'mimo-v2\.5-tts' && resolvedSettings\.format === 'pcm'\)[\s\S]*live\.playCompleted[\s\S]*return\s*}\s*live\.cancelSession\(sessionId\)\s*void playback\.toggle/)
-  assert.match(clientSource, /resolvedSettings\.format !== 'pcm'/)
+  assert.match(clientSource, /live\.playCompleted\(sessionId, messageId, text/)
+  assert.match(clientSource, /resolvedSettings\.format === 'pcm'/)
   assert.match(clientSource, /if \(audio\.paused\)[\s\S]*await audio\.play\(\)[\s\S]*else \{\s*audio\.pause\(\)/)
   assert.match(clientSource, /private completed: CompletedStreamPlayback \| null = null/)
-  assert.match(clientSource, /if \(completed !== null && !completed\.audioStarted\)/)
+  assert.match(clientSource, /completed !== null && !completed\.audioStarted/)
   assert.match(clientSource, /if \(!receivedPcm && this\.isCurrentStream/)
-  assert.match(clientSource, /status === 'playing' && this\.completed !== null/)
+  assert.match(clientSource, /status === 'playing'/)
+})
+
+test('both MiMo models share persistent bidirectional browser-speech fallback', () => {
+  assert.match(clientSource, /const localModel = resolvedSettings\.model === 'mimo-v2\.5-tts'\s*const realtimeSpeechEnabled = localModel && \(resolvedSettings\.localSpeechMode !== 'disabled' \|\| resolvedSettings\.format === 'pcm'\)/)
+  assert.match(clientSource, /\(source === 'live' \|\| source === 'system'\) && \(status === 'loading' \|\| status === 'playing' \|\| status === 'paused'\)/)
+  assert.match(clientSource, /playCompletedReply\(false\)/)
+  assert.doesNotMatch(clientSource, /<option value="browser-local-fallback">/)
+  assert.equal((clientSource.match(/<LocalVoicePicker /g) ?? []).length, 1)
+  assert.match(settingsCardSource, /xmimo-tts-api-key xmimo-tts-wide[\s\S]*\{enabled \? <div className="xmimo-tts-details xmimo-tts-wide"[\s\S]*<LocalVoicePicker /)
+  assert.match(clientSource, /useApiKeySupported\(resolvedSettings\.localSpeechMode !== 'disabled'\)/)
+  assert.match(clientSource, /playback\.segmented\(sessionId, messageId, text, automatic, resolvedSettings\.localSpeechMode === 'auto'/)
+  assert.match(clientSource, /if \(!audioStarted && fallback !== undefined\) \{\s*this\.segmentedState = null\s*this\.publish\(this\.emptyView\(\)\)\s*fallback\(\)/)
+  assert.match(clientSource, /localSpeechMode === 'auto' \? 'settings\.localSpeechAutoHint' : localSpeechMode === 'local-first' \? 'settings\.localSpeechFirstHint' : 'settings\.localSpeechDisabledHint'/)
+  assert.doesNotMatch(clientSource, /fallbackAllowed/)
+  assert.doesNotMatch(clientSource, /getVoices\(\)\.filter\(\(voice\) => voice\.localService === true\)/)
+  assert.match(clientSource, /voice\.localService \? offlineLabel : onlineLabel/)
+  assert.match(clientSource, /offlineLabel=\{t\('settings\.localVoiceOffline'\)\} onlineLabel=\{t\('settings\.localVoiceOnline'\)\}/)
+  assert.match(clientSource, /if \(voice\.localService\) return 0[\s\S]*language\.startsWith\('zh-'\)\) return 1[\s\S]*language\.startsWith\('en-'\)\) return 2[\s\S]*return 3/)
+  assert.match(clientSource, /private timeoutMs = 120_000/)
+  assert.match(clientSource, /local\.setTimeoutMs\(resolvedSettings\.requestTimeoutMs\)/)
+  assert.match(clientSource, /finish\(new Error\('local-speech-timeout'\)\)/)
+  assert.match(clientSource, /const canFallback = !this\.audioStarted \|\| code === 'local-speech-timeout'/)
+  assert.match(clientSource, /if \(!audioCreated && fallback !== undefined\) \{\s*this\.request = null\s*this\.publish\(this\.emptyView\(\)\)\s*fallback\(\)/)
 })
 
 test('switching sessions resets every playback path and ignores a run re-entered mid-stream', () => {
@@ -486,7 +549,7 @@ test('switching sessions resets every playback path and ignores a run re-entered
   assert.match(clientSource, /deactivateSession\(sessionId: string\): void/)
   assert.match(clientSource, /this\.activeSessionId !== sessionId\) return/)
   assert.match(clientSource, /setStateChangeListener\(listener: \(sessionId: string, messageId: string, status: PlaybackStatus\)/)
-  assert.match(clientSource, /updateLivePlayback\(sessionId: string, messageId: string, status: PlaybackStatus\)/)
+  assert.match(clientSource, /updateLivePlayback\(sessionId: string, messageId: string, status: PlaybackStatus/)
   assert.match(clientSource, /const runArmed = useRef\(!session\.running\)/)
   assert.match(clientSource, /if \(!runArmed\.current\) return/)
   assert.match(clientSource, /live\.deactivateSession\(sessionId\)/)

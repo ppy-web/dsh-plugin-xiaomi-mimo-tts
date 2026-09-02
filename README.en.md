@@ -24,6 +24,7 @@ Add Xiaomi MiMo TTS read-aloud playback to assistant replies in DeepSeek Harness
 - Shows a read-aloud button below each completed assistant reply body when needed; enabled by default.
 - Uses Xiaomi MiMo's currently limited-time-free TTS models: `mimo-v2.5-tts` outputs smooth, clear audio with selectable PCM streaming or complete MP3/WAV playback.
 - Uses `mimo-v2.5-tts-voicedesign` Voice Design to create the voice you want from a text description.
+- Supports bidirectional browser-speech fallback for both MiMo models, using every offline or online voice exposed by the browser with MiMo first, local first, or disabled strategies.
 - Lets you switch between the preset-voice model and the custom voice-design model under **Settings → Plugins → Plugin configuration**, and configure the API key, autoplay, voice, audio format, and voice description.
 - Presents built-in voices in a two-column selector using Xiaomi MiMo's official avatars, names, and summaries.
 - Keeps the API key on the DSH Host. The browser sends only the reply body text to a same-origin Host route.
@@ -95,6 +96,12 @@ Young adult woman, bright and approachable voice, clear articulation, moderate p
 ```
 
 It is recommended to describe age and gender, vocal texture, speaking pace, and emotional baseline, while avoiding scenes or actions. Preset-voice mode still uses the built-in voice configuration.
+
+**Browser local fallback speech**
+
+The browser voice and fallback strategy stay at the bottom of the settings card for both models. MiMo first falls back from the currently selected MiMo model to the browser voice; local first tries the current MiMo model if browser speech fails; disabling local speech uses only MiMo. The picker lists every voice exposed by the browser Web Speech API and labels each one Offline or Online from its `localService` flag. Available online voices depend on the browser, operating system, and network speech services.
+
+The list orders all offline voices first, followed by online Chinese (`zh-*`), online English (`en-*`), and other online voices. Each browser-speech segment waits for 2 minutes by default; a timeout stops it and falls back to MiMo when the selected strategy permits.
 
 Browsers may block autoplay. If that happens, click the read-aloud button first.
 

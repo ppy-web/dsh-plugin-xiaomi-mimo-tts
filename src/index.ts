@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -33,6 +33,8 @@ export const Config = z.object({
   apiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.apiKey),
   baseURL: z.string().default(DEFAULT_TTS_SETTINGS.baseURL),
   model: z.union(TTS_MODELS).default(DEFAULT_TTS_SETTINGS.model),
+  localSpeechMode: z.union(TTS_LOCAL_SPEECH_MODES).default(DEFAULT_TTS_SETTINGS.localSpeechMode),
+  localVoiceURI: z.string().default(DEFAULT_TTS_SETTINGS.localVoiceURI),
   voice: z.string().default(DEFAULT_TTS_SETTINGS.voice),
   voiceDesignPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignPrompt),
   voiceDesignCustomPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt),
@@ -76,6 +78,10 @@ function requestMessages(options: Config, text: string): Array<{ role: 'user' | 
   if (context.length > 0) messages.push({ role: 'user', content: context })
   messages.push({ role: 'assistant', content: text })
   return messages
+}
+
+function upstreamModel(options: Config): 'mimo-v2.5-tts' | 'mimo-v2.5-tts-voicedesign' {
+  return options.model === 'mimo-v2.5-tts-voicedesign' ? options.model : 'mimo-v2.5-tts'
 }
 
 const MAX_REQUEST_BODY_BYTES = 128 * 1024
@@ -370,6 +376,7 @@ export function apply(ctx: Context, config: Config): void {
     const data = readFileSync(new URL(`../assets/voice-avatars/${preset.id}.webp`, import.meta.url))
     return [path, data] as const
   }))
+  const toggleCharacterAsset = readFileSync(new URL('../assets/ui/toggle-characters.png', import.meta.url))
 
   installSettingsSection(ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
     setSource(source) {
@@ -459,6 +466,26 @@ export function apply(ctx: Context, config: Config): void {
       })
     },
   }), 'xiaomi-mimo-tts: self-uninstall route')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: TTS_TOGGLE_CHARACTER_ASSET_ROUTE,
+    handler(req, res) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405
+        res.setHeader('allow', 'GET, HEAD')
+        res.end()
+        return
+      }
+
+      res.statusCode = 200
+      res.setHeader('content-type', 'image/png')
+      res.setHeader('content-length', String(toggleCharacterAsset.byteLength))
+      res.setHeader('cache-control', 'public, max-age=31536000, immutable')
+      res.setHeader('x-content-type-options', 'nosniff')
+      res.end(req.method === 'HEAD' ? undefined : toggleCharacterAsset)
+    },
+  }), 'xiaomi-mimo-tts: character toggle asset')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
@@ -585,7 +612,7 @@ export function apply(ctx: Context, config: Config): void {
             'user-agent': USER_AGENT,
           },
           body: JSON.stringify({
-            model: options.model,
+            model: upstreamModel(options),
             messages: requestMessages(options, text),
             audio: options.model === 'mimo-v2.5-tts-voicedesign'
               ? { format }
@@ -676,7 +703,7 @@ export function apply(ctx: Context, config: Config): void {
         json(res, 409, { error: 'api-key-not-configured' })
         return
       }
-      if (options.model !== 'mimo-v2.5-tts') {
+      if (upstreamModel(options) !== 'mimo-v2.5-tts') {
         json(res, 409, { error: 'streaming-model-unsupported', message: 'Realtime PCM streaming requires mimo-v2.5-tts.' })
         return
       }
@@ -698,7 +725,7 @@ export function apply(ctx: Context, config: Config): void {
             'user-agent': USER_AGENT,
           },
           body: JSON.stringify({
-            model: options.model,
+            model: upstreamModel(options),
             messages: requestMessages(options, text),
             audio: { format: 'pcm16', voice: options.voice },
             stream: true,

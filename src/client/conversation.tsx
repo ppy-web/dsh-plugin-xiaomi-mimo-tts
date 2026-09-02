@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { useEffect, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   IconLoadingOutline16,
   IconPauseOutline16,
@@ -8,10 +8,10 @@ import {
   extractMarkdownPlainText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ConversationSnapshot, SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
-import { prepareTtsText, resolveTtsSettings } from '../shared.js'
+import { prepareTtsText, resolveTtsSettings, TTS_API_KEY_STATUS_ROUTE } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 import type { Translate } from './localization.js'
-import { LiveSpeechController, PlaybackController } from './playback.js'
+import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback.js'
 import type { LiveMessageIdentity } from './playback.js'
 import { useSettingsSnapshot } from './settings-scope.js'
 
@@ -73,19 +73,47 @@ function messageLiveIdentity(snapshot: ConversationSnapshot, messageId: string):
   return null
 }
 
+let apiKeyStatusPromise: Promise<boolean> | null = null
+let apiKeyStatusExpires = 0
+
+function useApiKeySupported(active: boolean): boolean | null {
+  const [supported, setSupported] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!active) { setSupported(null); return }
+    if (apiKeyStatusPromise === null || apiKeyStatusExpires <= Date.now()) {
+      apiKeyStatusExpires = Date.now() + 2000
+      apiKeyStatusPromise = fetch(TTS_API_KEY_STATUS_ROUTE, { headers: { accept: 'application/json' } })
+        .then(async (response) => {
+          if (!response.ok) throw new Error('api-key-status-failed')
+          const result = await response.json() as { supported?: unknown }
+          return result.supported === true
+        })
+        .catch(() => false)
+    }
+    let mounted = true
+    void apiKeyStatusPromise.then((value) => { if (mounted) setSupported(value) })
+    return () => { mounted = false }
+  }, [active])
+  return supported
+}
+
 interface SessionPlaybackObserverProps {
   sessionId: string
   session: ConversationSnapshot
   playback: PlaybackController
   live: LiveSpeechController
+  local: LocalSpeechController
   settings: SettingsScope<TtsSettings>
 }
 
 /** Own the active-session boundary and feed its partial assistant output into realtime speech. */
-export function SessionPlaybackObserver({ sessionId, session, playback, live, settings }: SessionPlaybackObserverProps): null {
+export function SessionPlaybackObserver({ sessionId, session, playback, live, local, settings }: SessionPlaybackObserverProps): null {
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
+  const apiKeySupported = useApiKeySupported(resolvedSettings.localSpeechMode !== 'disabled')
   live.setMaxPausedPcmBytes(resolvedSettings.maxPausedPcmBytes)
+  local.setVoiceURI(resolvedSettings.localVoiceURI)
+  local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
   const active = useRef<{ turn: number; step: number } | null>(null)
   const wasRunning = useRef(session.running)
   const runArmed = useRef(!session.running)
@@ -94,17 +122,31 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, se
   const partialText = partial === null ? '' : assistantText(partial.blocks)
 
   useEffect(() => {
+    const localModel = resolvedSettings.model === 'mimo-v2.5-tts'
+    const localFirst = localModel && resolvedSettings.localSpeechMode === 'local-first'
+    const autoWithLocalFallback = localModel && resolvedSettings.localSpeechMode === 'auto'
+    live.setFallbackHandler(autoWithLocalFallback ? (cursor, text) => local.observe(sessionId, cursor.turn, cursor.step, text) : null)
+    local.setFallbackHandler(localFirst ? (cursor, text) => live.observe(sessionId, cursor.turn, cursor.step, text) : null)
+    return () => {
+      live.setFallbackHandler(null)
+      local.setFallbackHandler(null)
+    }
+  }, [live, local, resolvedSettings.localSpeechMode, resolvedSettings.model, sessionId])
+
+  useEffect(() => {
     active.current = null
     wasRunning.current = session.running
     runArmed.current = !session.running
     playback.activateSession(sessionId)
     live.activateSession(sessionId)
+    local.activateSession(sessionId)
     return () => {
       active.current = null
       live.deactivateSession(sessionId)
+      local.deactivateSession(sessionId)
       playback.deactivateSession(sessionId)
     }
-  }, [live, playback, sessionId])
+  }, [live, local, playback, sessionId])
 
   useEffect(() => {
     const beganRun = session.running && !wasRunning.current
@@ -113,13 +155,17 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, se
     else if (beganRun) {
       runArmed.current = true
       live.cancelSession(sessionId)
+      local.cancelSession(sessionId)
       playback.cancelPlayback(sessionId)
       active.current = null
     }
 
     playback.observeSession(sessionId, session.running && runArmed.current, latestMessageId)
-    if (!resolvedSettings.enabled || !resolvedSettings.autoPlay || resolvedSettings.model !== 'mimo-v2.5-tts' || resolvedSettings.format !== 'pcm') {
+    const localModel = resolvedSettings.model === 'mimo-v2.5-tts'
+    const realtimeSpeechEnabled = localModel && (resolvedSettings.localSpeechMode !== 'disabled' || resolvedSettings.format === 'pcm')
+    if (!resolvedSettings.enabled || !resolvedSettings.autoPlay || !realtimeSpeechEnabled) {
       live.cancelSession(sessionId)
+      local.cancel()
       active.current = null
       if (session.running) runArmed.current = false
       return
@@ -128,19 +174,34 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, se
     if (partial !== null) {
       if (active.current !== null && (active.current.turn !== partial.turn || active.current.step !== partial.step)) {
         const previous = finalLiveMessage(session, active.current.turn, active.current.step)
-        if (previous !== null) live.finish(sessionId, previous)
+        if (previous !== null) {
+          const useLocal = localModel && resolvedSettings.localSpeechMode !== 'disabled'
+            && (resolvedSettings.localSpeechMode === 'local-first' || (resolvedSettings.localSpeechMode === 'auto' && apiKeySupported === false))
+          if (useLocal) local.finish(sessionId, previous)
+          else live.finish(sessionId, previous)
+        }
       }
       active.current = { turn: partial.turn, step: partial.step }
-      live.observe(sessionId, partial.turn, partial.step, partialText)
+      const useLocal = localModel && resolvedSettings.localSpeechMode !== 'disabled'
+        && (resolvedSettings.localSpeechMode === 'local-first' || (resolvedSettings.localSpeechMode === 'auto' && apiKeySupported === false))
+      if (useLocal) local.observe(sessionId, partial.turn, partial.step, partialText)
+      else live.observe(sessionId, partial.turn, partial.step, partialText)
       return
     }
     if (active.current !== null) {
       const final = finalLiveMessage(session, active.current.turn, active.current.step)
-      if (final !== null) live.finish(sessionId, final)
-      else if (!session.running) live.cancelSession(sessionId)
+      if (final !== null) {
+        const useLocal = localModel && resolvedSettings.localSpeechMode !== 'disabled'
+          && (resolvedSettings.localSpeechMode === 'local-first' || (resolvedSettings.localSpeechMode === 'auto' && apiKeySupported === false))
+        if (useLocal) local.finish(sessionId, final)
+        else live.finish(sessionId, final)
+      } else if (!session.running) {
+        live.cancelSession(sessionId)
+        local.cancelSession(sessionId)
+      }
       active.current = null
     }
-  }, [latestMessageId, live, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.format, resolvedSettings.model, session, sessionId, session.running])
+  }, [apiKeySupported, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.format, resolvedSettings.localSpeechMode, resolvedSettings.model, session, sessionId, session.running])
 
   return null
 }
@@ -151,11 +212,12 @@ interface ReadAloudActionProps {
   useSession: <T>(selector: (snapshot: ConversationSnapshot) => T) => T
   playback: PlaybackController
   live: LiveSpeechController
+  local: LocalSpeechController
   settings: SettingsScope<TtsSettings>
   t: Translate
 }
 
-export function ReadAloudAction({ sessionId, messageId, useSession, playback, live, settings, t }: ReadAloudActionProps): ReactElement | null {
+export function ReadAloudAction({ sessionId, messageId, useSession, playback, live, local, settings, t }: ReadAloudActionProps): ReactElement | null {
   const message = useSession((snapshot) => ({
     text: messageText(snapshot, messageId),
     time: messageTime(snapshot, messageId),
@@ -166,39 +228,57 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
   const text = message.text
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
+  const apiKeySupported = useApiKeySupported(resolvedSettings.localSpeechMode !== 'disabled')
+  local.setVoiceURI(resolvedSettings.localVoiceURI)
+  local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
 
-  const playCompletedReply = (automatic: boolean): void => {
+  const playMimoCompletedReply = (automatic: boolean): void => {
     if (resolvedSettings.model === 'mimo-v2.5-tts-voicedesign' && resolvedSettings.voiceDesignPlaybackMode === 'segmented') {
       live.cancelSession(sessionId)
-      void playback.segmented(sessionId, messageId, text, automatic)
+      void playback.segmented(sessionId, messageId, text, automatic, resolvedSettings.localSpeechMode === 'auto'
+        ? () => local.playCompleted(sessionId, messageId, text)
+        : undefined)
       return
     }
     if (resolvedSettings.model === 'mimo-v2.5-tts' && resolvedSettings.format === 'pcm') {
       playback.cancelPlayback(sessionId)
       live.playCompleted(sessionId, messageId, text, () => {
-        void playback.toggle(sessionId, messageId, text, automatic)
+        if (resolvedSettings.localSpeechMode === 'auto') local.playCompleted(sessionId, messageId, text)
+        else void playback.toggle(sessionId, messageId, text, automatic)
       })
       return
     }
     live.cancelSession(sessionId)
-    void playback.toggle(sessionId, messageId, text, automatic)
+    void playback.toggle(sessionId, messageId, text, automatic, resolvedSettings.localSpeechMode === 'auto'
+      ? () => local.playCompleted(sessionId, messageId, text)
+      : undefined)
+  }
+
+  const playCompletedReply = (automatic: boolean): void => {
+    if (resolvedSettings.localSpeechMode === 'local-first' || (resolvedSettings.localSpeechMode === 'auto' && apiKeySupported === false)) {
+      live.cancelSession(sessionId)
+      playback.cancelPlayback(sessionId)
+      local.playCompleted(sessionId, messageId, text, resolvedSettings.localSpeechMode === 'local-first' ? () => playMimoCompletedReply(automatic) : undefined)
+      return
+    }
+    playMimoCompletedReply(automatic)
   }
 
   useEffect(() => {
-    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || live.hasHandled(sessionId, message.identity) || message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) && local.hasHandled(sessionId, message.identity)) || message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
-      if (!live.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) playCompletedReply(true)
+      if (!live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) playCompletedReply(true)
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [live, message.identity, message.latestMessageId, message.running, message.time, messageId, playback, resolvedSettings.format, resolvedSettings.model, resolvedSettings.voiceDesignPlaybackMode, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [apiKeySupported, live, local, message.identity, message.latestMessageId, message.running, message.time, messageId, playback, resolvedSettings.format, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.voiceDesignPlaybackMode, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 
   const mine = view.sessionId === sessionId && view.messageId === messageId
   const status = mine ? view.status : 'idle'
   const source = mine ? view.source : null
-  const liveActive = source === 'live' && (status === 'loading' || status === 'playing')
+  const liveActive = (source === 'live' || source === 'system') && (status === 'loading' || status === 'playing')
   const label = status === 'loading'
     ? liveActive ? t('action.cancel') : t('action.loading')
     : status === 'playing'
@@ -213,6 +293,16 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
     ? null
     : error === 'no-text'
       ? t('error.noText')
+      : error === 'local-speech-not-allowed'
+        ? t('error.localNotAllowed')
+        : error === 'local-voice-unavailable'
+          ? t('error.localVoiceUnavailable')
+          : error === 'local-speech-timeout'
+            ? t('error.localTimeout')
+            : error === 'local-speech-audio-device'
+            ? t('error.localAudioDevice')
+            : error === 'local-speech-failed' || error === 'local-speech-unavailable'
+              ? t('error.localSynthesis')
       : error === 'autoplay-blocked' || error === 'play-failed'
         ? t('error.play')
         : t('error.request')
@@ -227,10 +317,10 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
           aria-pressed={status === 'playing' || liveActive}
           disabled={status === 'loading' && !liveActive}
           onClick={() => {
-            if (mine && source === 'live') {
-              if (status === 'loading') { live.stop(sessionId); playback.cancelPlayback(sessionId) }
-              else if (status === 'playing') void live.pause(sessionId)
-              else if (status === 'paused') void live.resume(sessionId)
+            if (mine && (source === 'live' || source === 'system') && (status === 'loading' || status === 'playing' || status === 'paused')) {
+              if (status === 'loading') { if (source === 'system') local.stop(sessionId); else live.stop(sessionId); playback.cancelPlayback(sessionId) }
+              else if (status === 'playing') void (source === 'system' ? local.pause(sessionId) : live.pause(sessionId))
+              else if (status === 'paused') void (source === 'system' ? local.resume(sessionId) : live.resume(sessionId))
               return
             }
             if (mine && source === 'complete') {
@@ -239,7 +329,7 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
             }
             if (mine && source === 'segmented') {
               if (status === 'playing' || status === 'loading') playback.pauseSegmented(sessionId, messageId)
-              else if (status === 'paused') void playback.segmented(sessionId, messageId, text, false)
+              else if (status === 'paused') void playback.segmented(sessionId, messageId, text, false, resolvedSettings.localSpeechMode === 'auto' ? () => local.playCompleted(sessionId, messageId, text) : undefined)
               return
             }
             playCompletedReply(false)
@@ -252,6 +342,7 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
               : <IconPlayOutline16 />}
         </button>
       </Tooltip>
+      {source === 'system' && (status === 'loading' || status === 'playing' || status === 'paused') ? <span className="xmimo-tts-local-fallback-status" role="status">{t('action.localFallback')}</span> : null}
       {errorText === null ? null : <span className="xmimo-tts-inline-error" role="status">{errorText}</span>}
     </>
   )

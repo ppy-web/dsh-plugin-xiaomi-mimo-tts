@@ -8,7 +8,7 @@ import type { TtsSettings } from '../shared.js'
 import { ReadAloudAction, SessionPlaybackObserver } from './conversation.js'
 import { NS, en, zh } from './localization.js'
 import type { Translate } from './localization.js'
-import { LiveSpeechController, PlaybackController } from './playback.js'
+import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback.js'
 import { SettingsCard } from './settings-card.js'
 import { decodeSettings } from './settings-scope.js'
 import { CLIENT_STYLES } from './styles.js'
@@ -63,10 +63,13 @@ export function apply(ctx: ClientContext): void {
   })
   const playback = new PlaybackController()
   const live = new LiveSpeechController()
-  live.setStateChangeListener((sessionId, messageId, status) => playback.updateLivePlayback(sessionId, messageId, status))
+  const local = new LocalSpeechController()
+  live.setStateChangeListener((sessionId, messageId, status) => playback.updateLivePlayback(sessionId, messageId, status, 'live'))
+  local.setStateChangeListener((sessionId, messageId, status, error) => playback.updateLivePlayback(sessionId, messageId, status, 'system', error))
 
   ctx.effect(() => () => playback.dispose(), 'xiaomi-mimo-tts: playback')
   ctx.effect(() => () => live.dispose(), 'xiaomi-mimo-tts: live playback')
+  ctx.effect(() => () => local.dispose(), 'xiaomi-mimo-tts: local playback')
 
   ctx.effect(() => {
     const style = document.createElement('style')
@@ -80,7 +83,7 @@ export function apply(ctx: ClientContext): void {
     name: 'conversation.input.dock',
     id: 'xiaomi-mimo-tts-session-playback-observer',
     order: 998,
-    inject: () => ({ playback, live, settings: scope }),
+    inject: () => ({ playback, live, local, settings: scope }),
   }, SessionPlaybackObserver))
 
   registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
@@ -88,7 +91,7 @@ export function apply(ctx: ClientContext): void {
     id: 'xiaomi-mimo-tts',
     order: 20,
     locale: NS,
-    inject: () => ({ playback, live, settings: scope, t }),
+    inject: () => ({ playback, live, local, settings: scope, t }),
   }, ReadAloudAction))
 
   registerSlotContribution(ctx, 'settings.plugin.item', () => ctx.slots.register({
