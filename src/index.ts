@@ -7,8 +7,24 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from './shared.js'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _legacySettings: any
+try { _legacySettings = require('@deepseek-ai/dsh-settings') } catch {}
+
+function installSettingsCompat<T>(ctx: Context, ns: any, schema: z.ZodType<T>, entry: T, hooks: { setSource: (fn: () => T) => void; onChange: () => void; validate?: (v: T) => void }): void {
+  if (_legacySettings?.installSettingsSection) {
+    _legacySettings.installSettingsSection(ctx, ns, schema, entry, hooks)
+    return
+  }
+  ctx.inject(['settings'], (sctx) => {
+    const scope = sctx.settings.register(ns, schema, { base: entry, ...hooks.validate ? { validate: hooks.validate } : {} })
+    hooks.setSource(() => scope.get())
+    hooks.onChange()
+    scope.watch(() => hooks.onChange())
+  })
+}
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -25,7 +41,7 @@ export const name = 'xiaomi-mimo-tts'
 export const inject = ['webServer']
 
 /** Settings namespace registered with the DSH Host. */
-export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = settingsNamespace(TTS_SETTINGS_NAMESPACE)
+export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = _legacySettings?.settingsNamespace?.(TTS_SETTINGS_NAMESPACE) ?? TTS_SETTINGS_NAMESPACE
 
 /** Validated Host settings schema. */
 export const Config = z.object({
@@ -379,7 +395,7 @@ export function apply(ctx: Context, config: Config): void {
   const toggleCharacterAsset = readFileSync(new URL('../assets/ui/toggle-characters.png', import.meta.url))
   const apiKeyWhaleAsset = readFileSync(new URL('../assets/ui/api-key-whale.png', import.meta.url))
 
-  installSettingsSection(ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
+  installSettingsCompat(ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
     setSource(source) {
       current = source
     },
