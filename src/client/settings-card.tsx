@@ -7,6 +7,7 @@ import {
   TTS_LOCAL_SPEECH_MODES,
   TTS_MODELS,
   TTS_API_KEY_STATUS_ROUTE,
+  TTS_API_KEY_WHALE_ASSET_ROUTE,
   TTS_TOGGLE_CHARACTER_ASSET_ROUTE,
   TTS_UNINSTALL_ROUTE,
   TTS_UPDATE_ROUTE,
@@ -434,8 +435,8 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
       {open ? <div className="xmimo-tts-card-body">
         <div className="xmimo-tts-grid">
         <div className="xmimo-tts-switch-row xmimo-tts-wide">
-          <CharacterToggle kind="voice" checked={enabled} disabled={!snapshot.writable} label={t('settings.enabled')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} onChange={(next) => { setEnabled(next); if (!next) { setAutoPlay(false); setChanges((current) => ({ ...current, enabled: { kind: 'set' }, autoPlay: { kind: 'set' } })) } else markChange('enabled'); setState('idle') }} />
-          <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!snapshot.writable} label={t('settings.autoPlay')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} onChange={(next) => { setAutoPlay(next); if (next) { setEnabled(true); setChanges((current) => ({ ...current, autoPlay: { kind: 'set' }, enabled: { kind: 'set' } })) } else markChange('autoPlay'); setState('idle') }} />
+          <CharacterToggle kind="voice" checked={enabled} disabled={!snapshot.writable} label={t(enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} onChange={(next) => { setEnabled(next); if (!next) { setAutoPlay(false); setChanges((current) => ({ ...current, enabled: { kind: 'set' }, autoPlay: { kind: 'set' } })) } else markChange('enabled'); setState('idle') }} />
+          <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!snapshot.writable} label={t(enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} onChange={(next) => { setAutoPlay(next); if (next) { setEnabled(true); setChanges((current) => ({ ...current, autoPlay: { kind: 'set' }, enabled: { kind: 'set' } })) } else markChange('autoPlay'); setState('idle') }} />
         </div>
         <div className="xmimo-tts-api-key xmimo-tts-wide">
           <SettingFieldHeading
@@ -446,21 +447,28 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
             resettable={false}
             disabled={!snapshot.writable}
           />
-          <input
-            type="password"
-            value={apiKey}
-            name="xmimo-tts-api-key"
-            autoComplete="new-password"
-            autoCorrect="off"
-            spellCheck={false}
-            aria-autocomplete="none"
-            data-1p-ignore="true"
-            data-bwignore="true"
-            data-lpignore="true"
-            placeholder={t('settings.secretPlaceholder')}
-            disabled={!snapshot.writable}
-            onChange={(event) => { setApiKey(event.target.value); markChange('apiKey') }}
-          />
+          <div className="xmimo-tts-api-key-input">
+            <span
+              className="xmimo-tts-api-key-whale"
+              style={{ backgroundImage: `url(${hostRoute(TTS_API_KEY_WHALE_ASSET_ROUTE)})` }}
+              aria-hidden="true"
+            />
+            <input
+              type="password"
+              value={apiKey}
+              name="xmimo-tts-api-key"
+              autoComplete="new-password"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-autocomplete="none"
+              data-1p-ignore="true"
+              data-bwignore="true"
+              data-lpignore="true"
+              placeholder={t('settings.secretPlaceholder')}
+              disabled={!snapshot.writable}
+              onChange={(event) => { setApiKey(event.target.value); markChange('apiKey') }}
+            />
+          </div>
           <small className={apiKeyWarning ? 'xmimo-tts-api-key-warning' : undefined} role={apiKeyWarning ? 'alert' : undefined}>
             {apiKeyMessage}
           </small>

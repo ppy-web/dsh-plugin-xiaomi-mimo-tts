@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MODELS, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -377,6 +377,7 @@ export function apply(ctx: Context, config: Config): void {
     return [path, data] as const
   }))
   const toggleCharacterAsset = readFileSync(new URL('../assets/ui/toggle-characters.png', import.meta.url))
+  const apiKeyWhaleAsset = readFileSync(new URL('../assets/ui/api-key-whale.png', import.meta.url))
 
   installSettingsSection(ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
     setSource(source) {
@@ -486,6 +487,26 @@ export function apply(ctx: Context, config: Config): void {
       res.end(req.method === 'HEAD' ? undefined : toggleCharacterAsset)
     },
   }), 'xiaomi-mimo-tts: character toggle asset')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: TTS_API_KEY_WHALE_ASSET_ROUTE,
+    handler(req, res) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405
+        res.setHeader('allow', 'GET, HEAD')
+        res.end()
+        return
+      }
+
+      res.statusCode = 200
+      res.setHeader('content-type', 'image/png')
+      res.setHeader('content-length', String(apiKeyWhaleAsset.byteLength))
+      res.setHeader('cache-control', 'public, max-age=31536000, immutable')
+      res.setHeader('x-content-type-options', 'nosniff')
+      res.end(req.method === 'HEAD' ? undefined : apiKeyWhaleAsset)
+    },
+  }), 'xiaomi-mimo-tts: API key whale asset')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',

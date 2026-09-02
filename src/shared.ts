@@ -57,6 +57,9 @@ export const TTS_VOICE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-avatars'
 /** Same-origin route used by the Web client to load the four-state character toggle sheet. */
 export const TTS_TOGGLE_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/toggle-characters.png'
 
+/** Same-origin route used by the Web client to load the API-key whale mascot sheet. */
+export const TTS_API_KEY_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-whale.png'
+
 /** Default Xiaomi endpoint for Token Plan API keys. */
 export const TOKEN_PLAN_TTS_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
 
