@@ -37,7 +37,7 @@ Add Xiaomi MiMo TTS read-aloud playback to assistant replies in DeepSeek Harness
 - Node.js 22+
 - Xiaomi MiMo API Key
 
-Official Xiaomi MiMo TTS API reference: <https://mimo.mi.com/static/docs/api/audio/tts.md>
+Official Xiaomi MiMo TTS API reference: <https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts>
 
 ## Install
 
@@ -64,7 +64,7 @@ After installation, restart `dsh web`, then open **Settings → Plugins → Plug
 When updating or switching from the local development link to the npm package, stop DSH Web before changing the profile dependencies. This prevents a running Node process from holding the Windows Junction that pnpm needs to replace:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 2.3.4
+.\start\dsh-plugin-reinstall.bat 3.0.0
 ```
 
 The script stops DSH Web, removes the current plugin from the profile, installs the requested npm version, and starts DSH Web again. If you run the steps manually, keep the same order:
@@ -72,7 +72,7 @@ The script stops DSH Web, removes the current plugin from the profile, installs 
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@2.3.4
+dsh plugin --profile web add dsh-xiaomi-tts@3.0.0
 .\start\dsh-web-start.bat
 ```
 
