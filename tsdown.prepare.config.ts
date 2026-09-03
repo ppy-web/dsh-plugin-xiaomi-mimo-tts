@@ -1,20 +1,27 @@
 import { defineConfig } from 'tsdown'
-import clientConfig from './tsdown.config.ts'
+import { createClientConfig } from './tsdown.config.ts'
 
-export default defineConfig([{
-  name: 'dsh-xiaomi-tts',
-  entry: {
-    index: 'src/index.ts',
-    'client-api': 'src/client-api.ts',
-    'pcm-stream': 'src/pcm-stream.ts',
-    'settings-compat': 'src/settings-compat.ts',
-    shared: 'src/shared.ts',
-  },
-  outDir: 'lib',
-  format: ['esm'],
-  platform: 'node',
-  target: 'es2024',
-  fixedExtension: false,
-  dts: false,
-  clean: true,
-}, clientConfig])
+export function createBuildConfig(debugLogs = false) {
+  return defineConfig([{
+    name: debugLogs ? 'dsh-xiaomi-tts/debug' : 'dsh-xiaomi-tts',
+    entry: {
+      index: 'src/index.ts',
+      'client-api': 'src/client-api.ts',
+      'pcm-stream': 'src/pcm-stream.ts',
+      'settings-compat': 'src/settings-compat.ts',
+      shared: 'src/shared.ts',
+    },
+    outDir: 'lib',
+    format: ['esm'],
+    platform: 'node',
+    target: 'es2024',
+    fixedExtension: false,
+    dts: false,
+    clean: true,
+    define: {
+      'process.env.MIMO_TTS_DEBUG': JSON.stringify(String(debugLogs)),
+    },
+  }, createClientConfig(debugLogs)])
+}
+
+export default createBuildConfig()

@@ -62,6 +62,7 @@
   },
   "scripts": {
     "build": "tsdown -c tsdown.prepare.config.ts && tsc --emitDeclarationOnly",
+    "build:debug": "tsdown -c tsdown.debug.config.ts && tsc --emitDeclarationOnly",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run build && node --test test/*.test.mjs",
     "text": "node test/filter-test-server.mjs",

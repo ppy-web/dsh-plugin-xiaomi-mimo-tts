@@ -227,6 +227,8 @@ pnpm test
 pnpm pack:check
 ```
 
+Use `pnpm build` for release output; it does not emit MiMoTTS Host or browser console traces. Use `pnpm build:debug` when diagnosing the PCM streaming path; that build enables the `[MiMoTTS Host]`, `[MiMoTTS Stream]`, `[MiMoTTS Audio]`, and `[MiMoTTS Service]` logs on both sides.
+
 `lib/` is generated output and is not committed during day-to-day development. Feature commits update source and tests only; when a version is packaged or published, `prepack` regenerates the release output. GitHub installs build it during installation through `prepare`.
 
 ## License
