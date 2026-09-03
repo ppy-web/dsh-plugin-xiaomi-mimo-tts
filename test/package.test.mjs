@@ -52,6 +52,15 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.TTS_VOICE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-avatars')
   assert.equal(sharedModule.TTS_TOGGLE_CHARACTER_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/toggle-characters.png')
   assert.equal(sharedModule.TTS_API_KEY_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-whale.png')
+  assert.equal(sharedModule.TTS_MIXER_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/mixer-whale.png')
+  assert.equal(sharedModule.TTS_PREVIEW_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/preview-whale.png')
+  assert.equal(sharedModule.TTS_TOGGLE_AUDIO_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/audio')
+  assert.deepEqual(sharedModule.TTS_TOGGLE_SOUND_FILES, {
+    on: ['on01.mp3', 'on02.mp3', 'on03.mp3', 'on04.mp3'],
+    off: ['off01.mp3', 'off02.mp3', 'off03.mp3'],
+    'auto-on': ['auto-on01.mp3', 'auto-on02.mp3', 'auto-on03.mp3'],
+    'auto-off': ['auto-off01.mp3', 'auto-off02.mp3', 'auto-off03.mp3'],
+  })
   assert.deepEqual(sharedModule.TTS_MODELS, ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign', 'browser-local-fallback'])
   assert.deepEqual(sharedModule.TTS_LOCAL_SPEECH_MODES, ['auto', 'local-first', 'disabled'])
   assert.deepEqual(sharedModule.TTS_FORMATS, ['pcm', 'mp3', 'wav'])
@@ -199,6 +208,27 @@ test('keeps detailed voice settings behind one collapsible panel', () => {
   assert.match(stylesSource, /xmimo-tts-details\+\.xmimo-tts-card-actions\{border-top:0\}/)
 })
 
+test('ships randomized debounced feedback sounds for both switches', async () => {
+  const audioFiles = (await readdir(new URL('../assets/audio/', import.meta.url))).sort()
+  const expected = Object.values(sharedModule.TTS_TOGGLE_SOUND_FILES).flat().sort()
+  assert.deepEqual(audioFiles, expected)
+  for (const file of audioFiles) {
+    const data = await readFile(new URL(`../assets/audio/${file}`, import.meta.url))
+    assert.ok(data.byteLength > 0)
+    assert.equal(data[0], 0xff)
+    assert.equal(data[1] & 0xe0, 0xe0)
+  }
+  const toggleSoundSource = await readFile(new URL('../src/client/toggle-sound-player.ts', import.meta.url), 'utf8')
+  assert.match(toggleSoundSource, /TOGGLE_SOUND_DEBOUNCE_MS = 200/)
+  assert.match(toggleSoundSource, /window\.clearTimeout\(this\.timer\)/)
+  assert.match(toggleSoundSource, /Math\.random\(\)/)
+  assert.match(toggleSoundSource, /audio\.play\(\)\.catch\(release\)/)
+  assert.match(settingsCardSource, /toggleSoundPlayer\.schedule\(next \? 'on' : 'off'\)/)
+  assert.match(settingsCardSource, /toggleSoundPlayer\.schedule\(next \? 'auto-on' : 'auto-off'\)/)
+  assert.match(host, /xiaomi-mimo-tts: toggle sound assets/)
+  assert.match(host, /setHeader\(["']content-type["'], ["']audio\/mpeg["']\)/)
+})
+
 test('ships the transparent API-key whale focus sprite', async () => {
   const data = await readFile(new URL('../assets/ui/api-key-whale.png', import.meta.url))
   assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
@@ -207,6 +237,52 @@ test('ships the transparent API-key whale focus sprite', async () => {
   assert.match(settingsCardSource, /hostRoute\(TTS_API_KEY_WHALE_ASSET_ROUTE\)/)
   assert.match(settingsCardSource, /className="xmimo-tts-api-key-input"/)
   assert.match(stylesSource, /xmimo-tts-api-key-input:focus-within \.xmimo-tts-api-key-whale\{background-position:right center/)
+})
+
+test('ships the transparent mixing-console whale accordion sprite', async () => {
+  const data = await readFile(new URL('../assets/ui/mixer-whale.png', import.meta.url))
+  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
+  assert.equal(data.readUInt32BE(16), 400)
+  assert.equal(data.readUInt32BE(20), 200)
+  assert.match(settingsCardSource, /hostRoute\(TTS_MIXER_WHALE_ASSET_ROUTE\)/)
+  assert.match(settingsCardSource, /detailsOpen \? 'xmimo-tts-mixer-whale xmimo-tts-mixer-whale-open'/)
+  assert.match(stylesSource, /xmimo-tts-mixer-whale-open\{background-position:right center/)
+})
+
+test('uses the perched whale as the compact full-width preview control', () => {
+  assert.match(settingsCardSource, /className=\{previewBusy \? 'xmimo-tts-preview-whale-button xmimo-tts-preview-whale-button-active'/)
+  assert.match(settingsCardSource, /rows=\{2\}/)
+  assert.doesNotMatch(settingsCardSource, /xmimo-tts-preview-symbol|xmimo-tts-preview-copy|xmimo-tts-preview-controls/)
+  assert.match(localizationSource, /'settings\.previewHint': '写好台词后，轻点右上角的趴趴鲸鱼娘，就让她念给你听吧～'/)
+  assert.match(localizationSource, /'settings\.previewPlaying': '鲸鱼娘正在开麦，再点她一下就能停下啦。'/)
+  assert.match(settingsCardSource, /aria-live="polite">\{t\(previewMessageKey\)\}/)
+  assert.match(settingsCardSource, /className="xmimo-tts-preview-input"/)
+  assert.match(stylesSource, /xmimo-tts-preview-input>textarea\{box-sizing:border-box;width:100%;height:60px/)
+})
+
+test('lays out borderless switches and three consistently spaced bordered modules', () => {
+  assert.match(settingsCardSource, /className="xmimo-tts-switch-module xmimo-tts-wide"/)
+  assert.match(settingsCardSource, /xmimo-tts-settings-module xmimo-tts-api-key/)
+  assert.match(settingsCardSource, /xmimo-tts-settings-module xmimo-tts-details/)
+  assert.match(settingsCardSource, /xmimo-tts-settings-module xmimo-tts-preview/)
+  assert.doesNotMatch(settingsCardSource, /settings\.switchModule/)
+  assert.doesNotMatch(settingsCardSource, /className=\{detailsOpen \? 'xmimo-tts-chevron/)
+  assert.match(stylesSource, /xmimo-tts-sections\{grid-template-columns:minmax\(0,1fr\);gap:12px/)
+  assert.match(stylesSource, /xmimo-tts-sections>\.xmimo-tts-switch-module\{padding:0;border:0;background:transparent/)
+  assert.match(stylesSource, /xmimo-tts-switch-module \.xmimo-tts-character-portrait\{width:132px;height:120px/)
+  assert.match(settingsCardSource, /className="xmimo-tts-api-key-input"[\s\S]*className="xmimo-tts-api-key-whale"/)
+  assert.match(settingsCardSource, /className="xmimo-tts-details-summary"[\s\S]*className=\{detailsOpen \? 'xmimo-tts-mixer-whale/)
+  assert.match(stylesSource, /xmimo-tts-details-summary\{box-sizing:border-box;position:relative;width:100%;min-height:36px;overflow:visible;align-items:center;border:1px solid/)
+  assert.match(stylesSource, /xmimo-tts-api-key-input>\.xmimo-tts-api-key-whale,\.xmimo-tts-details-summary>\.xmimo-tts-mixer-whale,\.xmimo-tts-preview-input>\.xmimo-tts-preview-whale-button\{top:auto;right:8px;bottom:calc\(100% - 6px\);width:56px;height:56px/)
+})
+
+test('ships a dedicated transparent play and pause whale sprite', async () => {
+  const data = await readFile(new URL('../assets/ui/preview-whale.png', import.meta.url))
+  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
+  assert.equal(data.readUInt32BE(16), 400)
+  assert.equal(data.readUInt32BE(20), 200)
+  assert.match(settingsCardSource, /hostRoute\(TTS_PREVIEW_WHALE_ASSET_ROUTE\)/)
+  assert.match(stylesSource, /xmimo-tts-preview-whale-button-active\{background-position:right center/)
 })
 
 test('model picker matches the built-in voice picker selection treatment', () => {
@@ -224,7 +300,7 @@ test('build emits declarations only for the private client modules', async () =>
   assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map')))
   assert.deepEqual(
     clientArtifacts.filter((name) => name.endsWith('.d.ts')),
-    ['built-in-voice-picker.d.ts', 'conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'voice-design-picker.d.ts'],
+    ['built-in-voice-picker.d.ts', 'conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
   )
 })
 
@@ -546,7 +622,7 @@ test('both MiMo models share persistent bidirectional browser-speech fallback', 
   assert.match(clientSource, /playCompletedReply\(false\)/)
   assert.doesNotMatch(clientSource, /<option value="browser-local-fallback">/)
   assert.equal((clientSource.match(/<LocalVoicePicker /g) ?? []).length, 1)
-  assert.match(settingsCardSource, /xmimo-tts-api-key xmimo-tts-wide[\s\S]*\{enabled \? <div className="xmimo-tts-details xmimo-tts-wide"[\s\S]*<LocalVoicePicker /)
+  assert.match(settingsCardSource, /xmimo-tts-settings-module xmimo-tts-api-key xmimo-tts-wide[\s\S]*\{enabled \? <section className="xmimo-tts-settings-module xmimo-tts-details xmimo-tts-wide"[\s\S]*<LocalVoicePicker /)
   assert.match(clientSource, /useApiKeySupported\(resolvedSettings\.localSpeechMode !== 'disabled'\)/)
   assert.match(clientSource, /playback\.segmented\(sessionId, messageId, text, automatic, resolvedSettings\.localSpeechMode === 'auto'/)
   assert.match(clientSource, /if \(!audioStarted && fallback !== undefined\) \{\s*this\.segmentedState = null\s*this\.publish\(this\.emptyView\(\)\)\s*fallback\(\)/)
