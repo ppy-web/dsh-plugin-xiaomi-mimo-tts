@@ -238,4 +238,165 @@ export function SessionPlaybackObserver({ sessionId, session, useSession, useCha
       }
       active.current = null
     }
-  }, [apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.format, resolvedSettings.localSp[...]
+  }, [apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.format, resolvedSettings.localSp...)
+
+  return null
+}
+
+interface ReadAloudActionProps {
+  sessionId: string
+  messageId: string
+  // legacy fallback
+  session?: any
+  // new hook-style props
+  useSession?: <T>(selector: (snapshot: { running: boolean }) => T) => T
+  useChat?: <T>(selector: (snapshot: ChatSnapshotCompat) => T) => T
+  playback: PlaybackController
+  live: LiveSpeechController
+  local: LocalSpeechController
+  settings: SettingsScope<TtsSettings>
+  t: Translate
+}
+
+export function ReadAloudAction({ sessionId, messageId, session, useSession, useChat, playback, live, local, settings, t }: ReadAloudActionProps): ReactElement | null {
+  // derive message and running state from either hooks (new) or legacy session snapshot
+  const message = useChat
+    ? useChat((chat) => {
+      const legacy = chat.legacy
+      return {
+        text: messageText(legacy, messageId),
+        time: messageTime(legacy, messageId),
+        latestMessageId: latestAssistantMessageId(legacy),
+        identity: messageLiveIdentity(legacy, messageId),
+      }
+    })
+    : (session ? {
+      text: messageText(session as any, messageId),
+      time: messageTime(session as any, messageId),
+      latestMessageId: latestAssistantMessageId(session as any),
+      identity: messageLiveIdentity(session as any, messageId),
+    } : { text: '', time: null as number | null, latestMessageId: null as string | null, identity: null as Pick<LiveMessageIdentity, 'turn' | 'step'> | null })
+
+  const running = useSession ? useSession(s => s.running) : (session ? session.running : false)
+  const text = message.text
+  const settingsSnapshot = useSettingsSnapshot(settings)
+  const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
+  const apiKeySupported = useApiKeySupported(resolvedSettings.localSpeechMode !== 'disabled')
+  local.setVoiceURI(resolvedSettings.localVoiceURI)
+  local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
+  const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
+
+  const playMimoCompletedReply = (automatic: boolean): void => {
+    if (resolvedSettings.model === 'mimo-v2.5-tts-voicedesign' && resolvedSettings.voiceDesignPlaybackMode === 'segmented') {
+      live.cancelSession(sessionId)
+      void playback.segmented(sessionId, messageId, text, automatic, resolvedSettings.localSpeechMode === 'auto'
+        ? () => local.playCompleted(sessionId, messageId, text)
+        : undefined)
+      return
+    }
+    if (resolvedSettings.model === 'mimo-v2.5-tts' && resolvedSettings.format === 'pcm') {
+      playback.cancelPlayback(sessionId)
+      live.playCompleted(sessionId, messageId, text, () => {
+        if (resolvedSettings.localSpeechMode === 'auto') local.playCompleted(sessionId, messageId, text)
+        else void playback.toggle(sessionId, messageId, text, automatic)
+      })
+      return
+    }
+    live.cancelSession(sessionId)
+    void playback.toggle(sessionId, messageId, text, automatic, resolvedSettings.localSpeechMode === 'auto'
+      ? () => local.playCompleted(sessionId, messageId, text)
+      : undefined)
+  }
+
+  const playCompletedReply = (automatic: boolean): void => {
+    if (resolvedSettings.localSpeechMode === 'local-first' || (resolvedSettings.localSpeechMode === 'auto' && apiKeySupported === false)) {
+      live.cancelSession(sessionId)
+      playback.cancelPlayback(sessionId)
+      local.playCompleted(sessionId, messageId, text, resolvedSettings.localSpeechMode === 'local-first' ? () => playMimoCompletedReply(automatic) : undefined)
+      return
+    }
+    playMimoCompletedReply(automatic)
+  }
+
+  useEffect(() => {
+    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) && local.hasHandled(sessionId, message.identity)) || running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    const cancel = window.setTimeout(() => {
+      if (!live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) playCompletedReply(true)
+    }, 0)
+    return () => window.clearTimeout(cancel)
+  }, [apiKeySupported, live, local, message.identity, message.latestMessageId, message.time, messageId, playback, resolvedSettings.format, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.voiceDesignPlaybackMode, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+
+  if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
+
+  const mine = view.sessionId === sessionId && view.messageId === messageId
+  const status = mine ? view.status : 'idle'
+  const source = mine ? view.source : null
+  const liveActive = (source === 'live' || source === 'system') && (status === 'loading' || status === 'playing')
+  const label = status === 'loading'
+    ? liveActive ? t('action.cancel') : t('action.loading')
+    : status === 'playing'
+      ? liveActive ? t('action.stop') : t('action.pause')
+      : status === 'paused'
+        ? t('action.resume')
+        : status === 'error'
+          ? t('action.retry')
+          : t('action.play')
+  const error = mine ? view.error : null
+  const errorText = error === null
+    ? null
+    : error === 'no-text'
+      ? t('error.noText')
+      : error === 'local-speech-not-allowed'
+        ? t('error.localNotAllowed')
+        : error === 'local-voice-unavailable'
+          ? t('error.localVoiceUnavailable')
+          : error === 'local-speech-timeout'
+            ? t('error.localTimeout')
+            : error === 'local-speech-audio-device'
+            ? t('error.localAudioDevice')
+            : error === 'local-speech-failed' || error === 'local-speech-unavailable'
+              ? t('error.localSynthesis')
+      : error === 'autoplay-blocked' || error === 'play-failed'
+        ? t('error.play')
+        : t('error.request')
+
+  return (
+    <>
+      <Tooltip label={label} side="bottom">
+        <button
+          type="button"
+          className="xmimo-tts-action"
+          aria-label={label}
+          aria-pressed={status === 'playing' || liveActive}
+          disabled={status === 'loading' && !liveActive}
+          onClick={() => {
+            if (mine && (source === 'live' || source === 'system') && (status === 'loading' || status === 'playing' || status === 'paused')) {
+              if (status === 'loading') { if (source === 'system') local.stop(sessionId); else live.stop(sessionId); playback.cancelPlayback(sessionId) }
+              else if (status === 'playing') void (source === 'system' ? local.pause(sessionId) : live.pause(sessionId))
+              else if (status === 'paused') void (source === 'system' ? local.resume(sessionId) : live.resume(sessionId))
+              return
+            }
+            if (mine && source === 'complete') {
+              void playback.toggle(sessionId, messageId, text, false)
+              return
+            }
+            if (mine && source === 'segmented') {
+              if (status === 'playing' || status === 'loading') playback.pauseSegmented(sessionId, messageId)
+              else if (status === 'paused') void playback.segmented(sessionId, messageId, text, false, resolvedSettings.localSpeechMode === 'auto' ? () => local.playCompleted(sessionId, messageId, text) : undefined)
+              return
+            }
+            playCompletedReply(false)
+          }}
+        >
+          {status === 'loading'
+            ? <IconLoadingOutline16 className="xmimo-tts-spin" />
+            : status === 'playing'
+              ? <IconPauseOutline16 />
+              : <IconPlayOutline16 />}
+        </button>
+      </Tooltip>
+      {source === 'system' && (status === 'loading' || status === 'playing' || status === 'paused') ? <span className="xmimo-tts-local-fallback-status" role="status">{t('action.localFallback')}</span> : null}
+      {errorText === null ? null : <span className="xmimo-tts-inline-error" role="status">{errorText}</span>}
+    </>
+  )
+}
