@@ -1,7 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
 import {
   TTS_FORMATS,
   TTS_LOCAL_SPEECH_MODES,
@@ -20,6 +19,7 @@ import {
 } from '../shared.js'
 import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsSettings, TtsVoiceDesignPlaybackMode } from '../shared.js'
 import type { Translate } from './localization.js'
+import type { SettingsScopeCompat } from './dsh-compat.js'
 import { BuiltInVoicePicker } from './built-in-voice-picker.js'
 import { LocalVoicePicker } from './local-voice-picker.js'
 import { PreviewPlayer } from './preview-player.js'
@@ -33,7 +33,7 @@ import {
 } from './voice-design-picker.js'
 
 interface SettingsCardProps {
-  scope: SettingsScope<TtsSettings>
+  scope: SettingsScopeCompat<TtsSettings>
   t: Translate
 }
 

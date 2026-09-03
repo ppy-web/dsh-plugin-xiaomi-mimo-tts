@@ -7,34 +7,19 @@ import {
   Tooltip,
   extractMarkdownPlainText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
 import { prepareTtsText, resolveTtsSettings, TTS_API_KEY_STATUS_ROUTE } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
+import {
+  resolveConversationCompatState,
+  type ChatSnapshotCompat,
+  type LegacyConversationSliceCompat,
+  type SessionSnapshotCompat,
+} from './conversation-state.js'
+import type { SettingsScopeCompat } from './dsh-compat.js'
 import type { Translate } from './localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback.js'
 import type { LiveMessageIdentity } from './playback.js'
 import { useSettingsSnapshot } from './settings-scope.js'
-
-interface LegacyConversationSlice {
-  readonly nodes: readonly {
-    readonly kind: string
-    readonly messageId?: string
-    readonly blocks: readonly { readonly kind: string; readonly text?: string }[]
-    readonly turn: number
-    readonly step: number
-    readonly time: number
-    readonly interrupted?: true
-  }[]
-  readonly partial: {
-    readonly turn: number
-    readonly step: number
-    readonly blocks: readonly { readonly kind: string; readonly text?: string }[]
-  } | null
-}
-
-interface ChatSnapshotCompat {
-  readonly legacy: LegacyConversationSlice
-}
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SessionStandardProps {
@@ -42,7 +27,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-function messageText(legacy: LegacyConversationSlice, messageId: string): string {
+function messageText(legacy: LegacyConversationSliceCompat, messageId: string): string {
   for (const node of legacy.nodes) {
     if (node.kind !== 'assistant' || node.messageId !== messageId) continue
     const markdown = node.blocks
@@ -54,14 +39,14 @@ function messageText(legacy: LegacyConversationSlice, messageId: string): string
   return ''
 }
 
-function messageTime(legacy: LegacyConversationSlice, messageId: string): number | null {
+function messageTime(legacy: LegacyConversationSliceCompat, messageId: string): number | null {
   for (const node of legacy.nodes) {
     if (node.kind === 'assistant' && node.messageId === messageId) return node.time
   }
   return null
 }
 
-function latestAssistantMessageId(legacy: LegacyConversationSlice): string | null {
+function latestAssistantMessageId(legacy: LegacyConversationSliceCompat): string | null {
   for (let index = legacy.nodes.length - 1; index >= 0; index -= 1) {
     const node = legacy.nodes[index]
     if (node?.kind === 'assistant' && node.messageId !== undefined) return node.messageId
@@ -77,7 +62,7 @@ function assistantText(blocks: readonly { kind: string; text?: string }[]): stri
 }
 
 
-function finalLiveMessage(legacy: LegacyConversationSlice, turn: number, step: number): LiveMessageIdentity | null {
+function finalLiveMessage(legacy: LegacyConversationSliceCompat, turn: number, step: number): LiveMessageIdentity | null {
   for (let index = legacy.nodes.length - 1; index >= 0; index -= 1) {
     const node = legacy.nodes[index]
     if (node?.kind === 'assistant' && node.messageId !== undefined && node.turn === turn && node.step === step) {
@@ -93,7 +78,7 @@ function finalLiveMessage(legacy: LegacyConversationSlice, turn: number, step: n
   return null
 }
 
-function messageLiveIdentity(legacy: LegacyConversationSlice, messageId: string): Pick<LiveMessageIdentity, 'turn' | 'step'> | null {
+function messageLiveIdentity(legacy: LegacyConversationSliceCompat, messageId: string): Pick<LiveMessageIdentity, 'turn' | 'step'> | null {
   for (const node of legacy.nodes) {
     if (node.kind === 'assistant' && node.messageId === messageId) return { turn: node.turn, step: node.step }
   }
@@ -126,16 +111,14 @@ function useApiKeySupported(active: boolean): boolean | null {
 
 interface SessionPlaybackObserverProps {
   sessionId: string
-  // legacy fallback props
-  session?: any
+  session?: unknown
   messageId?: string
-  // new hook-style props
-  useSession?: <T>(selector: (snapshot: { running: boolean }) => T) => T
+  useSession?: <T>(selector: (snapshot: SessionSnapshotCompat) => T) => T
   useChat?: <T>(selector: (snapshot: ChatSnapshotCompat) => T) => T
   playback: PlaybackController
   live: LiveSpeechController
   local: LocalSpeechController
-  settings: SettingsScope<TtsSettings>
+  settings: SettingsScopeCompat<TtsSettings>
 }
 
 /** Own the active-session boundary and feed its partial assistant output into realtime speech. */
@@ -147,9 +130,9 @@ export function SessionPlaybackObserver({ sessionId, session, useSession, useCha
   local.setVoiceURI(resolvedSettings.localVoiceURI)
   local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
 
-  // runtime detection: prefer hooks when present, fall back to legacy session object
-  const runningSnapshot = useSession ? useSession(s => s.running) : (session ? session.running : false)
-  const legacy = useChat ? useChat(s => s.legacy) : (session ? (session as any) : { nodes: [], partial: null })
+  const sessionSnapshot = useSession === undefined ? undefined : useSession(snapshot => snapshot)
+  const chatLegacy = useChat === undefined ? undefined : useChat(chat => chat.legacy)
+  const { legacy, running: runningSnapshot } = resolveConversationCompatState(chatLegacy, sessionSnapshot, session)
 
   const active = useRef<{ turn: number; step: number } | null>(null)
   const wasRunning = useRef(runningSnapshot)
@@ -246,38 +229,26 @@ export function SessionPlaybackObserver({ sessionId, session, useSession, useCha
 interface ReadAloudActionProps {
   sessionId: string
   messageId: string
-  // legacy fallback
-  session?: any
-  // new hook-style props
-  useSession?: <T>(selector: (snapshot: { running: boolean }) => T) => T
+  session?: unknown
+  useSession?: <T>(selector: (snapshot: SessionSnapshotCompat) => T) => T
   useChat?: <T>(selector: (snapshot: ChatSnapshotCompat) => T) => T
   playback: PlaybackController
   live: LiveSpeechController
   local: LocalSpeechController
-  settings: SettingsScope<TtsSettings>
+  settings: SettingsScopeCompat<TtsSettings>
   t: Translate
 }
 
 export function ReadAloudAction({ sessionId, messageId, session, useSession, useChat, playback, live, local, settings, t }: ReadAloudActionProps): ReactElement | null {
-  // derive message and running state from either hooks (new) or legacy session snapshot
-  const message = useChat
-    ? useChat((chat) => {
-      const legacy = chat.legacy
-      return {
-        text: messageText(legacy, messageId),
-        time: messageTime(legacy, messageId),
-        latestMessageId: latestAssistantMessageId(legacy),
-        identity: messageLiveIdentity(legacy, messageId),
-      }
-    })
-    : (session ? {
-      text: messageText(session as any, messageId),
-      time: messageTime(session as any, messageId),
-      latestMessageId: latestAssistantMessageId(session as any),
-      identity: messageLiveIdentity(session as any, messageId),
-    } : { text: '', time: null as number | null, latestMessageId: null as string | null, identity: null as Pick<LiveMessageIdentity, 'turn' | 'step'> | null })
-
-  const running = useSession ? useSession(s => s.running) : (session ? session.running : false)
+  const sessionSnapshot = useSession === undefined ? undefined : useSession(snapshot => snapshot)
+  const chatLegacy = useChat === undefined ? undefined : useChat(chat => chat.legacy)
+  const { legacy, running } = resolveConversationCompatState(chatLegacy, sessionSnapshot, session)
+  const message = {
+    text: messageText(legacy, messageId),
+    time: messageTime(legacy, messageId),
+    latestMessageId: latestAssistantMessageId(legacy),
+    identity: messageLiveIdentity(legacy, messageId),
+  }
   const text = message.text
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)

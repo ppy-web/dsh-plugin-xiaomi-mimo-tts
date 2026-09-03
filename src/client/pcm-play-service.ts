@@ -1,11 +1,11 @@
-import { Service } from '@deepseek-ai/cordis'
-import type { ClientContext, SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
+import { Service, type Context } from '@deepseek-ai/cordis'
 import type { XiaomiMimoTtsService } from '../client-api.js'
 import { debugConsole } from '../debug-console.js'
 import { prepareTtsText, resolveTtsSettings } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 import { streamPcmAudio } from '../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
+import type { SettingsScopeCompat } from './dsh-compat.js'
 
 export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsService {
   private readonly logPrefix = '[MiMoTTS Service]'
@@ -18,8 +18,8 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
   private disposed = false
 
   constructor(
-    ctx: ClientContext,
-    private readonly settings: SettingsScope<TtsSettings>,
+    ctx: Context,
+    private readonly settings: SettingsScopeCompat<TtsSettings>,
     private readonly interruptConversationPlayback: () => void,
   ) {
     super(ctx, 'xiaomiMimoTts')

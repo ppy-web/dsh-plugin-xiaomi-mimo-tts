@@ -7,6 +7,7 @@ export function createBuildConfig(debugLogs = false) {
     entry: {
       index: 'src/index.ts',
       'client-api': 'src/client-api.ts',
+      'conversation-state': 'src/client/conversation-state.ts',
       'pcm-stream': 'src/pcm-stream.ts',
       'settings-compat': 'src/settings-compat.ts',
       shared: 'src/shared.ts',

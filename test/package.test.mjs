@@ -24,7 +24,11 @@ const settingsCardSource = await readFile(new URL('../src/client/settings-card.t
 const localizationSource = await readFile(new URL('../src/client/localization.ts', import.meta.url), 'utf8')
 const stylesSource = await readFile(new URL('../src/client/styles.ts', import.meta.url), 'utf8')
 const sharedModule = await import('../lib/shared.js')
+const conversationStateModule = await import('../lib/conversation-state.js')
 const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
+const { EMPTY_LEGACY_CONVERSATION, resolveConversationCompatState } = conversationStateModule
+
+const SUPPORTED_DSH_RANGE = '0.1.1-rc.2 || >=0.1.2-alpha.2 <=0.1.2-rc.1'
 
 function assertLocaleTextKey(key) {
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -42,6 +46,13 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.scripts['release:check'], 'pnpm run test')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
+  assert.equal(packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-runtime'), false)
+  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
+  assert.equal(packageJson.devDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
+  for (const [name, range] of Object.entries(packageJson.peerDependencies)) {
+    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, SUPPORTED_DSH_RANGE, name)
+    assert.equal(packageJson.peerDependenciesMeta[name]?.optional, true, `${name} must be supplied by the DSH runtime`)
+  }
   assert.equal(TTS_UPDATE_ROUTE, '/plugins/xiaomi-mimo-tts/update')
   assert.equal(packageJson.exports['./client'].default, './lib/client.js')
   assert.equal(packageJson.exports['./client-api'].types, './lib/client-api.d.ts')
@@ -348,7 +359,7 @@ test('build emits declarations only for the private client modules', async () =>
   assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map')))
   assert.deepEqual(
     clientArtifacts.filter((name) => name.endsWith('.d.ts')),
-    ['built-in-voice-picker.d.ts', 'conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
+    ['built-in-voice-picker.d.ts', 'conversation-state.d.ts', 'conversation.d.ts', 'dsh-compat.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
   )
 })
 
@@ -639,11 +650,47 @@ test('automatic playback only consumes the latest message from a live run once',
   assert.match(client, /conversation\.input\.dock/)
   assert.match(clientSource, /playback\.observeSession\(sessionId, runningSnapshot && runArmed\.current, latestMessageId\)/)
   assert.match(client, /completedMessages\.get\(sessionId\) !== messageId/)
-  assert.match(client, /useSession\(\(s\) => s\.running\)/)
+  assert.match(clientSource, /useSession\(snapshot => snapshot\)/)
+  assert.match(clientSource, /resolveConversationCompatState\(chatLegacy, sessionSnapshot, session\)/)
   assert.match(client, /message\.latestMessageId !== messageId/)
   assert.match(client, /running \|\|/)
   assert.match(client, /automaticallyPlayed\.has\(key\)/)
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
+})
+
+test('normalizes the rc.2 session snapshot and the 0.1.2 chat snapshot', () => {
+  const oldSession = {
+    running: true,
+    nodes: [{ kind: 'assistant', messageId: 'old-message', blocks: [{ kind: 'text', text: 'old' }], turn: 1, step: 2, time: 3 }],
+    partial: null,
+  }
+  const oldState = resolveConversationCompatState(undefined, oldSession, undefined)
+  assert.equal(oldState.legacy, oldSession)
+  assert.equal(oldState.running, true)
+
+  const ownerSession = {
+    running: false,
+    nodes: [{ kind: 'assistant', messageId: 'owner-message', blocks: [], turn: 1, step: 1, time: 1 }],
+    partial: null,
+  }
+  const chatLegacy = {
+    nodes: [{ kind: 'assistant', messageId: 'new-message', blocks: [], turn: 4, step: 5, time: 6 }],
+    partial: null,
+  }
+  const newState = resolveConversationCompatState(chatLegacy, { running: true }, ownerSession)
+  assert.equal(newState.legacy, chatLegacy)
+  assert.equal(newState.running, true)
+})
+
+test('conversation compatibility falls back to owner state and then an empty snapshot', () => {
+  const ownerSession = { running: true, nodes: [], partial: null }
+  const ownerState = resolveConversationCompatState(undefined, { running: false }, ownerSession)
+  assert.equal(ownerState.legacy, ownerSession)
+  assert.equal(ownerState.running, false)
+
+  const emptyState = resolveConversationCompatState({ nodes: 'invalid' }, { running: 'invalid' }, {})
+  assert.equal(emptyState.legacy, EMPTY_LEGACY_CONVERSATION)
+  assert.equal(emptyState.running, false)
 })
 
 test('completed preset replies stream only for PCM and complete formats keep pause and resume', () => {

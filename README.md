@@ -46,9 +46,11 @@
 
 ## 环境要求
 
-- `@deepseek-ai/dsh` `0.1.0-rc.7` 或兼容版本
+- `@deepseek-ai/dsh` `0.1.1-rc.2`，或 `0.1.2-alpha.2` 至 `0.1.2-rc.1`
 - Node.js 22+
 - Xiaomi MiMo API Key
+
+正式支持当前 npm 可安装的 `0.1.1-rc.2` 和 `0.1.2` 系列版本。`0.1.0-rc.7`、`0.1.0-rc.8`、`0.1.1-rc.1` 与未发布 npm CLI 的 `0.1.2-alpha.1` 不在支持范围内。
 
 官方 TTS API 文档：<https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts>
 
@@ -89,7 +91,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 > 更新或从本地开发版切换到 npm 版时，必须先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.0
+.\start\dsh-plugin-reinstall.bat 3.0.1
 ```
 
 这个脚本会按顺序停止 DSH Web、卸载当前 profile 中的插件、从 npm 安装指定版本并重新启动 DSH Web。若手动操作，请保持相同顺序：
@@ -97,7 +99,7 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@3.0.0
+dsh plugin --profile web add dsh-xiaomi-tts@3.0.1
 .\start\dsh-web-start.bat
 ```
 
@@ -187,6 +189,8 @@ pnpm typecheck
 pnpm test
 pnpm pack:check
 ```
+
+发布前使用互相隔离的 `DSH_HOME`，分别在 `0.1.1-rc.2`、`0.1.2-alpha.2` 和 `0.1.2-rc.1` 下验证设置保存与重启、历史消息朗读、自动播放、暂停恢复、会话切换及本地语音回退。CI 只对 `0.1.1-rc.2` 执行自动安装和启动 smoke 测试。
 
 日常发布构建使用 `pnpm build`，不会输出 MiMoTTS 的 Host 或浏览器控制台追踪。排查 PCM 流式链路时使用 `pnpm build:debug`，该构建会同时启用 `[MiMoTTS Host]`、`[MiMoTTS Stream]`、`[MiMoTTS Audio]` 和 `[MiMoTTS Service]` 日志。
 
