@@ -563,13 +563,13 @@ test('live speech only replaces playback when the session or turn changes', () =
 
   assert.match(clientSource, /transition === 'same-turn'\) this\.advanceSegment\(next\)/)
   assert.match(clientSource, /private advanceSegment\(next: LiveSpeechCursor\): void \{\s*this\.drain\(true\)\s*this\.beginSegment\(next, true\)\s*\}/)
-  assert.match(clientSource, /const previous = finalLiveMessage\(session, active\.current\.turn, active\.current\.step\)/)
+  assert.match(clientSource, /const previous = finalLiveMessage\(legacy, active\.current\.turn, active\.current\.step\)/)
   assert.match(clientSource, /private messageId: string \| null = null/)
 })
 
 test('client output registers the message action and plugin settings card', () => {
   assert.match(client, /conversation\.chat\.assistant-actions/)
-  assert.match(clientSource, /session\.partial/)
+  assert.match(clientSource, /legacy\.partial/)
   assert.match(client, /TTS_STREAM_ROUTE/)
   assert.match(client, /new AudioContext\(\)/)
   assert.match(clientSource, /live\.cancelSession\(sessionId\)/)
@@ -622,11 +622,11 @@ test('client output registers the message action and plugin settings card', () =
 
 test('automatic playback only consumes the latest message from a live run once', () => {
   assert.match(client, /conversation\.input\.dock/)
-  assert.match(clientSource, /playback\.observeSession\(sessionId, session\.running && runArmed\.current, latestMessageId\)/)
+  assert.match(clientSource, /playback\.observeSession\(sessionId, runningSnapshot && runArmed\.current, latestMessageId\)/)
   assert.match(client, /completedMessages\.get\(sessionId\) !== messageId/)
-  assert.match(client, /running: snapshot\.running/)
+  assert.match(client, /useSession\(\(s\) => s\.running\)/)
   assert.match(client, /message\.latestMessageId !== messageId/)
-  assert.match(client, /message\.running \|\|/)
+  assert.match(client, /running \|\|/)
   assert.match(client, /automaticallyPlayed\.has\(key\)/)
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
 })
@@ -679,7 +679,7 @@ test('switching sessions resets every playback path and ignores a run re-entered
   assert.match(clientSource, /this\.activeSessionId !== sessionId\) return/)
   assert.match(clientSource, /setStateChangeListener\(listener: \(sessionId: string, messageId: string, status: PlaybackStatus\)/)
   assert.match(clientSource, /updateLivePlayback\(sessionId: string, messageId: string, status: PlaybackStatus/)
-  assert.match(clientSource, /const runArmed = useRef\(!session\.running\)/)
+  assert.match(clientSource, /const runArmed = useRef\(!runningSnapshot\)/)
   assert.match(clientSource, /if \(!runArmed\.current\) return/)
   assert.match(clientSource, /live\.deactivateSession\(sessionId\)/)
   assert.match(clientSource, /playback\.deactivateSession\(sessionId\)/)
