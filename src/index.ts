@@ -19,6 +19,8 @@ const USER_AGENT = typeof packageJson.version === 'string'
 const PACKAGE_NAME = 'dsh-xiaomi-tts'
 const WEB_PROFILE_NAME = 'web'
 const NPM_LATEST_URL = 'https://registry.npmjs.org/dsh-xiaomi-tts/latest'
+const STREAM_HOST_LOG = '[MiMoTTS Host]'
+let nextHostStreamRequestId = 1
 
 /** Cordis plugin identifier. */
 export const name = 'xiaomi-mimo-tts'
@@ -786,7 +788,10 @@ export function apply(ctx: Context, config: Config): void {
     kind: 'exact',
     path: TTS_STREAM_ROUTE,
     async handler(req, res) {
+      const requestId = nextHostStreamRequestId++
+      console.info(STREAM_HOST_LOG, `[请求 ${requestId}] 收到流式合成请求`, { method: req.method, path: TTS_STREAM_ROUTE })
       if (req.method !== 'POST') {
+        console.warn(STREAM_HOST_LOG, `[请求 ${requestId}] 拒绝：仅支持 POST`)
         res.setHeader('allow', 'POST')
         json(res, 405, { error: 'method-not-allowed' })
         return
@@ -796,6 +801,7 @@ export function apply(ctx: Context, config: Config): void {
       try {
         body = await readJsonBody(req, MAX_REQUEST_BODY_BYTES) as SynthesizeBody
       } catch (error) {
+        console.error(STREAM_HOST_LOG, `[请求 ${requestId}] 请求体解析失败`, error)
         json(res, error instanceof Error && error.message === 'request-body-too-large' ? 413 : 400, {
           error: error instanceof Error && error.message === 'request-body-too-large'
             ? 'request-body-too-large'
@@ -806,19 +812,31 @@ export function apply(ctx: Context, config: Config): void {
 
       const text = typeof body.text === 'string' ? prepareTtsText(body.text) : ''
       const options = synthesisOptions(current(), body)
+      console.info(STREAM_HOST_LOG, `[请求 ${requestId}] 请求参数已解析`, {
+        text,
+        textLength: text.length,
+        model: upstreamModel(options),
+        voice: options.voice,
+        apiKeyConfigured: options.apiKey.trim().length > 0,
+        requestTimeoutMs: options.requestTimeoutMs,
+      })
       if (text.length === 0) {
+        console.warn(STREAM_HOST_LOG, `[请求 ${requestId}] 拒绝：文本为空`)
         json(res, 400, { error: 'text-required' })
         return
       }
       if (text.length > options.maxTextLength) {
+        console.warn(STREAM_HOST_LOG, `[请求 ${requestId}] 拒绝：文本过长`, { textLength: text.length, maxTextLength: options.maxTextLength })
         json(res, 413, { error: 'text-too-long', maxTextLength: options.maxTextLength })
         return
       }
       if (options.apiKey.trim().length === 0) {
+        console.warn(STREAM_HOST_LOG, `[请求 ${requestId}] 拒绝：API Key 未配置`)
         json(res, 409, { error: 'api-key-not-configured' })
         return
       }
       if (upstreamModel(options) !== 'mimo-v2.5-tts') {
+        console.warn(STREAM_HOST_LOG, `[请求 ${requestId}] 拒绝：模型不支持 PCM 流式播放`, { model: upstreamModel(options) })
         json(res, 409, { error: 'streaming-model-unsupported', message: 'Realtime PCM streaming requires mimo-v2.5-tts.' })
         return
       }
@@ -830,6 +848,7 @@ export function apply(ctx: Context, config: Config): void {
       res.once('close', abortOnDisconnect)
 
       try {
+        console.info(STREAM_HOST_LOG, `[请求 ${requestId}] 正在请求小米 MiMo 上游`)
         const response = await fetch(`${normalizeBaseURL(resolveTtsBaseURL(options.apiKey, options.baseURL))}/chat/completions`, {
           method: 'POST',
           redirect: 'error',
@@ -847,6 +866,7 @@ export function apply(ctx: Context, config: Config): void {
           }),
           signal: controller.signal,
         })
+        console.info(STREAM_HOST_LOG, `[请求 ${requestId}] 收到小米上游响应`, { ok: response.ok, status: response.status, contentType: response.headers.get('content-type') })
 
         if (!response.ok) {
           let parsed: XiaomiAudioResponse | undefined
@@ -855,10 +875,12 @@ export function apply(ctx: Context, config: Config): void {
           } catch {
             parsed = undefined
           }
+          console.error(STREAM_HOST_LOG, `[请求 ${requestId}] 小米上游返回错误`, { status: response.status, message: apiErrorMessage(response.status, parsed) })
           json(res, response.status, { error: 'xiaomi-api-error', message: apiErrorMessage(response.status, parsed) })
           return
         }
         if (response.body === null) {
+          console.error(STREAM_HOST_LOG, `[请求 ${requestId}] 小米上游响应没有 body`)
           json(res, 502, { error: 'invalid-xiaomi-response', message: 'Xiaomi MiMo streaming response had no body.' })
           return
         }
@@ -868,17 +890,27 @@ export function apply(ctx: Context, config: Config): void {
         res.setHeader('cache-control', 'no-store')
         res.setHeader('x-accel-buffering', 'no')
         const reader = response.body.getReader()
+        let forwardedChunks = 0
+        let forwardedBytes = 0
         try {
           while (!res.destroyed) {
             const chunk = await reader.read()
             if (chunk.done) break
+            forwardedChunks += 1
+            forwardedBytes += chunk.value.byteLength
+            console.info(STREAM_HOST_LOG, `[请求 ${requestId}] 转发上游数据块 #${forwardedChunks}`, { bytes: chunk.value.byteLength })
             res.write(chunk.value)
           }
         } finally {
           reader.releaseLock()
+          console.info(STREAM_HOST_LOG, `[请求 ${requestId}] 上游流读取结束`, { responseDestroyed: res.destroyed, forwardedChunks, forwardedBytes })
         }
-        if (!res.destroyed) res.end()
+        if (!res.destroyed) {
+          res.end()
+          console.info(STREAM_HOST_LOG, `[请求 ${requestId}] 已完成浏览器响应`)
+        }
       } catch (error) {
+        console.error(STREAM_HOST_LOG, `[请求 ${requestId}] 流式代理失败`, { aborted: controller.signal.aborted, error })
         if (!res.destroyed) {
           const aborted = controller.signal.aborted
           json(res, aborted ? 504 : 502, {
@@ -890,6 +922,7 @@ export function apply(ctx: Context, config: Config): void {
         clearTimeout(timeout)
         req.off('aborted', abortOnDisconnect)
         res.off('close', abortOnDisconnect)
+        console.info(STREAM_HOST_LOG, `[请求 ${requestId}] 请求清理完成`, { aborted: controller.signal.aborted, responseDestroyed: res.destroyed })
       }
     },
   }), 'xiaomi-mimo-tts: streaming synthesis route')
