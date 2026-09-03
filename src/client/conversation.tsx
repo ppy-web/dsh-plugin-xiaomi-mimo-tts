@@ -238,7 +238,7 @@ export function SessionPlaybackObserver({ sessionId, session, useSession, useCha
       }
       active.current = null
     }
-  }, [apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.format, resolvedSettings.localSp...)
+  }, [apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.format, resolvedSettings.localSpeechMode, resolvedSettings.model, runningSnapshot, sessionId])
 
   return null
 }

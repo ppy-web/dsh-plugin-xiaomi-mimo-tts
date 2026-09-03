@@ -6,10 +6,12 @@ import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import * as settingsApi from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
+import { installSettingsSectionCompat, resolveSettingsNamespace, type SettingsModuleCompat } from './settings-compat.js'
 import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES } from './shared.js'
 
+const compatibleSettingsApi = settingsApi as unknown as SettingsModuleCompat
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
   ? `dsh-xiaomi-tts/${packageJson.version}`
@@ -27,7 +29,7 @@ export const name = 'xiaomi-mimo-tts'
 export const inject = ['webServer']
 
 /** Settings namespace registered with the DSH Host. */
-export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = settingsNamespace(TTS_SETTINGS_NAMESPACE)
+export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = resolveSettingsNamespace(compatibleSettingsApi, TTS_SETTINGS_NAMESPACE)
 
 /** Validated Host settings schema. */
 export const Config = z.object({
@@ -405,7 +407,7 @@ export function apply(ctx: Context, config: Config): void {
     return [path, data] as const
   }))
 
-  installSettingsSection(ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
+  installSettingsSectionCompat(compatibleSettingsApi, ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
     setSource(source) {
       current = source
     },

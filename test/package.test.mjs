@@ -105,6 +105,8 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(TOKEN_PLAN_TTS_BASE_URL, 'https://token-plan-cn.xiaomimimo.com/v1')
   assert.match(host, /TTS_ROUTE/)
   assert.match(host, /prepareTtsText/)
+  assert.match(host, /resolveSettingsNamespace\(compatibleSettingsApi/)
+  assert.match(host, /installSettingsSectionCompat\(compatibleSettingsApi/)
   assert.match(host, /role\(['"]secret['"]\)/)
   assert.match(host, /mimo-v2\.5-tts/)
   assert.match(host, /mimo-v2\.5-tts-voicedesign/)
