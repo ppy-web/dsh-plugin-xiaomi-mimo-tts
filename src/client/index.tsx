@@ -99,7 +99,7 @@ export function apply(ctx: ClientContext): void {
     name: 'conversation.input.dock',
     id: 'xiaomi-mimo-tts-session-playback-observer',
     order: 998,
-    inject: () => ({ playback, live, local, settings: scope }),
+    inject: (_sessionId: string) => ({ playback, live, local, settings: scope }),
   }, SessionPlaybackObserver))
 
   registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
@@ -107,7 +107,7 @@ export function apply(ctx: ClientContext): void {
     id: 'xiaomi-mimo-tts',
     order: 20,
     locale: NS,
-    inject: () => ({ playback, live, local, settings: scope, t }),
+    inject: (_sessionId: string) => ({ playback, live, local, settings: scope, t }),
   }, ReadAloudAction))
 
   registerSlotContribution(ctx, 'settings.plugin.item', () => ctx.slots.register({
