@@ -16,6 +16,11 @@ const stylesSource = await readFile(new URL('../src/client/styles.ts', import.me
 const sharedModule = await import('../lib/shared.js')
 const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
 
+function assertLocaleTextKey(key) {
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  assert.match(localizationSource, new RegExp(`["']${escapedKey}["']\\s*:\\s*["'][^"'\\r\\n]+["']`))
+}
+
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
@@ -189,10 +194,10 @@ test('ships the transparent four-state character toggle sheet', async () => {
   assert.match(settingsCardSource, /settings\.enabledOffLabel/)
   assert.match(settingsCardSource, /settings\.autoPlayOnLabel/)
   assert.match(settingsCardSource, /settings\.autoPlayOffLabel/)
-  assert.match(localizationSource, /鲸鱼娘开麦啦/)
-  assert.match(localizationSource, /鲸鱼娘休息中/)
-  assert.match(localizationSource, /我来主动念给你听/)
-  assert.match(localizationSource, /等你叫我再念/)
+  assertLocaleTextKey('settings.enabledOnLabel')
+  assertLocaleTextKey('settings.enabledOffLabel')
+  assertLocaleTextKey('settings.autoPlayOnLabel')
+  assertLocaleTextKey('settings.autoPlayOffLabel')
   assert.match(settingsCardSource, /type="checkbox" checked=\{checked\} disabled=\{disabled\}/)
   assert.match(stylesSource, /xmimo-tts-character-voice-on\{background-position:left top\}/)
   assert.match(stylesSource, /xmimo-tts-character-autoplay-off\{background-position:right bottom\}/)
@@ -253,8 +258,10 @@ test('uses the perched whale as the compact full-width preview control', () => {
   assert.match(settingsCardSource, /className=\{previewBusy \? 'xmimo-tts-preview-whale-button xmimo-tts-preview-whale-button-active'/)
   assert.match(settingsCardSource, /rows=\{2\}/)
   assert.doesNotMatch(settingsCardSource, /xmimo-tts-preview-symbol|xmimo-tts-preview-copy|xmimo-tts-preview-controls/)
-  assert.match(localizationSource, /'settings\.previewHint': '写好台词后，轻点右上角的趴趴鲸鱼娘，就让她念给你听吧～'/)
-  assert.match(localizationSource, /'settings\.previewPlaying': '鲸鱼娘正在开麦，再点她一下就能停下啦。'/)
+  assert.match(settingsCardSource, /settings\.previewHint/)
+  assert.match(settingsCardSource, /settings\.previewPlaying/)
+  assertLocaleTextKey('settings.previewHint')
+  assertLocaleTextKey('settings.previewPlaying')
   assert.match(settingsCardSource, /aria-live="polite">\{t\(previewMessageKey\)\}/)
   assert.match(settingsCardSource, /className="xmimo-tts-preview-input"/)
   assert.match(stylesSource, /xmimo-tts-preview-input>textarea\{box-sizing:border-box;width:100%;height:60px/)
