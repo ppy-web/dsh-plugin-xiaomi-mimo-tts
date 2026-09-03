@@ -22,12 +22,22 @@ export class PlaybackController {
   private request: AbortController | null = null
   private generation = 0
   private activeSessionId: string | null = null
+  private beforePlayback: (() => void) | null = null
 
   getSnapshot = (): PlaybackView => this.view
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  setBeforePlayback(handler: (() => void) | null): void { this.beforePlayback = handler }
+
+  interrupt(): void {
+    this.generation += 1
+    this.stopCurrent()
+    this.segmentedState = null
+    this.publish(this.emptyView())
   }
 
   activateSession(sessionId: string): void {
@@ -108,6 +118,7 @@ export class PlaybackController {
 
   async segmented(sessionId: string, messageId: string, text: string, automatic: boolean, fallback?: () => void): Promise<void> {
     if (this.activeSessionId !== sessionId) return
+    this.beforePlayback?.()
     const previous = this.segmentedState
     const resume = previous !== null && previous.sessionId === sessionId && previous.messageId === messageId
     this.stopCurrent()
@@ -181,6 +192,7 @@ export class PlaybackController {
 
   async toggle(sessionId: string, messageId: string, text: string, automatic: boolean, fallback?: () => void): Promise<void> {
     if (this.activeSessionId !== sessionId) return
+    this.beforePlayback?.()
     if (this.view.source === 'complete' && this.view.sessionId === sessionId && this.view.messageId === messageId && this.current !== null) {
       const audio = this.current.audio
       const generation = this.generation

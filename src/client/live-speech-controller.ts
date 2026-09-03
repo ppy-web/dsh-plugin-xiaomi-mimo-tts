@@ -1,28 +1,15 @@
 import { extractMarkdownPlainText } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
-  TTS_STREAM_ROUTE,
   AbortableSentenceQueue,
   batchTtsStreamText,
   classifyLiveSpeechTransition,
-  parseSseRecords,
   prepareTtsText,
   splitCompletedTtsSentences,
 } from '../shared.js'
 import type { LiveSpeechCursor } from '../shared.js'
+import { streamPcmAudio } from '../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 import type { LiveMessageIdentity, PlaybackStatus } from './playback-types.js'
-
-function pcmDeltaFromSse(data: string): string | null {
-  if (data === '[DONE]') return null
-  const value = JSON.parse(data) as {
-    choices?: Array<{ delta?: { audio?: { data?: unknown } } }>
-    error?: string | { message?: string }
-  }
-  const upstreamError = typeof value.error === 'string' ? value.error : value.error?.message
-  if (upstreamError !== undefined) throw new Error(upstreamError)
-  const pcm = value.choices?.[0]?.delta?.audio?.data
-  return typeof pcm === 'string' && pcm.length > 0 ? pcm : null
-}
 
 interface CompletedStreamPlayback {
   sessionId: string
@@ -56,12 +43,15 @@ export class LiveSpeechController {
   private audioStarted = false
   private fallbackHandler: ((cursor: LiveSpeechCursor, text: string) => void) | null = null
   private onStateChange: ((sessionId: string, messageId: string, status: PlaybackStatus) => void) | null = null
+  private beforePlayback: (() => void) | null = null
 
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus) => void): void {
     this.onStateChange = listener
   }
 
   setFallbackHandler(handler: ((cursor: LiveSpeechCursor, text: string) => void) | null): void { this.fallbackHandler = handler }
+
+  setBeforePlayback(handler: (() => void) | null): void { this.beforePlayback = handler }
 
   setMaxPausedPcmBytes(value: number): void { this.audio.setMaxPausedPcmBytes(value) }
 
@@ -104,6 +94,7 @@ export class LiveSpeechController {
     const turnKey = `${sessionId}:${turn}`
     if (this.blockedTurn === turnKey) return
     if (this.blockedTurn !== null && this.blockedTurn !== turnKey) this.blockedTurn = null
+    this.beforePlayback?.()
     const transition = classifyLiveSpeechTransition(this.active, next)
     if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(this.observed))) this.reset(next)
     else if (transition === 'same-turn') this.advanceSegment(next)
@@ -114,6 +105,7 @@ export class LiveSpeechController {
   /** Stream one already-completed preset-model reply as PCM, falling back only before playback starts. */
   playCompleted(sessionId: string, messageId: string, text: string, fallback: () => void): void {
     if (this.sessionId !== sessionId || text.length === 0) return
+    this.beforePlayback?.()
     this.resetState()
     this.completed = { sessionId, messageId, audioStarted: false, fallback }
     this.audioStarted = false
@@ -158,6 +150,11 @@ export class LiveSpeechController {
 
   cancel(): void {
     this.blockedTurn = null
+    this.resetState()
+  }
+
+  interrupt(): void {
+    if (this.active !== null) this.blockedTurn = `${this.active.sessionId}:${this.active.turn}`
     this.resetState()
   }
 
@@ -255,46 +252,10 @@ export class LiveSpeechController {
   private async stream(sentence: string, signal: AbortSignal, generation: number): Promise<void> {
     if (!this.isCurrentStream(generation, signal)) return
     try {
-      const response = await fetch(TTS_STREAM_ROUTE, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text: sentence }),
-        signal,
+      await streamPcmAudio(sentence, signal, async (pcm) => {
+        if (!this.isCurrentStream(generation, signal)) return
+        await this.audio.enqueue(pcm)
       })
-      if (!this.isCurrentStream(generation, signal)) return
-      if (!response.ok) throw new Error(`stream-request-${response.status}`)
-      if (response.body === null) throw new Error('stream-response-empty')
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let pending = ''
-      let receivedPcm = false
-      const consume = async (events: string[]): Promise<void> => {
-        for (const event of events) {
-          if (!this.isCurrentStream(generation, signal)) return
-          const pcm = pcmDeltaFromSse(event)
-          if (pcm !== null) {
-            await this.audio.enqueue(pcm)
-            receivedPcm = true
-            if (!this.isCurrentStream(generation, signal)) return
-          }
-        }
-      }
-      try {
-        while (this.isCurrentStream(generation, signal)) {
-          const result = await reader.read()
-          if (result.done || !this.isCurrentStream(generation, signal)) break
-          pending += decoder.decode(result.value, { stream: true })
-          const parsed = parseSseRecords(pending)
-          pending = parsed.remainder
-          await consume(parsed.events)
-        }
-        pending += decoder.decode()
-        if (pending.trim().length > 0) await consume(parseSseRecords(`${pending}\n\n`).events)
-      } finally {
-        reader.releaseLock()
-      }
-      if (!receivedPcm && this.isCurrentStream(generation, signal)) throw new Error('stream-audio-empty')
     } catch (error) {
       if (this.isCurrentStream(generation, signal)) throw error
     }

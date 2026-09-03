@@ -109,6 +109,34 @@ dsh plugin --profile web add dsh-xiaomi-tts@3.0.0
 
 完整音频响应默认限制为 MP3 32 MiB、WAV 128 MiB，可在 Cordis 配置中通过 `maxMp3AudioBytes` 和 `maxWavAudioBytes` 调整。Host 会在解析 JSON 和 Base64 解码前执行大小检查。
 
+## 第三方插件接入
+
+Web 客户端插件可以按需调用本插件的 PCM 流式播放能力。推荐直接在需要播放的位置写一行：
+
+```ts
+ctx.get('xiaomiMimoTts')?.play('欢迎回来')
+```
+
+不要把 `xiaomiMimoTts` 声明为必需的 `inject` 服务，也不需要运行时导入 `dsh-xiaomi-tts`。`ctx.get()` 会在每次调用时动态查找能力：用户没有安装本插件、插件尚未就绪或之后被卸载时返回 `undefined`，第三方插件本身仍保持可用。
+
+`play()` 是立即返回、不会向调用方抛错的尽力播放接口。它固定通过 `/plugins/xiaomi-mimo-tts/synthesize-stream` 使用 `mimo-v2.5-tts` PCM16 流，并沿用用户在本插件中保存的 API Key、内置音色、Base URL、超时和文本长度限制。插件关闭、设置未就绪、文本为空、配置缺失、网络失败或浏览器阻止音频时会静默跳过或由本插件记录错误。新的第三方播放会打断当前朗读；之后开始的正常朗读也会停止第三方播放。需要主动停止时可调用 `ctx.get('xiaomiMimoTts')?.stop()`。
+
+若第三方项目需要 TypeScript 类型提示，可以仅导入类型，并把本包声明为 optional peer dependency；这不是使用上述一行调用的前提：
+
+```ts
+import type { XiaomiMimoTtsService } from 'dsh-xiaomi-tts/client-api'
+
+const tts = ctx.get('xiaomiMimoTts') as XiaomiMimoTtsService | undefined
+tts?.play('欢迎回来')
+```
+
+```json
+{
+  "peerDependencies": { "dsh-xiaomi-tts": "^3.0.0" },
+  "peerDependenciesMeta": { "dsh-xiaomi-tts": { "optional": true } }
+}
+```
+
 ## 隐私
 
 - API Key 仅保存在 DSH Host，不会发送给浏览器。
@@ -123,6 +151,7 @@ dsh plugin --profile web add dsh-xiaomi-tts@3.0.0
 
 - `src/index.ts`：Host 入口，注册 Schemastery 设置、两类音色静态资源，以及完整音频和 PCM/SSE 流式合成路由。
 - `src/shared.ts`：Host 与 Client 共用的领域契约，包括配置类型、默认值、文本清洗、分句、流式批处理和 SSE 解析。
+- `src/client-api.ts`：面向第三方 Web 客户端插件的可选 PCM 播放 Service 类型契约。
 - `src/client/index.tsx`：Web Client 组合入口，只负责绑定 DSH 服务、注册 Slot、注入样式和托管控制器生命周期。
 - `src/client/conversation.tsx`：React 会话适配层，订阅 DSH 会话快照并渲染朗读操作。
 - `src/client/settings-card.tsx`、`built-in-voice-picker.tsx` 与 `voice-design-picker.tsx`：插件设置表单、官方内置音色面板和 Voice Design 音色选择 UI。

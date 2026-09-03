@@ -5,6 +5,8 @@ export default defineConfig([{
   name: 'dsh-xiaomi-tts',
   entry: {
     index: 'src/index.ts',
+    'client-api': 'src/client-api.ts',
+    'pcm-stream': 'src/pcm-stream.ts',
     'settings-compat': 'src/settings-compat.ts',
     shared: 'src/shared.ts',
   },

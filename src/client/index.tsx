@@ -9,6 +9,7 @@ import { ReadAloudAction, SessionPlaybackObserver } from './conversation.js'
 import { NS, en, zh } from './localization.js'
 import type { Translate } from './localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback.js'
+import { XiaomiMimoTtsPcmService } from './pcm-play-service.js'
 import { SettingsCard } from './settings-card.js'
 import { decodeSettings } from './settings-scope.js'
 import { CLIENT_STYLES } from './styles.js'
@@ -64,9 +65,24 @@ export function apply(ctx: ClientContext): void {
   const playback = new PlaybackController()
   const live = new LiveSpeechController()
   const local = new LocalSpeechController()
+  const pcmService = new XiaomiMimoTtsPcmService(ctx, scope, () => {
+    live.interrupt()
+    local.interrupt()
+    playback.interrupt()
+  })
+  const stopOptionalPcm = () => pcmService.stop()
+  live.setBeforePlayback(stopOptionalPcm)
+  local.setBeforePlayback(stopOptionalPcm)
+  playback.setBeforePlayback(stopOptionalPcm)
   live.setStateChangeListener((sessionId, messageId, status) => playback.updateLivePlayback(sessionId, messageId, status, 'live'))
   local.setStateChangeListener((sessionId, messageId, status, error) => playback.updateLivePlayback(sessionId, messageId, status, 'system', error))
 
+  ctx.effect(() => async () => {
+    live.setBeforePlayback(null)
+    local.setBeforePlayback(null)
+    playback.setBeforePlayback(null)
+    await pcmService.dispose()
+  }, 'xiaomi-mimo-tts: optional PCM service')
   ctx.effect(() => () => playback.dispose(), 'xiaomi-mimo-tts: playback')
   ctx.effect(() => () => live.dispose(), 'xiaomi-mimo-tts: live playback')
   ctx.effect(() => () => local.dispose(), 'xiaomi-mimo-tts: local playback')

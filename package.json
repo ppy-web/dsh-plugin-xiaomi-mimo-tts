@@ -27,6 +27,10 @@
       "types": "./lib/client/index.d.ts",
       "default": "./lib/client.js"
     },
+    "./client-api": {
+      "types": "./lib/client-api.d.ts",
+      "default": "./lib/client-api.js"
+    },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },

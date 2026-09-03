@@ -111,6 +111,34 @@ Read-aloud uses only the cleaned reply body and does not modify the assistant me
 
 Complete-audio responses are limited to 32 MiB for MP3 and 128 MiB for WAV by default. Advanced Cordis configuration can override these limits with `maxMp3AudioBytes` and `maxWavAudioBytes`. The Host enforces the response limit before JSON parsing and Base64 decoding.
 
+## Third-party plugin integration
+
+Web client plugins can optionally use this plugin's PCM streaming playback capability. The recommended integration is one line at the point where speech is needed:
+
+```ts
+ctx.get('xiaomiMimoTts')?.play('Welcome back')
+```
+
+Do not declare `xiaomiMimoTts` as a required `inject` service, and do not import `dsh-xiaomi-tts` at runtime. `ctx.get()` resolves the capability on every call. If this plugin is not installed, is not ready yet, or is later removed, it returns `undefined` and the third-party plugin remains fully available.
+
+`play()` returns immediately and is best effort; it never throws to the caller. It always uses `/plugins/xiaomi-mimo-tts/synthesize-stream` with the `mimo-v2.5-tts` PCM16 stream and reuses the API key, built-in voice, base URL, timeout, and text-length limit saved in this plugin. A disabled plugin, settings that are not ready, empty text, missing configuration, network errors, or browser autoplay blocking are silently skipped or logged by this plugin. New third-party speech interrupts current read-aloud playback, and normal read-aloud playback that starts later stops the third-party speech. To stop it explicitly, call `ctx.get('xiaomiMimoTts')?.stop()`.
+
+For TypeScript hints, a third-party project may use a type-only import and declare this package as an optional peer dependency. Neither is required for the one-line call above:
+
+```ts
+import type { XiaomiMimoTtsService } from 'dsh-xiaomi-tts/client-api'
+
+const tts = ctx.get('xiaomiMimoTts') as XiaomiMimoTtsService | undefined
+tts?.play('Welcome back')
+```
+
+```json
+{
+  "peerDependencies": { "dsh-xiaomi-tts": "^3.0.0" },
+  "peerDependenciesMeta": { "dsh-xiaomi-tts": { "optional": true } }
+}
+```
+
 ## Privacy
 
 - The API key stays on the DSH Host and is never sent to the browser.
@@ -125,6 +153,7 @@ Please use [GitHub Issues](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts
 
 - `src/index.ts`: Host entry; registers Schemastery settings, both voice-asset groups, and complete-audio plus PCM/SSE synthesis routes.
 - `src/shared.ts`: Shared Host/Client domain contracts, including settings types, defaults, text cleaning, sentence splitting, stream batching, and SSE parsing.
+- `src/client-api.ts`: Optional PCM playback Service type contract for third-party Web client plugins.
 - `src/client/index.tsx`: Web Client composition entry; binds DSH services, registers slots, injects styles, and owns controller lifecycles.
 - `src/client/conversation.tsx`: React conversation adapter; observes DSH conversation snapshots and renders read-aloud actions.
 - `src/client/settings-card.tsx`, `built-in-voice-picker.tsx`, and `voice-design-picker.tsx`: Plugin settings form, official built-in voice panel, and Voice Design voice selector UI.

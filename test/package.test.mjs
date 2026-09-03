@@ -6,6 +6,11 @@ const packageJson = JSON.parse(await readFile(new URL('../package.json', import.
 const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
 const host = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
 const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+const clientApi = await readFile(new URL('../lib/client-api.js', import.meta.url), 'utf8')
+const pcmStream = await readFile(new URL('../lib/pcm-stream.js', import.meta.url), 'utf8')
+const clientApiSource = await readFile(new URL('../src/client-api.ts', import.meta.url), 'utf8')
+const readmeZh = await readFile(new URL('../README.md', import.meta.url), 'utf8')
+const readmeEn = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
 const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.url)))
   .filter((name) => /\.(?:ts|tsx)$/.test(name))
   .sort()
@@ -33,6 +38,10 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.dsh.client.platform, 'web')
   assert.equal(TTS_UPDATE_ROUTE, '/plugins/xiaomi-mimo-tts/update')
   assert.equal(packageJson.exports['./client'].default, './lib/client.js')
+  assert.equal(packageJson.exports['./client-api'].types, './lib/client-api.d.ts')
+  assert.equal(packageJson.exports['./client-api'].default, './lib/client-api.js')
+  assert.equal(typeof clientApi, 'string')
+  assert.match(pcmStream, /mimo-v2\.5-tts/)
   assert.match(patch, /id: xiaomi-mimo-tts/)
   assert.match(patch, /name: 'dsh-xiaomi-tts'/)
 })
@@ -213,6 +222,23 @@ test('keeps detailed voice settings behind one collapsible panel', () => {
   assert.match(stylesSource, /xmimo-tts-details\+\.xmimo-tts-card-actions\{border-top:0\}/)
 })
 
+test('exposes optional zero-impact PCM playback to third-party client plugins', () => {
+  const contextWithoutProvider = { get: () => undefined }
+  assert.doesNotThrow(() => contextWithoutProvider.get('xiaomiMimoTts')?.play('欢迎回来'))
+  assert.match(clientApiSource, /interface XiaomiMimoTtsService/)
+  assert.match(clientApiSource, /play\(text: string\): void/)
+  assert.match(clientApiSource, /stop\(\): void/)
+  assert.match(clientSource, /super\(ctx, 'xiaomiMimoTts'\)/)
+  assert.match(clientSource, /snapshot\.value\?\.enabled !== true/)
+  assert.match(clientSource, /streamPcmAudio\(normalized/)
+  assert.match(clientSource, /interruptConversationPlayback\(\)/)
+  assert.match(clientSource, /setBeforePlayback\(stopOptionalPcm\)/)
+  assert.match(readmeZh, /ctx\.get\('xiaomiMimoTts'\)\?\.play\('欢迎回来'\)/)
+  assert.match(readmeEn, /ctx\.get\('xiaomiMimoTts'\)\?\.play\('Welcome back'\)/)
+  assert.doesNotMatch(readmeZh, /inject\s*=\s*\['xiaomiMimoTts'\]/)
+  assert.doesNotMatch(readmeEn, /inject\s*=\s*\['xiaomiMimoTts'\]/)
+})
+
 test('ships randomized debounced feedback sounds for both switches', async () => {
   const audioFiles = (await readdir(new URL('../assets/audio/', import.meta.url))).sort()
   const expected = Object.values(sharedModule.TTS_TOGGLE_SOUND_FILES).flat().sort()
@@ -307,7 +333,7 @@ test('build emits declarations only for the private client modules', async () =>
   assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map')))
   assert.deepEqual(
     clientArtifacts.filter((name) => name.endsWith('.d.ts')),
-    ['built-in-voice-picker.d.ts', 'conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
+    ['built-in-voice-picker.d.ts', 'conversation.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
   )
 })
 
@@ -619,7 +645,7 @@ test('completed preset replies stream only for PCM and complete formats keep pau
   assert.match(clientSource, /if \(audio\.paused\)[\s\S]*await audio\.play\(\)[\s\S]*else \{\s*audio\.pause\(\)/)
   assert.match(clientSource, /private completed: CompletedStreamPlayback \| null = null/)
   assert.match(clientSource, /completed !== null && !completed\.audioStarted/)
-  assert.match(clientSource, /if \(!receivedPcm && this\.isCurrentStream/)
+  assert.match(pcmStream, /if \(!signal\.aborted && !receivedPcm\)/)
   assert.match(clientSource, /status === 'playing'/)
 })
 

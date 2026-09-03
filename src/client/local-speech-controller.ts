@@ -38,6 +38,7 @@ export class LocalSpeechController {
   private audioStarted = false
   private completedFallback: (() => void) | null = null
   private fallbackHandler: ((cursor: LiveSpeechCursor, text: string) => void) | null = null
+  private beforePlayback: (() => void) | null = null
 
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus, error: string | null) => void): void { this.onStateChange = listener }
 
@@ -46,6 +47,8 @@ export class LocalSpeechController {
   setTimeoutMs(value: number): void { this.timeoutMs = value }
 
   setFallbackHandler(handler: ((cursor: LiveSpeechCursor, text: string) => void) | null): void { this.fallbackHandler = handler }
+
+  setBeforePlayback(handler: (() => void) | null): void { this.beforePlayback = handler }
 
   activateSession(sessionId: string): void {
     if (this.sessionId === sessionId) return
@@ -65,6 +68,7 @@ export class LocalSpeechController {
     const turnKey = `${sessionId}:${turn}`
     if (this.blockedTurn === turnKey) return
     if (this.blockedTurn !== null && this.blockedTurn !== turnKey) this.blockedTurn = null
+    this.beforePlayback?.()
     const transition = classifyLiveSpeechTransition(this.active, next)
     if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(this.observed))) this.reset(next)
     else if (transition === 'same-turn') this.advance(next)
@@ -85,6 +89,7 @@ export class LocalSpeechController {
 
   playCompleted(sessionId: string, messageId: string, text: string, fallback?: () => void): void {
     if (this.sessionId !== sessionId || text.length === 0) return
+    this.beforePlayback?.()
     this.resetState()
     this.messageId = messageId
     this.completedFallback = fallback ?? null
@@ -125,6 +130,11 @@ export class LocalSpeechController {
 
   cancel(): void {
     this.blockedTurn = null
+    this.resetState()
+  }
+
+  interrupt(): void {
+    if (this.active !== null) this.blockedTurn = `${this.active.sessionId}:${this.active.turn}`
     this.resetState()
   }
 
