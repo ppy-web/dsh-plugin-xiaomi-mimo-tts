@@ -11,6 +11,23 @@
 
 <p><a href="README.en.md"><strong>English README →</strong></a></p>
 
+## 目录
+
+- [预览](#预览)
+- [功能](#功能)
+- [环境要求](#环境要求)
+- [安装与使用](#安装与使用)
+- [配置](#配置)
+  - [浏览器本地兜底语音](#浏览器本地兜底语音)
+- [朗读文本处理](#朗读文本处理)
+- [第三方插件接入](#第三方插件接入)
+- [隐私](#隐私)
+- [反馈与支持](#反馈与支持)
+- [架构](#架构)
+- [开发](#开发)
+- [推荐插件](#推荐插件)
+- [许可证](#许可证)
+
 ## 预览
 | 预置音色 | 自定义音色 |
 |:---:|:---:|
@@ -37,6 +54,16 @@
 官方 TTS API 文档：<https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts>
 
 ## 安装与使用
+
+从 [DSH 插件市场](https://github.com/dsh-market/dsh-market) 安装 **（推荐）**：
+
+1. 尚未安装插件市场时，先执行以下命令并重启 `dsh web`：
+
+   ```bash
+   dsh plugin --profile web add dshmarket
+   ```
+
+2. 打开 **设置 → 插件市场**，搜索 `dsh-xiaomi-tts` 并点击安装。
 
 从 npm 安装 **（推荐）**：
 
@@ -96,18 +123,16 @@ dsh plugin --profile web add dsh-xiaomi-tts@3.0.0
 
 建议包含年龄段与性别、声音质感、语速节奏和情绪底色，不写场景或动作。预置音色模式仍使用原来的内置音色配置。
 
-**浏览器本地兜底语音**
+### 浏览器本地兜底语音
 
-预置音色与 Voice Design 都支持双向兜底：“MiMo 优先”在当前 MiMo 模型失败时使用浏览器语音；“本地优先”先使用所选浏览器语音，失败时尝试当前 MiMo 模型；“关闭本地语音”仅使用 MiMo。选择器使用浏览器 Web Speech API 提供的全部音色，并按照 `localService` 标记显示“离线”或“在线”。实际可选的在线音色由浏览器、操作系统和网络服务共同决定。
-
-音色列表依次显示离线音色、在线中文音色（`zh-*`）、在线英文音色（`en-*`）和其他在线音色。每个浏览器语音片段默认等待 2 分钟；超时会停止当前语音，并在策略允许时回退到 MiMo。
+预置音色和 Voice Design 均支持三种策略：“MiMo 优先”在 MiMo 失败时改用浏览器语音；“本地优先”先用浏览器语音，失败时再尝试 MiMo；“关闭本地语音”仅使用 MiMo。可选音色来自浏览器 Web Speech API，是否离线及实际可用范围取决于浏览器、操作系统和网络服务。
 
 
 ## 朗读文本处理
 
-朗读只使用清理后的正文，不会修改聊天记录中显示的助手回复。Markdown 链接会保留可读标题并删除链接地址；网址、文件路径、完整代码块、表情符号、图标、零宽字符和控制字符不会发送给 Xiaomi MiMo。括号、方括号、书名号、引号等非断句符号会删除；保留的断句标点会转换为 ASCII 英文标点。仅当预置模型选择 PCM 时，回复生成期间的流式朗读才会累计至少 20 个可朗读字符再发起请求；对已经完成的回复，插件会把完整文本作为一次 PCM/SSE 请求发送并立即播放返回的音频分片。选择 MP3 或 WAV 时始终请求完整音频。
+插件只朗读清理后的正文，不会修改聊天记录。处理时会保留 Markdown 链接标题，移除链接地址、文件路径、代码块、表情及不可见字符，并统一朗读标点。
 
-完整音频响应默认限制为 MP3 32 MiB、WAV 128 MiB，可在 Cordis 配置中通过 `maxMp3AudioBytes` 和 `maxWavAudioBytes` 调整。Host 会在解析 JSON 和 Base64 解码前执行大小检查。
+PCM 模式会在回复生成时分段流式朗读，已完成的回复则一次请求并边接收边播放；MP3 和 WAV 会等待完整音频。默认响应上限为 MP3 32 MiB、WAV 128 MiB，可通过 `maxMp3AudioBytes` 和 `maxWavAudioBytes` 调整。
 
 ## 第三方插件接入
 
@@ -117,24 +142,15 @@ Web 客户端插件可以按需调用本插件的 PCM 流式播放能力。推�
 ctx.get('xiaomiMimoTts')?.play('欢迎回来')
 ```
 
-不要把 `xiaomiMimoTts` 声明为必需的 `inject` 服务，也不需要运行时导入 `dsh-xiaomi-tts`。`ctx.get()` 会在每次调用时动态查找能力：用户没有安装本插件、插件尚未就绪或之后被卸载时返回 `undefined`，第三方插件本身仍保持可用。
+请通过 `ctx.get()` 动态获取这项可选能力，不要声明为必需的 `inject` 服务。插件未安装或未就绪时调用会安全跳过；`play()` 使用用户已保存的 MiMo 设置播放 PCM 流，`stop()` 可主动停止。新播放会自动打断当前朗读。
 
-`play()` 是立即返回、不会向调用方抛错的尽力播放接口。它固定通过 `/plugins/xiaomi-mimo-tts/synthesize-stream` 使用 `mimo-v2.5-tts` PCM16 流，并沿用用户在本插件中保存的 API Key、内置音色、Base URL、超时和文本长度限制。插件关闭、设置未就绪、文本为空、配置缺失、网络失败或浏览器阻止音频时会静默跳过或由本插件记录错误。新的第三方播放会打断当前朗读；之后开始的正常朗读也会停止第三方播放。需要主动停止时可调用 `ctx.get('xiaomiMimoTts')?.stop()`。
-
-若第三方项目需要 TypeScript 类型提示，可以仅导入类型，并把本包声明为 optional peer dependency；这不是使用上述一行调用的前提：
+需要 TypeScript 类型提示时可仅导入类型：
 
 ```ts
 import type { XiaomiMimoTtsService } from 'dsh-xiaomi-tts/client-api'
 
 const tts = ctx.get('xiaomiMimoTts') as XiaomiMimoTtsService | undefined
 tts?.play('欢迎回来')
-```
-
-```json
-{
-  "peerDependencies": { "dsh-xiaomi-tts": "^3.0.0" },
-  "peerDependenciesMeta": { "dsh-xiaomi-tts": { "optional": true } }
-}
 ```
 
 ## 隐私
@@ -149,69 +165,19 @@ tts?.play('欢迎回来')
 
 ## 架构
 
-- `src/index.ts`：Host 入口，注册 Schemastery 设置、两类音色静态资源，以及完整音频和 PCM/SSE 流式合成路由。
-- `src/shared.ts`：Host 与 Client 共用的领域契约，包括配置类型、默认值、文本清洗、分句、流式批处理和 SSE 解析。
-- `src/client-api.ts`：面向第三方 Web 客户端插件的可选 PCM 播放 Service 类型契约。
-- `src/client/index.tsx`：Web Client 组合入口，只负责绑定 DSH 服务、注册 Slot、注入样式和托管控制器生命周期。
-- `src/client/conversation.tsx`：React 会话适配层，订阅 DSH 会话快照并渲染朗读操作。
-- `src/client/settings-card.tsx`、`built-in-voice-picker.tsx` 与 `voice-design-picker.tsx`：插件设置表单、官方内置音色面板和 Voice Design 音色选择 UI。
-- `src/client/live-speech-controller.ts`、`pcm-audio-queue.ts` 与 `playback-controller.ts`：分别管理实时朗读状态机、Web Audio PCM 调度和完整音频播放。
-- `src/client/settings-scope.ts`：使用 `useSyncExternalStore` 将 DSH Settings Scope 安全接入 React。
+- **共享层**：统一配置、文本清理、分段和 SSE 契约。
+- **Host 插件**：管理设置与静态资源，并代理 MiMo 完整音频和 PCM 流式请求。
+- **Web Client**：提供设置与朗读入口，负责播放状态、浏览器语音兜底和第三方播放服务。
 
 ```mermaid
-flowchart TD
-    DSH["DeepSeek Harness"]
-
-    subgraph Host["Host 插件"]
-        HI["src/index.ts<br/>设置与路由注册"]
-        SETTINGS["DSH Settings"]
-        ROUTES["完整音频 / PCM SSE 路由"]
-        ASSETS["Voice Design 静态资源"]
-    end
-
-    subgraph Shared["共享领域层"]
-        SH["src/shared.ts<br/>配置、文本处理、分句与 SSE"]
-    end
-
-    subgraph Client["Web Client"]
-        ENTRY["client/index.tsx<br/>组合入口"]
-        LOCALE["localization.ts"]
-        STYLE["styles.ts"]
-        SCOPE["settings-scope.ts<br/>useSyncExternalStore"]
-        FORM["settings-card.tsx"]
-        PICKER["voice-design-picker.tsx"]
-        CONV["conversation.tsx<br/>会话观察与朗读按钮"]
-
-        subgraph Audio["音频运行时"]
-            LIVE["live-speech-controller.ts<br/>流式语音状态机"]
-            PCM["pcm-audio-queue.ts<br/>Web Audio PCM 调度"]
-            COMPLETE["playback-controller.ts<br/>完整音频播放"]
-        end
-    end
-
-    API["Xiaomi MiMo API"]
-
-    DSH --> HI
-    DSH --> ENTRY
-    SH --> HI
-    SH --> SCOPE
-    SH --> CONV
-    SH --> LIVE
-    HI --> SETTINGS
-    HI --> ROUTES
-    HI --> ASSETS
-    ROUTES --> API
-    ENTRY --> LOCALE
-    ENTRY --> STYLE
-    ENTRY --> SCOPE
-    ENTRY --> FORM
-    ENTRY --> CONV
-    FORM --> PICKER
-    CONV --> LIVE
-    CONV --> COMPLETE
-    LIVE --> PCM
-    LIVE --> ROUTES
-    COMPLETE --> ROUTES
+flowchart LR
+    DSH["DSH Web"] --> CLIENT["Web Client<br/>设置与播放"]
+    THIRD["第三方 Web 插件"] -. "ctx.get('xiaomiMimoTts')" .-> CLIENT
+    CLIENT -->|"完整音频 / PCM 流"| HOST["Host 插件<br/>设置与 API 代理"]
+    HOST --> MIMO["Xiaomi MiMo API"]
+    CLIENT -->|"本地语音兜底"| SPEECH["浏览器 Web Speech API"]
+    SHARED["共享层<br/>配置、文本处理、SSE"] -.-> CLIENT
+    SHARED -.-> HOST
 ```
 
 ## 开发
@@ -224,6 +190,16 @@ pnpm pack:check
 ```
 
 `lib/` 是构建产物，不纳入日常代码提交。提交功能时只更新源码和测试；升级版本并执行 `pnpm pack` 或 `pnpm publish` 时，`prepack` 会自动重新生成发布包。直接从 GitHub 安装时，`prepare` 会在安装阶段构建该产物。
+
+## 推荐插件
+
+推荐配合本插件一起食用：
+
+- [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme)：元气鲸鱼娘桌宠。
+- [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme)：语义化 UI 音效。
+- [dsh-codex-timeline](https://github.com/Wine-Red/dsh-codex-timeline#readme)：Codex 风格时间线与会话搜索。
+- [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme)：原生换肤、背景壁纸、强调色、主题包 。
+
 
 ## 许可证
 
