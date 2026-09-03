@@ -5,12 +5,15 @@ import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
 import {
   TTS_FORMATS,
   TTS_LOCAL_SPEECH_MODES,
+  TTS_MIXER_WHALE_ASSET_ROUTE,
   TTS_MODELS,
+  TTS_PREVIEW_WHALE_ASSET_ROUTE,
   TTS_API_KEY_STATUS_ROUTE,
   TTS_API_KEY_WHALE_ASSET_ROUTE,
   TTS_TOGGLE_CHARACTER_ASSET_ROUTE,
   TTS_UNINSTALL_ROUTE,
   TTS_UPDATE_ROUTE,
+  TTS_VOICE_DESIGN_PRESETS,
   isSupportedTtsApiKey,
   resolveTtsSettings,
   TTS_VOICE_DESIGN_PLAYBACK_MODES,
@@ -19,7 +22,10 @@ import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsSettings, TtsVoiceDesi
 import type { Translate } from './localization.js'
 import { BuiltInVoicePicker } from './built-in-voice-picker.js'
 import { LocalVoicePicker } from './local-voice-picker.js'
+import { PreviewPlayer } from './preview-player.js'
+import type { PreviewStatus } from './preview-player.js'
 import { isRecord, useSettingsSnapshot } from './settings-scope.js'
+import { ToggleSoundPlayer } from './toggle-sound-player.js'
 import {
   CUSTOM_VOICE_DESIGN_OPTION,
   VoiceDesignPresetPicker,
@@ -246,6 +252,10 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
   const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
   const [open, setOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
+  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>('idle')
+  const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewStatus))
+  const [toggleSoundPlayer] = useState(() => new ToggleSoundPlayer())
   const [apiKeyStatus, setApiKeyStatus] = useState<'loading' | 'missing' | 'supported' | 'unsupported'>('loading')
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
 
@@ -336,6 +346,11 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     setChanges({})
   }, [dirty, value])
 
+  useEffect(() => () => {
+    toggleSoundPlayer.dispose()
+    void previewPlayer.dispose()
+  }, [previewPlayer, toggleSoundPlayer])
+
   if (snapshot.status === 'unavailable') return null
 
   const markChange = (field: SettingField, kind: DraftChange['kind'] = 'set'): void => {
@@ -375,6 +390,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
   }
 
   const save = async (): Promise<void> => {
+    setDetailsOpen(false)
     setState('saving')
     try {
       for (const field of EDITABLE_SETTING_FIELDS) {
@@ -416,6 +432,65 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     }
   }
 
+  const voiceDesignPreset = TTS_VOICE_DESIGN_PRESETS.find((item) => item.prompt === voiceDesignPrompt)
+  const summaryModel = t(model === 'mimo-v2.5-tts-voicedesign' ? 'settings.summaryVoiceDesignModel' : 'settings.summaryPresetModel')
+  const summaryVoice = model === 'mimo-v2.5-tts-voicedesign'
+    ? voiceDesignPreset?.label ?? t('settings.customVoiceOption')
+    : voice
+  const summaryPlayback = model === 'mimo-v2.5-tts-voicedesign'
+    ? t(voiceDesignPlaybackMode === 'complete' ? 'settings.voiceDesignPlaybackComplete' : 'settings.voiceDesignPlaybackSegmented')
+    : format.toUpperCase()
+  const summaryStrategy = t(localSpeechMode === 'auto' ? 'settings.localSpeechAutoSummary' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled')
+  const previewBusy = previewStatus === 'loading' || previewStatus === 'playing'
+  const previewMessageKey = previewStatus === 'error'
+    ? 'settings.previewFailed'
+    : previewStatus === 'loading'
+      ? 'settings.previewLoading'
+      : previewStatus === 'playing'
+        ? 'settings.previewPlaying'
+        : 'settings.previewHint'
+  const detailsInertProps: Record<string, string> = detailsOpen ? {} : { inert: '' }
+
+  const togglePreview = (): void => {
+    if (previewBusy) {
+      previewPlayer.stop()
+      return
+    }
+    void previewPlayer.play(previewText, {
+      model,
+      localSpeechMode,
+      localVoiceURI,
+      voice,
+      voiceDesignPrompt,
+      format,
+      voiceDesignPlaybackMode,
+    })
+  }
+
+  const changeEnabled = (next: boolean): void => {
+    toggleSoundPlayer.schedule(next ? 'on' : 'off')
+    setEnabled(next)
+    if (!next) {
+      setAutoPlay(false)
+      setChanges((current) => ({ ...current, enabled: { kind: 'set' }, autoPlay: { kind: 'set' } }))
+    } else {
+      markChange('enabled')
+    }
+    setState('idle')
+  }
+
+  const changeAutoPlay = (next: boolean): void => {
+    toggleSoundPlayer.schedule(next ? 'auto-on' : 'auto-off')
+    setAutoPlay(next)
+    if (next) {
+      setEnabled(true)
+      setChanges((current) => ({ ...current, autoPlay: { kind: 'set' }, enabled: { kind: 'set' } }))
+    } else {
+      markChange('autoPlay')
+    }
+    setState('idle')
+  }
+
   return (
     <li className={open ? 'xmimo-tts-card xmimo-tts-card-open' : 'xmimo-tts-card'}>
       <button
@@ -433,12 +508,14 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
         <IconChevronDownOutline14 className={open ? 'xmimo-tts-chevron xmimo-tts-chevron-open' : 'xmimo-tts-chevron'} />
       </button>
       {open ? <div className="xmimo-tts-card-body">
-        <div className="xmimo-tts-grid">
-        <div className="xmimo-tts-switch-row xmimo-tts-wide">
-          <CharacterToggle kind="voice" checked={enabled} disabled={!snapshot.writable} label={t(enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} onChange={(next) => { setEnabled(next); if (!next) { setAutoPlay(false); setChanges((current) => ({ ...current, enabled: { kind: 'set' }, autoPlay: { kind: 'set' } })) } else markChange('enabled'); setState('idle') }} />
-          <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!snapshot.writable} label={t(enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} onChange={(next) => { setAutoPlay(next); if (next) { setEnabled(true); setChanges((current) => ({ ...current, autoPlay: { kind: 'set' }, enabled: { kind: 'set' } })) } else markChange('autoPlay'); setState('idle') }} />
-        </div>
-        <div className="xmimo-tts-api-key xmimo-tts-wide">
+        <div className="xmimo-tts-grid xmimo-tts-sections">
+        <section className="xmimo-tts-switch-module xmimo-tts-wide">
+          <div className="xmimo-tts-switch-row">
+            <CharacterToggle kind="voice" checked={enabled} disabled={!snapshot.writable} label={t(enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} onChange={changeEnabled} />
+            <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!snapshot.writable} label={t(enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} onChange={changeAutoPlay} />
+          </div>
+        </section>
+        <section className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-tts-wide">
           <SettingFieldHeading
             label={t('settings.apiKey')}
             suffix={<a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>}
@@ -472,14 +549,24 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
           <small className={apiKeyWarning ? 'xmimo-tts-api-key-warning' : undefined} role={apiKeyWarning ? 'alert' : undefined}>
             {apiKeyMessage}
           </small>
+        </section>
         </div>
-        </div>
-        {enabled ? <div className="xmimo-tts-details xmimo-tts-wide">
+        {enabled ? <section className="xmimo-tts-settings-module xmimo-tts-details xmimo-tts-wide">
         <button type="button" className="xmimo-tts-details-toggle" aria-expanded={detailsOpen} onClick={() => { setDetailsOpen((current) => !current) }}>
-          <span>{t('settings.detailedVoiceConfig')}</span>
-          <IconChevronDownOutline14 className={detailsOpen ? 'xmimo-tts-chevron xmimo-tts-chevron-open' : 'xmimo-tts-chevron'} />
+          <span className="xmimo-tts-details-heading">
+            <strong>{t('settings.detailedVoiceConfig')}</strong>
+            <span className="xmimo-tts-details-summary">
+              <span>{summaryModel}</span><span>{summaryVoice}</span><span>{summaryPlayback}</span><span>{summaryStrategy}</span>
+              <span
+                className={detailsOpen ? 'xmimo-tts-mixer-whale xmimo-tts-mixer-whale-open' : 'xmimo-tts-mixer-whale'}
+                style={{ backgroundImage: `url(${hostRoute(TTS_MIXER_WHALE_ASSET_ROUTE)})` }}
+                aria-hidden="true"
+              />
+            </span>
+          </span>
         </button>
-        {detailsOpen ? <div className="xmimo-tts-details-body"><div className="xmimo-tts-grid">
+        <div className={detailsOpen ? 'xmimo-tts-details-collapse xmimo-tts-details-collapse-open' : 'xmimo-tts-details-collapse'} aria-hidden={!detailsOpen} {...detailsInertProps}>
+        <div className="xmimo-tts-details-body"><div className="xmimo-tts-grid">
         <div className="xmimo-tts-model xmimo-tts-wide">
           <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('model')} resettable disabled={!snapshot.writable} onReset={() => { resetField('model') }} />
           <ModelPicker
@@ -561,8 +648,30 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
           </div>
           <small>{t(localSpeechMode === 'auto' ? 'settings.localSpeechAutoHint' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirstHint' : 'settings.localSpeechDisabledHint')}</small>
         </div>
-        </div></div> : null}
-        </div> : null}
+        </div></div></div>
+        </section> : null}
+        <section className="xmimo-tts-settings-module xmimo-tts-preview">
+          <strong className="xmimo-tts-preview-title">{t('settings.previewTitle')}</strong>
+          <div className="xmimo-tts-preview-input">
+            <button
+              type="button"
+              className={previewBusy ? 'xmimo-tts-preview-whale-button xmimo-tts-preview-whale-button-active' : 'xmimo-tts-preview-whale-button'}
+              style={{ backgroundImage: `url(${hostRoute(TTS_PREVIEW_WHALE_ASSET_ROUTE)})` }}
+              disabled={!enabled || previewText.trim().length === 0}
+              aria-label={t(previewBusy ? 'settings.previewStop' : 'settings.previewPlay')}
+              onClick={togglePreview}
+            />
+            <textarea
+              value={previewText}
+              rows={2}
+              maxLength={100}
+              aria-label={t('settings.previewText')}
+              placeholder={t('settings.previewPlaceholder')}
+              onChange={(event) => { setPreviewText(event.target.value) }}
+            />
+          </div>
+          <span className={previewStatus === 'error' ? 'xmimo-tts-preview-status xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(previewMessageKey)}</span>
+        </section>
         <div className="xmimo-tts-card-actions">
           {uninstallState === 'idle' && latestVersion !== null
             ? <a className="xmimo-tts-update" href={RELEASES_URL} target="_blank" rel="noopener noreferrer">{t('settings.updateAvailable')}</a>
