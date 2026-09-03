@@ -7,7 +7,7 @@ import {
   Tooltip,
   extractMarkdownPlainText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { ConversationSnapshot, SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
 import { prepareTtsText, resolveTtsSettings, TTS_API_KEY_STATUS_ROUTE } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 import type { Translate } from './localization.js'
@@ -15,8 +15,35 @@ import { LiveSpeechController, LocalSpeechController, PlaybackController } from 
 import type { LiveMessageIdentity } from './playback.js'
 import { useSettingsSnapshot } from './settings-scope.js'
 
-function messageText(snapshot: ConversationSnapshot, messageId: string): string {
-  for (const node of snapshot.nodes) {
+interface LegacyConversationSlice {
+  readonly nodes: readonly {
+    readonly kind: string
+    readonly messageId?: string
+    readonly blocks: readonly { readonly kind: string; readonly text?: string }[]
+    readonly turn: number
+    readonly step: number
+    readonly time: number
+    readonly interrupted?: true
+  }[]
+  readonly partial: {
+    readonly turn: number
+    readonly step: number
+    readonly blocks: readonly { readonly kind: string; readonly text?: string }[]
+  } | null
+}
+
+interface ChatSnapshotCompat {
+  readonly legacy: LegacyConversationSlice
+}
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SessionStandardProps {
+    useChat: <T>(selector: (snapshot: ChatSnapshotCompat) => T) => T
+  }
+}
+
+function messageText(legacy: LegacyConversationSlice, messageId: string): string {
+  for (const node of legacy.nodes) {
     if (node.kind !== 'assistant' || node.messageId !== messageId) continue
     const markdown = node.blocks
       .filter((block) => block.kind === 'text')
@@ -27,16 +54,16 @@ function messageText(snapshot: ConversationSnapshot, messageId: string): string 
   return ''
 }
 
-function messageTime(snapshot: ConversationSnapshot, messageId: string): number | null {
-  for (const node of snapshot.nodes) {
+function messageTime(legacy: LegacyConversationSlice, messageId: string): number | null {
+  for (const node of legacy.nodes) {
     if (node.kind === 'assistant' && node.messageId === messageId) return node.time
   }
   return null
 }
 
-function latestAssistantMessageId(snapshot: ConversationSnapshot): string | null {
-  for (let index = snapshot.nodes.length - 1; index >= 0; index -= 1) {
-    const node = snapshot.nodes[index]
+function latestAssistantMessageId(legacy: LegacyConversationSlice): string | null {
+  for (let index = legacy.nodes.length - 1; index >= 0; index -= 1) {
+    const node = legacy.nodes[index]
     if (node?.kind === 'assistant' && node.messageId !== undefined) return node.messageId
   }
   return null
@@ -50,9 +77,9 @@ function assistantText(blocks: readonly { kind: string; text?: string }[]): stri
 }
 
 
-function finalLiveMessage(snapshot: ConversationSnapshot, turn: number, step: number): LiveMessageIdentity | null {
-  for (let index = snapshot.nodes.length - 1; index >= 0; index -= 1) {
-    const node = snapshot.nodes[index]
+function finalLiveMessage(legacy: LegacyConversationSlice, turn: number, step: number): LiveMessageIdentity | null {
+  for (let index = legacy.nodes.length - 1; index >= 0; index -= 1) {
+    const node = legacy.nodes[index]
     if (node?.kind === 'assistant' && node.messageId !== undefined && node.turn === turn && node.step === step) {
       return {
         messageId: node.messageId,
@@ -66,8 +93,8 @@ function finalLiveMessage(snapshot: ConversationSnapshot, turn: number, step: nu
   return null
 }
 
-function messageLiveIdentity(snapshot: ConversationSnapshot, messageId: string): Pick<LiveMessageIdentity, 'turn' | 'step'> | null {
-  for (const node of snapshot.nodes) {
+function messageLiveIdentity(legacy: LegacyConversationSlice, messageId: string): Pick<LiveMessageIdentity, 'turn' | 'step'> | null {
+  for (const node of legacy.nodes) {
     if (node.kind === 'assistant' && node.messageId === messageId) return { turn: node.turn, step: node.step }
   }
   return null
@@ -99,7 +126,8 @@ function useApiKeySupported(active: boolean): boolean | null {
 
 interface SessionPlaybackObserverProps {
   sessionId: string
-  session: ConversationSnapshot
+  useSession: <T>(selector: (snapshot: { running: boolean }) => T) => T
+  useChat: <T>(selector: (snapshot: ChatSnapshotCompat) => T) => T
   playback: PlaybackController
   live: LiveSpeechController
   local: LocalSpeechController
@@ -107,18 +135,20 @@ interface SessionPlaybackObserverProps {
 }
 
 /** Own the active-session boundary and feed its partial assistant output into realtime speech. */
-export function SessionPlaybackObserver({ sessionId, session, playback, live, local, settings }: SessionPlaybackObserverProps): null {
+export function SessionPlaybackObserver({ sessionId, useSession, useChat, playback, live, local, settings }: SessionPlaybackObserverProps): null {
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
   const apiKeySupported = useApiKeySupported(resolvedSettings.localSpeechMode !== 'disabled')
   live.setMaxPausedPcmBytes(resolvedSettings.maxPausedPcmBytes)
   local.setVoiceURI(resolvedSettings.localVoiceURI)
   local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
+  const runningSnapshot = useSession(s => s.running)
+  const legacy = useChat(s => s.legacy)
   const active = useRef<{ turn: number; step: number } | null>(null)
-  const wasRunning = useRef(session.running)
-  const runArmed = useRef(!session.running)
-  const latestMessageId = latestAssistantMessageId(session)
-  const partial = session.partial
+  const wasRunning = useRef(runningSnapshot)
+  const runArmed = useRef(!runningSnapshot)
+  const latestMessageId = latestAssistantMessageId(legacy)
+  const partial = legacy.partial
   const partialText = partial === null ? '' : assistantText(partial.blocks)
 
   useEffect(() => {
@@ -135,8 +165,8 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, lo
 
   useEffect(() => {
     active.current = null
-    wasRunning.current = session.running
-    runArmed.current = !session.running
+    wasRunning.current = runningSnapshot
+    runArmed.current = !runningSnapshot
     playback.activateSession(sessionId)
     live.activateSession(sessionId)
     local.activateSession(sessionId)
@@ -149,9 +179,9 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, lo
   }, [live, local, playback, sessionId])
 
   useEffect(() => {
-    const beganRun = session.running && !wasRunning.current
-    wasRunning.current = session.running
-    if (!session.running) runArmed.current = true
+    const beganRun = runningSnapshot && !wasRunning.current
+    wasRunning.current = runningSnapshot
+    if (!runningSnapshot) runArmed.current = true
     else if (beganRun) {
       runArmed.current = true
       live.cancelSession(sessionId)
@@ -160,20 +190,20 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, lo
       active.current = null
     }
 
-    playback.observeSession(sessionId, session.running && runArmed.current, latestMessageId)
+    playback.observeSession(sessionId, runningSnapshot && runArmed.current, latestMessageId)
     const localModel = resolvedSettings.model === 'mimo-v2.5-tts'
     const realtimeSpeechEnabled = localModel && (resolvedSettings.localSpeechMode !== 'disabled' || resolvedSettings.format === 'pcm')
     if (!resolvedSettings.enabled || !resolvedSettings.autoPlay || !realtimeSpeechEnabled) {
       live.cancelSession(sessionId)
       local.cancel()
       active.current = null
-      if (session.running) runArmed.current = false
+      if (runningSnapshot) runArmed.current = false
       return
     }
     if (!runArmed.current) return
     if (partial !== null) {
       if (active.current !== null && (active.current.turn !== partial.turn || active.current.step !== partial.step)) {
-        const previous = finalLiveMessage(session, active.current.turn, active.current.step)
+        const previous = finalLiveMessage(legacy, active.current.turn, active.current.step)
         if (previous !== null) {
           const useLocal = localModel && resolvedSettings.localSpeechMode !== 'disabled'
             && (resolvedSettings.localSpeechMode === 'local-first' || (resolvedSettings.localSpeechMode === 'auto' && apiKeySupported === false))
@@ -189,19 +219,19 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, lo
       return
     }
     if (active.current !== null) {
-      const final = finalLiveMessage(session, active.current.turn, active.current.step)
+      const final = finalLiveMessage(legacy, active.current.turn, active.current.step)
       if (final !== null) {
         const useLocal = localModel && resolvedSettings.localSpeechMode !== 'disabled'
           && (resolvedSettings.localSpeechMode === 'local-first' || (resolvedSettings.localSpeechMode === 'auto' && apiKeySupported === false))
         if (useLocal) local.finish(sessionId, final)
         else live.finish(sessionId, final)
-      } else if (!session.running) {
+      } else if (!runningSnapshot) {
         live.cancelSession(sessionId)
         local.cancelSession(sessionId)
       }
       active.current = null
     }
-  }, [apiKeySupported, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.format, resolvedSettings.localSpeechMode, resolvedSettings.model, session, sessionId, session.running])
+  }, [apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.format, resolvedSettings.localSpeechMode, resolvedSettings.model, runningSnapshot, sessionId])
 
   return null
 }
@@ -209,7 +239,8 @@ export function SessionPlaybackObserver({ sessionId, session, playback, live, lo
 interface ReadAloudActionProps {
   sessionId: string
   messageId: string
-  useSession: <T>(selector: (snapshot: ConversationSnapshot) => T) => T
+  useSession: <T>(selector: (snapshot: { running: boolean }) => T) => T
+  useChat: <T>(selector: (snapshot: ChatSnapshotCompat) => T) => T
   playback: PlaybackController
   live: LiveSpeechController
   local: LocalSpeechController
@@ -217,14 +248,17 @@ interface ReadAloudActionProps {
   t: Translate
 }
 
-export function ReadAloudAction({ sessionId, messageId, useSession, playback, live, local, settings, t }: ReadAloudActionProps): ReactElement | null {
-  const message = useSession((snapshot) => ({
-    text: messageText(snapshot, messageId),
-    time: messageTime(snapshot, messageId),
-    latestMessageId: latestAssistantMessageId(snapshot),
-    identity: messageLiveIdentity(snapshot, messageId),
-    running: snapshot.running,
-  }))
+export function ReadAloudAction({ sessionId, messageId, useSession, useChat, playback, live, local, settings, t }: ReadAloudActionProps): ReactElement | null {
+  const message = useChat((chat) => {
+    const legacy = chat.legacy
+    return {
+      text: messageText(legacy, messageId),
+      time: messageTime(legacy, messageId),
+      latestMessageId: latestAssistantMessageId(legacy),
+      identity: messageLiveIdentity(legacy, messageId),
+    }
+  })
+  const running = useSession(s => s.running)
   const text = message.text
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
@@ -266,12 +300,12 @@ export function ReadAloudAction({ sessionId, messageId, useSession, playback, li
   }
 
   useEffect(() => {
-    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) && local.hasHandled(sessionId, message.identity)) || message.running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) && local.hasHandled(sessionId, message.identity)) || running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
       if (!live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) playCompletedReply(true)
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [apiKeySupported, live, local, message.identity, message.latestMessageId, message.running, message.time, messageId, playback, resolvedSettings.format, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.voiceDesignPlaybackMode, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [apiKeySupported, live, local, message.identity, message.latestMessageId, message.time, messageId, playback, resolvedSettings.format, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.voiceDesignPlaybackMode, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 
