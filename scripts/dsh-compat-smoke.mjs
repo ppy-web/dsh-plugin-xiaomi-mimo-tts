@@ -216,23 +216,24 @@ async function exchangeLaunchToken(baseURL, output) {
 
 async function fetchClientBundle(baseURL, cookie) {
   const headers = cookie === undefined ? {} : { cookie }
-  const routes = new Set(['/plugins/dsh-xiaomi-tts/client.js', '/plugins/xiaomi-mimo-tts/client.js'])
+  // DSH ≤ 0.1.1-rc.2 serves individual routes per plugin.
+  const individualRoutes = new Set(['/plugins/dsh-xiaomi-tts/client.js', '/plugins/xiaomi-mimo-tts/client.js'])
+  // DSH ≥ 0.1.2-rc.1 serves combo bundle URLs under /plugins/??…&rev=….
+  const comboRoutes = new Set()
   const root = await fetch(baseURL, { headers })
   if (root.ok) {
     const html = await root.text()
-    for (const match of html.matchAll(/(\/plugins\/[^"'\\s]+\/client\.js(?:\?rev=[^"'\\s]+)?)/gu)) routes.add(match[1])
+    for (const match of html.matchAll(/(\/plugins\/[^"'\\s]+\/client\.js(?:\?rev=[^"'\\s]+)?)/gu)) individualRoutes.add(match[1])
+    for (const match of html.matchAll(/(\/plugins\/\?\?[^"'\s]+\/client\.js[^"'\s]*)/gu)) comboRoutes.add(match[1])
   }
-  let lastStatus = 404
-  for (const route of routes) {
-    const response = await fetch(`${baseURL}${route}`, {
-      headers,
-    })
-    lastStatus = response.status
+  for (const route of [...individualRoutes, ...comboRoutes]) {
+    const response = await fetch(`${baseURL}${route}`, { headers })
     if (response.status === 404) continue
     if (!response.ok) throw new Error(`client bundle returned ${String(response.status)}`)
     return response.text()
   }
-  throw new Error(`client bundle returned ${String(lastStatus)} (checked ${[...routes].join(', ')})`)
+  const checked = [...individualRoutes, ...comboRoutes]
+  throw new Error(`client bundle returned 404 (checked ${checked.join(', ')})`)
 }
 
 async function waitForCompatibility(baseURL, child, readOutput) {
@@ -252,7 +253,7 @@ async function waitForCompatibility(baseURL, child, readOutput) {
       sessionCookie ??= await exchangeLaunchToken(baseURL, readOutput())
       await describeSettings(baseURL, sessionCookie)
       const clientBody = await fetchClientBundle(baseURL, sessionCookie)
-      if (!clientBody.includes('window.__ModuleLoader__.load') || !clientBody.includes('dsh-xiaomi-tts')) {
+      if (!clientBody.includes('dsh-xiaomi-tts')) {
         throw new Error('client bundle did not register dsh-xiaomi-tts')
       }
       assertCleanLogs(readOutput())
