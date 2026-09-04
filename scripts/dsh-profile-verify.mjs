@@ -102,19 +102,31 @@ async function describeSettings() {
 }
 
 async function fetchClientBundle() {
-  const routes = new Set([`/plugins/${PACKAGE_NAME}/client.js`, `/plugins/${NAMESPACE}/client.js`])
+  const individualRoutes = new Set([`/plugins/${PACKAGE_NAME}/client.js`, `/plugins/${NAMESPACE}/client.js`])
+  const comboRoutes = new Set()
   const root = await fetch(baseURL)
   if (root.ok) {
     const html = await root.text()
-    for (const match of html.matchAll(/(\/plugins\/[^"'\\s]+\/client\.js(?:\?rev=[^"'\\s]+)?)/gu)) routes.add(match[1])
+    for (const match of html.matchAll(/(\/plugins\/[^"'\s]+\/client\.js(?:\?rev=[^"'\s]+)?)/gu)) individualRoutes.add(match[1])
+    for (const match of html.matchAll(/(\/plugins\/\?\?[^"'\s]+\/client\.js[^"'\s]*)/gu)) comboRoutes.add(match[1])
   }
+  const routes = [...individualRoutes, ...comboRoutes]
   let lastStatus = 404
+  let successfulRoutes = []
   for (const route of routes) {
     const response = await fetch(`${baseURL}${route}`)
     lastStatus = response.status
     if (response.status === 404) continue
     if (!response.ok) throw new Error(`client bundle returned ${String(response.status)}`)
-    return response
+    const body = Buffer.from(await response.arrayBuffer())
+    const isComboRoute = route.startsWith('/plugins/??')
+    if ((isComboRoute && route.includes(`${PACKAGE_NAME}/client.js`)) || body.toString('utf8').includes(PACKAGE_NAME)) {
+      return { response, body, route }
+    }
+    successfulRoutes.push(route)
+  }
+  if (successfulRoutes.length > 0) {
+    throw new Error(`client bundle did not register ${PACKAGE_NAME} (checked ${successfulRoutes.join(', ')})`)
   }
   throw new Error(`client bundle returned ${String(lastStatus)} (checked ${[...routes].join(', ')})`)
 }
@@ -146,9 +158,9 @@ if (typeof statusBody.configured !== 'boolean' || typeof statusBody.supported !=
 
 await describeSettings()
 const client = await fetchClientBundle()
-const servedClientBytes = Buffer.from(await client.arrayBuffer())
+const servedClientBytes = client.body
 const servedClientText = servedClientBytes.toString('utf8')
-if (!servedClientText.includes('window.__ModuleLoader__.load') || !servedClientText.includes(PACKAGE_NAME)) {
+if (!client.route.startsWith('/plugins/??') && (!servedClientText.includes('window.__ModuleLoader__.load') || !servedClientText.includes(PACKAGE_NAME))) {
   throw new Error(`client bundle did not register ${PACKAGE_NAME}`)
 }
 
