@@ -46,11 +46,11 @@
 
 ## 环境要求
 
-- `@deepseek-ai/dsh` `0.1.1-rc.2`，或 `0.1.2-alpha.2` 至 `0.1.2-rc.1`
+- `@deepseek-ai/dsh` `0.1.2-rc.1`（与插件 `V3.0.1-alpha` 配套）
 - Node.js 22+
 - Xiaomi MiMo API Key
 
-正式支持当前 npm 可安装的 `0.1.1-rc.2` 和 `0.1.2` 系列版本。`0.1.0-rc.7`、`0.1.0-rc.8`、`0.1.1-rc.1` 与未发布 npm CLI 的 `0.1.2-alpha.1` 不在支持范围内。
+已验证的可靠组合：`V3.0.0` + `0.1.1-rc.2`；`V3.0.1-alpha` + `0.1.2-rc.1`。`V3.0.0` 在 `0.1.2-rc.1` 下无法显示播放按钮或播放，`V3.0.1-alpha` 在 `0.1.1-rc.2` 下无法显示设置菜单，因此不要交叉组合。
 
 官方 TTS API 文档：<https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts>
 
@@ -91,17 +91,21 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 > 更新或从本地开发版切换到 npm 版时，必须先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.1
+pnpm pack
+.\start\dsh-plugin-reinstall.bat .\dsh-xiaomi-tts-3.0.1-alpha.tgz
 ```
 
-这个脚本会按顺序停止 DSH Web、卸载当前 profile 中的插件、从 npm 安装指定版本并重新启动 DSH Web。若手动操作，请保持相同顺序：
+`3.0.1-alpha` 尚未发布到 npm，验证该版本必须使用本地 tarball。脚本第一参数也接受完整 npm spec；纯版本号（例如 `3.0.0`）会继续解析为 `dsh-xiaomi-tts@3.0.0`。脚本会严格执行停止、清理旧包/残留链接、安装、`dump-config`、启动及 HTTP/profile 校验。若手动操作，请保持相同顺序：
 
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@3.0.1
+dsh plugin --profile web add .\dsh-xiaomi-tts-3.0.1-alpha.tgz
 .\start\dsh-web-start.bat
+pnpm profile:check
 ```
+
+这些辅助脚本默认使用 `web` profile、`127.0.0.1:3080`；可用 `DSH_HOME`、`DSH_WEB_HOST` 和 `DSH_WEB_PORT` 覆盖。开发 Junction 模式下，设置 `DSH_PROFILE_EXPECT_CHECKOUT` 后运行 `pnpm profile:check`，还会核对磁盘和服务端客户端 bundle 的 SHA256。
 
 ## 配置
 
@@ -190,7 +194,7 @@ pnpm test
 pnpm pack:check
 ```
 
-发布前使用互相隔离的 `DSH_HOME`，分别在 `0.1.1-rc.2`、`0.1.2-alpha.2` 和 `0.1.2-rc.1` 下验证设置保存与重启、历史消息朗读、自动播放、暂停恢复、会话切换及本地语音回退。CI 只对 `0.1.1-rc.2` 执行自动安装和启动 smoke 测试。
+发布前使用互相隔离的 `DSH_HOME`，按可靠组合验证：`V3.0.0` + `0.1.1-rc.2`，以及 `V3.0.1-alpha` + `0.1.2-rc.1`。CI 使用同一个打包产物依次对两个 DSH 版本执行自动安装、Host、状态路由、settings namespace 和客户端 bundle smoke；浏览器菜单与音频播放仍需发布前人工验证。
 
 日常发布构建使用 `pnpm build`，不会输出 MiMoTTS 的 Host 或浏览器控制台追踪。排查 PCM 流式链路时使用 `pnpm build:debug`，该构建会同时启用 `[MiMoTTS Host]`、`[MiMoTTS Stream]`、`[MiMoTTS Audio]` 和 `[MiMoTTS Service]` 日志。
 

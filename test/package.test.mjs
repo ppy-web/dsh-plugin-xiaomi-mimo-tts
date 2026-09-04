@@ -16,6 +16,14 @@ const debugConsoleSource = await readFile(new URL('../src/debug-console.ts', imp
 const debugBuildConfigSource = await readFile(new URL('../tsdown.debug.config.ts', import.meta.url), 'utf8')
 const readmeZh = await readFile(new URL('../README.md', import.meta.url), 'utf8')
 const readmeEn = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
+const ciWorkflow = await readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8')
+const compatibilitySmokeSource = await readFile(new URL('../scripts/dsh-compat-smoke.mjs', import.meta.url), 'utf8')
+const profileVerifySource = await readFile(new URL('../scripts/dsh-profile-verify.mjs', import.meta.url), 'utf8')
+const webStartScript = await readFile(new URL('../start/dsh-web-start.bat', import.meta.url), 'utf8')
+const webStopScript = await readFile(new URL('../start/dsh-web-stop.bat', import.meta.url), 'utf8')
+const webStatusScript = await readFile(new URL('../start/dsh-web-status.bat', import.meta.url), 'utf8')
+const reinstallScript = await readFile(new URL('../start/dsh-plugin-reinstall.bat', import.meta.url), 'utf8')
+const profileCleanupScript = await readFile(new URL('../start/dsh-profile-cleanup.ps1', import.meta.url), 'utf8')
 const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.url)))
   .filter((name) => /\.(?:ts|tsx)$/.test(name))
   .sort()
@@ -28,7 +36,7 @@ const conversationStateModule = await import('../lib/conversation-state.js')
 const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
 const { EMPTY_LEGACY_CONVERSATION, resolveConversationCompatState } = conversationStateModule
 
-const SUPPORTED_DSH_RANGE = '0.1.1-rc.2 || >=0.1.2-alpha.2 <=0.1.2-rc.1'
+const SUPPORTED_DSH_RANGE = '0.1.2-rc.1'
 
 function assertLocaleTextKey(key) {
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -44,6 +52,7 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.scripts['build:debug'], 'tsdown -c tsdown.debug.config.ts && tsc --emitDeclarationOnly')
   assert.equal(packageJson.scripts.prepublishOnly, undefined)
   assert.equal(packageJson.scripts['release:check'], 'pnpm run test')
+  assert.equal(packageJson.scripts['profile:check'], 'node scripts/dsh-profile-verify.mjs')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
   assert.equal(packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-runtime'), false)
@@ -61,6 +70,50 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.match(pcmStream, /mimo-v2\.5-tts/)
   assert.match(patch, /id: xiaomi-mimo-tts/)
   assert.match(patch, /name: 'dsh-xiaomi-tts'/)
+})
+
+test('compatibility automation validates both DSH release candidates with one tarball contract', () => {
+  assert.match(ciWorkflow, /DSH_COMPAT_VERSION:\s*0\.1\.1-rc\.2/u)
+  assert.match(ciWorkflow, /DSH_COMPAT_VERSION:\s*0\.1\.2-rc\.1/u)
+  assert.equal((ciWorkflow.match(/node scripts\/dsh-compat-smoke\.mjs dsh-xiaomi-tts-\*\.tgz/gu) ?? []).length, 2)
+  assert.match(compatibilitySmokeSource, /Tarball SHA256/u)
+  assert.match(compatibilitySmokeSource, /Plugin version/u)
+  assert.match(compatibilitySmokeSource, /--dump-config/u)
+  assert.match(compatibilitySmokeSource, /settings\.describe/u)
+  assert.match(compatibilitySmokeSource, /settings\.describe is missing namespace xiaomi-mimo-tts/u)
+  assert.match(compatibilitySmokeSource, /client bundle did not register dsh-xiaomi-tts/u)
+  assert.match(compatibilitySmokeSource, /DSH_COMPAT_KEEP_HOME/u)
+  assert.match(compatibilitySmokeSource, /Preserved DSH_HOME/u)
+  assert.match(compatibilitySmokeSource, /taskkill\.exe/u)
+})
+
+test('profile lifecycle scripts pin the daily web profile and reject mixed link state', () => {
+  assert.match(webStartScript, /--profile web/u)
+  assert.match(webStartScript, /DSH_WEB_HOST/u)
+  assert.match(webStartScript, /DSH_WEB_PORT/u)
+  for (const source of [webStopScript, webStatusScript]) {
+    assert.match(source, /Get-NetTCPConnection/u)
+    assert.match(source, /--profile/u)
+    assert.match(source, /bin\\\.js/u)
+    assert.match(source, /\\s\+web/u)
+    assert.match(source, /DSH_WEB_PORT/u)
+  }
+  assert.match(profileVerifySource, /process\.env\.DSH_HOME/u)
+  assert.match(profileVerifySource, /profileManifest\.dependencies/u)
+  assert.match(profileVerifySource, /profileManifest\.dsh\?\.profile\?\.bundles/u)
+  assert.match(profileVerifySource, /settings\.describe/u)
+  assert.match(profileVerifySource, /mixed profile state/u)
+  assert.match(profileVerifySource, /DSH_PROFILE_EXPECT_CHECKOUT/u)
+  assert.match(reinstallScript, /IsNullOrWhiteSpace\(\$env:DSH_HOME\)/u)
+  assert.match(reinstallScript, /PACKAGE_SPEC=%~1/u)
+  assert.match(reinstallScript, /"%~x1"=="\.tgz"/u)
+  assert.match(reinstallScript, /INSTALL_FLAGS=--allow-build=%PACKAGE%@file:/u)
+  assert.match(reinstallScript, /dsh-profile-verify\.mjs/u)
+  assert.match(reinstallScript, /dsh-profile-cleanup\.ps1/u)
+  assert.doesNotMatch(reinstallScript, /Restarting DSH Web after the failed reinstall attempt/u)
+  assert.match(profileCleanupScript, /IsNullOrWhiteSpace\(\$env:DSH_HOME\)/u)
+  assert.match(profileCleanupScript, /Profile manifest still contains/u)
+  assert.match(profileCleanupScript, /Junction/u)
 })
 
 test('release builds disable console tracing and the debug build enables it explicitly', () => {

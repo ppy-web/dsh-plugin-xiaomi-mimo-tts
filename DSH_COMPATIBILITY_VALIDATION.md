@@ -1,31 +1,28 @@
 # DSH 兼容性工作总结与跨设备验证手册
 
 > 项目：`dsh-xiaomi-tts`  
-> 插件版本：`3.0.1`  
+> 发布版本：`3.0.1-alpha`
 > 基线提交：`d4e7351`（兼容改造）、`6df77d1`（固定 pnpm）、`319e3f0`（允许获取新发布的 DSH 包）  
 > 最后更新：2026-09-04
 
 ## 1. 结论与支持范围
 
-当前使用一个插件包兼容以下 DSH 版本：
+已验证的可靠环境组合如下。插件版本与 DSH 宿主必须按表配套，不能交叉安装：
 
-| DSH 版本 | 支持状态 | 验证方式 |
-| --- | --- | --- |
-| `0.1.1-rc.2` | 支持 | 单元测试、CI 自动安装/启动 smoke、发布前人工验证 |
-| `0.1.2-alpha.2` | 支持 | 结构化兼容单测、发布前人工验证 |
-| `0.1.2-alpha.3`～`0.1.2-alpha.5` | 支持范围内 | 结构化兼容单测；出现问题时补充定向验证 |
-| `0.1.2-rc.1` | 支持 | 开发依赖编译、结构化兼容单测、发布前人工验证 |
-| `0.1.0-rc.7`、`0.1.0-rc.8` | 不支持 | 不纳入兼容范围 |
-| `0.1.1-rc.1` | 不支持 | 不纳入兼容范围 |
-| `0.1.2-alpha.1` | 不支持 | 对应 CLI 未发布到 npm，不纳入兼容范围 |
+| 插件版本 | DSH 版本 | 结果 | 已知表现 |
+| --- | --- | --- | --- |
+| `V3.0.0` | `0.1.1-rc.2` | 支持 | 设置菜单、播放按钮和播放均可用 |
+| `V3.0.0` | `0.1.2-rc.1` | 不支持 | 无法显示播放按钮，无法播放 |
+| `V3.0.1-alpha` | `0.1.1-rc.2` | 不支持 | 无法显示设置菜单 |
+| `V3.0.1-alpha` | `0.1.2-rc.1` | 支持 | 已完成人工验证 |
 
-`package.json` 中所有 DSH peer 的统一范围为：
+`V3.0.1-alpha` 的 `package.json` 仅声明可靠宿主 `0.1.2-rc.1`：
 
 ```text
-0.1.1-rc.2 || >=0.1.2-alpha.2 <=0.1.2-rc.1
+0.1.2-rc.1
 ```
 
-CI **只运行 `0.1.1-rc.2` 的真实 DSH smoke**，不建立版本矩阵。`0.1.2` 系列依靠兼容单测和发布前人工验证保障。当前只承诺默认 Web profile。
+CI 仍会用同一个 tarball 顺序执行两个 DSH 版本的结构化 smoke，确保 Host、namespace、bundle 层面不会回归；结构化 smoke 不把不支持的浏览器功能组合标记为支持。当前发布环境要求是 `V3.0.1-alpha` + `0.1.2-rc.1`。
 
 ## 2. 已完成的兼容性改造
 
@@ -63,7 +60,7 @@ DSH 两条版本线使用了不同的会话接口：
 
 ### 2.4 包元数据与构建基线
 
-- 插件版本升级为补丁版本 `3.0.1`。
+- 插件版本升级为预发布版本 `3.0.1-alpha`。
 - peer 范围改为显式支持范围，并将由 DSH runtime 提供的 peers 标记为 optional，避免隔离 profile 安装时产生虚假的缺失 peer 报错。
 - dev dependencies 固定在 `0.1.2-rc.1`，确保源码能针对当前新接口完成编译。
 - CI 使用 Node.js 24 和 pnpm `11.22.0`；pnpm 10 不支持本项目要求的 `pnpm pack --dry-run`。
@@ -74,10 +71,10 @@ DSH 两条版本线使用了不同的会话接口：
 兼容改造完成时已在本地通过：
 
 - `pnpm typecheck`
-- `pnpm test`：53 项全部通过
+- `pnpm test`：55 项全部通过
 - `pnpm pack --dry-run`
 - `pnpm pack`
-- `0.1.1-rc.2` 隔离 profile smoke
+- `0.1.1-rc.2`、`0.1.2-rc.1` 隔离 profile smoke 已配置为同一 tarball 的结构化检查
 - `git diff --check`
 
 smoke 脚本是 `scripts/dsh-compat-smoke.mjs`，它会：
@@ -85,9 +82,9 @@ smoke 脚本是 `scripts/dsh-compat-smoke.mjs`，它会：
 1. 创建临时、隔离的 `DSH_HOME`。
 2. 安装指定 DSH 和当前插件 tarball。
 3. 执行 `pnpm peers check`。
-4. 在随机本地端口启动 `dsh web --no-open`，最多等待 90 秒。
-5. 验证首页、API Key 状态接口和客户端 bundle 返回成功。
-6. 检查 bundle 确实注册了 `dsh-xiaomi-tts`。
+4. 在随机本地端口启动 `dsh web --no-open`，最多等待 180 秒。
+5. 验证 API Key 状态、settings namespace 和客户端 bundle 返回成功。
+6. 检查 bundle 确实注册了 `dsh-xiaomi-tts`，兼容新旧设置 RPC 路径。
 7. 检查日志中没有 peer 冲突、缺失 runtime、client compose、inject/contribution 或设置 API 错误。
 8. 终止 DSH 并删除临时目录。
 
@@ -140,20 +137,20 @@ pnpm pack --dry-run
 pnpm pack
 ```
 
-最后一条命令应生成类似 `dsh-xiaomi-tts-3.0.1.tgz` 的文件。后续兼容测试应安装这个 tarball，而不是直接引用源码目录，以便验证最终发布包内容。
+最后一条命令应生成类似 `dsh-xiaomi-tts-3.0.1-alpha.tgz` 的文件。后续兼容测试应安装这个 tarball，而不是直接引用源码目录，以便验证最终发布包内容。
 
 ## 5. 运行自动兼容 smoke
 
-默认目标就是 CI 唯一验证的 `0.1.1-rc.2`：
+`V3.0.1-alpha` 的发布目标是 `0.1.2-rc.1`：
 
 ```bash
-node scripts/dsh-compat-smoke.mjs dsh-xiaomi-tts-3.0.1.tgz
+node scripts/dsh-compat-smoke.mjs dsh-xiaomi-tts-3.0.1-alpha.tgz
 ```
 
 成功时最后会输出：
 
 ```text
-DSH 0.1.1-rc.2 compatibility smoke passed
+DSH 0.1.2-rc.1 compatibility smoke passed
 ```
 
 脚本支持通过环境变量临时检查其他可安装版本。这适合快速排查，但不改变 CI 策略，也不能替代下一节的人工测试。
@@ -161,27 +158,23 @@ DSH 0.1.1-rc.2 compatibility smoke passed
 Linux/macOS：
 
 ```bash
-DSH_COMPAT_VERSION=0.1.2-alpha.2 node scripts/dsh-compat-smoke.mjs dsh-xiaomi-tts-3.0.1.tgz
-DSH_COMPAT_VERSION=0.1.2-rc.1 node scripts/dsh-compat-smoke.mjs dsh-xiaomi-tts-3.0.1.tgz
+DSH_COMPAT_VERSION=0.1.2-rc.1 node scripts/dsh-compat-smoke.mjs dsh-xiaomi-tts-3.0.1-alpha.tgz
 ```
 
 Windows PowerShell：
 
 ```powershell
-$env:DSH_COMPAT_VERSION = '0.1.2-alpha.2'
-node scripts/dsh-compat-smoke.mjs dsh-xiaomi-tts-3.0.1.tgz
 $env:DSH_COMPAT_VERSION = '0.1.2-rc.1'
-node scripts/dsh-compat-smoke.mjs dsh-xiaomi-tts-3.0.1.tgz
+node scripts/dsh-compat-smoke.mjs dsh-xiaomi-tts-3.0.1-alpha.tgz
 Remove-Item Env:DSH_COMPAT_VERSION
 ```
 
 ## 6. 发布前人工验证
 
-至少人工验证三个代表版本：
+发布前人工验证以下可靠组合：
 
-1. `0.1.1-rc.2`：覆盖旧会话和旧设置 API。
-2. `0.1.2-alpha.2`：覆盖新架构最早的受支持版本。
-3. `0.1.2-rc.1`：覆盖新架构最新的受支持版本。
+1. `V3.0.0` + `0.1.1-rc.2`：旧宿主基线。
+2. `V3.0.1-alpha` + `0.1.2-rc.1`：当前发布组合。
 
 每个版本必须使用独立且全新的 `DSH_HOME`，不要复用日常 profile。以下示例中的目录可替换为本机的绝对路径。
 
@@ -190,7 +183,7 @@ Remove-Item Env:DSH_COMPAT_VERSION
 ```bash
 export DSH_VERSION=0.1.1-rc.2
 export DSH_HOME=/tmp/dsh-xiaomi-tts-compat/0.1.1-rc.2
-pnpm dlx @deepseek-ai/dsh@$DSH_VERSION plugin --profile web add "$PWD/dsh-xiaomi-tts-3.0.1.tgz"
+pnpm dlx @deepseek-ai/dsh@$DSH_VERSION plugin --profile web add "$PWD/dsh-xiaomi-tts-3.0.1-alpha.tgz"
 pnpm --dir "$DSH_HOME/profiles/web" peers check
 pnpm dlx @deepseek-ai/dsh@$DSH_VERSION web --no-open --host 127.0.0.1 --port 3112
 ```
@@ -200,7 +193,6 @@ pnpm dlx @deepseek-ai/dsh@$DSH_VERSION web --no-open --host 127.0.0.1 --port 311
 | DSH_VERSION | DSH_HOME 末级目录 | 建议端口 |
 | --- | --- | --- |
 | `0.1.1-rc.2` | `0.1.1-rc.2` | `3112` |
-| `0.1.2-alpha.2` | `0.1.2-alpha.2` | `3122` |
 | `0.1.2-rc.1` | `0.1.2-rc.1` | `3211` |
 
 ### 6.2 Windows PowerShell 示例
@@ -208,7 +200,7 @@ pnpm dlx @deepseek-ai/dsh@$DSH_VERSION web --no-open --host 127.0.0.1 --port 311
 ```powershell
 $env:DSH_VERSION = '0.1.1-rc.2'
 $env:DSH_HOME = 'C:\dsh-compat\xiaomi-tts\0.1.1-rc.2'
-$tarball = (Resolve-Path '.\dsh-xiaomi-tts-3.0.1.tgz').Path
+$tarball = (Resolve-Path '.\dsh-xiaomi-tts-3.0.1-alpha.tgz').Path
 pnpm dlx "@deepseek-ai/dsh@$env:DSH_VERSION" plugin --profile web add $tarball
 pnpm --dir "$env:DSH_HOME\profiles\web" peers check
 pnpm dlx "@deepseek-ai/dsh@$env:DSH_VERSION" web --no-open --host 127.0.0.1 --port 3112
@@ -245,9 +237,8 @@ pnpm dlx "@deepseek-ai/dsh@$env:DSH_VERSION" web --no-open --host 127.0.0.1 --po
 
 | 设备/系统 | Node / pnpm | DSH | 插件 tarball | 基础检查 | smoke | 设置保存 | 历史朗读 | 自动播放 | 暂停/继续 | 会话切换 | 本地回退 | 结论 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-|  |  | `0.1.1-rc.2` | `3.0.1` |  |  |  |  |  |  |  |  |  |
-|  |  | `0.1.2-alpha.2` | `3.0.1` |  | 可选 |  |  |  |  |  |  |  |
-|  |  | `0.1.2-rc.1` | `3.0.1` |  | 可选 |  |  |  |  |  |  |  |
+|  |  | `0.1.1-rc.2` | `3.0.0` |  |  |  |  |  |  |  |  |  |
+|  |  | `0.1.2-rc.1` | `3.0.1-alpha` |  |  |  |  |  |  |  |  |  |
 
 结论只使用：`通过`、`失败`、`未测试`。不要用“基本正常”掩盖未覆盖项目。
 
@@ -291,8 +282,9 @@ dsh-xiaomi-tts: ... contribution disabled
 满足以下全部条件才能发布：
 
 - `pnpm install --frozen-lockfile`、`pnpm typecheck`、`pnpm test` 和 `pnpm pack --dry-run` 全部通过。
-- CI 中 `0.1.1-rc.2` smoke 通过。
-- `0.1.1-rc.2`、`0.1.2-alpha.2`、`0.1.2-rc.1` 三版本人工验收通过。
+- CI 中两个 DSH 版本的结构化 smoke 通过。
+- `V3.0.1-alpha` + `0.1.2-rc.1` 的浏览器设置、播放按钮和音频人工验收通过。
+- `V3.0.0` + `0.1.1-rc.2` 的旧宿主基线人工验收通过。
 - 没有把 unsupported 版本误标为支持，也没有把“未测试”项目视为通过。
 - 最终测试对象是 `pnpm pack` 生成的 tarball。
 

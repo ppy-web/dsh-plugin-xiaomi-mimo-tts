@@ -4,3 +4,4 @@ node_modules/
 coverage/
 .playwright-cli/
 lib/
+.agents/
