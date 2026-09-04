@@ -447,6 +447,20 @@ async function generateVoiceDesignAiText(ctx: Context, input: string, signal: Ab
   return { text: normalizeVoiceDesignAiOutput(text) }
 }
 
+function registerVoiceDesignAiRpc(
+  ctx: Context,
+  handler: Parameters<typeof ctx.connection.rpc.handle>[1],
+): ReturnType<typeof ctx.connection.rpc.handle> {
+  // DSH 0.1.1 requires the authority option; 0.1.2 authenticates the channel
+  // itself and safely ignores this extra argument at runtime.
+  const handle = ctx.connection.rpc.handle as unknown as (
+    channel: string,
+    handler: Parameters<typeof ctx.connection.rpc.handle>[1],
+    options: { authority: 'loopback' },
+  ) => ReturnType<typeof ctx.connection.rpc.handle>
+  return handle(VOICE_DESIGN_AI_RPC_CHANNEL, handler, { authority: 'loopback' })
+}
+
 /** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
   let current = () => config
@@ -490,7 +504,7 @@ export function apply(ctx: Context, config: Config): void {
     },
   })
 
-  ctx.effect(() => ctx.connection.rpc.handle(VOICE_DESIGN_AI_RPC_CHANNEL, async (endpoint, payload, signal) => {
+  ctx.effect(() => registerVoiceDesignAiRpc(ctx, async (endpoint, payload, signal) => {
     if (endpoint !== VOICE_DESIGN_AI_RPC_ENDPOINT) return voiceDesignAiFailure('unknown-endpoint', `unknown endpoint "${endpoint}"`)
     try {
       return { ok: true, value: await generateVoiceDesignAiText(ctx, voiceDesignAiInput(payload), signal) }

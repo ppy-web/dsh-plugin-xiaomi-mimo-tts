@@ -67,6 +67,7 @@ test('package declares DSH bundle and Web client entries', () => {
 test('voice design AI generation is wired through Host LLM RPC', () => {
   assert.match(host, /VOICE_DESIGN_AI_RPC_CHANNEL/u)
   assert.match(host, /ctx\.connection\.rpc\.handle/u)
+  assert.match(host, /authority:\s*["']loopback["']/u)
   assert.match(host, /ctx\.llm\.stream/u)
   assert.match(host, /chunk\.type === ["']text-delta["']/u)
   assert.match(settingsCardSource, /VOICE_DESIGN_AI_RPC_ENDPOINT/u)

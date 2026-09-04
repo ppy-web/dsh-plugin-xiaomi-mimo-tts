@@ -28,7 +28,7 @@ export const TTS_UNINSTALL_ROUTE = '/plugins/xiaomi-mimo-tts/uninstall'
 export const TTS_UPDATE_ROUTE = '/plugins/xiaomi-mimo-tts/update'
 
 /** Keep the UI version visible without making the browser bundle load package.json. */
-export const TTS_VERSION = '3.0.1-alpha'
+export const TTS_VERSION = '3.0.1'
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/
 

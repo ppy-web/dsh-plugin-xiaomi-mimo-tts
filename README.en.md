@@ -33,11 +33,11 @@ Add Xiaomi MiMo TTS read-aloud playback to assistant replies in DeepSeek Harness
 
 ## Requirements
 
-- `@deepseek-ai/dsh` `0.1.1-rc.2` or `0.1.2-rc.1` (`V3.0.1-alpha` is compatible with both)
+- `@deepseek-ai/dsh` `0.1.1-rc.2` or `0.1.2-rc.1` (`V3.0.1` is compatible with both)
 - Node.js 22+
 - Xiaomi MiMo API Key
 
-`V3.0.1-alpha` supports DSH `0.1.1-rc.2` and `0.1.2-rc.1`; the same packed plugin artifact passes the automated compatibility checks on both versions. The older `V3.0.0` release is recommended only with DSH `0.1.1-rc.2`.
+`V3.0.1` supports DSH `0.1.1-rc.2` and `0.1.2-rc.1`; the same packed plugin artifact passes the automated compatibility checks on both versions. The older `V3.0.0` release is recommended only with DSH `0.1.1-rc.2`.
 
 Official Xiaomi MiMo TTS API reference: <https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts>
 
@@ -66,16 +66,15 @@ After installation, restart `dsh web`, then open **Settings → Plugins → Plug
 When updating or switching from the local development link to the npm package, stop DSH Web before changing the profile dependencies. This prevents a running Node process from holding the Windows Junction that pnpm needs to replace:
 
 ```powershell
-pnpm pack
-.\start\dsh-plugin-reinstall.bat .\dsh-xiaomi-tts-3.0.1-alpha.tgz
+.\start\dsh-plugin-reinstall.bat 3.0.1
 ```
 
-`3.0.1-alpha` is not published to npm yet, so validate it from the local tarball. The first argument also accepts a complete npm spec; a plain version such as `3.0.0` remains shorthand for `dsh-xiaomi-tts@3.0.0`. The script strictly stops DSH Web, removes old packages and residual links, installs, checks `dump-config`, starts DSH Web, and runs HTTP/profile validation. If you run the steps manually, keep the same order:
+`3.0.1` is published to npm. The first argument also accepts a complete npm spec; a plain version resolves to the matching `dsh-xiaomi-tts@<version>`. The script strictly stops DSH Web, removes old packages and residual links, installs, checks `dump-config`, starts DSH Web, and runs HTTP/profile validation. If you run the steps manually, keep the same order:
 
 ```powershell
 .\start\dsh-web-stop.bat
 dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add .\dsh-xiaomi-tts-3.0.1-alpha.tgz
+dsh plugin --profile web add dsh-xiaomi-tts@3.0.1
 .\start\dsh-web-start.bat
 pnpm profile:check
 ```
@@ -140,7 +139,7 @@ tts?.play('Welcome back')
 
 ```json
 {
-  "peerDependencies": { "dsh-xiaomi-tts": "^3.0.1-alpha" },
+  "peerDependencies": { "dsh-xiaomi-tts": "^3.0.1" },
   "peerDependenciesMeta": { "dsh-xiaomi-tts": { "optional": true } }
 }
 ```
@@ -233,7 +232,7 @@ pnpm test
 pnpm pack:check
 ```
 
-Before release, use isolated `DSH_HOME` directories and validate DSH `0.1.1-rc.2` and `0.1.2-rc.1` sequentially with the same packed `V3.0.1-alpha` artifact. CI checks both DSH versions for installation, Host composition, the status route, the settings namespace, and client-bundle registration. Browser menus and audio playback remain manual pre-release checks.
+Before release, use isolated `DSH_HOME` directories and validate DSH `0.1.1-rc.2` and `0.1.2-rc.1` sequentially with the same packed `V3.0.1` artifact. CI checks both DSH versions for installation, Host composition, the status route, the settings namespace, and client-bundle registration. Browser menus and audio playback remain manual pre-release checks.
 
 Use `pnpm build` for release output; it does not emit MiMoTTS Host or browser console traces. Use `pnpm build:debug` when diagnosing the PCM streaming path; that build enables the `[MiMoTTS Host]`, `[MiMoTTS Stream]`, `[MiMoTTS Audio]`, and `[MiMoTTS Service]` logs on both sides.
 
