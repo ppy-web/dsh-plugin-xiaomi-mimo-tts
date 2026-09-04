@@ -7,6 +7,20 @@ export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 /** Same-origin route that proxies MiMo PCM16 server-sent audio chunks. */
 export const TTS_STREAM_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-stream'
 
+/** Authenticated Connection RPC channel used by the voice-design assistant. */
+export const VOICE_DESIGN_AI_RPC_CHANNEL = '/xiaomi-mimo-tts'
+
+/** Endpoint that generates a plain-text MiMo voice-design description. */
+export const VOICE_DESIGN_AI_RPC_ENDPOINT = 'voice-design/generate'
+
+export interface VoiceDesignAiGeneratePayload {
+  input: string
+}
+
+export interface VoiceDesignAiGenerateResult {
+  text: string
+}
+
 /** Same-origin route that removes this plugin from the DSH Web profile. */
 export const TTS_UNINSTALL_ROUTE = '/plugins/xiaomi-mimo-tts/uninstall'
 

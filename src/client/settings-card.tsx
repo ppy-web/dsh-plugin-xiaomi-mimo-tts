@@ -1,5 +1,6 @@
-import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
-import { useEffect, useId, useRef, useState } from 'react'
+import type { ReactElement } from 'react'
+import { useEffect, useState } from 'react'
+import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   TTS_FORMATS,
@@ -16,8 +17,10 @@ import {
   isSupportedTtsApiKey,
   resolveTtsSettings,
   TTS_VOICE_DESIGN_PLAYBACK_MODES,
+  VOICE_DESIGN_AI_RPC_CHANNEL,
+  VOICE_DESIGN_AI_RPC_ENDPOINT,
 } from '../shared.js'
-import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsSettings, TtsVoiceDesignPlaybackMode } from '../shared.js'
+import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsSettings, TtsVoiceDesignPlaybackMode, VoiceDesignAiGeneratePayload, VoiceDesignAiGenerateResult } from '../shared.js'
 import type { Translate } from './localization.js'
 import type { SettingsScopeCompat } from './dsh-compat.js'
 import { BuiltInVoicePicker } from './built-in-voice-picker.js'
@@ -35,6 +38,7 @@ import {
 interface SettingsCardProps {
   scope: SettingsScopeCompat<TtsSettings>
   t: Translate
+  connection: { rpc: ClientConnectionRpc }
 }
 
 type EditableSettingField = 'enabled' | 'autoPlay' | 'model' | 'localSpeechMode' | 'localVoiceURI' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format' | 'voiceDesignPlaybackMode'
@@ -89,111 +93,52 @@ interface ModelPickerProps {
 }
 
 const MODEL_PICKER_OPTIONS = [
-  { value: TTS_MODELS[0], labelKey: 'preset' as const, badge: 'TTS' },
-  { value: TTS_MODELS[1], labelKey: 'voiceDesign' as const, badge: 'VD' },
+  { value: TTS_MODELS[0], labelKey: 'preset' as const },
+  { value: TTS_MODELS[1], labelKey: 'voiceDesign' as const },
 ]
 
+const VOICE_DESIGN_AI_COPY_KEYS = [
+  'settings.voiceDesignAiCopy1',
+  'settings.voiceDesignAiCopy2',
+  'settings.voiceDesignAiCopy3',
+  'settings.voiceDesignAiCopy4',
+] as const
+
+const API_KEY_IDLE_COPY_KEYS = [
+  'settings.apiKeyIdleCopy1',
+  'settings.apiKeyIdleCopy2',
+  'settings.apiKeyIdleCopy3',
+  'settings.apiKeyIdleCopy4',
+] as const
+
+const API_KEY_FOCUS_COPY_KEYS = [
+  'settings.apiKeyFocusCopy1',
+  'settings.apiKeyFocusCopy2',
+  'settings.apiKeyFocusCopy3',
+  'settings.apiKeyFocusCopy4',
+] as const
+
+type ApiKeyBubbleKey = typeof API_KEY_IDLE_COPY_KEYS[number] | typeof API_KEY_FOCUS_COPY_KEYS[number]
+
+function randomCopyKey<T extends readonly string[]>(keys: T, current?: string): T[number] {
+  if (keys.length < 2) return keys[0]!
+  let next = keys[Math.floor(Math.random() * keys.length)]!
+  while (next === current) next = keys[Math.floor(Math.random() * keys.length)]!
+  return next
+}
+
 function ModelPicker({ value, disabled, label, presetLabel, voiceDesignLabel, onChange }: ModelPickerProps): ReactElement {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement | null>(null)
-  const triggerRef = useRef<HTMLButtonElement | null>(null)
-  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const listboxId = useId()
-  const selectedIndex = Math.max(0, MODEL_PICKER_OPTIONS.findIndex((option) => option.value === value))
-  const selected = MODEL_PICKER_OPTIONS[selectedIndex]!
-  const optionLabel = (labelKey: typeof selected.labelKey): string => labelKey === 'preset' ? presetLabel : voiceDesignLabel
-
-  useEffect(() => {
-    if (!open) return
-    const closeOnOutsidePointer = (event: PointerEvent): void => {
-      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false)
-    }
-    document.addEventListener('pointerdown', closeOnOutsidePointer)
-    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
-  }, [open])
-
-  useEffect(() => {
-    if (disabled) setOpen(false)
-  }, [disabled])
-
-  const focusOption = (index: number): void => {
-    const normalized = (index + MODEL_PICKER_OPTIONS.length) % MODEL_PICKER_OPTIONS.length
-    requestAnimationFrame(() => optionRefs.current[normalized]?.focus())
-  }
-
-  const choose = (next: TtsModel): void => {
-    onChange(next)
-    setOpen(false)
-    requestAnimationFrame(() => triggerRef.current?.focus())
-  }
-
-  const handleTriggerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>): void => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      setOpen(true)
-      focusOption(selectedIndex)
-    } else if (event.key === 'Home' || event.key === 'End') {
-      event.preventDefault()
-      setOpen(true)
-      focusOption(event.key === 'Home' ? 0 : MODEL_PICKER_OPTIONS.length - 1)
-    }
-  }
-
-  const handleOptionKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, index: number): void => {
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      event.preventDefault()
-      focusOption(index + 1)
-    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      focusOption(index - 1)
-    } else if (event.key === 'Home' || event.key === 'End') {
-      event.preventDefault()
-      focusOption(event.key === 'Home' ? 0 : MODEL_PICKER_OPTIONS.length - 1)
-    } else if (event.key === 'Escape') {
-      event.preventDefault()
-      setOpen(false)
-      triggerRef.current?.focus()
-    } else if (event.key === 'Tab') {
-      setOpen(false)
-    }
-  }
-
-  const content = (option: typeof selected): ReactElement => <>
-    <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-model-avatar" aria-hidden="true">{option.badge}</span>
-    <span className="xmimo-tts-builtin-voice-copy"><strong>{optionLabel(option.labelKey)}</strong></span>
-  </>
-
-  return <div className="xmimo-tts-builtin-voice-picker xmimo-tts-model-picker" ref={rootRef}>
-    <button
-      ref={triggerRef}
+  return <div className="xmimo-tts-model-switch" role="group" aria-label={label}>
+    {MODEL_PICKER_OPTIONS.map((option) => <button
+      key={option.value}
       type="button"
-      className="xmimo-tts-builtin-voice-trigger"
+      aria-pressed={option.value === value}
+      className={option.value === value ? 'xmimo-tts-model-switch-option xmimo-tts-model-switch-option-selected' : 'xmimo-tts-model-switch-option'}
       disabled={disabled}
-      aria-label={label}
-      aria-haspopup="listbox"
-      aria-expanded={open}
-      aria-controls={open ? listboxId : undefined}
-      onClick={() => { setOpen((current) => !current) }}
-      onKeyDown={handleTriggerKeyDown}
+      onClick={() => { onChange(option.value) }}
     >
-      {content(selected)}
-      <IconChevronDownOutline14 className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} />
-    </button>
-    {open ? <div id={listboxId} className="xmimo-tts-builtin-voice-menu xmimo-tts-model-menu" role="listbox" aria-label={label}>
-      {MODEL_PICKER_OPTIONS.map((option, index) => <button
-        key={option.value}
-        ref={(node) => { optionRefs.current[index] = node }}
-        type="button"
-        role="option"
-        aria-selected={option.value === value}
-        className={option.value === value ? 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-selected' : 'xmimo-tts-builtin-voice-option'}
-        onClick={() => { choose(option.value) }}
-        onKeyDown={(event) => { handleOptionKeyDown(event, index) }}
-      >
-        {option.value === value ? <svg className="xmimo-tts-builtin-voice-check" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" /><path d="m4.8 8.1 2 2 4.4-4.5" /></svg> : null}
-        {content(option)}
-      </button>)}
-    </div> : null}
+      <span>{option.labelKey === 'preset' ? presetLabel : voiceDesignLabel}</span>
+    </button>)}
   </div>
 }
 
@@ -232,11 +177,12 @@ function SettingFieldHeading({ label, suffix, overriddenLabel, resetLabel, overr
   )
 }
 
-export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | null {
+export function SettingsCard({ scope, t, connection }: SettingsCardProps): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
   const initial = resolveTtsSettings(value)
   const [apiKey, setApiKey] = useState('')
+  const [apiKeyBubbleKey, setApiKeyBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const [enabled, setEnabled] = useState(initial.enabled)
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
   const [model, setModel] = useState(initial.model)
@@ -247,6 +193,8 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
   const [voiceDesignPlaybackMode, setVoiceDesignPlaybackMode] = useState(initial.voiceDesignPlaybackMode)
   const [voiceDesignPrompt, setVoiceDesignPrompt] = useState(initial.voiceDesignPrompt)
   const [voiceDesignCustomPrompt, setVoiceDesignCustomPrompt] = useState(initial.voiceDesignCustomPrompt)
+  const [voiceDesignAiState, setVoiceDesignAiState] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle')
+  const [voiceDesignAiCopyIndex, setVoiceDesignAiCopyIndex] = useState(() => Math.floor(Math.random() * VOICE_DESIGN_AI_COPY_KEYS.length))
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
@@ -343,6 +291,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     setVoiceDesignPlaybackMode(next.voiceDesignPlaybackMode)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
+    setVoiceDesignAiState('idle')
     setChanges({})
   }, [dirty, value])
 
@@ -358,6 +307,30 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     setState('idle')
   }
 
+  const generateVoiceDesign = async (): Promise<void> => {
+    if (voiceDesignAiState === 'loading' || !snapshot.writable) return
+    setVoiceDesignAiState('loading')
+    try {
+      const payload: VoiceDesignAiGeneratePayload = { input: voiceDesignPrompt }
+      const raw = await connection.rpc.call(VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT, payload)
+      const result = raw as unknown as { ok: true; value: VoiceDesignAiGenerateResult } | { ok: false; error?: { message?: unknown } }
+      if (!result.ok) throw new Error(typeof result.error?.message === 'string' ? result.error.message : 'voice-design-ai-failed')
+      const generated = result.value?.text
+      if (typeof generated !== 'string' || generated.trim().length === 0) throw new Error('voice-design-ai-empty-output')
+      setVoiceDesignPrompt(generated)
+      setVoiceDesignCustomPrompt(generated)
+      setChanges((current) => ({ ...current, voiceDesignPrompt: { kind: 'set' }, voiceDesignCustomPrompt: { kind: 'set' } }))
+      setState('idle')
+      setVoiceDesignAiState('success')
+    } catch {
+      setVoiceDesignAiState('failed')
+    }
+  }
+
+  const chooseVoiceDesignAiCopy = (): void => {
+    setVoiceDesignAiCopyIndex((current) => (current + 1 + Math.floor(Math.random() * (VOICE_DESIGN_AI_COPY_KEYS.length - 1))) % VOICE_DESIGN_AI_COPY_KEYS.length)
+  }
+
   const resetField = (field: EditableSettingField): void => {
     markChange(field, 'clear')
     if (field === 'enabled') setEnabled(base.enabled)
@@ -368,8 +341,8 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     if (field === 'voice') setVoice(base.voice)
     if (field === 'format') setFormat(base.format)
     if (field === 'voiceDesignPlaybackMode') setVoiceDesignPlaybackMode(base.voiceDesignPlaybackMode)
-    if (field === 'voiceDesignPrompt') setVoiceDesignPrompt(base.voiceDesignPrompt)
-    if (field === 'voiceDesignCustomPrompt') setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt)
+    if (field === 'voiceDesignPrompt') { setVoiceDesignPrompt(base.voiceDesignPrompt); setVoiceDesignAiState('idle') }
+    if (field === 'voiceDesignCustomPrompt') { setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt); setVoiceDesignAiState('idle') }
   }
 
   const discard = (): void => {
@@ -384,6 +357,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
     setVoiceDesignPlaybackMode(next.voiceDesignPlaybackMode)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
+    setVoiceDesignAiState('idle')
     setApiKey('')
     setChanges({})
     setState('idle')
@@ -525,6 +499,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
             disabled={!snapshot.writable}
           />
           <div className="xmimo-tts-api-key-input">
+            <span className="xmimo-tts-character-bubble xmimo-tts-api-key-bubble" aria-live="polite">{t(apiKeyBubbleKey)}</span>
             <span
               className="xmimo-tts-api-key-whale"
               style={{ backgroundImage: `url(${hostRoute(TTS_API_KEY_WHALE_ASSET_ROUTE)})` }}
@@ -543,6 +518,8 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
               data-lpignore="true"
               placeholder={t('settings.secretPlaceholder')}
               disabled={!snapshot.writable}
+              onFocus={() => { setApiKeyBubbleKey((current) => randomCopyKey(API_KEY_FOCUS_COPY_KEYS, current)) }}
+              onBlur={() => { setApiKeyBubbleKey((current) => randomCopyKey(API_KEY_IDLE_COPY_KEYS, current)) }}
               onChange={(event) => { setApiKey(event.target.value); markChange('apiKey') }}
             />
           </div>
@@ -557,13 +534,24 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
             <strong>{t('settings.detailedVoiceConfig')}</strong>
             <span className="xmimo-tts-details-summary">
               <span>{summaryModel}</span><span>{summaryVoice}</span><span>{summaryPlayback}</span><span>{summaryStrategy}</span>
-              <span
-                className={detailsOpen ? 'xmimo-tts-mixer-whale xmimo-tts-mixer-whale-open' : 'xmimo-tts-mixer-whale'}
-                style={{ backgroundImage: `url(${hostRoute(TTS_MIXER_WHALE_ASSET_ROUTE)})` }}
-                aria-hidden="true"
-              />
             </span>
           </span>
+        </button>
+        <button
+          type="button"
+          className={model === 'mimo-v2.5-tts-voicedesign' ? 'xmimo-tts-mixer-whale-button' : 'xmimo-tts-mixer-whale-button xmimo-tts-mixer-whale-button-static'}
+          disabled={model !== 'mimo-v2.5-tts-voicedesign' || !snapshot.writable || voiceDesignAiState === 'loading'}
+          aria-label={t('settings.voiceDesignGenerate')}
+          aria-busy={voiceDesignAiState === 'loading'}
+          onPointerDown={(event) => { event.stopPropagation() }}
+          onClick={(event) => { event.stopPropagation(); if (model !== 'mimo-v2.5-tts-voicedesign') return; chooseVoiceDesignAiCopy(); void generateVoiceDesign() }}
+        >
+          {model === 'mimo-v2.5-tts-voicedesign' ? <span className="xmimo-tts-ai-copy">{voiceDesignAiState === 'loading' ? t('settings.voiceDesignGenerating') : voiceDesignAiState === 'success' ? t('settings.voiceDesignAiSuccess') : voiceDesignAiState === 'failed' ? t('settings.voiceDesignGenerateFailed') : t(VOICE_DESIGN_AI_COPY_KEYS[voiceDesignAiCopyIndex]!)}</span> : null}
+          <span
+            className={voiceDesignAiState === 'loading' ? 'xmimo-tts-mixer-whale xmimo-tts-mixer-whale-thinking' : 'xmimo-tts-mixer-whale'}
+            style={{ backgroundImage: `url(${hostRoute(TTS_MIXER_WHALE_ASSET_ROUTE)})` }}
+            aria-hidden="true"
+          />
         </button>
         <div className={detailsOpen ? 'xmimo-tts-details-collapse xmimo-tts-details-collapse-open' : 'xmimo-tts-details-collapse'} aria-hidden={!detailsOpen} {...detailsInertProps}>
         <div className="xmimo-tts-details-body"><div className="xmimo-tts-grid">
@@ -571,16 +559,24 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
           <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('model')} resettable disabled={!snapshot.writable} onReset={() => { resetField('model') }} />
           <ModelPicker
             value={model}
-            disabled={!snapshot.writable}
+            disabled={!snapshot.writable || voiceDesignAiState === 'loading'}
             label={t('settings.model')}
-            presetLabel={t('settings.presetModel')}
-            voiceDesignLabel={t('settings.voiceDesignModel')}
-            onChange={(nextModel) => { setModel(nextModel); markChange('model') }}
+            presetLabel={t('settings.presetModelShort')}
+            voiceDesignLabel={t('settings.voiceDesignModelShort')}
+            onChange={(nextModel) => { setModel(nextModel); setVoiceDesignAiState('idle'); markChange('model'); if (nextModel === 'mimo-v2.5-tts-voicedesign') chooseVoiceDesignAiCopy() }}
           />
           {enabled && autoPlay ? <small>{t(model === 'mimo-v2.5-tts' ? 'settings.modelAutoPlayHintPreset' : 'settings.modelAutoPlayHintVoiceDesign')}</small> : null}
         </div>
         {model === 'mimo-v2.5-tts-voicedesign' ? <div className="xmimo-tts-voice-design-prompt xmimo-tts-wide">
-          <SettingFieldHeading label={t('settings.voiceDesignPrompt')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceDesignPrompt')} resettable disabled={!snapshot.writable} onReset={() => { resetField('voiceDesignPrompt') }} />
+          <SettingFieldHeading
+            label={t('settings.voiceDesignPrompt')}
+            overriddenLabel={t('settings.overridden')}
+            resetLabel={t('settings.reset')}
+            overridden={fieldOverridden('voiceDesignPrompt')}
+            resettable
+            disabled={!snapshot.writable}
+            onReset={() => { resetField('voiceDesignPrompt') }}
+          />
           <VoiceDesignPresetPicker
             value={isPresetVoiceDesignPrompt(voiceDesignPrompt) ? voiceDesignPrompt : CUSTOM_VOICE_DESIGN_OPTION}
             disabled={!snapshot.writable}
@@ -604,8 +600,10 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
               setVoiceDesignCustomPrompt(next)
               setChanges((current) => ({ ...current, voiceDesignPrompt: { kind: 'set' }, voiceDesignCustomPrompt: { kind: 'set' } }))
               setState('idle')
+              setVoiceDesignAiState('idle')
             }}
           />
+          {voiceDesignAiState === 'failed' ? <small className="xmimo-tts-ai-generate-error" role="status">{t('settings.voiceDesignGenerateFailed')}</small> : null}
           <small>{t('settings.voiceDesignPromptHint')}</small>
           <div className="xmimo-tts-format xmimo-tts-wide">
             <SettingFieldHeading label={t('settings.voiceDesignPlaybackMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceDesignPlaybackMode')} resettable disabled={!snapshot.writable} onReset={() => { resetField('voiceDesignPlaybackMode') }} />
@@ -653,6 +651,7 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
         <section className="xmimo-tts-settings-module xmimo-tts-preview">
           <strong className="xmimo-tts-preview-title">{t('settings.previewTitle')}</strong>
           <div className="xmimo-tts-preview-input">
+            <span className={previewStatus === 'error' ? 'xmimo-tts-character-bubble xmimo-tts-preview-status xmimo-tts-failed' : 'xmimo-tts-character-bubble xmimo-tts-preview-status'} aria-live="polite">{t(previewMessageKey)}</span>
             <button
               type="button"
               className={previewBusy ? 'xmimo-tts-preview-whale-button xmimo-tts-preview-whale-button-active' : 'xmimo-tts-preview-whale-button'}
@@ -670,7 +669,6 @@ export function SettingsCard({ scope, t }: SettingsCardProps): ReactElement | nu
               onChange={(event) => { setPreviewText(event.target.value) }}
             />
           </div>
-          <span className={previewStatus === 'error' ? 'xmimo-tts-preview-status xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(previewMessageKey)}</span>
         </section>
         <div className="xmimo-tts-card-actions">
           {uninstallState === 'idle' && latestVersion !== null

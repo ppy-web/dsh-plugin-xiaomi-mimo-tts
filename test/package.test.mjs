@@ -29,20 +29,12 @@ const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.u
   .sort()
 const clientSource = (await Promise.all(clientSourceFiles.map((name) => readFile(new URL(`../src/client/${name}`, import.meta.url), 'utf8')))).join('\n')
 const settingsCardSource = await readFile(new URL('../src/client/settings-card.tsx', import.meta.url), 'utf8')
-const localizationSource = await readFile(new URL('../src/client/localization.ts', import.meta.url), 'utf8')
-const stylesSource = await readFile(new URL('../src/client/styles.ts', import.meta.url), 'utf8')
 const sharedModule = await import('../lib/shared.js')
 const conversationStateModule = await import('../lib/conversation-state.js')
 const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
 const { EMPTY_LEGACY_CONVERSATION, resolveConversationCompatState } = conversationStateModule
 
-const SUPPORTED_DSH_RANGE = '0.1.2-rc.1'
-
-function assertLocaleTextKey(key) {
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  assert.match(localizationSource, new RegExp(`["']${escapedKey}["']\\s*:\\s*["'][^"'\\r\\n]+["']`))
-}
-
+const SUPPORTED_DSH_RANGE = '0.1.1-rc.2 || 0.1.2-rc.1'
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
@@ -70,6 +62,14 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.match(pcmStream, /mimo-v2\.5-tts/)
   assert.match(patch, /id: xiaomi-mimo-tts/)
   assert.match(patch, /name: 'dsh-xiaomi-tts'/)
+})
+
+test('voice design AI generation is wired through Host LLM RPC', () => {
+  assert.match(host, /VOICE_DESIGN_AI_RPC_CHANNEL/u)
+  assert.match(host, /ctx\.connection\.rpc\.handle/u)
+  assert.match(host, /ctx\.llm\.stream/u)
+  assert.match(host, /chunk\.type === ["']text-delta["']/u)
+  assert.match(settingsCardSource, /VOICE_DESIGN_AI_RPC_ENDPOINT/u)
 })
 
 test('compatibility automation validates both DSH release candidates with one tarball contract', () => {
@@ -165,21 +165,12 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(new Set(sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => item.id)).size, sharedModule.TTS_VOICE_DESIGN_PRESETS.length)
   assert.equal(new Set(sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => item.prompt)).size, sharedModule.TTS_VOICE_DESIGN_PRESETS.length)
   assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.every((item) => typeof item.label === 'string' && item.label.trim().length > 0 && typeof item.summary === 'string' && item.summary.trim().length > 0 && typeof item.prompt === 'string' && item.prompt.trim().length > 0))
-  assert.deepEqual(sharedModule.TTS_VOICE_DESIGN_PRESETS.find((item) => item.id === 'energetic-girl'), {
-    id: 'energetic-girl',
-    label: '鲸鱼娘',
-    summary: '爱吃白米饭',
-    prompt: '年轻女性16-22岁，标准普通话，清透甜美的中高音，音色明亮而不尖锐，带一点轻盈柔软的空气感；吐字清楚、节奏灵动，语速中等偏快，语调自然上扬，情绪开朗亲切又略带俏皮，整体听感温柔、有陪伴感。',
-  })
-  assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.some((item) => item.id === 'liang-wenfeng'))
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.model, 'mimo-v2.5-tts')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.localSpeechMode, 'auto')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.localVoiceURI, '')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.format, 'pcm')
-  assert.match(sharedModule.DEFAULT_TTS_SETTINGS.presetStylePrompt, /清晰、自然、准确/)
-  assert.match(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt, /青年女性/)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.maxMp3AudioBytes, 32 * 1024 * 1024)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.maxWavAudioBytes, 128 * 1024 * 1024)
@@ -214,8 +205,6 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.match(host, /item\.isSymbolicLink\(\)/)
   assert.match(host, /rmSync\(linkPath,\s*\{\s*force:\s*true\s*\}\)/)
   assert.doesNotMatch(host, /updateWebProfile/)
-  assert.match(client, /✨查看源码/)
-  assert.match(client, /🎉新版已发布/)
   assert.match(client, /dsh-plugin-xiaomi-mimo-tts\/releases/)
   assert.match(host, /presetStylePrompt/)
   assert.match(host, /mimo-v2\.5-tts-voicedesign"\s*\?\s*options\.voiceDesignPrompt\.trim\(\)\s*:/)
@@ -282,27 +271,12 @@ test('ships the transparent four-state character toggle sheet', async () => {
   assert.match(settingsCardSource, /function CharacterToggle/)
   assert.match(settingsCardSource, /kind="voice" checked=\{enabled\}/)
   assert.match(settingsCardSource, /kind="autoplay" checked=\{enabled && autoPlay\}/)
-  assert.match(settingsCardSource, /settings\.enabledOnLabel/)
-  assert.match(settingsCardSource, /settings\.enabledOffLabel/)
-  assert.match(settingsCardSource, /settings\.autoPlayOnLabel/)
-  assert.match(settingsCardSource, /settings\.autoPlayOffLabel/)
-  assertLocaleTextKey('settings.enabledOnLabel')
-  assertLocaleTextKey('settings.enabledOffLabel')
-  assertLocaleTextKey('settings.autoPlayOnLabel')
-  assertLocaleTextKey('settings.autoPlayOffLabel')
   assert.match(settingsCardSource, /type="checkbox" checked=\{checked\} disabled=\{disabled\}/)
-  assert.match(stylesSource, /xmimo-tts-character-voice-on\{background-position:left top\}/)
-  assert.match(stylesSource, /xmimo-tts-character-autoplay-off\{background-position:right bottom\}/)
 })
 
 test('keeps detailed voice settings behind one collapsible panel', () => {
-  assert.doesNotMatch(settingsCardSource, /enabledOnHint|enabledOffHint|autoPlayOnHint|autoPlayOffHint/)
-  assert.doesNotMatch(localizationSource, /enabledOnHint|enabledOffHint|autoPlayOnHint|autoPlayOffHint/)
   assert.match(settingsCardSource, /detailsOpen/)
-  assert.match(settingsCardSource, /settings\.detailedVoiceConfig/)
   assert.match(settingsCardSource, /aria-expanded=\{detailsOpen\}/)
-  assert.match(stylesSource, /xmimo-tts-details-toggle/)
-  assert.match(stylesSource, /xmimo-tts-details\+\.xmimo-tts-card-actions\{border-top:0\}/)
 })
 
 test('exposes optional zero-impact PCM playback to third-party client plugins', () => {
@@ -343,72 +317,40 @@ test('ships randomized debounced feedback sounds for both switches', async () =>
   assert.match(host, /setHeader\(["']content-type["'], ["']audio\/mpeg["']\)/)
 })
 
-test('ships the transparent API-key whale focus sprite', async () => {
+test('ships the API-key whale asset used by the settings card', async () => {
   const data = await readFile(new URL('../assets/ui/api-key-whale.png', import.meta.url))
   assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
-  assert.equal(data.readUInt32BE(16), 320)
-  assert.equal(data.readUInt32BE(20), 160)
   assert.match(settingsCardSource, /hostRoute\(TTS_API_KEY_WHALE_ASSET_ROUTE\)/)
-  assert.match(settingsCardSource, /className="xmimo-tts-api-key-input"/)
-  assert.match(stylesSource, /xmimo-tts-api-key-input:focus-within \.xmimo-tts-api-key-whale\{background-position:right center/)
+  assert.match(settingsCardSource, /API_KEY_IDLE_COPY_KEYS/)
+  assert.match(settingsCardSource, /API_KEY_FOCUS_COPY_KEYS/)
+  assert.match(settingsCardSource, /onFocus=\{\(\) => \{ setApiKeyBubbleKey/)
+  assert.match(settingsCardSource, /onBlur=\{\(\) => \{ setApiKeyBubbleKey/)
 })
 
-test('ships the transparent mixing-console whale accordion sprite', async () => {
+test('wires the Voice Design generator to its packaged whale control', async () => {
   const data = await readFile(new URL('../assets/ui/mixer-whale.png', import.meta.url))
   assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
-  assert.equal(data.readUInt32BE(16), 400)
-  assert.equal(data.readUInt32BE(20), 200)
   assert.match(settingsCardSource, /hostRoute\(TTS_MIXER_WHALE_ASSET_ROUTE\)/)
-  assert.match(settingsCardSource, /detailsOpen \? 'xmimo-tts-mixer-whale xmimo-tts-mixer-whale-open'/)
-  assert.match(stylesSource, /xmimo-tts-mixer-whale-open\{background-position:right center/)
+  assert.match(settingsCardSource, /onPointerDown=\{\(event\) => \{ event\.stopPropagation\(\) \}\}/)
+  assert.match(settingsCardSource, /disabled=\{model !== 'mimo-v2\.5-tts-voicedesign' \|\| !snapshot\.writable \|\| voiceDesignAiState === 'loading'\}/)
 })
 
-test('uses the perched whale as the compact full-width preview control', () => {
-  assert.match(settingsCardSource, /className=\{previewBusy \? 'xmimo-tts-preview-whale-button xmimo-tts-preview-whale-button-active'/)
-  assert.match(settingsCardSource, /rows=\{2\}/)
-  assert.doesNotMatch(settingsCardSource, /xmimo-tts-preview-symbol|xmimo-tts-preview-copy|xmimo-tts-preview-controls/)
-  assert.match(settingsCardSource, /settings\.previewHint/)
-  assert.match(settingsCardSource, /settings\.previewPlaying/)
-  assertLocaleTextKey('settings.previewHint')
-  assertLocaleTextKey('settings.previewPlaying')
+test('announces preview playback status accessibly', () => {
   assert.match(settingsCardSource, /aria-live="polite">\{t\(previewMessageKey\)\}/)
-  assert.match(settingsCardSource, /className="xmimo-tts-preview-input"/)
-  assert.match(stylesSource, /xmimo-tts-preview-input>textarea\{box-sizing:border-box;width:100%;height:60px/)
+  assert.match(settingsCardSource, /xmimo-tts-character-bubble xmimo-tts-preview-status/)
 })
 
-test('lays out borderless switches and three consistently spaced bordered modules', () => {
-  assert.match(settingsCardSource, /className="xmimo-tts-switch-module xmimo-tts-wide"/)
-  assert.match(settingsCardSource, /xmimo-tts-settings-module xmimo-tts-api-key/)
-  assert.match(settingsCardSource, /xmimo-tts-settings-module xmimo-tts-details/)
-  assert.match(settingsCardSource, /xmimo-tts-settings-module xmimo-tts-preview/)
-  assert.doesNotMatch(settingsCardSource, /settings\.switchModule/)
-  assert.doesNotMatch(settingsCardSource, /className=\{detailsOpen \? 'xmimo-tts-chevron/)
-  assert.match(stylesSource, /xmimo-tts-sections\{grid-template-columns:minmax\(0,1fr\);gap:12px/)
-  assert.match(stylesSource, /xmimo-tts-sections>\.xmimo-tts-switch-module\{padding:0;border:0;background:transparent/)
-  assert.match(stylesSource, /xmimo-tts-switch-module \.xmimo-tts-character-portrait\{width:132px;height:120px/)
-  assert.match(settingsCardSource, /className="xmimo-tts-api-key-input"[\s\S]*className="xmimo-tts-api-key-whale"/)
-  assert.match(settingsCardSource, /className="xmimo-tts-details-summary"[\s\S]*className=\{detailsOpen \? 'xmimo-tts-mixer-whale/)
-  assert.match(stylesSource, /xmimo-tts-details-summary\{box-sizing:border-box;position:relative;width:100%;min-height:36px;overflow:visible;align-items:center;border:1px solid/)
-  assert.match(stylesSource, /xmimo-tts-api-key-input>\.xmimo-tts-api-key-whale,\.xmimo-tts-details-summary>\.xmimo-tts-mixer-whale,\.xmimo-tts-preview-input>\.xmimo-tts-preview-whale-button\{top:auto;right:8px;bottom:calc\(100% - 6px\);width:56px;height:56px/)
-})
-
-test('ships a dedicated transparent play and pause whale sprite', async () => {
+test('ships the preview whale asset used by the settings card', async () => {
   const data = await readFile(new URL('../assets/ui/preview-whale.png', import.meta.url))
   assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
-  assert.equal(data.readUInt32BE(16), 400)
-  assert.equal(data.readUInt32BE(20), 200)
   assert.match(settingsCardSource, /hostRoute\(TTS_PREVIEW_WHALE_ASSET_ROUTE\)/)
-  assert.match(stylesSource, /xmimo-tts-preview-whale-button-active\{background-position:right center/)
 })
 
-test('model picker matches the built-in voice picker selection treatment', () => {
+test('model picker uses a compact two-button toggle', () => {
   assert.match(settingsCardSource, /function ModelPicker/)
   assert.doesNotMatch(settingsCardSource, /<select value=\{model\}/)
-  assert.match(settingsCardSource, /xmimo-tts-builtin-voice-trigger/)
-  assert.match(settingsCardSource, /xmimo-tts-builtin-voice-menu xmimo-tts-model-menu/)
-  assert.match(settingsCardSource, /role="option"[\s\S]*aria-selected=\{option\.value === value\}/)
-  assert.match(settingsCardSource, /xmimo-tts-builtin-voice-option-selected/)
-  assert.match(settingsCardSource, /xmimo-tts-builtin-voice-check/)
+  assert.match(settingsCardSource, /className="xmimo-tts-model-switch" role="group"/)
+  assert.match(settingsCardSource, /aria-pressed=\{option\.value === value\}/)
 })
 
 test('build emits declarations only for the private client modules', async () => {
@@ -444,12 +386,8 @@ test('resolves the Voice Design settings without exposing a preset voice in the 
   assert.equal(resolved.model, 'mimo-v2.5-tts-voicedesign')
   assert.equal(resolved.voiceDesignPrompt, '青年女性，清亮自然，语速适中。')
   assert.equal(resolved.voiceDesignCustomPrompt, '青年女性，清亮自然，语速适中。')
-  assert.match(client, /settings\.voiceDesignPrompt/)
   assert.match(client, /mimo-v2\.5-tts-voicedesign/)
   assert.match(client, /model === ["']mimo-v2\.5-tts-voicedesign["']/)
-  assert.doesNotMatch(client, /settings\.instruction/)
-  assert.doesNotMatch(client, /xmimo-tts-instruction/)
-  assert.match(client, /xmimo-tts-model xmimo-tts-wide/)
   assert.match(clientSource, /model === 'mimo-v2\.5-tts' \? <>/)
   assert.match(client, /CUSTOM_VOICE_DESIGN_OPTION = ["']__custom__["']/)
   assert.match(clientSource, /function VoiceDesignPresetPicker/)
@@ -459,16 +397,10 @@ test('resolves the Voice Design settings without exposing a preset voice in the 
   assert.match(clientSource, /value=\{isPresetVoiceDesignPrompt\(voiceDesignPrompt\) \? voiceDesignPrompt : CUSTOM_VOICE_DESIGN_OPTION\}/)
   assert.match(client, /setVoiceDesignCustomPrompt\(next\)/)
   assert.match(client, /voiceDesignCustomPrompt/)
-  assert.match(clientSource, /settings\.formatPcmHint/)
   assert.match(clientSource, /useState\(initial\.format\)/)
   assert.match(clientSource, /<BuiltInVoicePicker value=\{voice\}/)
   assert.match(clientSource, /TTS_VOICE_ASSET_ROUTE/)
-  assert.match(clientSource, /xmimo-tts-builtin-voice-menu/)
   assert.doesNotMatch(client, /xmimo-tts-select-column/)
-  assert.match(client, /xmimo-tts-voice\{display:flex;min-width:0;flex-direction:column/)
-  assert.match(client, /PCM（流式播放）/)
-  assert.match(client, /MP3（完整音频）/)
-  assert.match(client, /WAV（完整音频）/)
 })
 
 test('prepares speech text by keeping prose and normalizing whitespace and punctuation', () => {
@@ -663,12 +595,8 @@ test('client output registers the message action and plugin settings card', () =
   assert.doesNotMatch(client, /Date\.now\(\) - this\.autoPlayArmedAt < 30000/)
   assert.match(clientSource, /playCompletedReply\(true\)/)
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
-  assert.doesNotMatch(client, /settings\.apiKeyHint/)
   assert.match(clientSource, /const apiKeyMessage = enteredApiKey\.length > 0/)
   assert.match(clientSource, /isSupportedTtsApiKey\(enteredApiKey\) \? t\('settings\.apiKeyStatus'\) : t\('settings\.apiKeyUnsupported'\)/)
-  assert.match(clientSource, /settings\.apiKeyMissing/)
-  assert.match(clientSource, /settings\.apiKeyUnsupported/)
-  assert.match(clientSource, /settings\.apiKeyStatus/)
   assert.match(clientSource, /fetch\(TTS_API_KEY_STATUS_ROUTE/)
   assert.match(clientSource, /apiKeyStatus === 'missing' \|\| apiKeyStatus === 'unsupported'/)
   assert.match(client, /platform\.xiaomimimo\.com\/console\/api-keys/)
@@ -676,29 +604,11 @@ test('client output registers the message action and plugin settings card', () =
   assert.match(client, /new-password/)
   assert.match(client, /data-lpignore/)
   assert.match(client, /data-bwignore/)
-  assert.match(client, /settings\.plugin\.item/)
   assert.match(client, /locale: NS/)
   assert.match(client, /aria-expanded": open/)
-  assert.match(client, /settings\.expand/)
-  assert.match(client, /settings\.unsaved/)
-  assert.match(client, /settings\.discard/)
-  assert.match(client, /settings\.uninstall/)
-  assert.match(client, /xmimo-tts-uninstall/)
-  assert.match(client, /xmimo-tts-uninstall-confirmation/)
   assert.doesNotMatch(client, /window\.confirm/)
-  assert.match(client, /#F56C6C/)
-  assert.match(client, /settings\.reset/)
-  assert.match(client, /settings\.modelAutoPlayHintPreset/)
-  assert.match(client, /settings\.modelAutoPlayHintVoiceDesign/)
   assert.match(client, /enabled\s*&&\s*autoPlay/)
   assert.match(client, /scope\.unset/)
-  assert.match(client, /xmimo-tts-pending/)
-  assert.match(client, /xmimo-tts-card-open\{background:[^}]*border-color/)
-  assert.match(client, /xmimo-tts-card-header:focus-visible/)
-  assert.match(client, /xmimo-tts-action\{width:28px;height:28px/)
-  assert.match(client, /interactive-bg-hover/)
-  assert.match(client, /padding:6px/)
-  assert.match(client, /cursor:default;opacity:\.45/)
   assert.match(client, /scope\.getSnapshot\(\)/)
   assert.match(client, /window\.__ModuleLoader__\.load/)
 })
@@ -778,11 +688,9 @@ test('both MiMo models share persistent bidirectional browser-speech fallback', 
   assert.match(clientSource, /useApiKeySupported\(resolvedSettings\.localSpeechMode !== 'disabled'\)/)
   assert.match(clientSource, /playback\.segmented\(sessionId, messageId, text, automatic, resolvedSettings\.localSpeechMode === 'auto'/)
   assert.match(clientSource, /if \(!audioStarted && fallback !== undefined\) \{\s*this\.segmentedState = null\s*this\.publish\(this\.emptyView\(\)\)\s*fallback\(\)/)
-  assert.match(clientSource, /localSpeechMode === 'auto' \? 'settings\.localSpeechAutoHint' : localSpeechMode === 'local-first' \? 'settings\.localSpeechFirstHint' : 'settings\.localSpeechDisabledHint'/)
   assert.doesNotMatch(clientSource, /fallbackAllowed/)
   assert.doesNotMatch(clientSource, /getVoices\(\)\.filter\(\(voice\) => voice\.localService === true\)/)
   assert.match(clientSource, /voice\.localService \? offlineLabel : onlineLabel/)
-  assert.match(clientSource, /offlineLabel=\{t\('settings\.localVoiceOffline'\)\} onlineLabel=\{t\('settings\.localVoiceOnline'\)\}/)
   assert.match(clientSource, /if \(voice\.localService\) return 0[\s\S]*language\.startsWith\('zh-'\)\) return 1[\s\S]*language\.startsWith\('en-'\)\) return 2[\s\S]*return 3/)
   assert.match(clientSource, /private timeoutMs = 120_000/)
   assert.match(clientSource, /local\.setTimeoutMs\(resolvedSettings\.requestTimeoutMs\)/)

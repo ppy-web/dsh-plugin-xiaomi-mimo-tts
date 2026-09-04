@@ -46,11 +46,11 @@
 
 ## 环境要求
 
-- `@deepseek-ai/dsh` `0.1.2-rc.1`（与插件 `V3.0.1-alpha` 配套）
+- `@deepseek-ai/dsh` `0.1.1-rc.2` 或 `0.1.2-rc.1`（插件 `V3.0.1-alpha` 均已完成兼容）
 - Node.js 22+
 - Xiaomi MiMo API Key
 
-已验证的可靠组合：`V3.0.0` + `0.1.1-rc.2`；`V3.0.1-alpha` + `0.1.2-rc.1`。`V3.0.0` 在 `0.1.2-rc.1` 下无法显示播放按钮或播放，`V3.0.1-alpha` 在 `0.1.1-rc.2` 下无法显示设置菜单，因此不要交叉组合。
+`V3.0.1-alpha` 已针对 DSH `0.1.1-rc.2` 和 `0.1.2-rc.1` 完成兼容，并使用同一个插件打包产物通过自动化兼容性验证。旧版 `V3.0.0` 仅建议搭配 DSH `0.1.1-rc.2` 使用。
 
 官方 TTS API 文档：<https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts>
 
@@ -194,7 +194,7 @@ pnpm test
 pnpm pack:check
 ```
 
-发布前使用互相隔离的 `DSH_HOME`，按可靠组合验证：`V3.0.0` + `0.1.1-rc.2`，以及 `V3.0.1-alpha` + `0.1.2-rc.1`。CI 使用同一个打包产物依次对两个 DSH 版本执行自动安装、Host、状态路由、settings namespace 和客户端 bundle smoke；浏览器菜单与音频播放仍需发布前人工验证。
+发布前使用互相隔离的 `DSH_HOME`，通过同一个 `V3.0.1-alpha` 打包产物依次验证 DSH `0.1.1-rc.2` 和 `0.1.2-rc.1`。CI 会对两个 DSH 版本执行自动安装、Host、状态路由、settings namespace 和客户端 bundle smoke；浏览器菜单与音频播放仍需发布前人工验证。
 
 日常发布构建使用 `pnpm build`，不会输出 MiMoTTS 的 Host 或浏览器控制台追踪。排查 PCM 流式链路时使用 `pnpm build:debug`，该构建会同时启用 `[MiMoTTS Host]`、`[MiMoTTS Stream]`、`[MiMoTTS Audio]` 和 `[MiMoTTS Service]` 日志。
 

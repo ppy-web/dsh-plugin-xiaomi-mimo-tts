@@ -33,11 +33,11 @@ Add Xiaomi MiMo TTS read-aloud playback to assistant replies in DeepSeek Harness
 
 ## Requirements
 
-- `@deepseek-ai/dsh` `0.1.2-rc.1` (the verified host for `V3.0.1-alpha`)
+- `@deepseek-ai/dsh` `0.1.1-rc.2` or `0.1.2-rc.1` (`V3.0.1-alpha` is compatible with both)
 - Node.js 22+
 - Xiaomi MiMo API Key
 
-Verified reliable combinations: `V3.0.0` + `0.1.1-rc.2`, and `V3.0.1-alpha` + `0.1.2-rc.1`. `V3.0.0` cannot show or play the read-aloud button on `0.1.2-rc.1`; `V3.0.1-alpha` cannot show the settings menu on `0.1.1-rc.2`. Do not mix these combinations.
+`V3.0.1-alpha` supports DSH `0.1.1-rc.2` and `0.1.2-rc.1`; the same packed plugin artifact passes the automated compatibility checks on both versions. The older `V3.0.0` release is recommended only with DSH `0.1.1-rc.2`.
 
 Official Xiaomi MiMo TTS API reference: <https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts>
 
@@ -233,7 +233,7 @@ pnpm test
 pnpm pack:check
 ```
 
-Before release, use isolated `DSH_HOME` directories and validate the reliable combinations: `V3.0.0` + `0.1.1-rc.2`, and `V3.0.1-alpha` + `0.1.2-rc.1`. CI uses one packed artifact and sequentially checks both DSH versions for installation, Host composition, the status route, the settings namespace, and client-bundle registration. Browser menus and audio playback remain manual pre-release checks.
+Before release, use isolated `DSH_HOME` directories and validate DSH `0.1.1-rc.2` and `0.1.2-rc.1` sequentially with the same packed `V3.0.1-alpha` artifact. CI checks both DSH versions for installation, Host composition, the status route, the settings namespace, and client-bundle registration. Browser menus and audio playback remain manual pre-release checks.
 
 Use `pnpm build` for release output; it does not emit MiMoTTS Host or browser console traces. Use `pnpm build:debug` when diagnosing the PCM streaming path; that build enables the `[MiMoTTS Host]`, `[MiMoTTS Stream]`, `[MiMoTTS Audio]`, and `[MiMoTTS Service]` logs on both sides.
 

@@ -2,6 +2,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-connection/client'
 import { TTS_SETTINGS_NAMESPACE } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 import { ReadAloudAction, SessionPlaybackObserver } from './conversation.js'
@@ -114,6 +115,6 @@ export function apply(ctx: ClientContextCompat): void {
     name: 'settings.plugin.item',
     key: TTS_SETTINGS_NAMESPACE,
     locale: NS,
-    inject: () => ({ scope, t }),
+    inject: () => ({ scope, t, connection: ctx.connection }),
   }, SettingsCard))
 }
