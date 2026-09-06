@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection'
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, lstatSync, readFileSync, rmSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
@@ -251,6 +251,10 @@ function resolveDshCommand(): { command: string; args: string[] } | undefined {
 
   const executable = process.execPath.split(/[\\/]/u).at(-1) ?? ''
   if (/^dsh(?:\.exe)?$/iu.test(executable)) return { command: process.execPath, args: [] }
+
+  // A global pnpm/npm wrapper can hide the real JS entry from argv on POSIX.
+  // In that case the same PATH that launched DSH is the most reliable fallback.
+  if (process.platform !== 'win32') return { command: 'dsh', args: [] }
   return undefined
 }
 
@@ -319,6 +323,18 @@ waitForParentExit()
   })
 }
 
+function removeStaleProfileLink(profileRoot: string): void {
+  const linkPath = join(profileRoot, 'node_modules', PACKAGE_NAME)
+  try {
+    const item = lstatSync(linkPath)
+    if (!item.isSymbolicLink()) throw new Error(`Refusing to remove non-link plugin path: ${linkPath}`)
+    rmSync(linkPath, { force: true })
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') return
+    throw error
+  }
+}
+
 async function uninstallFromWebProfile(): Promise<CommandResult> {
   const manifest = readWebProfileManifest()
   if (manifest === undefined) {
@@ -328,8 +344,12 @@ async function uninstallFromWebProfile(): Promise<CommandResult> {
     || manifest.dsh?.profile?.bundles?.includes(PACKAGE_NAME) === true
   if (!installed) {
     try {
-      await scheduleProfileLinkCleanup(webProfileDirectory())
-      return { ok: true, output: 'The plugin was already removed from the Web profile; link cleanup is scheduled after this process exits.' }
+      if (process.platform === 'win32') {
+        await scheduleProfileLinkCleanup(webProfileDirectory())
+        return { ok: true, output: 'The plugin was already removed from the Web profile; link cleanup is scheduled after this process exits.' }
+      }
+      removeStaleProfileLink(webProfileDirectory())
+      return { ok: true, output: 'The plugin was already removed from the Web profile and its stale link has been cleaned up.' }
     } catch (error) {
       return { ok: false, output: '', error: error instanceof Error ? error.message : String(error) }
     }
@@ -340,16 +360,18 @@ async function uninstallFromWebProfile(): Promise<CommandResult> {
     return { ok: false, output: '', error: 'Could not resolve the running DSH executable.' }
   }
 
+  const deferPackageCleanup = process.platform === 'win32'
   const result = await new Promise<CommandResult>((resolve) => {
-    const child = spawn(dsh.command, [
+    const args = [
       ...dsh.args,
       'plugin',
       '--profile',
       WEB_PROFILE_NAME,
       'remove',
       PACKAGE_NAME,
-      '--lockfile-only',
-    ], {
+      ...(deferPackageCleanup ? ['--lockfile-only'] : []),
+    ]
+    const child = spawn(dsh.command, args, {
       cwd: webProfileDirectory(),
       env: { ...process.env, CI: 'true' },
       windowsHide: true,
@@ -378,6 +400,15 @@ async function uninstallFromWebProfile(): Promise<CommandResult> {
     || Object.hasOwn(updatedManifest.dependencies ?? {}, PACKAGE_NAME)
     || updatedManifest.dsh?.profile?.bundles?.includes(PACKAGE_NAME) === true) {
     return { ok: false, output: result.output, error: 'DSH did not remove the plugin from the Web profile.' }
+  }
+
+  if (!deferPackageCleanup) {
+    try {
+      removeStaleProfileLink(webProfileDirectory())
+      return { ok: true, output: result.output }
+    } catch (error) {
+      return { ok: false, output: result.output, error: error instanceof Error ? error.message : String(error) }
+    }
   }
 
   try {
