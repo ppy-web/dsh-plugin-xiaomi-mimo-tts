@@ -225,6 +225,14 @@ flowchart TD
 
 ## Development
 
+Run the settings UI lab while editing the panel:
+
+```bash
+pnpm dev
+```
+
+It opens a local Vite shell that renders `src/client/settings-card.tsx` directly with hot updates, so reinstalling the plugin or restarting DSH is unnecessary. The shell uses in-memory settings and local mock endpoints; it does not call the MiMo API or uninstall the plugin. Use `pnpm dev:build` to verify that the shell also builds on its own.
+
 ```bash
 pnpm install
 pnpm typecheck
