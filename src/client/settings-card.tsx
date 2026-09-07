@@ -445,6 +445,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
     toggleSoundPlayer.schedule(next ? 'on' : 'off')
     setEnabled(next)
     if (!next) {
+      previewPlayer.stop()
       setAutoPlay(false)
       setChanges((current) => ({ ...current, enabled: { kind: 'set' }, autoPlay: { kind: 'set' } }))
     } else {
@@ -648,7 +649,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
         </div>
         </div></div></div>
         </section> : null}
-        <section className="xmimo-tts-settings-module xmimo-tts-preview">
+        {enabled ? <section className="xmimo-tts-settings-module xmimo-tts-preview">
           <strong className="xmimo-tts-preview-title">{t('settings.previewTitle')}</strong>
           <div className="xmimo-tts-preview-input">
             <span className={previewStatus === 'error' ? 'xmimo-tts-character-bubble xmimo-tts-preview-status xmimo-tts-failed' : 'xmimo-tts-character-bubble xmimo-tts-preview-status'} aria-live="polite">{t(previewMessageKey)}</span>
@@ -669,7 +670,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
               onChange={(event) => { setPreviewText(event.target.value) }}
             />
           </div>
-        </section>
+        </section> : null}
         <div className="xmimo-tts-card-actions">
           {uninstallState === 'idle' && latestVersion !== null
             ? <a className="xmimo-tts-update" href={RELEASES_URL} target="_blank" rel="noopener noreferrer">{t('settings.updateAvailable')}</a>

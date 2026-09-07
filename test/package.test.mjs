@@ -342,6 +342,8 @@ test('wires the Voice Design generator to its packaged whale control', async () 
 test('announces preview playback status accessibly', () => {
   assert.match(settingsCardSource, /aria-live="polite">\{t\(previewMessageKey\)\}/)
   assert.match(settingsCardSource, /xmimo-tts-character-bubble xmimo-tts-preview-status/)
+  assert.match(settingsCardSource, /\{enabled \? <section className="xmimo-tts-settings-module xmimo-tts-preview">/)
+  assert.match(settingsCardSource, /if \(!next\) \{\s+previewPlayer\.stop\(\)/)
 })
 
 test('ships the preview whale asset used by the settings card', async () => {
