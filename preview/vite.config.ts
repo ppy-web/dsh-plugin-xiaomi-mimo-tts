@@ -7,6 +7,10 @@ import type { Plugin } from 'vite'
 const previewRoot = fileURLToPath(new URL('.', import.meta.url))
 const repositoryRoot = path.resolve(previewRoot, '..')
 const pluginRoute = '/plugins/xiaomi-mimo-tts/'
+const repositoryName = process.env.GITHUB_REPOSITORY?.split('/', 2)[1]
+const pagesBase = process.env.GITHUB_ACTIONS === 'true' && repositoryName !== undefined
+  ? `/${repositoryName}/`
+  : '/'
 
 const assetDirectories = new Map([
   ['voice-avatars', path.join(repositoryRoot, 'assets', 'voice-avatars')],
@@ -74,6 +78,7 @@ function previewAssets(): Plugin {
 
 export default defineConfig({
   root: previewRoot,
+  base: pagesBase,
   publicDir: false,
   plugins: [previewAssets()],
   define: {
