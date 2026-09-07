@@ -1,4 +1,4 @@
 minimumReleaseAgeExclude:
   - '@deepseek-ai/*'
-onlyBuiltDependencies:
-  - esbuild
+allowBuilds:
+  esbuild: true
