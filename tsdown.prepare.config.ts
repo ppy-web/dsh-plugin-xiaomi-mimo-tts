@@ -6,6 +6,9 @@ export function createBuildConfig(debugLogs = false) {
     name: debugLogs ? 'dsh-xiaomi-tts/debug' : 'dsh-xiaomi-tts',
     entry: {
       index: 'src/index.ts',
+      'asr-core': 'src/asr-core.ts',
+      'asr-host': 'src/asr-host.ts',
+      'asr-stream': 'src/asr-stream.ts',
       'client-api': 'src/client-api.ts',
       'conversation-state': 'src/client/conversation-state.ts',
       'pcm-stream': 'src/pcm-stream.ts',

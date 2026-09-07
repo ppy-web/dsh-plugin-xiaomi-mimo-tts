@@ -11,6 +11,7 @@ export function decodeSettings(value: unknown): TtsSettings | undefined {
   if (!isRecord(value)) return undefined
   const decoded: TtsSettings = {}
   if (typeof value.enabled === 'boolean') decoded.enabled = value.enabled
+  if (typeof value.asrEnabled === 'boolean') decoded.asrEnabled = value.asrEnabled
   if (typeof value.apiKey === 'string') decoded.apiKey = value.apiKey
   if (typeof value.baseURL === 'string') decoded.baseURL = value.baseURL
   if (TTS_MODELS.includes(value.model as typeof TTS_MODELS[number])) decoded.model = value.model as typeof TTS_MODELS[number]

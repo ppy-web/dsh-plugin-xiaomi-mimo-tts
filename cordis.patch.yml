@@ -5,6 +5,7 @@
       name: 'dsh-xiaomi-tts'
       config:
         enabled: true
+        asrEnabled: true
         apiKey: ''
         baseURL: 'https://api.xiaomimimo.com/v1'
         model: 'mimo-v2.5-tts'

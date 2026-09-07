@@ -41,14 +41,14 @@ interface SettingsCardProps {
   connection: { rpc: ClientConnectionRpc }
 }
 
-type EditableSettingField = 'enabled' | 'autoPlay' | 'model' | 'localSpeechMode' | 'localVoiceURI' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format' | 'voiceDesignPlaybackMode'
+type EditableSettingField = 'enabled' | 'asrEnabled' | 'autoPlay' | 'model' | 'localSpeechMode' | 'localVoiceURI' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format' | 'voiceDesignPlaybackMode'
 type SettingField = EditableSettingField | 'apiKey'
 type DraftChange = { kind: 'set' } | { kind: 'clear' }
 type DraftChanges = Partial<Record<SettingField, DraftChange>>
 type ResolvedSettings = ReturnType<typeof resolveTtsSettings>
 type DraftSettings = Pick<ResolvedSettings, EditableSettingField>
 
-const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format', 'voiceDesignPlaybackMode']
+const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'asrEnabled', 'autoPlay', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format', 'voiceDesignPlaybackMode']
 const RELEASES_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/releases'
 
 function hostRoute(path: string): string {
@@ -184,6 +184,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
   const [apiKey, setApiKey] = useState('')
   const [apiKeyBubbleKey, setApiKeyBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const [enabled, setEnabled] = useState(initial.enabled)
+  const [asrEnabled, setAsrEnabled] = useState(initial.asrEnabled)
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
   const [model, setModel] = useState(initial.model)
   const [localSpeechMode, setLocalSpeechMode] = useState(initial.localSpeechMode)
@@ -209,7 +210,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format, voiceDesignPlaybackMode }
+  const draft: DraftSettings = { enabled, asrEnabled, autoPlay: enabled && autoPlay, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format, voiceDesignPlaybackMode }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -282,6 +283,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
     if (dirty) return
     const next = resolveTtsSettings(value)
     setEnabled(next.enabled)
+    setAsrEnabled(next.asrEnabled)
     setAutoPlay(next.autoPlay)
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
@@ -334,6 +336,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
   const resetField = (field: EditableSettingField): void => {
     markChange(field, 'clear')
     if (field === 'enabled') setEnabled(base.enabled)
+    if (field === 'asrEnabled') setAsrEnabled(base.asrEnabled)
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
     if (field === 'model') setModel(base.model)
     if (field === 'localSpeechMode') setLocalSpeechMode(base.localSpeechMode)
@@ -348,6 +351,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
   const discard = (): void => {
     const next = resolveTtsSettings(scope.getSnapshot().value)
     setEnabled(next.enabled)
+    setAsrEnabled(next.asrEnabled)
     setAutoPlay(next.autoPlay)
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
@@ -453,6 +457,13 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
     setState('idle')
   }
 
+  const changeAsrEnabled = (next: boolean): void => {
+    toggleSoundPlayer.schedule(next ? 'on' : 'off')
+    setAsrEnabled(next)
+    markChange('asrEnabled')
+    setState('idle')
+  }
+
   const changeAutoPlay = (next: boolean): void => {
     toggleSoundPlayer.schedule(next ? 'auto-on' : 'auto-off')
     setAutoPlay(next)
@@ -488,6 +499,14 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
             <CharacterToggle kind="voice" checked={enabled} disabled={!snapshot.writable} label={t(enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} onChange={changeEnabled} />
             <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!snapshot.writable} label={t(enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} onChange={changeAutoPlay} />
           </div>
+          <label className={asrEnabled ? 'xmimo-tts-asr-toggle xmimo-tts-asr-toggle-on' : 'xmimo-tts-asr-toggle'}>
+            <input type="checkbox" checked={asrEnabled} disabled={!snapshot.writable} onChange={(event) => { changeAsrEnabled(event.target.checked) }} />
+            <span className="xmimo-tts-asr-toggle-track" aria-hidden="true"><span className="xmimo-tts-asr-toggle-thumb" /></span>
+            <span className="xmimo-tts-asr-toggle-copy">
+              <strong>{t('settings.asrTitle')}</strong>
+              <small>{t('settings.asrHint')}</small>
+            </span>
+          </label>
         </section>
         <section className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-tts-wide">
           <SettingFieldHeading

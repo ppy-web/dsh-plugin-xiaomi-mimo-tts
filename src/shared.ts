@@ -7,6 +7,24 @@ export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 /** Same-origin route that proxies MiMo PCM16 server-sent audio chunks. */
 export const TTS_STREAM_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-stream'
 
+/** Same-origin route that proxies one MiMo ASR transcription request as SSE. */
+export const ASR_STREAM_ROUTE = '/plugins/xiaomi-mimo-tts/transcribe-stream'
+
+/** Upstream MiMo ASR model used by the dictation button. */
+export const ASR_MODEL = 'mimo-v2.5-asr'
+
+/** Fixed ASR language hint; `auto` lets the model detect the language. */
+export const ASR_LANGUAGE = 'auto'
+
+/** Fixed recording sample rate: mono PCM16 WAV. */
+export const ASR_SAMPLE_RATE = 16000
+
+/** Hard recording ceiling in seconds, enforced by actual sample frames. */
+export const ASR_MAX_DURATION_SECONDS = 120
+
+/** Maximum WAV upload accepted by the transcription route (~4 MiB). */
+export const ASR_MAX_WAV_BYTES = 4 * 1024 * 1024
+
 /** Authenticated Connection RPC channel used by the voice-design assistant. */
 export const VOICE_DESIGN_AI_RPC_CHANNEL = '/xiaomi-mimo-tts'
 
@@ -486,6 +504,7 @@ export class AbortableSentenceQueue {
 
 export interface TtsSettings {
   enabled?: boolean
+  asrEnabled?: boolean
   apiKey?: string
   baseURL?: string
   model?: TtsModel
@@ -508,6 +527,7 @@ export interface TtsSettings {
 
 export interface ResolvedTtsSettings {
   enabled: boolean
+  asrEnabled: boolean
   apiKey: string
   baseURL: string
   model: TtsModel
@@ -531,6 +551,7 @@ export interface ResolvedTtsSettings {
 /** Defaults shared by the Schemastery config and the Web settings form. */
 export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   enabled: true,
+  asrEnabled: true,
   apiKey: '',
   baseURL: 'https://api.xiaomimimo.com/v1',
   model: 'mimo-v2.5-tts',

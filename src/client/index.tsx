@@ -5,6 +5,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-connection/client'
 import { TTS_SETTINGS_NAMESPACE } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
+import { AsrDictationButton } from './asr-button.js'
 import { ReadAloudAction, SessionPlaybackObserver } from './conversation.js'
 import { NS, en, zh } from './localization.js'
 import type { Translate } from './localization.js'
@@ -30,7 +31,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: ClientContextCompat,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'settings.plugin.item',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'conversation.input.right' | 'settings.plugin.item',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -110,6 +111,14 @@ export function apply(ctx: ClientContextCompat): void {
     locale: NS,
     inject: (_sessionId: string) => ({ playback, live, local, settings: scope, t }),
   }, ReadAloudAction))
+
+  registerSlotContribution(ctx, 'conversation.input.right', () => ctx.slots.register({
+    name: 'conversation.input.right',
+    id: 'xiaomi-mimo-tts-asr',
+    order: 10,
+    locale: NS,
+    inject: () => ({ settings: scope, t }),
+  }, AsrDictationButton))
 
   registerSlotContribution(ctx, 'settings.plugin.item', () => ctx.slots.register({
     name: 'settings.plugin.item',

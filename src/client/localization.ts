@@ -132,6 +132,18 @@ export const zh = {
   "settings.secretPlaceholder": "输入新的 Xiaomi MiMo API Key",
   "settings.expand": "展开设置",
   "settings.collapse": "收起设置",
+  "settings.asrTitle": "语音识别",
+  "settings.asrHint": "在输入框左侧录音并转写为文字，与语音朗读互不影响。",
+  "asr.start": "语音输入",
+  "asr.stop": "停止录音并转写",
+  "asr.transcribing": "正在转写…",
+  "asr.error.permission": "麦克风权限被拒绝，请在浏览器中允许后重试。",
+  "asr.error.unsupported": "当前浏览器不支持录音，请更换浏览器。",
+  "asr.error.device": "麦克风不可用，请检查系统声音设备。",
+  "asr.error.empty": "没有录到声音。",
+  "asr.error.apiKey": "尚未配置 MiMo API Key，请先在设置中填写。",
+  "asr.error.timeout": "转写请求超时，请重试。",
+  "asr.error.request": "语音识别失败，请重试。",
 } as const;
 
 export const en: Record<keyof typeof zh, string> = {
@@ -280,6 +292,18 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.secretPlaceholder": "Enter a new Xiaomi MiMo API key",
   "settings.expand": "Expand settings",
   "settings.collapse": "Collapse settings",
+  "settings.asrTitle": "Speech recognition",
+  "settings.asrHint": "Record next to the input and transcribe speech into the draft; independent of read-aloud.",
+  "asr.start": "Voice input",
+  "asr.stop": "Stop recording and transcribe",
+  "asr.transcribing": "Transcribing…",
+  "asr.error.permission": "Microphone permission was denied. Allow it in the browser and retry.",
+  "asr.error.unsupported": "This browser cannot record audio. Try another browser.",
+  "asr.error.device": "Microphone unavailable. Check your system sound device.",
+  "asr.error.empty": "No sound was captured.",
+  "asr.error.apiKey": "No MiMo API key is configured. Set one in the settings first.",
+  "asr.error.timeout": "The transcription request timed out. Try again.",
+  "asr.error.request": "Speech recognition failed. Try again.",
 };
 
 export type LocaleKey = keyof typeof zh

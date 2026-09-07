@@ -362,7 +362,7 @@ test('build emits declarations only for the private client modules', async () =>
   assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map')))
   assert.deepEqual(
     clientArtifacts.filter((name) => name.endsWith('.d.ts')),
-    ['built-in-voice-picker.d.ts', 'conversation-state.d.ts', 'conversation.d.ts', 'dsh-compat.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
+    ['asr-button.d.ts', 'asr-recorder.d.ts', 'built-in-voice-picker.d.ts', 'conversation-state.d.ts', 'conversation.d.ts', 'dsh-compat.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
   )
 })
 

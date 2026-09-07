@@ -14,7 +14,8 @@ import * as settingsApi from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { debugConsole } from './debug-console.js'
 import { installSettingsSectionCompat, resolveSettingsNamespace, type SettingsModuleCompat } from './settings-compat.js'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
+import { ASR_LANGUAGE, ASR_MODEL, ASR_SAMPLE_RATE, ASR_STREAM_ROUTE, DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
+import { handleTranscribeStream } from './asr-host.js'
 import type { VoiceDesignAiGenerateResult } from './shared.js'
 
 const compatibleSettingsApi = settingsApi as unknown as SettingsModuleCompat
@@ -26,6 +27,7 @@ const PACKAGE_NAME = 'dsh-xiaomi-tts'
 const WEB_PROFILE_NAME = 'web'
 const NPM_LATEST_URL = 'https://registry.npmjs.org/dsh-xiaomi-tts/latest'
 const STREAM_HOST_LOG = '[MiMoTTS Host]'
+const ASR_HOST_LOG = '[MiMoTTS ASR Host]'
 let nextHostStreamRequestId = 1
 
 /** Cordis plugin identifier. */
@@ -40,6 +42,7 @@ export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = resolveSettingsNamespace(compa
 /** Validated Host settings schema. */
 export const Config = z.object({
   enabled: z.boolean().default(DEFAULT_TTS_SETTINGS.enabled),
+  asrEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.asrEnabled),
   apiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.apiKey),
   baseURL: z.string().default(DEFAULT_TTS_SETTINGS.baseURL),
   model: z.union(TTS_MODELS).default(DEFAULT_TTS_SETTINGS.model),
@@ -1055,4 +1058,18 @@ export function apply(ctx: Context, config: Config): void {
       }
     },
   }), 'xiaomi-mimo-tts: streaming synthesis route')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: ASR_STREAM_ROUTE,
+    async handler(req, res) {
+      await handleTranscribeStream(req, res, {
+        apiKey: current().apiKey.trim(),
+        baseURL: resolveTtsBaseURL(current().apiKey, current().baseURL),
+        requestTimeoutMs: current().requestTimeoutMs,
+        requestLog: (message, detail) => debugConsole?.info(ASR_HOST_LOG, message, detail),
+        errorLog: (message, detail) => debugConsole?.error(ASR_HOST_LOG, message, detail),
+      })
+    },
+  }), 'xiaomi-mimo-tts: transcription route')
 }
