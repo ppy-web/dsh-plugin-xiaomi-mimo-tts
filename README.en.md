@@ -5,130 +5,107 @@
 [![npm version](https://img.shields.io/npm/v/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
 [![GitHub stars](https://img.shields.io/github/stars/ppy-web/dsh-plugin-xiaomi-mimo-tts.svg)](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts)
 
+Add Xiaomi MiMo TTS read-aloud playback to DeepSeek Harness Web.
+
+> Powered by Xiaomi MiMo TTS to turn text into smooth, clear natural speech. MiMo TTS is currently free for a limited time; see the official platform for the latest policy.
+
 <p><a href="README.md"><strong>中文说明 →</strong></a></p>
 
-Add Xiaomi MiMo TTS read-aloud playback to assistant replies in DeepSeek Harness Web.
+## 🎨 Preview
 
-> Powered by Xiaomi MiMo TTS models to turn assistant replies into smooth, clear natural speech. MiMo TTS is currently free for a limited time; refer to Xiaomi MiMo for the current policy.
+| Preset voices | Custom voices |
+|:---:|:---:|
+| ![Xiaomi MiMo settings menu](assets/menu.png) | ![Custom voice](assets/preset.png) |
+| Settings | UI example |
+| ![UI](assets/setting.png) | ![UI](assets/image.png) |
 
-## Preview
+## ✨ Features
 
-![Xiaomi MiMo settings menu](assets/menu.png)
+- One-click read-aloud: adds a **Read aloud** button to the conversation action bar (enabled by default).
+- Built-in voices: uses `mimo-v2.5-tts` for smooth, clear audio with PCM streaming playback.
+- Custom voices: uses `mimo-v2.5-tts-voicedesign` to create a voice from a text description.
+- Browser-local voices: uses offline or online voices provided by the browser host.
+- Automatic text cleaning: removes URLs, file paths, code blocks, emoji, icons, and control characters before synthesis.
 
-![Preset](assets/preset.png)
+## 📋 Requirements
 
-![Button](assets/image.png)
-
-## Features
-
-- Shows a read-aloud button below each completed assistant reply body when needed; enabled by default.
-- Uses Xiaomi MiMo's currently limited-time-free TTS models: `mimo-v2.5-tts` outputs smooth, clear audio with selectable PCM streaming or complete MP3/WAV playback.
-- Uses `mimo-v2.5-tts-voicedesign` Voice Design to create the voice you want from a text description.
-- Supports bidirectional browser-speech fallback for both MiMo models, using every offline or online voice exposed by the browser with MiMo first, local first, or disabled strategies.
-- Lets you switch between the preset-voice model and the custom voice-design model under **Settings → Plugins → Plugin configuration**, and configure the API key, autoplay, voice, audio format, and voice description.
-- Presents built-in voices in a two-column selector using Xiaomi MiMo's official avatars, names, and summaries.
-- Keeps the API key on the DSH Host. The browser sends only the reply body text to a same-origin Host route.
-- Supports pause, resume, regeneration, and autoplay-blocked prompts. Automatic playback only triggers for the latest reply newly completed in the current run; opening messages from history does not play them.
-- Aggressively cleans speech text before sending it to TTS: URLs, file paths, code blocks, emoji, icons, and control characters are removed, and common Chinese punctuation is converted to ASCII punctuation.
-
-## Requirements
-
-- `@deepseek-ai/dsh` `0.1.1-rc.2` or `0.1.2-rc.1` (`V3.0.1` is compatible with both)
+- `@deepseek-ai/dsh` `0.1.1-rc.2` or `0.1.2-rc.1`
 - Node.js 22+
 - Xiaomi MiMo API Key
+- [Official TTS API documentation](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
 
-`V3.0.1` supports DSH `0.1.1-rc.2` and `0.1.2-rc.1`; the same packed plugin artifact passes the automated compatibility checks on both versions. The older `V3.0.0` release is recommended only with DSH `0.1.1-rc.2`.
+## 🚀 Install and use
 
-Official Xiaomi MiMo TTS API reference: <https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts>
-
-## Install
-
-Install from npm:
+- Install from npm **(recommended)**:
 
 ```bash
 dsh plugin --profile web add dsh-xiaomi-tts
 ```
 
-Install from a local directory:
+- Install from the [DSH plugin marketplace](https://github.com/dsh-market/dsh-market) **(recommended)**:
 
-```bash
-dsh plugin --profile web add ./dsh-plugin-xiaomi-mimo-tts
+Open **Settings → Plugin marketplace**, search for `xiaomi-mimo-tts`, and click **Install**.
+
+- Ask DSH or any AI agent to install it for you:
+
+```text
+Install the dsh-xiaomi-tts plugin on this computer's DSH.
+1. Prefer: dsh plugin --profile web add dsh-xiaomi-tts@latest
+2. If that fails, try the source repository: https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```
 
-Install from GitHub:
+- Install from GitHub:
 
 ```bash
 dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```
 
-After installation, restart `dsh web`, then open **Settings → Plugins → Plugin configuration → Xiaomi MiMo Read Aloud**, enter the API key, and save. The plugin automatically selects the endpoint from the API key prefix: `sk-` uses the standard endpoint and `tp-` uses the Token Plan-compatible endpoint.
+After installation, restart `dsh web`, then open **Settings → Plugins → Plugin configuration → Xiaomi MiMo Read Aloud** and [get and enter your API Key](https://platform.xiaomimimo.com/console/api-keys). Standard API Keys and Token Plan-specific API Keys are supported.
 
-When updating or switching from the local development link to the npm package, stop DSH Web before changing the profile dependencies. This prevents a running Node process from holding the Windows Junction that pnpm needs to replace:
+Click **Save** after changing any setting.
+
+When switching from a local development version to the npm package on Windows, stop DSH Web first and run:
 
 ```powershell
 .\start\dsh-plugin-reinstall.bat 3.0.1
 ```
 
-`3.0.1` is published to npm. The first argument also accepts a complete npm spec; a plain version resolves to the matching `dsh-xiaomi-tts@<version>`. The script strictly stops DSH Web, removes old packages and residual links, installs, checks `dump-config`, starts DSH Web, and runs HTTP/profile validation. If you run the steps manually, keep the same order:
+## ⚙️ Configuration
 
-```powershell
-.\start\dsh-web-stop.bat
-dsh plugin --profile web remove dsh-xiaomi-tts
-dsh plugin --profile web add dsh-xiaomi-tts@3.0.1
-.\start\dsh-web-start.bat
-pnpm profile:check
-```
-
-These helpers default to the `web` profile at `127.0.0.1:3080`; override them with `DSH_HOME`, `DSH_WEB_HOST`, and `DSH_WEB_PORT`. In development Junction mode, set `DSH_PROFILE_EXPECT_CHECKOUT` before `pnpm profile:check` to also compare the on-disk and served client-bundle SHA256 values.
-
-## Configuration
-
-Available built-in voices for `mimo-v2.5-tts`:
+**Official built-in voices (`mimo-v2.5-tts`):**
 
 - Chinese female: `冰糖`, `茉莉`
 - Chinese male: `苏打`, `白桦`
 - English female: `Mia`, `Chloe`
 - English male: `Milo`, `Dean`
 
-Preset voices default to **PCM (streaming)**. A complete reply starts playing as soon as audio chunks arrive, reducing the wait, but pause and resume are unavailable; a failure before the first chunk falls back to MP3. **MP3 (complete audio)** and **WAV (complete audio)** wait for the whole file and support pause and resume. MP3 is smaller, while WAV preserves lossless audio at a larger size.
+Preset voices default to **PCM (streaming)**. Playback starts as audio chunks arrive, reducing wait time. **MP3 (complete audio)** and **WAV (complete audio)** wait for the complete file; MP3 is smaller, while WAV preserves lossless audio at a larger size.
 
-Custom voice design with `mimo-v2.5-tts-voicedesign`
+**Custom voices (`mimo-v2.5-tts-voicedesign`)**
 
-The plugin provides common voice-description templates. The selector defaults to **Custom**, so users can edit and save the description directly. After switching to another template and back to **Custom**, the previously saved custom content is restored.
+Voice Design currently does not support PCM. It will be adapted when Xiaomi officially enables it.
+
+Common voice-description templates are provided, and you can edit and save the description directly:
 
 ```text
 Young adult woman, bright and approachable voice, clear articulation, moderate pace, gentle and restrained emotional tone.
 ```
 
-It is recommended to describe age and gender, vocal texture, speaking pace, and emotional baseline, while avoiding scenes or actions. Preset-voice mode still uses the built-in voice configuration.
+**Browser-local fallback speech**
 
-**Browser local fallback speech**
+Three strategies are available: **MiMo first** falls back to browser speech when MiMo fails; **Local first** prefers browser speech; **Disable local speech** uses MiMo only. Voices come from the browser Web Speech API. Offline availability and the actual voice list depend on the browser, operating system, and network speech services.
 
-The browser voice and fallback strategy stay at the bottom of the settings card for both models. MiMo first falls back from the currently selected MiMo model to the browser voice; local first tries the current MiMo model if browser speech fails; disabling local speech uses only MiMo. The picker lists every voice exposed by the browser Web Speech API and labels each one Offline or Online from its `localService` flag. Available online voices depend on the browser, operating system, and network speech services.
+## 🔌 Third-party plugin integration
 
-The list orders all offline voices first, followed by online Chinese (`zh-*`), online English (`en-*`), and other online voices. Each browser-speech segment waits for 2 minutes by default; a timeout stops it and falls back to MiMo when the selected strategy permits.
-
-Browsers may block autoplay. If that happens, click the read-aloud button first.
-
-### Speech text preprocessing
-
-Read-aloud uses only the cleaned reply body and does not modify the assistant message shown in the chat. Markdown links keep their readable labels while their targets are removed; URLs, file paths, complete code blocks, emoji, icons, zero-width characters, and control characters are not sent to Xiaomi MiMo. Parentheses, brackets, book-title marks, quotation marks, and other non-boundary punctuation are removed; retained sentence-boundary punctuation is converted to ASCII. Only preset voices configured for PCM stream partial replies after accumulating at least 20 speakable characters. Completed replies are sent in one PCM/SSE request and play as chunks arrive. MP3 and WAV always request complete audio.
-
-Complete-audio responses are limited to 32 MiB for MP3 and 128 MiB for WAV by default. Advanced Cordis configuration can override these limits with `maxMp3AudioBytes` and `maxWavAudioBytes`. The Host enforces the response limit before JSON parsing and Base64 decoding.
-
-## Third-party plugin integration
-
-Web client plugins can optionally use this plugin's PCM streaming playback capability. The recommended integration is one line at the point where speech is needed:
+This plugin exposes PCM streaming playback for Web plugins. At the point where speech is needed, call:
 
 ```ts
 ctx.get('xiaomiMimoTts')?.play('Welcome back')
 ```
 
-Do not declare `xiaomiMimoTts` as a required `inject` service, and do not import `dsh-xiaomi-tts` at runtime. `ctx.get()` resolves the capability on every call. If this plugin is not installed, is not ready yet, or is later removed, it returns `undefined` and the third-party plugin remains fully available.
+Use `ctx.get()` dynamically rather than declaring a required `inject` service. If this plugin is not installed or not ready, the call safely does nothing. `play()` uses the saved MiMo settings for PCM playback, and `stop()` stops it explicitly. New playback interrupts the current read-aloud session.
 
-`play()` returns immediately and is best effort; it never throws to the caller. It always uses `/plugins/xiaomi-mimo-tts/synthesize-stream` with the `mimo-v2.5-tts` PCM16 stream and reuses the API key, built-in voice, base URL, timeout, and text-length limit saved in this plugin. A disabled plugin, settings that are not ready, empty text, missing configuration, network errors, or browser autoplay blocking are silently skipped or logged by this plugin. New third-party speech interrupts current read-aloud playback, and normal read-aloud playback that starts later stops the third-party speech. To stop it explicitly, call `ctx.get('xiaomiMimoTts')?.stop()`.
-
-For TypeScript hints, a third-party project may use a type-only import and declare this package as an optional peer dependency. Neither is required for the one-line call above:
+For TypeScript hints, import the type only:
 
 ```ts
 import type { XiaomiMimoTtsService } from 'dsh-xiaomi-tts/client-api'
@@ -137,93 +114,38 @@ const tts = ctx.get('xiaomiMimoTts') as XiaomiMimoTtsService | undefined
 tts?.play('Welcome back')
 ```
 
-```json
-{
-  "peerDependencies": { "dsh-xiaomi-tts": "^3.0.1" },
-  "peerDependenciesMeta": { "dsh-xiaomi-tts": { "optional": true } }
-}
-```
+## 🔒 Privacy
 
-## Privacy
+- The API Key is stored on the DSH Host and is not sent to the browser.
+- The reply body is sent to Xiaomi MiMo when speech is generated.
+- Audio is played in browser memory through Web Audio or a temporary Blob URL and is not persisted to disk.
 
-- The API key stays on the DSH Host and is never sent to the browser.
-- Reply text is sent to Xiaomi MiMo when speech is generated.
-- Audio stays in browser memory and is played through Web Audio or a temporary Blob URL; it is not persisted to disk.
+## 🏗️ Architecture
 
-## Feedback and support
-
-Please use [GitHub Issues](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/issues) for bug reports, feature requests, or feedback.
-
-## Architecture
-
-- `src/index.ts`: Host entry; registers Schemastery settings, both voice-asset groups, and complete-audio plus PCM/SSE synthesis routes.
-- `src/shared.ts`: Shared Host/Client domain contracts, including settings types, defaults, text cleaning, sentence splitting, stream batching, and SSE parsing.
-- `src/client-api.ts`: Optional PCM playback Service type contract for third-party Web client plugins.
-- `src/client/index.tsx`: Web Client composition entry; binds DSH services, registers slots, injects styles, and owns controller lifecycles.
-- `src/client/conversation.tsx`: React conversation adapter; observes DSH conversation snapshots and renders read-aloud actions.
-- `src/client/settings-card.tsx`, `built-in-voice-picker.tsx`, and `voice-design-picker.tsx`: Plugin settings form, official built-in voice panel, and Voice Design voice selector UI.
-- `src/client/live-speech-controller.ts`, `pcm-audio-queue.ts`, and `playback-controller.ts`: Realtime speech state machine, Web Audio PCM scheduling, and complete-audio playback.
-- `src/client/settings-scope.ts`: Connects the DSH Settings Scope to React safely with `useSyncExternalStore`.
+- **Shared layer**: common configuration, text cleaning, segmentation, and SSE contract.
+- **Host plugin**: manages settings and static assets, and proxies complete-audio and PCM streaming requests to MiMo.
+- **Web Client**: provides settings and read-aloud entry points, playback state, browser-speech fallback, and the third-party playback service.
 
 ```mermaid
-flowchart TD
-    DSH["DeepSeek Harness"]
-
-    subgraph Host["Host plugin"]
-        HI["src/index.ts<br/>Settings and routes"]
-        SETTINGS["DSH Settings"]
-        ROUTES["Complete audio / PCM SSE routes"]
-        ASSETS["Voice assets"]
-    end
-
-    subgraph Shared["Shared domain layer"]
-        SH["src/shared.ts<br/>Settings, text processing, sentence splitting, and SSE"]
-    end
-
-    subgraph Client["Web Client"]
-        ENTRY["client/index.tsx<br/>Composition entry"]
-        LOCALE["localization.ts"]
-        STYLE["styles.ts"]
-        SCOPE["settings-scope.ts<br/>useSyncExternalStore"]
-        FORM["settings-card.tsx"]
-        BUILTIN["built-in-voice-picker.tsx"]
-        PICKER["voice-design-picker.tsx"]
-        CONV["conversation.tsx<br/>Conversation observer and read-aloud button"]
-
-        subgraph Audio["Audio runtime"]
-            LIVE["live-speech-controller.ts<br/>Realtime speech state machine"]
-            PCM["pcm-audio-queue.ts<br/>Web Audio PCM scheduling"]
-            COMPLETE["playback-controller.ts<br/>Complete-audio playback"]
-        end
-    end
-
-    API["Xiaomi MiMo API"]
-
-    DSH --> HI
-    DSH --> ENTRY
-    SH --> HI
-    SH --> SCOPE
-    SH --> CONV
-    SH --> LIVE
-    HI --> SETTINGS
-    HI --> ROUTES
-    HI --> ASSETS
-    ROUTES --> API
-    ENTRY --> LOCALE
-    ENTRY --> STYLE
-    ENTRY --> SCOPE
-    ENTRY --> FORM
-    ENTRY --> CONV
-    FORM --> BUILTIN
-    FORM --> PICKER
-    CONV --> LIVE
-    CONV --> COMPLETE
-    LIVE --> PCM
-    LIVE --> ROUTES
-    COMPLETE --> ROUTES
+flowchart LR
+    DSH["DSH Web"] --> CLIENT["Web Client<br/>Settings and playback"]
+    THIRD["Third-party Web plugin"] -. "ctx.get('xiaomiMimoTts')" .-> CLIENT
+    CLIENT -->|"Complete audio / PCM stream"| HOST["Host plugin<br/>Settings and API proxy"]
+    HOST --> MIMO["Xiaomi MiMo API"]
+    CLIENT -->|"Browser-local fallback"| SPEECH["Browser Web Speech API"]
+    SHARED["Shared layer<br/>Configuration, text processing, SSE"] -.-> CLIENT
+    SHARED -.-> HOST
 ```
 
-## Development
+## 🛠️ Development
+
+When editing the settings panel, run:
+
+```bash
+pnpm dev
+```
+
+This opens a local UI preview shell that renders `src/client/settings-card.tsx` directly with hot updates. It uses in-memory settings and local mock APIs, so it does not call MiMo or uninstall the plugin. Run `pnpm dev:build` to check that the preview shell builds independently.
 
 Run the settings UI lab while editing the panel:
 
@@ -240,12 +162,10 @@ pnpm test
 pnpm pack:check
 ```
 
-Before release, use isolated `DSH_HOME` directories and validate DSH `0.1.1-rc.2` and `0.1.2-rc.1` sequentially with the same packed `V3.0.1` artifact. CI checks both DSH versions for installation, Host composition, the status route, the settings namespace, and client-bundle registration. Browser menus and audio playback remain manual pre-release checks.
+Use `pnpm build` for normal builds and `pnpm build:debug` when diagnosing the PCM streaming path.
 
-Use `pnpm build` for release output; it does not emit MiMoTTS Host or browser console traces. Use `pnpm build:debug` when diagnosing the PCM streaming path; that build enables the `[MiMoTTS Host]`, `[MiMoTTS Stream]`, `[MiMoTTS Audio]`, and `[MiMoTTS Service]` logs on both sides.
+## 🤝 Recommended companion plugins
 
-`lib/` is generated output and is not committed during day-to-day development. Feature commits update source and tests only; when a version is packaged or published, `prepack` regenerates the release output. GitHub installs build it during installation through `prepare`.
-
-## License
-
-MIT
+- [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme): energetic whale-girl desktop pet.
+- [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme): semantic UI sound effects.
+- [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme): native skins, wallpapers, accent colors, and theme packs.
