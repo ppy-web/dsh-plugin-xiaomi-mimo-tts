@@ -39,8 +39,10 @@ const SUPPORTED_DSH_RANGE = '0.1.1-rc.2 || 0.1.2-rc.1'
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
   assert.equal(TTS_VERSION, packageJson.version)
-  assert.equal(packageJson.scripts.prepare, 'pnpm run build')
-  assert.equal(packageJson.scripts.prepack, 'pnpm run build')
+  assert.equal(packageJson.scripts.prepare, 'node scripts/prepare-package.mjs')
+  assert.equal(packageJson.scripts.prepack, 'pnpm run build && node scripts/pack-package.mjs')
+  assert.equal(packageJson.scripts.postpack, 'node scripts/restore-package-scripts.mjs')
+  assert.equal(packageJson.files.includes('scripts/prepare-package.mjs'), true)
   assert.equal(packageJson.scripts['build:debug'], 'tsdown -c tsdown.debug.config.ts && tsc --emitDeclarationOnly')
   assert.equal(packageJson.scripts.prepublishOnly, undefined)
   assert.equal(packageJson.scripts['release:check'], 'pnpm run test')

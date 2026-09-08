@@ -59,6 +59,14 @@ dsh plugin --profile web add dsh-xiaomi-tts
 dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```
 
+- 从 GitHub Release 下载 `.tgz` 后安装：
+
+```powershell
+dsh plugin --profile web add "<下载路径>\dsh-xiaomi-tts-<版本>.tgz"
+```
+
+Release tgz 已包含构建产物，无需执行 `pnpm approve-builds`。
+
 安装后重启 `dsh web`，打开 **设置 → 插件 → 插件配置 → 语音朗读(Xiaomi MiMo)**
 [获取并填写 API Key](https://platform.xiaomimimo.com/console/api-keys) 。支持标准API Key / Token Plan 专属 API key
 

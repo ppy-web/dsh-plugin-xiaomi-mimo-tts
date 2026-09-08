@@ -60,6 +60,14 @@ Install the dsh-xiaomi-tts plugin on this computer's DSH.
 dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```
 
+- Install a `.tgz` downloaded from GitHub Releases:
+
+```powershell
+dsh plugin --profile web add "<download-path>/dsh-xiaomi-tts-<version>.tgz"
+```
+
+Release tarballs already contain the built files and do not require `pnpm approve-builds`.
+
 After installation, restart `dsh web`, then open **Settings → Plugins → Plugin configuration → Xiaomi MiMo Read Aloud** and [get and enter your API Key](https://platform.xiaomimimo.com/console/api-keys). Standard API Keys and Token Plan-specific API Keys are supported.
 
 Click **Save** after changing any setting.

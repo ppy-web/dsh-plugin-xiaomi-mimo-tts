@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '.github/workflows/preview-pages.yml'
+      - 'src/client/**'
+      - 'src/shared.ts'
+      - 'preview/**'
+      - 'assets/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
   workflow_dispatch:
 
 permissions:
