@@ -6,3 +6,4 @@ coverage/
 .playwright-cli/
 lib/
 .agents/
+canvas/

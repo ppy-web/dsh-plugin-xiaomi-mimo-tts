@@ -12,10 +12,11 @@
 <p><a href="README.en.md"><strong>English README →</strong></a></p>
 
 ## 🎨 预览
-| 预置音色 | 自定义音色 |
-|:---:|:---:|
-| ![Xiaomi MiMo 设置菜单](assets/menu.png) | ![自定义音色](assets/preset.png) |
+
+> [🧐 Preview Pages 预览本插件](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
+
 | 设置界面 | UI示例 |
+|:---:|:---:|
 | ![UI](assets/setting.png) | ![UI](assets/image.png) |
 
 ## ✨ 功能
@@ -98,6 +99,7 @@ Release tgz 已包含构建产物，无需执行 `pnpm approve-builds`。
 可选音色来自浏览器 Web Speech API，是否离线及实际可用范围取决于浏览器、操作系统和网络服务。
 
 ## 🔌 三方插件联动
+![whale-girls](assets\whale-girls.png)
 
 我们对外暴露了PCM流式播放能力。
 Web 插件可以直接调用本插件的服务进行流式播放。可直接在需要播放的位置写一行：
@@ -166,8 +168,9 @@ pnpm pack:check
 .\start\dsh-plugin-reinstall.bat 3.0.1
 ```
 
-## 🤝 推荐配合插件一起使用
-
+## 🤝 推荐
+> 本插件的鲸鱼娘形象来源 `dsh-deep-whale` `dsh-whale-musume`
+- [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme)：鲸鱼娘主题皮肤系列。
 - [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme)：元气鲸鱼娘桌宠。
 - [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme)：语义化 UI 音效。
 - [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme)：原生换肤、背景壁纸、强调色、主题包 。
