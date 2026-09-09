@@ -99,8 +99,7 @@ Release tgz 已包含构建产物，无需执行 `pnpm approve-builds`。
 可选音色来自浏览器 Web Speech API，是否离线及实际可用范围取决于浏览器、操作系统和网络服务。
 
 ## 🔌 三方插件联动
-![whale-girls](assets\whale-girls.png)
-
+![whale-girls](assets/whale-girls.png)
 我们对外暴露了PCM流式播放能力。
 Web 插件可以直接调用本插件的服务进行流式播放。可直接在需要播放的位置写一行：
 
