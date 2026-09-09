@@ -41,7 +41,8 @@
     "README.md",
     "README.en.md",
     "assets",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "dsh": {
     "bundle": {

@@ -56,6 +56,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       this.interruptConversationPlayback()
       debugConsole?.info(this.logPrefix, '[准备] 已请求中断会话朗读')
       this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
+      this.audio.setVolume(settings.voiceVolume)
 
       const generation = this.generation
       const controller = new AbortController()
@@ -95,6 +96,8 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       this.ctx.logger.warn(`xiaomi-mimo-tts: optional PCM playback could not stop cleanly: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
+
+  setVolume(value: number): void { this.audio.setVolume(value) }
 
   async dispose(): Promise<void> {
     if (this.disposed) return

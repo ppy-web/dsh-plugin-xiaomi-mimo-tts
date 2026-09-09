@@ -23,6 +23,7 @@ export class PlaybackController {
   private generation = 0
   private activeSessionId: string | null = null
   private beforePlayback: (() => void) | null = null
+  private volume = 1
 
   getSnapshot = (): PlaybackView => this.view
 
@@ -32,6 +33,12 @@ export class PlaybackController {
   }
 
   setBeforePlayback(handler: (() => void) | null): void { this.beforePlayback = handler }
+
+  setVolume(value: number): void {
+    this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
+    if (this.current !== null) this.current.audio.volume = this.volume
+    for (const audio of this.segmentQueue) audio.volume = this.volume
+  }
 
   interrupt(): void {
     this.generation += 1
@@ -155,6 +162,7 @@ export class PlaybackController {
         if (this.segmentedState !== null) this.segmentedState.index = index
         if (index + 1 < segments.length) nextAudio = synthesize(segments[index + 1]!)
         const audio = new Audio(URL.createObjectURL(blob))
+        audio.volume = this.volume
         this.segmentQueue.push(audio)
         await new Promise<void>((resolve, reject) => {
           const cleanup = (): void => { audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed) }
@@ -247,6 +255,7 @@ export class PlaybackController {
       if (generation !== this.generation || this.activeSessionId !== sessionId) return
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
+      audio.volume = this.volume
       audioCreated = true
       const current: SynthesizedAudio = {
         url,

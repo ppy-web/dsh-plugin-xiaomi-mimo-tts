@@ -26,6 +26,7 @@ Add Xiaomi MiMo TTS read-aloud playback to DeepSeek Harness Web.
 - Custom voices: uses `mimo-v2.5-tts-voicedesign` to create a voice from a text description.
 - Browser-local voices: uses offline or online voices provided by the browser host.
 - Automatic text cleaning: removes URLs, file paths, code blocks, emoji, icons, and control characters before synthesis.
+- Sound Effects: semantic click sounds plus start, success, failure, and pending sounds for the current task.
 
 ## 📋 Requirements
 
@@ -71,6 +72,10 @@ Release tarballs already contain the built files and do not require `pnpm approv
 After installation, restart `dsh web`, then open **Settings → Plugins → Plugin configuration → Xiaomi MiMo Read Aloud** and [get and enter your API Key](https://platform.xiaomimimo.com/console/api-keys). Standard API Keys and Token Plan-specific API Keys are supported.
 
 Click **Save** after changing any setting.
+
+### Sound Effects
+
+Below **Broadcast Studio** in the voice settings card, control the master switch, volume, sound pack, click sounds, and task sounds, and preview common cues. Sounds are synthesized with browser Web Audio; no network request or audio file persistence is used.
 
 When switching from a local development version to the npm package on Windows, stop DSH Web first and run:
 
@@ -127,6 +132,7 @@ tts?.play('Welcome back')
 - The API Key is stored on the DSH Host and is not sent to the browser.
 - The reply body is sent to Xiaomi MiMo when speech is generated.
 - Audio is played in browser memory through Web Audio or a temporary Blob URL and is not persisted to disk.
+- The sound core is migrated from [uisfx 0.4.0](https://github.com/romainsimon/uisfx) under the MIT License; see `NOTICE`.
 
 ## 🏗️ Architecture
 

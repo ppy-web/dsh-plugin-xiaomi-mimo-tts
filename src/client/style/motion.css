@@ -1,0 +1,42 @@
+/*
+ * Reduced-motion overrides (@media prefers-reduced-motion). Intentionally kept last.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-character-control,
+  .xmimo-tts-character-portrait,
+  .xmimo-tts-api-key-whale {
+    transition: none !important
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-details-collapse,
+  .xmimo-tts-mixer-whale,
+  .xmimo-tts-preview-whale-button {
+    transition: none !important
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-mixer-whale-button>.xmimo-tts-mixer-whale-thinking {
+    animation: none;
+    background-position: left center
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-sound-collapse,
+  .xmimo-tts-sound-whale,
+  .xmimo-tts-sound-previews button {
+    transition: none !important
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-energy input::-webkit-slider-thumb,
+  .xmimo-tts-energy input::-moz-range-thumb,
+  .xmimo-tts-energy-pulse i {
+    animation: none !important
+  }
+}

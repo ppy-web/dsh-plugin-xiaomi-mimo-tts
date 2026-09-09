@@ -29,6 +29,9 @@ import { PreviewPlayer } from './preview-player.js'
 import type { PreviewStatus } from './preview-player.js'
 import { isRecord, useSettingsSnapshot } from './settings-scope.js'
 import { ToggleSoundPlayer } from './toggle-sound-player.js'
+import { SoundEffectsPanel } from './sound-effects/settings-card.js'
+import type { SoundEffectsController } from './sound-effects/types.js'
+import { EnergyVolumeSlider } from './energy-volume-slider.js'
 import {
   CUSTOM_VOICE_DESIGN_OPTION,
   VoiceDesignPresetPicker,
@@ -39,16 +42,17 @@ interface SettingsCardProps {
   scope: SettingsScopeCompat<TtsSettings>
   t: Translate
   connection: { rpc: ClientConnectionRpc }
+  controller: SoundEffectsController
 }
 
-type EditableSettingField = 'enabled' | 'autoPlay' | 'model' | 'localSpeechMode' | 'localVoiceURI' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format' | 'voiceDesignPlaybackMode'
+type EditableSettingField = 'enabled' | 'autoPlay' | 'voiceVolume' | 'model' | 'localSpeechMode' | 'localVoiceURI' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format' | 'voiceDesignPlaybackMode'
 type SettingField = EditableSettingField | 'apiKey'
 type DraftChange = { kind: 'set' } | { kind: 'clear' }
 type DraftChanges = Partial<Record<SettingField, DraftChange>>
 type ResolvedSettings = ReturnType<typeof resolveTtsSettings>
 type DraftSettings = Pick<ResolvedSettings, EditableSettingField>
 
-const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format', 'voiceDesignPlaybackMode']
+const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'voiceVolume', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format', 'voiceDesignPlaybackMode']
 const RELEASES_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/releases'
 
 function hostRoute(path: string): string {
@@ -177,7 +181,7 @@ function SettingFieldHeading({ label, suffix, overriddenLabel, resetLabel, overr
   )
 }
 
-export function SettingsCard({ scope, t, connection }: SettingsCardProps): ReactElement | null {
+export function SettingsCard({ scope, t, connection, controller }: SettingsCardProps): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
   const initial = resolveTtsSettings(value)
@@ -185,6 +189,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
   const [apiKeyBubbleKey, setApiKeyBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const [enabled, setEnabled] = useState(initial.enabled)
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
+  const [voiceVolume, setVoiceVolume] = useState(initial.voiceVolume)
   const [model, setModel] = useState(initial.model)
   const [localSpeechMode, setLocalSpeechMode] = useState(initial.localSpeechMode)
   const [localVoiceURI, setLocalVoiceURI] = useState(initial.localVoiceURI)
@@ -209,7 +214,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format, voiceDesignPlaybackMode }
+  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, voiceVolume, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format, voiceDesignPlaybackMode }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -283,6 +288,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
     const next = resolveTtsSettings(value)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
+    setVoiceVolume(next.voiceVolume)
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
     setLocalVoiceURI(next.localVoiceURI)
@@ -299,6 +305,8 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
     toggleSoundPlayer.dispose()
     void previewPlayer.dispose()
   }, [previewPlayer, toggleSoundPlayer])
+
+  useEffect(() => { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setVolume(voiceVolume) }, [previewPlayer, toggleSoundPlayer, voiceVolume])
 
   if (snapshot.status === 'unavailable') return null
 
@@ -335,6 +343,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
     markChange(field, 'clear')
     if (field === 'enabled') setEnabled(base.enabled)
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
+    if (field === 'voiceVolume') setVoiceVolume(base.voiceVolume)
     if (field === 'model') setModel(base.model)
     if (field === 'localSpeechMode') setLocalSpeechMode(base.localSpeechMode)
     if (field === 'localVoiceURI') setLocalVoiceURI(base.localVoiceURI)
@@ -349,6 +358,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
     const next = resolveTtsSettings(scope.getSnapshot().value)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
+    setVoiceVolume(next.voiceVolume)
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
     setLocalVoiceURI(next.localVoiceURI)
@@ -415,6 +425,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
     ? t(voiceDesignPlaybackMode === 'complete' ? 'settings.voiceDesignPlaybackComplete' : 'settings.voiceDesignPlaybackSegmented')
     : format.toUpperCase()
   const summaryStrategy = t(localSpeechMode === 'auto' ? 'settings.localSpeechAutoSummary' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled')
+  const summaryVoiceVolume = `${t('settings.voiceVolume')} ${Math.round(voiceVolume * 100)}%`
   const previewBusy = previewStatus === 'loading' || previewStatus === 'playing'
   const previewMessageKey = previewStatus === 'error'
     ? 'settings.previewFailed'
@@ -438,6 +449,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
       voiceDesignPrompt,
       format,
       voiceDesignPlaybackMode,
+      voiceVolume,
     })
   }
 
@@ -467,7 +479,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
   }
 
   return (
-    <li className={open ? 'xmimo-tts-card xmimo-tts-card-open' : 'xmimo-tts-card'}>
+    <li className={open ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope' : 'xmimo-tts-card xmimo-ui-scope'}>
       <button
         type="button"
         className="xmimo-tts-card-header"
@@ -482,15 +494,15 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
         {dirty ? <span className="xmimo-tts-pending" role="status">{t('settings.unsaved')}</span> : null}
         <IconChevronDownOutline14 className={open ? 'xmimo-tts-chevron xmimo-tts-chevron-open' : 'xmimo-tts-chevron'} />
       </button>
-      {open ? <div className="xmimo-tts-card-body">
-        <div className="xmimo-tts-grid xmimo-tts-sections">
+      {open ? <div className="xmimo-tts-card-body xmimo-ui-stack">
+        <div className="xmimo-tts-grid xmimo-tts-sections xmimo-ui-grid">
         <section className="xmimo-tts-switch-module xmimo-tts-wide">
-          <div className="xmimo-tts-switch-row">
+          <div className="xmimo-tts-switch-row xmimo-ui-row">
             <CharacterToggle kind="voice" checked={enabled} disabled={!snapshot.writable} label={t(enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} onChange={changeEnabled} />
             <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!snapshot.writable} label={t(enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} onChange={changeAutoPlay} />
           </div>
         </section>
-        <section className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-tts-wide">
+        <section className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-tts-wide xmimo-ui-module xmimo-ui-module-padded">
           <SettingFieldHeading
             label={t('settings.apiKey')}
             suffix={<a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>}
@@ -529,12 +541,12 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
           </small>
         </section>
         </div>
-        {enabled ? <section className="xmimo-tts-settings-module xmimo-tts-details xmimo-tts-wide">
-        <button type="button" className="xmimo-tts-details-toggle" aria-expanded={detailsOpen} onClick={() => { setDetailsOpen((current) => !current) }}>
-          <span className="xmimo-tts-details-heading">
+        {enabled ? <section className="xmimo-tts-settings-module xmimo-tts-details xmimo-tts-wide xmimo-ui-module">
+        <button type="button" className="xmimo-tts-details-toggle xmimo-ui-module-toggle" aria-expanded={detailsOpen} onClick={() => { setDetailsOpen((current) => !current) }}>
+          <span className="xmimo-tts-details-heading xmimo-ui-module-head">
             <strong>{t('settings.detailedVoiceConfig')}</strong>
-            <span className="xmimo-tts-details-summary">
-              <span>{summaryModel}</span><span>{summaryVoice}</span><span>{summaryPlayback}</span><span>{summaryStrategy}</span>
+            <span className="xmimo-tts-details-summary xmimo-ui-summary">
+              <span>{summaryVoiceVolume}</span><span>{summaryModel}</span><span>{summaryVoice}</span><span>{summaryPlayback}</span><span>{summaryStrategy}</span>
             </span>
           </span>
         </button>
@@ -555,7 +567,11 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
           />
         </button>
         <div className={detailsOpen ? 'xmimo-tts-details-collapse xmimo-tts-details-collapse-open' : 'xmimo-tts-details-collapse'} aria-hidden={!detailsOpen} {...detailsInertProps}>
-        <div className="xmimo-tts-details-body"><div className="xmimo-tts-grid">
+        <div className="xmimo-tts-details-body xmimo-ui-module-body"><div className="xmimo-tts-grid xmimo-ui-grid">
+        <div className="xmimo-tts-volume xmimo-tts-wide">
+          <SettingFieldHeading label={t('settings.voiceVolume')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceVolume')} resettable disabled={!snapshot.writable} onReset={() => { resetField('voiceVolume') }} />
+          <EnergyVolumeSlider value={voiceVolume} label={t('settings.voiceVolume')} disabled={!snapshot.writable} onChange={(next) => { previewPlayer.setVolume(next); toggleSoundPlayer.setVolume(next); setVoiceVolume(next); markChange('voiceVolume') }} />
+        </div>
         <div className="xmimo-tts-model xmimo-tts-wide">
           <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('model')} resettable disabled={!snapshot.writable} onReset={() => { resetField('model') }} />
           <ModelPicker
@@ -649,8 +665,8 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
         </div>
         </div></div></div>
         </section> : null}
-        {enabled ? <section className="xmimo-tts-settings-module xmimo-tts-preview">
-          <strong className="xmimo-tts-preview-title">{t('settings.previewTitle')}</strong>
+        {enabled ? <section className="xmimo-tts-settings-module xmimo-tts-preview xmimo-ui-module xmimo-ui-module-padded">
+          <strong className="xmimo-tts-preview-title xmimo-ui-module-heading">{t('settings.previewTitle')}</strong>
           <div className="xmimo-tts-preview-input">
             <span className={previewStatus === 'error' ? 'xmimo-tts-character-bubble xmimo-tts-preview-status xmimo-tts-failed' : 'xmimo-tts-character-bubble xmimo-tts-preview-status'} aria-live="polite">{t(previewMessageKey)}</span>
             <button
@@ -671,6 +687,7 @@ export function SettingsCard({ scope, t, connection }: SettingsCardProps): React
             />
           </div>
         </section> : null}
+        <SoundEffectsPanel scope={scope} t={t} controller={controller} />
         <div className="xmimo-tts-card-actions">
           {uninstallState === 'idle' && latestVersion !== null
             ? <a className="xmimo-tts-update" href={RELEASES_URL} target="_blank" rel="noopener noreferrer">{t('settings.updateAvailable')}</a>

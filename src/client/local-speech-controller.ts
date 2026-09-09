@@ -39,6 +39,7 @@ export class LocalSpeechController {
   private completedFallback: (() => void) | null = null
   private fallbackHandler: ((cursor: LiveSpeechCursor, text: string) => void) | null = null
   private beforePlayback: (() => void) | null = null
+  private volume = 1
 
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus, error: string | null) => void): void { this.onStateChange = listener }
 
@@ -49,6 +50,11 @@ export class LocalSpeechController {
   setFallbackHandler(handler: ((cursor: LiveSpeechCursor, text: string) => void) | null): void { this.fallbackHandler = handler }
 
   setBeforePlayback(handler: (() => void) | null): void { this.beforePlayback = handler }
+
+  setVolume(value: number): void {
+    this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
+    if (this.current !== null) this.current.volume = this.volume
+  }
 
   activateSession(sessionId: string): void {
     if (this.sessionId === sessionId) return
@@ -243,6 +249,7 @@ export class LocalSpeechController {
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.voice = voice
       utterance.lang = voice.lang
+      utterance.volume = this.volume
       this.current = utterance
       let settled = false
       let timeout: number | null = null

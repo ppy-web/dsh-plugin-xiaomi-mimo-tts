@@ -1,0 +1,115 @@
+/*
+ * Voice-design details module: collapsible header, summary chip, collapse animation.
+ */
+
+.xmimo-tts-details {
+  position: relative;
+  overflow: visible;
+  padding: 0 !important;
+  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1, #fff)
+}
+
+.xmimo-tts-details-toggle {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 70px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 11px;
+  color: var(--dsw-alias-label-primary, #1f2328);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer
+}
+
+.xmimo-tts-details-toggle:hover {
+  background: var(--dsw-alias-interactive-bg-hover, #f3f4f6)
+}
+
+.xmimo-tts-details-toggle:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  outline-offset: -2px
+}
+
+.xmimo-tts-details-heading {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  white-space: normal
+}
+
+.xmimo-tts-details-heading>strong {
+  flex: none;
+  font-size: 14px;
+  font-weight: 650
+}
+
+.xmimo-tts-details-summary {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  flex: 1;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
+  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--dsw-alias-bg-layer-2, #f3f4f6)
+}
+
+.xmimo-tts-details-summary>span {
+  overflow: hidden;
+  min-width: 0;
+  max-width: 150px;
+  flex: 0 1 auto;
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--dsw-alias-label-secondary, #5f6875);
+  background: var(--dsw-alias-bg-module-platform, #eef0f3);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.xmimo-tts-details-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 220ms ease, opacity 160ms ease
+}
+
+.xmimo-tts-details-collapse-open {
+  grid-template-rows: 1fr;
+  opacity: 1
+}
+
+.xmimo-tts-details-body {
+  min-height: 0;
+  overflow: hidden
+}
+
+.xmimo-tts-details-body>.xmimo-tts-grid>* {
+  padding-right: 16px;
+  padding-left: 16px;
+  border-top: 0
+}
+
+.xmimo-tts-details+.xmimo-tts-preview {
+  margin-top: 14px
+}

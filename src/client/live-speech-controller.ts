@@ -55,6 +55,8 @@ export class LiveSpeechController {
 
   setMaxPausedPcmBytes(value: number): void { this.audio.setMaxPausedPcmBytes(value) }
 
+  setVolume(value: number): void { this.audio.setVolume(value) }
+
   async pause(sessionId: string): Promise<boolean> {
     if (this.sessionId !== sessionId || this.status !== 'playing') return false
     await this.audio.pause()

@@ -17,6 +17,7 @@ export interface PreviewSettings {
   voiceDesignPrompt: string
   format: TtsFormat
   voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
+  voiceVolume: number
 }
 
 interface PreviewRequestBody {
@@ -80,13 +81,22 @@ export class PreviewPlayer {
   private requestBusy = false
   private pcmBusy = false
   private status: PreviewStatus = 'idle'
+  private volume = 1
 
   constructor(private readonly onStatusChange: (status: PreviewStatus) => void) {}
 
   getStatus(): PreviewStatus { return this.status }
 
+  setVolume(value: number): void {
+    this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
+    this.pcm.setVolume(this.volume)
+    if (this.audio !== null) this.audio.volume = this.volume
+    if (this.utterance !== null) this.utterance.volume = this.volume
+  }
+
   async play(text: string, settings: PreviewSettings): Promise<void> {
     this.stop()
+    this.setVolume(settings.voiceVolume)
     const normalized = text.trim()
     if (normalized.length === 0) {
       this.publish('error')
@@ -197,6 +207,7 @@ export class PreviewPlayer {
     this.request = null
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
+    audio.volume = this.volume
     this.audioUrl = url
     this.audio = audio
     await new Promise<void>((resolve, reject) => {
@@ -286,6 +297,7 @@ export class PreviewPlayer {
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.voice = voice
       utterance.lang = voice.lang
+      utterance.volume = this.volume
       this.utterance = utterance
       let settled = false
       const finish = (error?: Error): void => {

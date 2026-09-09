@@ -26,6 +26,7 @@
 - 自定义音色：使用 `mimo-v2.5-tts-voicedesign` 通过文字描述创造你想要的声音。
 - 浏览器本地音色：使用浏览器宿主提供的离线或在线音色。
 - 自动清洗文本：移除网址、文件路径、代码块、表情符号、图标和控制字符等。
+- 音效间：提供全局语义点击音效，以及当前任务开始、成功、失败和待处理提醒音效。
 
 ## 📋 环境要求
 
@@ -72,6 +73,10 @@ Release tgz 已包含构建产物，无需执行 `pnpm approve-builds`。
 [获取并填写 API Key](https://platform.xiaomimimo.com/console/api-keys) 。支持标准API Key / Token Plan 专属 API key
 
 修改任意设置后需要点击 **保存** 生效。
+
+### 音效间
+
+在语音设置卡的 **演播厅** 下方，可以控制音效开关、音量、音色包、点击音效和任务音效，并试听常用提示音。音效由浏览器 Web Audio 合成，不会请求网络或保存音频文件。
 
 ## ⚙️ 配置
 
@@ -123,6 +128,7 @@ tts?.play('欢迎回来')
 - API Key 保存在 DSH Host，不会发送给浏览器。
 - 生成语音时，正文会被发送给 Xiaomi MiMo 服务。
 - 音频在浏览器内存中通过 Web Audio 或临时 Blob URL 播放，不会持久化到磁盘。
+- 音效核心移植自 [uisfx 0.4.0](https://github.com/romainsimon/uisfx)，遵循 MIT License，详见 `NOTICE`。
 
 ## 🏗️ 架构
 

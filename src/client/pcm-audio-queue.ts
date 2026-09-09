@@ -8,6 +8,8 @@ export interface PcmAudioQueueCallbacks {
 export class PcmAudioQueue {
   private readonly logPrefix = '[MiMoTTS Audio]'
   private context: AudioContext | null = null
+  private gain: GainNode | null = null
+  private volume = 1
   private scheduledAt = 0
   private readonly sources = new Set<AudioBufferSourceNode>()
   private readonly sourceBytes = new Map<AudioBufferSourceNode, number>()
@@ -21,6 +23,17 @@ export class PcmAudioQueue {
   constructor(private readonly callbacks: PcmAudioQueueCallbacks) {}
 
   setMaxPausedPcmBytes(value: number): void { this.maxPausedPcmBytes = Number.isFinite(value) && value > 0 ? value : 32 * 1024 * 1024 }
+
+  setVolume(value: number): void {
+    this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
+    const context = this.context
+    const gain = this.gain
+    if (context === null || gain === null) return
+    const now = context.currentTime
+    gain.gain.cancelScheduledValues(now)
+    gain.gain.setValueAtTime(gain.gain.value, now)
+    gain.gain.linearRampToValueAtTime(this.volume, now + .02)
+  }
 
   async pause(): Promise<void> {
     this.userPaused = true
@@ -63,6 +76,8 @@ export class PcmAudioQueue {
     this.stop()
     const context = this.context
     this.context = null
+    this.gain?.disconnect()
+    this.gain = null
     if (context !== null && context.state !== 'closed') await context.close()
   }
 
@@ -93,7 +108,7 @@ export class PcmAudioQueue {
 
     const source = context.createBufferSource()
     source.buffer = buffer
-    source.connect(context.destination)
+    source.connect(this.getGain(context))
     const startAt = Math.max(context.currentTime + 0.03, this.scheduledAt)
     this.scheduledAt = startAt + buffer.duration
     debugConsole?.info(this.logPrefix, '[调度] 准备播放 PCM', { bytes: bytes.byteLength, samples: sampleCount, duration: buffer.duration, currentTime: context.currentTime, startAt, scheduledUntil: this.scheduledAt })
@@ -134,5 +149,14 @@ export class PcmAudioQueue {
       debugConsole?.info(this.logPrefix, '[上下文] 已创建 AudioContext', { state: this.context.state, sampleRate: this.context.sampleRate })
     }
     return this.context
+  }
+
+  private getGain(context: AudioContext): GainNode {
+    if (this.gain === null) {
+      this.gain = context.createGain()
+      this.gain.gain.value = this.volume
+      this.gain.connect(context.destination)
+    }
+    return this.gain
   }
 }

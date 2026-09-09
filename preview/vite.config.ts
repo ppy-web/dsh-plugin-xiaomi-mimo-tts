@@ -23,6 +23,8 @@ const assetFiles = new Map([
   ['api-key-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'api-key-whale.png')],
   ['mixer-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'mixer-whale.png')],
   ['preview-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'preview-whale.png')],
+  ['sound-effects-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'sound-effects-whale.png')],
+  ['sound-effect-cues.png', path.join(repositoryRoot, 'assets', 'ui', 'sound-effect-cues.png')],
 ])
 
 function resolvePreviewAsset(url: string | undefined): string | undefined {

@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react'
-import { TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MODELS, TTS_VOICE_DESIGN_PLAYBACK_MODES } from '../shared.js'
+import { SOUND_PACKS, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MODELS, TTS_VOICE_DESIGN_PLAYBACK_MODES } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 import type { SettingsScopeCompat } from './dsh-compat.js'
 
@@ -25,6 +25,11 @@ export function decodeSettings(value: unknown): TtsSettings | undefined {
   if (typeof value.maxTextLength === 'number') decoded.maxTextLength = value.maxTextLength
   if (typeof value.requestTimeoutMs === 'number') decoded.requestTimeoutMs = value.requestTimeoutMs
   if (typeof value.maxPausedPcmBytes === 'number') decoded.maxPausedPcmBytes = value.maxPausedPcmBytes
+  if (typeof value.soundEnabled === 'boolean') decoded.soundEnabled = value.soundEnabled
+  if (typeof value.soundVolume === 'number') decoded.soundVolume = value.soundVolume
+  if (SOUND_PACKS.includes(value.soundPack as typeof SOUND_PACKS[number])) decoded.soundPack = value.soundPack as typeof SOUND_PACKS[number]
+  if (typeof value.taskSounds === 'boolean') decoded.taskSounds = value.taskSounds
+  if (typeof value.clickSounds === 'boolean') decoded.clickSounds = value.clickSounds
   return decoded
 }
 

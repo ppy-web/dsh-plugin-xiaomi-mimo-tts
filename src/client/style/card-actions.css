@@ -1,0 +1,122 @@
+/*
+ * Settings card action bar: install/update, star, uninstall confirmation.
+ */
+
+.xmimo-tts-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary, #8b93a1)
+}
+
+.xmimo-tts-card-actions button {
+  border: 1px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  border-radius: 8px;
+  padding: 5px 14px;
+  color: var(--dsw-alias-bg-layer-1, #fff);
+  background: var(--dsw-alias-brand-primary, #4f6ef7);
+  cursor: pointer;
+  font: inherit
+}
+
+.xmimo-tts-card-actions button:hover:not(:disabled) {
+  filter: brightness(1.08)
+}
+
+.xmimo-tts-card-actions button:disabled {
+  cursor: not-allowed;
+  color: var(--dsw-alias-label-dimmed, #9ca3af);
+  background: var(--dsw-alias-bg-layer-2, #f3f4f6);
+  border-color: var(--dsw-alias-border-l2, #e5e7eb);
+  opacity: 1
+}
+
+.xmimo-tts-card-actions .xmimo-tts-update {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  border-radius: 8px;
+  padding: 5px 14px;
+  color: var(--dsw-alias-brand-primary, #4f6ef7);
+  background: transparent;
+  text-decoration: none
+}
+
+.xmimo-tts-card-actions .xmimo-tts-update:hover {
+  filter: brightness(1.08)
+}
+
+.xmimo-tts-card-actions .xmimo-tts-star {
+  margin-right: auto;
+  border-color: transparent;
+  color: var(--dsw-alias-brand-primary, #4f6ef7);
+  background: transparent;
+  font-weight: 500
+}
+
+.xmimo-tts-card-actions .xmimo-tts-star:hover {
+  text-decoration: underline
+}
+
+.xmimo-tts-card-actions .xmimo-tts-uninstall {
+  border-color: #F56C6C;
+  color: #F56C6C;
+  background: transparent
+}
+
+.xmimo-tts-card-actions .xmimo-tts-uninstall:hover:not(:disabled) {
+  background: color-mix(in srgb, #F56C6C 10%, transparent)
+}
+
+.xmimo-tts-card-actions .xmimo-tts-uninstall:disabled {
+  border-color: #F56C6C;
+  color: #F56C6C;
+  background: transparent;
+  opacity: .55
+}
+
+.xmimo-tts-uninstall-confirmation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #F56C6C
+}
+
+.xmimo-tts-uninstall-choice {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid #F56C6C;
+  border-radius: 8px
+}
+
+.xmimo-tts-card-actions .xmimo-tts-uninstall-choice button {
+  border: 0;
+  border-radius: 0;
+  padding: 5px 12px;
+  color: #F56C6C;
+  background: transparent
+}
+
+.xmimo-tts-card-actions .xmimo-tts-uninstall-choice button+button {
+  border-left: 1px solid #F56C6C
+}
+
+.xmimo-tts-card-actions .xmimo-tts-uninstall-choice button:hover {
+  filter: none;
+  background: color-mix(in srgb, #F56C6C 10%, transparent)
+}
+
+.xmimo-tts-card-actions .xmimo-tts-discard {
+  border-color: var(--dsw-alias-border-l2, #e5e7eb);
+  color: var(--dsw-alias-label-secondary, #5f6875);
+  background: transparent
+}
+
+.xmimo-tts-card-actions .xmimo-tts-discard:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary, #1f2328);
+  border-color: var(--dsw-alias-label-dimmed, #c8ccd4)
+}

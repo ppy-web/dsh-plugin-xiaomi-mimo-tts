@@ -1,0 +1,57 @@
+/*
+ * Settings page scaffolding: sections stack, settings/switch modules, API-key module padding.
+ */
+
+.xmimo-tts-sections {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px
+}
+
+.xmimo-tts-sections>.xmimo-tts-settings-module {
+  padding: 14px;
+  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2)
+}
+
+.xmimo-tts-sections>.xmimo-tts-switch-module {
+  padding: 0;
+  border: 0;
+  background: transparent
+}
+
+.xmimo-tts-settings-module {
+  box-sizing: border-box;
+  position: relative;
+  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1, #fff)
+}
+
+.xmimo-tts-sections+.xmimo-tts-settings-module,
+.xmimo-tts-settings-module+.xmimo-tts-settings-module {
+  margin-top: 12px
+}
+
+.xmimo-tts-switch-module .xmimo-tts-character-control {
+  border-color: transparent;
+  border-radius: 12px;
+  box-shadow: none
+}
+
+.xmimo-tts-switch-module .xmimo-tts-character-toggle-on .xmimo-tts-character-control {
+  border-color: transparent;
+  box-shadow: none
+}
+
+.xmimo-tts-switch-module .xmimo-tts-character-portrait {
+  width: 132px;
+  height: 120px
+}
+
+.xmimo-tts-api-key {
+  padding: 14px !important
+}
+
+.xmimo-tts-api-key>.xmimo-tts-field-heading {
+  padding-right: 70px;
+  align-items: flex-start
+}

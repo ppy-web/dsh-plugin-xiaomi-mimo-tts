@@ -43,6 +43,7 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.scripts.prepack, 'pnpm run build && node scripts/pack-package.mjs')
   assert.equal(packageJson.scripts.postpack, 'node scripts/restore-package-scripts.mjs')
   assert.equal(packageJson.files.includes('scripts/prepare-package.mjs'), true)
+  assert.equal(packageJson.files.includes('NOTICE'), true)
   assert.equal(packageJson.scripts['build:debug'], 'tsdown -c tsdown.debug.config.ts && tsc --emitDeclarationOnly')
   assert.equal(packageJson.scripts.prepublishOnly, undefined)
   assert.equal(packageJson.scripts['release:check'], 'pnpm run test')
@@ -152,9 +153,11 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.TTS_API_KEY_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-whale.png')
   assert.equal(sharedModule.TTS_MIXER_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/mixer-whale.png')
   assert.equal(sharedModule.TTS_PREVIEW_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/preview-whale.png')
+  assert.equal(sharedModule.TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/sound-effects-whale.png')
+  assert.equal(sharedModule.TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/sound-effect-cues.png')
   assert.equal(sharedModule.TTS_TOGGLE_AUDIO_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/audio')
   assert.deepEqual(sharedModule.TTS_TOGGLE_SOUND_FILES, {
-    on: ['on01.mp3', 'on02.mp3', 'on03.mp3', 'on04.mp3'],
+    on: ['on01.mp3', 'on02.mp3', 'on03.mp3'],
     off: ['off01.mp3', 'off02.mp3', 'off03.mp3'],
     'auto-on': ['auto-on01.mp3', 'auto-on02.mp3', 'auto-on03.mp3'],
     'auto-off': ['auto-off01.mp3', 'auto-off02.mp3', 'auto-off03.mp3'],
@@ -354,6 +357,15 @@ test('ships the preview whale asset used by the settings card', async () => {
   assert.match(settingsCardSource, /hostRoute\(TTS_PREVIEW_WHALE_ASSET_ROUTE\)/)
 })
 
+test('ships the generated sound-effects whale assets', async () => {
+  const header = await readFile(new URL('../assets/ui/sound-effects-whale.png', import.meta.url))
+  const cues = await readFile(new URL('../assets/ui/sound-effect-cues.png', import.meta.url))
+  assert.equal(header.toString('hex', 0, 8), '89504e470d0a1a0a')
+  assert.equal(cues.toString('hex', 0, 8), '89504e470d0a1a0a')
+  assert.match(host, /xiaomi-mimo-tts: sound effects whale asset/)
+  assert.match(host, /xiaomi-mimo-tts: sound effect cue asset/)
+})
+
 test('model picker uses a compact two-button toggle', () => {
   assert.match(settingsCardSource, /function ModelPicker/)
   assert.doesNotMatch(settingsCardSource, /<select value=\{model\}/)
@@ -363,10 +375,10 @@ test('model picker uses a compact two-button toggle', () => {
 
 test('build emits declarations only for the private client modules', async () => {
   const clientArtifacts = (await readdir(new URL('../lib/client', import.meta.url))).sort()
-  assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map')))
+  assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map') || name === 'sound-effects'))
   assert.deepEqual(
     clientArtifacts.filter((name) => name.endsWith('.d.ts')),
-    ['built-in-voice-picker.d.ts', 'conversation-state.d.ts', 'conversation.d.ts', 'dsh-compat.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
+    ['built-in-voice-picker.d.ts', 'conversation-state.d.ts', 'conversation.d.ts', 'dsh-compat.d.ts', 'energy-volume-slider.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
   )
 })
 

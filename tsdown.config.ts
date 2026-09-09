@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { defineConfig } from 'tsdown'
 
 const PACKAGE_ID = 'dsh-xiaomi-tts'
@@ -17,6 +19,29 @@ const INLINE_SAFE = /^@deepseek-ai\/dsh-(host-apiproxy|file-reference|session|ll
 const VENDORED_LIBRARY = /^@deepseek-ai\/(cosmokit|schemastery)(\/|$)/
 const GENERATED_REMOTE = /^@deepseek-ai\/dsh-[a-z0-9]+(?:-[a-z0-9]+)*\/remote$/
 
+/**
+ * Vite-style `?raw` text imports for the client bundle (tsdown/rolldown has
+ * no built-in support; see src/client/styles.ts). `<file>.css?raw` resolves
+ * to the real file and imports as its text content as the default export.
+ */
+function rawTextImports() {
+  return {
+    name: 'dsh-raw-text-imports',
+    resolveId(source, importer) {
+      if (!source.endsWith('?raw')) return null
+      const target = source.slice(0, -'?raw'.length)
+      if (!importer) return null
+      const resolved = path.resolve(path.dirname(importer), target)
+      return resolved + '?raw'
+    },
+    load(id) {
+      if (!id.endsWith('?raw')) return null
+      const target = id.slice(0, -'?raw'.length)
+      return `export default ${JSON.stringify(readFileSync(target, 'utf8'))};`
+    },
+  }
+}
+
 export function createClientConfig(debugLogs = false) {
   return defineConfig({
     name: debugLogs ? `${PACKAGE_ID}/client-debug` : `${PACKAGE_ID}/client`,
@@ -35,7 +60,7 @@ export function createClientConfig(debugLogs = false) {
       'import.meta.env.MODE': JSON.stringify('production'),
       'import.meta.env': JSON.stringify({ MODE: 'production' }),
     },
-    plugins: [{
+    plugins: [rawTextImports(), {
       name: 'dsh-client-bundle-purity',
       resolveId(source: string) {
         if (!source.startsWith('@deepseek-ai/')) return null

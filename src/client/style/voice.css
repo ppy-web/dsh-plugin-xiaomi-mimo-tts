@@ -1,0 +1,238 @@
+/*
+ * Voice pickers: custom voice trigger, builtin voice grid, local voice fallback.
+ */
+
+.xmimo-tts-voice-picker-trigger {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+  border-radius: 10px;
+  padding: 6px 10px;
+  color: var(--dsw-alias-label-primary, #1f2328);
+  background: var(--dsw-alias-bg-layer-2, #f3f4f6);
+  font: inherit;
+  text-align: left;
+  cursor: pointer
+}
+
+.xmimo-tts-voice-picker-trigger:hover:not(:disabled) {
+  border-color: var(--dsw-alias-label-dimmed, #c8ccd4);
+  background: var(--dsw-alias-interactive-bg-hover, #eef0f3)
+}
+
+.xmimo-tts-voice-picker-trigger:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  outline-offset: 1px
+}
+
+.xmimo-tts-voice-picker-trigger:disabled {
+  cursor: not-allowed;
+  opacity: .55
+}
+
+.xmimo-tts-custom-voice-avatar {
+  display: grid;
+  place-items: center;
+  color: var(--dsw-alias-brand-primary, #4f6ef7);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, var(--dsw-alias-bg-layer-1, #fff))
+}
+
+.xmimo-tts-custom-voice-avatar svg {
+  width: 30px;
+  height: 30px;
+  overflow: visible
+}
+
+.xmimo-tts-custom-voice-avatar circle {
+  fill: currentColor
+}
+
+.xmimo-tts-custom-voice-avatar path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round
+}
+
+.xmimo-tts-voice-option-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px
+}
+
+.xmimo-tts-voice-option-copy strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.xmimo-tts-voice-option-copy small {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.xmimo-tts-voice-picker-chevron {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary, #8b93a1);
+  transition: transform 160ms ease
+}
+
+.xmimo-tts-voice-picker-chevron-open {
+  transform: rotate(180deg)
+}
+
+.xmimo-tts-builtin-voice-picker {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px
+}
+
+.xmimo-tts-builtin-voice-trigger,
+.xmimo-tts-builtin-voice-option {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+  border-radius: 9px;
+  color: var(--dsw-alias-label-primary, #1f2328);
+  background: var(--dsw-alias-bg-layer-1, #fff);
+  font: inherit;
+  text-align: left;
+  cursor: pointer
+}
+
+.xmimo-tts-builtin-voice-trigger {
+  min-height: 54px;
+  padding: 8px 11px
+}
+
+.xmimo-tts-builtin-voice-trigger:hover:not(:disabled),
+.xmimo-tts-builtin-voice-option:hover {
+  border-color: var(--dsw-alias-label-dimmed, #c8ccd4);
+  background: var(--dsw-alias-interactive-bg-hover, #f7f7f5)
+}
+
+.xmimo-tts-builtin-voice-trigger:focus-visible,
+.xmimo-tts-builtin-voice-option:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  outline-offset: 1px
+}
+
+.xmimo-tts-builtin-voice-trigger:disabled {
+  cursor: not-allowed;
+  opacity: .55
+}
+
+.xmimo-tts-builtin-voice-avatar {
+  box-sizing: border-box;
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #f4f2ed
+}
+
+.xmimo-tts-builtin-voice-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px
+}
+
+.xmimo-tts-builtin-voice-copy strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.xmimo-tts-builtin-voice-copy small {
+  overflow: hidden;
+  color: var(--dsw-alias-label-tertiary, #77736b);
+  font-size: 12px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.xmimo-tts-builtin-voice-menu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  max-height: 320px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--dsw-alias-bg-layer-1, #fff);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .12)
+}
+
+.xmimo-tts-builtin-voice-option {
+  position: relative;
+  min-height: 60px;
+  padding: 9px 12px
+}
+
+.xmimo-tts-builtin-voice-option-selected {
+  background: color-mix(in srgb, #dedbd2 24%, var(--dsw-alias-bg-layer-1, #fff))
+}
+
+.xmimo-tts-builtin-voice-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 14px;
+  height: 14px
+}
+
+.xmimo-tts-builtin-voice-check circle {
+  fill: #383932
+}
+
+.xmimo-tts-builtin-voice-check path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round
+}
+
+.xmimo-tts-local-voice-avatar {
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, var(--dsw-alias-bg-layer-1, #fff))
+}
+
+.xmimo-tts-local-fallback-status {
+  color: var(--dsw-alias-label-tertiary, #8b93a1);
+  font-size: 12px
+}
+
+.xmimo-tts-builtin-voice-option-custom {
+  grid-column: 1/-1
+}

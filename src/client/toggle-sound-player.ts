@@ -14,6 +14,7 @@ function hostRoute(path: string): string {
 export class ToggleSoundPlayer {
   private timer: number | null = null
   private audio: HTMLAudioElement | null = null
+  private volume = 1
   private readonly lastIndex = new Map<TtsToggleSoundKind, number>()
 
   schedule(kind: TtsToggleSoundKind): void {
@@ -31,6 +32,11 @@ export class ToggleSoundPlayer {
     this.releaseAudio()
   }
 
+  setVolume(value: number): void {
+    this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
+    if (this.audio !== null) this.audio.volume = this.volume
+  }
+
   private play(kind: TtsToggleSoundKind): void {
     const files = TTS_TOGGLE_SOUND_FILES[kind]
     const previous = this.lastIndex.get(kind)
@@ -40,6 +46,7 @@ export class ToggleSoundPlayer {
 
     const audio = new Audio(hostRoute(`${TTS_TOGGLE_AUDIO_ASSET_ROUTE}/${files[index]}`))
     this.audio = audio
+    audio.volume = this.volume
     audio.preload = 'auto'
     const release = (): void => {
       if (this.audio !== audio) return
