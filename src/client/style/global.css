@@ -26,6 +26,7 @@
   --xmimo-ui-text-subtle: var(--dsw-alias-label-tertiary, #8b93a1);
   --xmimo-ui-brand: var(--dsw-alias-brand-primary, #4f6ef7);
   --xmimo-ui-border: var(--dsw-alias-border-l2, #d7dbe2);
+  --xmimo-ui-border-soft: var(--dsw-alias-border-l2, #e5e7eb);
   --xmimo-ui-surface: var(--dsw-alias-bg-layer-1, #fff);
   --xmimo-ui-control-surface: var(--dsw-alias-bg-layer-2, #f3f4f6);
   --xmimo-ui-chip-surface: var(--dsw-alias-bg-module-platform, #eef0f3);
@@ -81,12 +82,6 @@
   font-size: 14px;
   font-weight: 650;
   line-height: 20px;
-}
-
-.xmimo-ui-module-description {
-  color: var(--xmimo-ui-text-subtle);
-  font-size: 12px;
-  line-height: 17px;
 }
 
 /* ---------- Collapsible module header ---------- */
@@ -207,7 +202,7 @@
   padding-right: calc(var(--xmimo-ui-mascot-size) + var(--xmimo-ui-space-3));
 }
 
-.xmimo-ui-module .xmimo-tts-details-body > .xmimo-tts-grid > * {
+.xmimo-ui-module .xmimo-tts-details-body > * {
   padding-right: var(--xmimo-ui-module-padding);
   padding-left: var(--xmimo-ui-module-padding);
 }

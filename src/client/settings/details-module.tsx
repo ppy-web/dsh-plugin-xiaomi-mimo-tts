@@ -138,7 +138,7 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
   </button>
 
   return <CollapsibleModule
-    className="xmimo-tts-settings-module xmimo-tts-details xmimo-tts-wide xmimo-ui-module"
+    className="xmimo-tts-settings-module xmimo-tts-details xmimo-ui-module"
     toggleClassName="xmimo-tts-details-toggle"
     headingClassName="xmimo-tts-details-heading"
     collapseClassName="xmimo-tts-details-collapse"
@@ -151,12 +151,12 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
     onToggle={onToggle}
     action={mixerAction}
   >
-    <div className="xmimo-tts-details-body xmimo-ui-module-body"><div className="xmimo-tts-grid xmimo-ui-grid">
-      <div className="xmimo-tts-volume xmimo-tts-wide">
+    <div className="xmimo-tts-grid xmimo-ui-grid xmimo-tts-details-body xmimo-ui-module-body">
+      <div className="xmimo-tts-volume">
         <SettingFieldHeading label={t('settings.voiceVolume')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceVolume')} resettable disabled={!writable} onReset={() => { resetField('voiceVolume') }} />
         <EnergyVolumeSlider value={voiceVolume} label={t('settings.voiceVolume')} disabled={!writable} onChange={onVoiceVolumeChange} onInteractionEnd={onVoiceVolumeInteractionEnd} />
       </div>
-      <div className="xmimo-tts-model xmimo-tts-wide">
+      <div className="xmimo-tts-model">
         <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('model')} resettable disabled={!writable} onReset={() => { resetField('model') }} />
         <ModelPicker
           value={model}
@@ -168,7 +168,7 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
         />
         {autoPlay ? <small>{t(model === 'mimo-v2.5-tts' ? 'settings.modelAutoPlayHintPreset' : 'settings.modelAutoPlayHintVoiceDesign')}</small> : null}
       </div>
-      {model === 'mimo-v2.5-tts-voicedesign' ? <div className="xmimo-tts-voice-design-prompt xmimo-tts-wide">
+      {model === 'mimo-v2.5-tts-voicedesign' ? <div className="xmimo-tts-voice-design-prompt">
         <SettingFieldHeading
           label={t('settings.voiceDesignPrompt')}
           overriddenLabel={t('settings.overridden')}
@@ -195,7 +195,7 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
         />
         {voiceDesignAiState === 'failed' ? <small className="xmimo-tts-ai-generate-error" role="status">{t('settings.voiceDesignGenerateFailed')}</small> : null}
         <small>{t('settings.voiceDesignPromptHint')}</small>
-        <div className="xmimo-tts-format xmimo-tts-wide">
+        <div className="xmimo-tts-format">
           <SettingFieldHeading label={t('settings.voiceDesignPlaybackMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceDesignPlaybackMode')} resettable disabled={!writable} onReset={() => { resetField('voiceDesignPlaybackMode') }} />
           <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.voiceDesignPlaybackMode')}>
             {TTS_VOICE_DESIGN_PLAYBACK_MODES.map((item) => <label key={item} data-xmimo-select-option="true" className={voiceDesignPlaybackMode === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
@@ -207,11 +207,11 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
         </div>
       </div> : null}
       {model === 'mimo-v2.5-tts' ? <>
-        <div className="xmimo-tts-voice xmimo-tts-wide">
+        <div className="xmimo-tts-voice">
           <SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voice')} resettable disabled={!writable} onReset={() => { resetField('voice') }} />
           <BuiltInVoicePicker value={voice} disabled={!writable} label={t('settings.voice')} onChange={onVoiceChange} />
         </div>
-        <div className="xmimo-tts-format xmimo-tts-wide">
+        <div className="xmimo-tts-format">
           <SettingFieldHeading label={t('settings.format')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('format')} resettable disabled={!writable} onReset={() => { resetField('format') }} />
           <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.format')}>
             {TTS_FORMATS.map((item) => <label key={item} data-xmimo-select-option="true" className={format === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
@@ -222,11 +222,11 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
           <small>{t(format === 'pcm' ? 'settings.formatPcmHint' : format === 'mp3' ? 'settings.formatMp3Hint' : 'settings.formatWavHint')}</small>
         </div>
       </> : null}
-      <div className="xmimo-tts-voice xmimo-tts-wide">
+      <div className="xmimo-tts-voice">
         <SettingFieldHeading label={t('settings.localVoice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localVoiceURI')} resettable disabled={!writable} onReset={() => { resetField('localVoiceURI') }} />
         <LocalVoicePicker value={localVoiceURI} disabled={!writable || localSpeechMode === 'disabled'} label={t('settings.localVoice')} loadingLabel={t('settings.localVoiceLoading')} unavailableLabel={t('settings.localVoiceUnavailable')} offlineLabel={t('settings.localVoiceOffline')} onlineLabel={t('settings.localVoiceOnline')} onChange={onLocalVoiceURIChange} />
       </div>
-      <div className="xmimo-tts-format xmimo-tts-wide">
+      <div className="xmimo-tts-format">
         <SettingFieldHeading label={t('settings.localSpeechMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localSpeechMode')} resettable disabled={!writable} onReset={() => { resetField('localSpeechMode') }} />
         <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.localSpeechMode')}>
           {TTS_LOCAL_SPEECH_MODES.map((item) => <label key={item} data-xmimo-select-option="true" className={localSpeechMode === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
@@ -236,6 +236,6 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
         </div>
         <small>{t(localSpeechMode === 'auto' ? 'settings.localSpeechAutoHint' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirstHint' : 'settings.localSpeechDisabledHint')}</small>
       </div>
-    </div></div>
+    </div>
   </CollapsibleModule>
 }

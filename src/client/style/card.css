@@ -4,9 +4,9 @@
 
 .xmimo-tts-card {
   list-style: none;
-  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+  border: 1px solid var(--xmimo-ui-border-soft);
   border-radius: 12px;
-  color: var(--dsw-alias-label-primary, #1f2328);
+  color: var(--xmimo-ui-text);
   background: var(--dsw-alias-bg-layer-3, #fff);
   overflow: hidden;
   transition: border-color 160ms ease, background 160ms ease
@@ -39,7 +39,7 @@
 }
 
 .xmimo-tts-card-header:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  outline: var(--xmimo-ui-focus);
   outline-offset: -2px
 }
 
@@ -68,14 +68,14 @@
 }
 
 .xmimo-tts-card-description {
-  color: var(--dsw-alias-label-tertiary, #8b93a1);
+  color: var(--xmimo-ui-text-subtle);
   font-size: 13px;
   line-height: 18px
 }
 
 .xmimo-tts-chevron {
   flex: none;
-  color: var(--dsw-alias-label-tertiary, #8b93a1);
+  color: var(--xmimo-ui-text-subtle);
   transition: transform 160ms ease
 }
 
@@ -87,8 +87,8 @@
   flex: none;
   border-radius: 999px;
   padding: 1px 8px;
-  color: var(--dsw-alias-label-secondary, #5f6875);
-  background: var(--dsw-alias-bg-module-platform, #eef0f3);
+  color: var(--xmimo-ui-text-muted);
+  background: var(--xmimo-ui-chip-surface);
   font-size: 11px;
   font-weight: 500;
   line-height: 17px

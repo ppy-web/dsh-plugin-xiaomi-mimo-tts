@@ -4,7 +4,7 @@
 
 .xmimo-tts-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 0;
   align-items: start
 }
@@ -12,7 +12,7 @@
 .xmimo-tts-grid>* {
   box-sizing: border-box;
   padding: 8px 0;
-  border-top: 1px solid var(--dsw-alias-border-l2, #e5e7eb)
+  border-top: 1px solid var(--xmimo-ui-border-soft)
 }
 
 .xmimo-tts-grid>:first-child {
@@ -37,11 +37,11 @@
 .xmimo-tts-grid textarea {
   box-sizing: border-box;
   width: 100%;
-  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-  border-radius: 8px;
+  border: 1px solid var(--xmimo-ui-border-soft);
+  border-radius: var(--xmimo-ui-control-radius);
   padding: 8px 10px;
-  color: var(--dsw-alias-label-primary, #1f2328);
-  background: var(--dsw-alias-bg-layer-2, #f3f4f6);
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-control-surface);
   font: inherit
 }
 
@@ -50,8 +50,8 @@
 }
 
 .xmimo-tts-grid select option {
-  color: var(--dsw-alias-label-primary, #1f2328);
-  background: var(--dsw-alias-bg-layer-1, #fff)
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-surface)
 }
 
 .xmimo-tts-grid select:focus-visible {
@@ -127,10 +127,6 @@
   opacity: .45
 }
 
-.xmimo-tts-wide {
-  grid-column: 1/-1
-}
-
 .xmimo-tts-switch-row {
   display: flex;
   gap: 12px
@@ -147,10 +143,9 @@
   position: relative;
   display: flex;
   min-width: 0;
-  min-height: 44px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+  border: 1px solid var(--xmimo-ui-border-soft);
   border-radius: 10px;
   padding: 8px 10px;
   color: var(--dsw-alias-label-secondary, #5f6875);

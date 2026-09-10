@@ -9,6 +9,7 @@ const soundIndex = await readFile(new URL('../src/client/sound-effects/index.ts'
 const soundTypes = await readFile(new URL('../src/client/sound-effects/types.ts', import.meta.url), 'utf8')
 const soundSettings = await readFile(new URL('../src/client/settings/sound-effects-module.tsx', import.meta.url), 'utf8')
 const soundStyles = await readFile(new URL('../src/client/style/sound.css', import.meta.url), 'utf8')
+const soundRuntime = await import('../src/client/sound-effects/runtime.js')
 const localization = await readFile(new URL('../src/client/localization.ts', import.meta.url), 'utf8')
 const clientEntry = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
 const pcmQueue = await readFile(new URL('../src/client/playback/pcm-audio-queue.ts', import.meta.url), 'utf8')
@@ -25,6 +26,11 @@ test('sound effects expose migrated packs and safe defaults', () => {
   assert.equal(shared.DEFAULT_TTS_SETTINGS.soundEnabled, true)
   assert.equal(shared.DEFAULT_TTS_SETTINGS.soundVolume, 0.35)
   assert.equal(shared.DEFAULT_TTS_SETTINGS.soundPack, 'zen')
+})
+
+test('sound runtime keeps all selectable packs but only ships plugin cues', () => {
+  assert.deepEqual(soundRuntime.packNames, shared.SOUND_PACKS)
+  assert.deepEqual(soundRuntime.cueNames, ['press', 'select', 'toggle-on', 'toggle-off', 'check', 'delete', 'open', 'close', 'send', 'notification', 'success', 'error', 'start', 'stop', 'complete', 'queued'])
 })
 
 test('click classification covers semantic controls and disabled controls', () => {

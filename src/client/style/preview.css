@@ -3,22 +3,17 @@
  */
 
 .xmimo-tts-preview {
-  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 6px;
-  padding: 13px 14px 14px;
-  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
-  border-radius: 12px;
-  background: var(--dsw-alias-bg-layer-1, #fff)
 }
 
 .xmimo-tts-preview-title {
   display: block;
   min-height: 20px;
   padding-right: 58px;
-  color: var(--dsw-alias-label-primary, #1f2328);
+  color: var(--xmimo-ui-text);
   font-size: 14px;
   font-weight: 650;
   line-height: 20px
@@ -85,11 +80,11 @@
   box-sizing: border-box;
   width: 100%;
   resize: vertical;
-  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
-  border-radius: 10px;
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: var(--xmimo-ui-control-radius);
   padding: 8px;
-  color: var(--dsw-alias-label-primary, #1f2328);
-  background: var(--dsw-alias-bg-layer-1, #fff);
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-surface);
   font: inherit;
   line-height: 20px
 }

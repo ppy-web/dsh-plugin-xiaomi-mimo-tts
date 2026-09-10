@@ -8,14 +8,6 @@
   background: transparent
 }
 
-.xmimo-tts-settings-module {
-  box-sizing: border-box;
-  position: relative;
-  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
-  border-radius: 12px;
-  background: var(--dsw-alias-bg-layer-1, #fff)
-}
-
 .xmimo-tts-switch-module .xmimo-tts-character-control {
   border-color: transparent;
   border-radius: 12px;
@@ -30,10 +22,6 @@
 .xmimo-tts-switch-module .xmimo-tts-character-portrait {
   width: 132px;
   height: 120px
-}
-
-.xmimo-tts-api-key {
-  padding: 14px !important
 }
 
 .xmimo-tts-api-key>.xmimo-tts-field-heading {

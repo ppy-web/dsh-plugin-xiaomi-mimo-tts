@@ -50,6 +50,7 @@ const SOUND_PACK_TONES: Record<SoundPack, SoundPackTone> = {
 /** A settings module rendered directly below the Broadcast Studio preview. */
 export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, onEnabledChange, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
   const [open, setOpen] = useState(false)
+  const [previewingCue, setPreviewingCue] = useState<SoundCue | null>(null)
   const packOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
 
   useEffect(() => {
@@ -99,6 +100,11 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     }
   }
   const previewLabel = (cue: SoundCue): string => t(`settings.soundEffectsPreview.${cue}` as Parameters<Translate>[0])
+  const previewCue = (cue: SoundCue): void => {
+    controller.preview(cue)
+    setPreviewingCue(null)
+    requestAnimationFrame(() => { setPreviewingCue(cue) })
+  }
 
   const whaleAction = <button
     type="button"
@@ -113,7 +119,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
       style={{ backgroundImage: `url(${hostRoute(TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE)})` }}
       aria-hidden="true"
     />
-    <span className="xmimo-tts-character-bubble xmimo-tts-sound-bubble" aria-live="polite">
+    <span className="xmimo-tts-sound-bubble" aria-live="polite">
       {t(enabled ? 'settings.soundEffectsBubbleOn' : 'settings.soundEffectsBubbleOff')}
     </span>
   </button>
@@ -179,9 +185,14 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
           data-xmimo-sound-preview="true"
           disabled={!enabled}
           aria-label={previewLabel(cue)}
-          onClick={() => { controller.preview(cue) }}
+          onClick={() => { previewCue(cue) }}
         >
-          <span className="xmimo-tts-sound-preview-character" style={{ backgroundImage: `url(${hostRoute(TTS_SOUND_EFFECT_CUES_ASSET_ROUTE)})`, backgroundPosition: `${position} center` }} aria-hidden="true" />
+          <span
+            className={previewingCue === cue ? 'xmimo-tts-sound-preview-character xmimo-tts-sound-preview-character-bounce' : 'xmimo-tts-sound-preview-character'}
+            style={{ backgroundImage: `url(${hostRoute(TTS_SOUND_EFFECT_CUES_ASSET_ROUTE)})`, backgroundPosition: `${position} center` }}
+            onAnimationEnd={() => { setPreviewingCue((current) => current === cue ? null : current) }}
+            aria-hidden="true"
+          />
           <span>{previewLabel(cue)}</span>
         </button>)}
       </div>
