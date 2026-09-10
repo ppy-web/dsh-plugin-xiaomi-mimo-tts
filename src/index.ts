@@ -514,12 +514,12 @@ export function apply(ctx: Context, config: Config): void {
     return [path, data] as const
   }))
   const mimoLogoAsset = readFileSync(new URL('../assets/mimo.svg', import.meta.url))
-  const toggleCharacterAsset = readFileSync(new URL('../assets/ui/toggle-characters.png', import.meta.url))
-  const apiKeyWhaleAsset = readFileSync(new URL('../assets/ui/api-key-whale.png', import.meta.url))
-  const mixerWhaleAsset = readFileSync(new URL('../assets/ui/mixer-whale.png', import.meta.url))
-  const previewWhaleAsset = readFileSync(new URL('../assets/ui/preview-whale.png', import.meta.url))
-  const soundEffectsWhaleAsset = readFileSync(new URL('../assets/ui/sound-effects-whale.png', import.meta.url))
-  const soundEffectCuesAsset = readFileSync(new URL('../assets/ui/sound-effect-cues.png', import.meta.url))
+  const toggleCharacterAsset = readFileSync(new URL('../assets/ui/toggle-characters.webp', import.meta.url))
+  const apiKeyWhaleAsset = readFileSync(new URL('../assets/ui/api-key-whale.webp', import.meta.url))
+  const mixerWhaleAsset = readFileSync(new URL('../assets/ui/mixer-whale.webp', import.meta.url))
+  const previewWhaleAsset = readFileSync(new URL('../assets/ui/preview-whale.webp', import.meta.url))
+  const soundEffectsWhaleAsset = readFileSync(new URL('../assets/ui/sound-effects-whale.webp', import.meta.url))
+  const soundEffectCuesAsset = readFileSync(new URL('../assets/ui/sound-effect-cues.webp', import.meta.url))
   const toggleSoundAssets = new Map([...new Set([...Object.values(TTS_TOGGLE_SOUND_FILES).flat(), ...TTS_VOLUME_PREVIEW_FILES])].map((file) => {
     const path = `${TTS_TOGGLE_AUDIO_ASSET_ROUTE}/${file}`
     const data = readFileSync(new URL(`../assets/audio/${file}`, import.meta.url))

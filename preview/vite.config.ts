@@ -20,12 +20,12 @@ const assetDirectories = new Map([
 
 const assetFiles = new Map([
   ['mimo.svg', path.join(repositoryRoot, 'assets', 'mimo.svg')],
-  ['toggle-characters.png', path.join(repositoryRoot, 'assets', 'ui', 'toggle-characters.png')],
-  ['api-key-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'api-key-whale.png')],
-  ['mixer-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'mixer-whale.png')],
-  ['preview-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'preview-whale.png')],
-  ['sound-effects-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'sound-effects-whale.png')],
-  ['sound-effect-cues.png', path.join(repositoryRoot, 'assets', 'ui', 'sound-effect-cues.png')],
+  ['toggle-characters.webp', path.join(repositoryRoot, 'assets', 'ui', 'toggle-characters.webp')],
+  ['api-key-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'api-key-whale.webp')],
+  ['mixer-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'mixer-whale.webp')],
+  ['preview-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'preview-whale.webp')],
+  ['sound-effects-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'sound-effects-whale.webp')],
+  ['sound-effect-cues.webp', path.join(repositoryRoot, 'assets', 'ui', 'sound-effect-cues.webp')],
 ])
 
 function resolvePreviewAsset(url: string | undefined): string | undefined {

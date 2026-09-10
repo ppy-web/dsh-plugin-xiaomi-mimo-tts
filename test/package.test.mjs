@@ -157,12 +157,12 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.TTS_API_KEY_STATUS_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-status')
   assert.equal(sharedModule.TTS_VOICE_DESIGN_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-presets')
   assert.equal(sharedModule.TTS_VOICE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-avatars')
-  assert.equal(sharedModule.TTS_TOGGLE_CHARACTER_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/toggle-characters.png')
-  assert.equal(sharedModule.TTS_API_KEY_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-whale.png')
-  assert.equal(sharedModule.TTS_MIXER_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/mixer-whale.png')
-  assert.equal(sharedModule.TTS_PREVIEW_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/preview-whale.png')
-  assert.equal(sharedModule.TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/sound-effects-whale.png')
-  assert.equal(sharedModule.TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/sound-effect-cues.png')
+  assert.equal(sharedModule.TTS_TOGGLE_CHARACTER_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/toggle-characters.webp')
+  assert.equal(sharedModule.TTS_API_KEY_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-whale.webp')
+  assert.equal(sharedModule.TTS_MIXER_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/mixer-whale.webp')
+  assert.equal(sharedModule.TTS_PREVIEW_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/preview-whale.webp')
+  assert.equal(sharedModule.TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/sound-effects-whale.webp')
+  assert.equal(sharedModule.TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/sound-effect-cues.webp')
   assert.equal(sharedModule.TTS_TOGGLE_AUDIO_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/audio')
   assert.deepEqual(sharedModule.TTS_TOGGLE_SOUND_FILES, {
     on: ['on01.mp3', 'on02.mp3', 'on03.mp3'],
@@ -281,10 +281,9 @@ test('ships one official avatar for every built-in voice', async () => {
 })
 
 test('ships the transparent four-state character toggle sheet', async () => {
-  const data = await readFile(new URL('../assets/ui/toggle-characters.png', import.meta.url))
-  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
-  assert.equal(data.readUInt32BE(16), 656)
-  assert.equal(data.readUInt32BE(20), 600)
+  const data = await readFile(new URL('../assets/ui/toggle-characters.webp', import.meta.url))
+  assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(data.toString('ascii', 8, 12), 'WEBP')
   assert.match(settingsSwitchSource, /function CharacterToggle/)
   assert.match(settingsSwitchSource, /kind="voice" checked=\{enabled\}/)
   assert.match(settingsSwitchSource, /kind="autoplay" checked=\{enabled && autoPlay\}/)
@@ -337,8 +336,9 @@ test('ships randomized debounced feedback sounds for both switches', async () =>
 })
 
 test('ships the API-key whale asset used by the settings card', async () => {
-  const data = await readFile(new URL('../assets/ui/api-key-whale.png', import.meta.url))
-  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
+  const data = await readFile(new URL('../assets/ui/api-key-whale.webp', import.meta.url))
+  assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(data.toString('ascii', 8, 12), 'WEBP')
   assert.match(settingsApiKeySource, /hostRoute\(TTS_API_KEY_WHALE_ASSET_ROUTE\)/)
   assert.match(settingsApiKeySource, /API_KEY_IDLE_COPY_KEYS/)
   assert.match(settingsApiKeySource, /API_KEY_FOCUS_COPY_KEYS/)
@@ -347,8 +347,9 @@ test('ships the API-key whale asset used by the settings card', async () => {
 })
 
 test('wires the Voice Design generator to its packaged whale control', async () => {
-  const data = await readFile(new URL('../assets/ui/mixer-whale.png', import.meta.url))
-  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
+  const data = await readFile(new URL('../assets/ui/mixer-whale.webp', import.meta.url))
+  assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(data.toString('ascii', 8, 12), 'WEBP')
   assert.match(settingsDetailsSource, /hostRoute\(TTS_MIXER_WHALE_ASSET_ROUTE\)/)
   assert.match(settingsDetailsSource, /onPointerDown=\{\(event\) => \{ event\.stopPropagation\(\) \}\}/)
   assert.match(settingsDetailsSource, /disabled=\{model !== 'mimo-v2\.5-tts-voicedesign' \|\| !writable \|\| voiceDesignAiState === 'loading'\}/)
@@ -362,16 +363,19 @@ test('announces preview playback status accessibly', () => {
 })
 
 test('ships the preview whale asset used by the settings card', async () => {
-  const data = await readFile(new URL('../assets/ui/preview-whale.png', import.meta.url))
-  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
+  const data = await readFile(new URL('../assets/ui/preview-whale.webp', import.meta.url))
+  assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(data.toString('ascii', 8, 12), 'WEBP')
   assert.match(settingsPreviewSource, /hostRoute\(TTS_PREVIEW_WHALE_ASSET_ROUTE\)/)
 })
 
 test('ships the generated sound-effects whale assets', async () => {
-  const header = await readFile(new URL('../assets/ui/sound-effects-whale.png', import.meta.url))
-  const cues = await readFile(new URL('../assets/ui/sound-effect-cues.png', import.meta.url))
-  assert.equal(header.toString('hex', 0, 8), '89504e470d0a1a0a')
-  assert.equal(cues.toString('hex', 0, 8), '89504e470d0a1a0a')
+  const header = await readFile(new URL('../assets/ui/sound-effects-whale.webp', import.meta.url))
+  const cues = await readFile(new URL('../assets/ui/sound-effect-cues.webp', import.meta.url))
+  assert.equal(header.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(header.toString('ascii', 8, 12), 'WEBP')
+  assert.equal(cues.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(cues.toString('ascii', 8, 12), 'WEBP')
   assert.match(host, /xiaomi-mimo-tts: sound effects whale asset/)
   assert.match(host, /xiaomi-mimo-tts: sound effect cue asset/)
 })
