@@ -9,29 +9,22 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { firstTtsSegment, prepareTtsText, resolveTtsSettings, TTS_API_KEY_STATUS_ROUTE } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
-import {
-  resolveConversationCompatState,
-  type ChatSnapshotCompat,
-  type LegacyConversationSliceCompat,
-  type SessionSnapshotCompat,
-} from './state.js'
-import type { SettingsScopeCompat } from '../dsh-compat.js'
+import type { ChatSnapshot, AssistantBlock } from '@deepseek-ai/dsh-client-ui-chat/client'
+import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { Translate } from '../localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from '../playback/index.js'
 import type { LiveMessageIdentity } from '../playback/index.js'
 import { useSettingsSnapshot } from '../settings/scope.js'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
-  interface SessionStandardProps {
-    useChat: <T>(selector: (snapshot: ChatSnapshotCompat) => T) => T
-  }
-}
+type ChatLegacy = ChatSnapshot['legacy']
 
-function messageText(legacy: LegacyConversationSliceCompat, messageId: string): string {
+function messageText(legacy: ChatLegacy, messageId: string): string {
   for (const node of legacy.nodes) {
     if (node.kind !== 'assistant' || node.messageId !== messageId) continue
-    const markdown = node.blocks
-      .filter((block) => block.kind === 'text')
+    const blocks = node.blocks as readonly AssistantBlock[]
+    const markdown = blocks
+      .filter((block): block is Extract<AssistantBlock, { kind: 'text' }> => block.kind === 'text')
       .map((block) => block.text)
       .join('\n\n')
     return extractMarkdownPlainText(prepareTtsText(markdown)).trim()
@@ -39,14 +32,14 @@ function messageText(legacy: LegacyConversationSliceCompat, messageId: string): 
   return ''
 }
 
-function messageTime(legacy: LegacyConversationSliceCompat, messageId: string): number | null {
+function messageTime(legacy: ChatLegacy, messageId: string): number | null {
   for (const node of legacy.nodes) {
     if (node.kind === 'assistant' && node.messageId === messageId) return node.time
   }
   return null
 }
 
-function latestAssistantMessageId(legacy: LegacyConversationSliceCompat): string | null {
+function latestAssistantMessageId(legacy: ChatLegacy): string | null {
   for (let index = legacy.nodes.length - 1; index >= 0; index -= 1) {
     const node = legacy.nodes[index]
     if (node?.kind === 'assistant' && node.messageId !== undefined) return node.messageId
@@ -54,7 +47,7 @@ function latestAssistantMessageId(legacy: LegacyConversationSliceCompat): string
   return null
 }
 
-function assistantText(blocks: readonly { kind: string; text?: string }[]): string {
+function assistantText(blocks: readonly AssistantBlock[]): string {
   return blocks
     .filter((block): block is { kind: 'text'; text: string } => block.kind === 'text' && typeof block.text === 'string')
     .map((block) => block.text)
@@ -62,7 +55,7 @@ function assistantText(blocks: readonly { kind: string; text?: string }[]): stri
 }
 
 
-function finalLiveMessage(legacy: LegacyConversationSliceCompat, turn: number, step: number): LiveMessageIdentity | null {
+function finalLiveMessage(legacy: ChatLegacy, turn: number, step: number): LiveMessageIdentity | null {
   for (let index = legacy.nodes.length - 1; index >= 0; index -= 1) {
     const node = legacy.nodes[index]
     if (node?.kind === 'assistant' && node.messageId !== undefined && node.turn === turn && node.step === step) {
@@ -78,7 +71,7 @@ function finalLiveMessage(legacy: LegacyConversationSliceCompat, turn: number, s
   return null
 }
 
-function messageLiveIdentity(legacy: LegacyConversationSliceCompat, messageId: string): Pick<LiveMessageIdentity, 'turn' | 'step'> | null {
+function messageLiveIdentity(legacy: ChatLegacy, messageId: string): Pick<LiveMessageIdentity, 'turn' | 'step'> | null {
   for (const node of legacy.nodes) {
     if (node.kind === 'assistant' && node.messageId === messageId) return { turn: node.turn, step: node.step }
   }
@@ -111,18 +104,17 @@ function useApiKeySupported(active: boolean): boolean | null {
 
 interface SessionPlaybackObserverProps {
   sessionId: string
-  session?: unknown
   messageId?: string
-  useSession?: <T>(selector: (snapshot: SessionSnapshotCompat) => T) => T
-  useChat?: <T>(selector: (snapshot: ChatSnapshotCompat) => T) => T
+  useSession: <T>(selector: (snapshot: SessionSnapshot) => T) => T
+  useChat: <T>(selector: (snapshot: ChatSnapshot) => T) => T
   playback: PlaybackController
   live: LiveSpeechController
   local: LocalSpeechController
-  settings: SettingsScopeCompat<TtsSettings>
+  settings: SettingsScope<TtsSettings>
 }
 
 /** Own the active-session boundary and feed its partial assistant output into realtime speech. */
-export function SessionPlaybackObserver({ sessionId, session, useSession, useChat, playback, live, local, settings }: SessionPlaybackObserverProps): null {
+export function SessionPlaybackObserver({ sessionId, useSession, useChat, playback, live, local, settings }: SessionPlaybackObserverProps): null {
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
   const apiKeySupported = useApiKeySupported(resolvedSettings.localSpeechMode !== 'disabled')
@@ -130,9 +122,9 @@ export function SessionPlaybackObserver({ sessionId, session, useSession, useCha
   local.setVoiceURI(resolvedSettings.localVoiceURI)
   local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
 
-  const sessionSnapshot = useSession === undefined ? undefined : useSession(snapshot => snapshot)
-  const chatLegacy = useChat === undefined ? undefined : useChat(chat => chat.legacy)
-  const { legacy, running: runningSnapshot } = resolveConversationCompatState(chatLegacy, sessionSnapshot, session)
+  const sessionSnapshot = useSession(snapshot => snapshot)
+  const legacy = useChat(chat => chat.legacy)
+  const runningSnapshot = sessionSnapshot.running
 
   const active = useRef<{ turn: number; step: number } | null>(null)
   const wasRunning = useRef(runningSnapshot)
@@ -229,20 +221,19 @@ export function SessionPlaybackObserver({ sessionId, session, useSession, useCha
 interface ReadAloudActionProps {
   sessionId: string
   messageId: string
-  session?: unknown
-  useSession?: <T>(selector: (snapshot: SessionSnapshotCompat) => T) => T
-  useChat?: <T>(selector: (snapshot: ChatSnapshotCompat) => T) => T
+  useSession: <T>(selector: (snapshot: SessionSnapshot) => T) => T
+  useChat: <T>(selector: (snapshot: ChatSnapshot) => T) => T
   playback: PlaybackController
   live: LiveSpeechController
   local: LocalSpeechController
-  settings: SettingsScopeCompat<TtsSettings>
+  settings: SettingsScope<TtsSettings>
   t: Translate
 }
 
-export function ReadAloudAction({ sessionId, messageId, session, useSession, useChat, playback, live, local, settings, t }: ReadAloudActionProps): ReactElement | null {
-  const sessionSnapshot = useSession === undefined ? undefined : useSession(snapshot => snapshot)
-  const chatLegacy = useChat === undefined ? undefined : useChat(chat => chat.legacy)
-  const { legacy, running } = resolveConversationCompatState(chatLegacy, sessionSnapshot, session)
+export function ReadAloudAction({ sessionId, messageId, useSession, useChat, playback, live, local, settings, t }: ReadAloudActionProps): ReactElement | null {
+  const sessionSnapshot = useSession(snapshot => snapshot)
+  const legacy = useChat(chat => chat.legacy)
+  const running = sessionSnapshot.running
   const message = {
     text: messageText(legacy, messageId),
     time: messageTime(legacy, messageId),

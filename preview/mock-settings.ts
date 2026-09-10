@@ -8,14 +8,11 @@ import {
   TTS_UPDATE_ROUTE,
 } from '../src/shared.js'
 import type { TtsSettings } from '../src/shared.js'
-import type {
-  SettingsScopeCompat,
-  SettingsScopeSnapshotCompat,
-} from '../src/client/dsh-compat.js'
+import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 const PREVIEW_API_KEY = 'sk-preview-only'
 
-export class PreviewSettingsScope implements SettingsScopeCompat<TtsSettings> {
+export class PreviewSettingsScope implements SettingsScope<TtsSettings> {
   private readonly listeners = new Set<() => void>()
   private readonly base: TtsSettings = { ...DEFAULT_TTS_SETTINGS, apiKey: '' }
   private user: TtsSettings = { apiKey: PREVIEW_API_KEY }
@@ -23,7 +20,7 @@ export class PreviewSettingsScope implements SettingsScopeCompat<TtsSettings> {
   private revision = 1
   private snapshot = this.createSnapshot()
 
-  getSnapshot(): SettingsScopeSnapshotCompat<TtsSettings> {
+  getSnapshot(): SettingsScopeSnapshot<TtsSettings> {
     return this.snapshot
   }
 
@@ -36,6 +33,15 @@ export class PreviewSettingsScope implements SettingsScopeCompat<TtsSettings> {
     if (!this.writable) throw new Error('Preview settings are read-only')
     this.user = { ...this.user, [field]: value }
     this.publish()
+  }
+
+  async mutate(ops: Parameters<SettingsScope<TtsSettings>['mutate']>[0]): Promise<void> {
+    for (const op of ops) {
+      const field = op.path[0]
+      if (field === undefined || op.path.length !== 1) continue
+      if (op.op === 'set') await this.set(field, op.value)
+      else await this.unset(field)
+    }
   }
 
   async unset(field: string): Promise<void> {
@@ -66,7 +72,7 @@ export class PreviewSettingsScope implements SettingsScopeCompat<TtsSettings> {
     }
   }
 
-  private createSnapshot(): SettingsScopeSnapshotCompat<TtsSettings> {
+  private createSnapshot(): SettingsScopeSnapshot<TtsSettings> {
     return {
       status: 'ready',
       value: { ...this.base, ...this.user },

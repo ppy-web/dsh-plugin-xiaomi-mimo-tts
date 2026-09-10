@@ -14,7 +14,7 @@ import {
 } from '../../shared.js'
 import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsSettings, TtsVoiceDesignPlaybackMode, VoiceDesignAiGeneratePayload, VoiceDesignAiGenerateResult } from '../../shared.js'
 import type { Translate } from '../localization.js'
-import type { SettingsScopeCompat } from '../dsh-compat.js'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PreviewPlayer } from '../playback/preview-player.js'
 import type { PreviewStatus } from '../playback/preview-player.js'
 import { isRecord, useSettingsSnapshot } from './scope.js'
@@ -29,7 +29,7 @@ import { hostRoute } from '../host-route.js'
 import type { DraftChange, DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 
 interface SettingsCardProps {
-  scope: SettingsScopeCompat<TtsSettings>
+  scope: SettingsScope<TtsSettings>
   t: Translate
   connection: { rpc: ClientConnectionRpc }
   controller: SoundEffectsController

@@ -10,14 +10,12 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-client-connection'
-import * as settingsApi from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { debugConsole } from './debug-console.js'
-import { installSettingsSectionCompat, resolveSettingsNamespace, type SettingsModuleCompat } from './settings-compat.js'
 import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
 import type { VoiceDesignAiGenerateResult } from './shared.js'
 
-const compatibleSettingsApi = settingsApi as unknown as SettingsModuleCompat
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
   ? `dsh-xiaomi-tts/${packageJson.version}`
@@ -32,10 +30,10 @@ let nextHostStreamRequestId = 1
 export const name = 'xiaomi-mimo-tts'
 
 /** Host services required by this plugin. */
-export const inject = ['webServer', 'connection', 'llm', 'agentDefaultModel']
+export const inject = ['webServer', 'connection', 'llm', 'agentDefaultModel', 'settings']
 
 /** Settings namespace registered with the DSH Host. */
-export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = resolveSettingsNamespace(compatibleSettingsApi, TTS_SETTINGS_NAMESPACE)
+export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = TTS_SETTINGS_NAMESPACE
 
 /** Validated Host settings schema. */
 export const Config = z.object({
@@ -488,14 +486,7 @@ function registerVoiceDesignAiRpc(
   ctx: Context,
   handler: Parameters<typeof ctx.connection.rpc.handle>[1],
 ): ReturnType<typeof ctx.connection.rpc.handle> {
-  // DSH 0.1.1 requires the authority option; 0.1.2 authenticates the channel
-  // itself and safely ignores this extra argument at runtime.
-  const handle = ctx.connection.rpc.handle as unknown as (
-    channel: string,
-    handler: Parameters<typeof ctx.connection.rpc.handle>[1],
-    options: { authority: 'loopback' },
-  ) => ReturnType<typeof ctx.connection.rpc.handle>
-  return handle(VOICE_DESIGN_AI_RPC_CHANNEL, handler, { authority: 'loopback' })
+  return ctx.connection.rpc.handle(VOICE_DESIGN_AI_RPC_CHANNEL, handler)
 }
 
 /** Register the TTS settings and same-origin synthesis route. */
@@ -526,7 +517,7 @@ export function apply(ctx: Context, config: Config): void {
     return [path, data] as const
   }))
 
-  installSettingsSectionCompat(compatibleSettingsApi, ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
+  ctx.settings.installSection(ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
     setSource(source) {
       current = source
     },
@@ -544,24 +535,26 @@ export function apply(ctx: Context, config: Config): void {
     },
   })
 
-  ctx.effect(() => registerVoiceDesignAiRpc(ctx, async (endpoint, payload, signal) => {
-    if (endpoint !== VOICE_DESIGN_AI_RPC_ENDPOINT) return voiceDesignAiFailure('unknown-endpoint', `unknown endpoint "${endpoint}"`)
-    try {
-      return { ok: true, value: await generateVoiceDesignAiText(ctx, voiceDesignAiInput(payload), signal) }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      const code = signal.aborted
-        ? 'aborted'
-        : message === 'invalid-payload' || message === 'invalid-input' || message === 'input-too-long'
-          ? message
-          : message === 'no-default-model'
-            ? 'no-default-model'
-            : message === 'empty-output' || message === 'output-too-long' || message === 'non-plain-text-output'
-              ? message
-              : 'llm-failed'
-      return voiceDesignAiFailure(code, message)
-    }
-  }), 'xiaomi-mimo-tts: voice-design AI RPC')
+  ctx.inject(['connection', 'webServer'], (rpcCtx) => {
+    registerVoiceDesignAiRpc(rpcCtx, async (endpoint, payload, signal) => {
+      if (endpoint !== VOICE_DESIGN_AI_RPC_ENDPOINT) return voiceDesignAiFailure('unknown-endpoint', `unknown endpoint "${endpoint}"`)
+      try {
+        return { ok: true, value: await generateVoiceDesignAiText(ctx, voiceDesignAiInput(payload), signal) }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        const code = signal.aborted
+          ? 'aborted'
+          : message === 'invalid-payload' || message === 'invalid-input' || message === 'input-too-long'
+            ? message
+            : message === 'no-default-model'
+              ? 'no-default-model'
+              : message === 'empty-output' || message === 'output-too-long' || message === 'non-plain-text-output'
+                ? message
+                : 'llm-failed'
+        return voiceDesignAiFailure(code, message)
+      }
+    })
+  })
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',

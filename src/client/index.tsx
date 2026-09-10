@@ -1,4 +1,8 @@
+import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -15,7 +19,6 @@ import { createSoundEffectsController, installClickSounds } from './sound-effect
 import { installTaskSoundWatcher } from './sound-effects/task-watcher.js'
 import { decodeSettings } from './settings/scope.js'
 import { CLIENT_STYLES } from './style/index.js'
-import type { ClientContextCompat } from './dsh-compat.js'
 
 /** Client services required by this plugin. */
 export const inject = [
@@ -32,7 +35,7 @@ function formatStartupError(error: unknown): string {
 }
 
 function registerSlotContribution(
-  ctx: ClientContextCompat,
+  ctx: Context,
   name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'settings.plugin.item',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
@@ -54,7 +57,7 @@ function registerSlotContribution(
 }
 
 /** Register the Web action, settings card, locale dictionaries, and styles. */
-export function apply(ctx: ClientContextCompat): void {
+export function apply(ctx: Context): void {
   const locale = ctx.locale as unknown as {
     bind(namespace: string): Translate
     register(namespace: string, dictionaries: { zh: typeof zh; en: typeof en }): () => void

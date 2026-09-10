@@ -1,7 +1,7 @@
 import { createUISFX } from './runtime.js'
 import type { SoundEffectsController, SoundEffectsSettings, SoundCue } from './types.js'
 import { classifyClick } from './click-classifier.js'
-import type { ClientContextCompat } from '../dsh-compat.js'
+import type { Context } from '@deepseek-ai/cordis'
 
 const VALID_CUES = new Set<SoundCue>(['start', 'complete', 'success', 'error', 'notification', 'press', 'select', 'toggle-on', 'toggle-off', 'send', 'close', 'delete', 'open', 'stop', 'queued'])
 
@@ -46,7 +46,7 @@ export function createSoundEffectsController(): SoundEffectsController {
   }
 }
 
-export function installClickSounds(ctx: ClientContextCompat, controller: SoundEffectsController, getSettings: () => SoundEffectsSettings): () => void {
+export function installClickSounds(ctx: Context, controller: SoundEffectsController, getSettings: () => SoundEffectsSettings): () => void {
   let lastClickAt = 0
   const onPointerDown = (event: PointerEvent): void => {
     const settings = getSettings()

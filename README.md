@@ -4,6 +4,9 @@
 
 [![npm version](https://img.shields.io/npm/v/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
 [![GitHub stars](https://img.shields.io/github/stars/ppy-web/dsh-plugin-xiaomi-mimo-tts.svg)](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts)
+[![npm downloads](https://img.shields.io/npm/dm/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
+[![dsh](https://img.shields.io/badge/dsh-0.1.5--rc.1-2563eb)](https://github.com/deepseek-ai)
+![Xiaomi MiMo](https://img.shields.io/badge/Xiaomi-Mimo?logo=xiaomi&logoColor=%23ff6900&label=power%20by&color=%23ff6900&link=https%3A%2F%2Fmimo.mi.com%2F)
 
 为 DSH Web 添加 Xiaomi MiMo TTS 语音朗读。
 
@@ -26,11 +29,11 @@
 - 自定义音色：使用 `mimo-v2.5-tts-voicedesign` 通过文字描述创造你想要的声音。
 - 浏览器本地音色：使用浏览器宿主提供的离线或在线音色。
 - 自动清洗文本：移除网址、文件路径、代码块、表情符号、图标和控制字符等。
-- 音效间：提供全局语义点击音效，以及当前任务开始、成功、失败和待处理提醒音效。
+- 音效库：提供全局语义点击音效，以及当前任务开始、成功、失败和待处理提醒音效。
 
 ## 📋 环境要求
 
-- `@deepseek-ai/dsh` `0.1.1-rc.2` 或 `0.1.2-rc.1`
+- `@deepseek-ai/dsh` `0.1.5-rc.1`（当前插件仅适配此版本）
 - Node.js 22+
 - Xiaomi MiMo API Key
 - [官方 TTS API 文档](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -170,7 +173,7 @@ pnpm pack:check
 > windows用户从本地开发版切换到 npm 版时，请先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.1
+.\start\dsh-plugin-reinstall.bat 3.0.2
 ```
 
 ## 🤝 推荐

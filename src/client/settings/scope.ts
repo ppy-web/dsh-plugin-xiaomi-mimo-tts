@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import { SOUND_PACKS, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MODELS, TTS_VOICE_DESIGN_PLAYBACK_MODES } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
-import type { SettingsScopeCompat } from '../dsh-compat.js'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -33,7 +33,7 @@ export function decodeSettings(value: unknown): TtsSettings | undefined {
   return decoded
 }
 
-export function useSettingsSnapshot<T>(scope: SettingsScopeCompat<T>) {
+export function useSettingsSnapshot<T>(scope: SettingsScope<T>) {
   const subscribe = useCallback((listener: () => void) => scope.subscribe(listener), [scope])
   const getSnapshot = useCallback(() => scope.getSnapshot(), [scope])
   return useSyncExternalStore(

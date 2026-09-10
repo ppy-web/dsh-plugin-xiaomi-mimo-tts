@@ -30,7 +30,7 @@ Add Xiaomi MiMo TTS read-aloud playback to DeepSeek Harness Web.
 
 ## 📋 Requirements
 
-- `@deepseek-ai/dsh` `0.1.1-rc.2` or `0.1.2-rc.1`
+- `@deepseek-ai/dsh` `0.1.5-rc.1` (the plugin currently supports this version only)
 - Node.js 22+
 - Xiaomi MiMo API Key
 - [Official TTS API documentation](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -80,7 +80,7 @@ Below **Broadcast Studio** in the voice settings card, control the master switch
 When switching from a local development version to the npm package on Windows, stop DSH Web first and run:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.1
+.\start\dsh-plugin-reinstall.bat 3.0.2
 ```
 
 ## ⚙️ Configuration

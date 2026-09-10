@@ -1,20 +1,13 @@
-import type { ClientContextCompat } from '../dsh-compat.js'
+import type { Context } from '@deepseek-ai/cordis'
+import type { ISessions, SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SoundEffectsController, SoundEffectsSettings } from './types.js'
-
-interface SessionSnapshot { running?: boolean; pending?: unknown[]; lastAgentError?: unknown }
-interface SessionBinding { session: { getSnapshot(): SessionSnapshot; subscribe(listener: () => void): () => void } }
-interface SessionsCompat {
-  list: { getSnapshot(): { current?: string | null }; subscribe(listener: () => void): () => void }
-  binding(id: string): SessionBinding | undefined
-}
 
 function hasTurnError(): boolean {
   return typeof document !== 'undefined' && document.querySelector("[data-chat-flow-kind='turn-error']") !== null
 }
 
-export function installTaskSoundWatcher(ctx: ClientContextCompat, controller: SoundEffectsController, getSettings: () => SoundEffectsSettings): () => void {
-  const sessions = (ctx as unknown as { sessions?: SessionsCompat }).sessions
-  if (sessions === undefined) return () => {}
+export function installTaskSoundWatcher(ctx: Context, controller: SoundEffectsController, getSettings: () => SoundEffectsSettings): () => void {
+  const sessions = (ctx as unknown as { readonly sessions: ISessions }).sessions
   let watchedId: string | null | undefined
   let sessionOff: (() => void) | null = null
   let listOff: (() => void) | null = null
@@ -27,7 +20,7 @@ export function installTaskSoundWatcher(ctx: ClientContextCompat, controller: So
     const settings = getSettings()
     if (!settings.enabled || !settings.taskSounds) return
     const running = snapshot.running === true
-    const pending = Array.isArray(snapshot.pending) ? snapshot.pending.length : 0
+    const pending = snapshot.queue.length + snapshot.pendingSubmissions.length
     if (lastRunning === null) { lastRunning = running; lastPending = pending; return }
     if (running && !lastRunning) controller.play('start')
     if (!running && lastRunning) {

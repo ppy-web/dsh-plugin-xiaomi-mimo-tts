@@ -16,8 +16,6 @@ const debugConsoleSource = await readFile(new URL('../src/debug-console.ts', imp
 const debugBuildConfigSource = await readFile(new URL('../tsdown.debug.config.ts', import.meta.url), 'utf8')
 const readmeZh = await readFile(new URL('../README.md', import.meta.url), 'utf8')
 const readmeEn = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
-const ciWorkflow = await readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8')
-const compatibilitySmokeSource = await readFile(new URL('../scripts/dsh-compat-smoke.mjs', import.meta.url), 'utf8')
 const profileVerifySource = await readFile(new URL('../scripts/dsh-profile-verify.mjs', import.meta.url), 'utf8')
 const webStartScript = await readFile(new URL('../start/dsh-web-start.bat', import.meta.url), 'utf8')
 const webStopScript = await readFile(new URL('../start/dsh-web-stop.bat', import.meta.url), 'utf8')
@@ -38,14 +36,13 @@ const settingsCollapsibleSource = await readFile(new URL('../src/client/settings
 const voiceDesignPickerSource = await readFile(new URL('../src/client/settings/controls/voice-design-picker.tsx', import.meta.url), 'utf8')
 const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, settingsDetailsSource, settingsPreviewSource, settingsSoundEffectsSource, settingsCollapsibleSource, voiceDesignPickerSource].join('\n')
 const sharedModule = await import('../lib/shared.js')
-const conversationStateModule = await import('../lib/conversation-state.js')
-const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
-const { EMPTY_LEGACY_CONVERSATION, resolveConversationCompatState } = conversationStateModule
+const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, VOICE_DESIGN_AI_RPC_CHANNEL } = sharedModule
 
-const SUPPORTED_DSH_RANGE = '0.1.1-rc.2 || 0.1.2-rc.1'
+const SUPPORTED_DSH_VERSION = '0.1.5-rc.1'
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
+  assert.equal(packageJson.version, '3.0.2')
   assert.equal(TTS_VERSION, packageJson.version)
   assert.equal(packageJson.scripts.prepare, 'node scripts/prepare-package.mjs')
   assert.equal(packageJson.scripts.prepack, 'pnpm run build && node scripts/pack-package.mjs')
@@ -58,11 +55,12 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.scripts['profile:check'], 'node scripts/dsh-profile-verify.mjs')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
+  assert.equal(packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-chat'), true)
   assert.equal(packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-runtime'), false)
   assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
   assert.equal(packageJson.devDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
   for (const [name, range] of Object.entries(packageJson.peerDependencies)) {
-    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, SUPPORTED_DSH_RANGE, name)
+    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, SUPPORTED_DSH_VERSION, name)
     assert.equal(packageJson.peerDependenciesMeta[name]?.optional, true, `${name} must be supplied by the DSH runtime`)
   }
   assert.equal(TTS_UPDATE_ROUTE, '/plugins/xiaomi-mimo-tts/update')
@@ -78,27 +76,14 @@ test('package declares DSH bundle and Web client entries', () => {
 test('voice design AI generation is wired through Host LLM RPC', () => {
   assert.match(host, /VOICE_DESIGN_AI_RPC_CHANNEL/u)
   assert.match(host, /ctx\.connection\.rpc\.handle/u)
-  assert.match(host, /authority:\s*["']loopback["']/u)
+  assert.match(host, /ctx\.inject\(\["connection",\s*"webServer"\]/u)
+  assert.doesNotMatch(host, /ctx\.connection\.rpc\.intercept/u)
+  assert.equal(VOICE_DESIGN_AI_RPC_CHANNEL, '/xiaomi-mimo-tts')
+  assert.match(host, /VOICE_DESIGN_AI_RPC_ENDPOINT/u)
+  assert.doesNotMatch(host, /authority:\s*["']loopback["']/u)
   assert.match(host, /ctx\.llm\.stream/u)
   assert.match(host, /chunk\.type === ["']text-delta["']/u)
   assert.match(settingsCardSource, /VOICE_DESIGN_AI_RPC_ENDPOINT/u)
-})
-
-test('compatibility automation validates both DSH release candidates with one tarball contract', () => {
-  assert.match(ciWorkflow, /DSH_COMPAT_VERSION:\s*0\.1\.1-rc\.2/u)
-  assert.match(ciWorkflow, /DSH_COMPAT_VERSION:\s*0\.1\.2-rc\.1/u)
-  assert.equal((ciWorkflow.match(/node scripts\/dsh-compat-smoke\.mjs dsh-xiaomi-tts-\*\.tgz/gu) ?? []).length, 2)
-  assert.match(compatibilitySmokeSource, /Tarball SHA256/u)
-  assert.match(compatibilitySmokeSource, /Plugin version/u)
-  assert.match(compatibilitySmokeSource, /--dump-config/u)
-  assert.match(compatibilitySmokeSource, /settings\.describe/u)
-  assert.match(compatibilitySmokeSource, /settings\.describe is missing namespace xiaomi-mimo-tts/u)
-  assert.match(compatibilitySmokeSource, /client bundle did not register dsh-xiaomi-tts/u)
-  assert.match(compatibilitySmokeSource, /isComboRoute/u)
-  assert.match(compatibilitySmokeSource, /successfulRoutes/u)
-  assert.match(compatibilitySmokeSource, /DSH_COMPAT_KEEP_HOME/u)
-  assert.match(compatibilitySmokeSource, /Preserved DSH_HOME/u)
-  assert.match(compatibilitySmokeSource, /taskkill\.exe/u)
 })
 
 test('profile lifecycle scripts pin the daily web profile and reject mixed link state', () => {
@@ -115,10 +100,8 @@ test('profile lifecycle scripts pin the daily web profile and reject mixed link 
   assert.match(profileVerifySource, /process\.env\.DSH_HOME/u)
   assert.match(profileVerifySource, /profileManifest\.dependencies/u)
   assert.match(profileVerifySource, /profileManifest\.dsh\?\.profile\?\.bundles/u)
-  assert.match(profileVerifySource, /settings\.describe/u)
-  assert.match(profileVerifySource, /comboRoutes/u)
-  assert.match(profileVerifySource, /isComboRoute/u)
-  assert.match(profileVerifySource, /mixed profile state/u)
+  assert.match(profileVerifySource, /installedManifest\.version !== ['"]3\.0\.2['"]/u)
+  assert.match(profileVerifySource, /installed link target mismatch/u)
   assert.match(profileVerifySource, /DSH_PROFILE_EXPECT_CHECKOUT/u)
   assert.match(reinstallScript, /IsNullOrWhiteSpace\(\$env:DSH_HOME\)/u)
   assert.match(reinstallScript, /PACKAGE_SPEC=%~1/u)
@@ -191,8 +174,8 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(TOKEN_PLAN_TTS_BASE_URL, 'https://token-plan-cn.xiaomimimo.com/v1')
   assert.match(host, /TTS_ROUTE/)
   assert.match(host, /prepareTtsText/)
-  assert.match(host, /resolveSettingsNamespace\(compatibleSettingsApi/)
-  assert.match(host, /installSettingsSectionCompat\(compatibleSettingsApi/)
+  assert.match(host, /ctx\.settings\.installSection/)
+  assert.doesNotMatch(host, /settings-compat|compatibleSettingsApi/)
   assert.match(host, /role\(['"]secret['"]\)/)
   assert.match(host, /mimo-v2\.5-tts/)
   assert.match(host, /mimo-v2\.5-tts-voicedesign/)
@@ -390,9 +373,9 @@ test('model picker uses a compact two-button toggle', () => {
 test('build emits declarations only for the private client modules', async () => {
   const clientArtifacts = (await readdir(new URL('../lib/client', import.meta.url))).sort()
   assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map') || ['conversation', 'playback', 'settings', 'sound-effects', 'style'].includes(name)))
-  assert.deepEqual(clientArtifacts.filter((name) => name.endsWith('.d.ts')), ['dsh-compat.d.ts', 'host-route.d.ts', 'index.d.ts', 'localization.d.ts'])
+  assert.deepEqual(clientArtifacts.filter((name) => name.endsWith('.d.ts')), ['host-route.d.ts', 'index.d.ts', 'localization.d.ts'])
   const expectedDeclarations = {
-    conversation: ['read-aloud.d.ts', 'state.d.ts'],
+    conversation: ['read-aloud.d.ts'],
     playback: ['index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'preview-player.d.ts', 'types.d.ts'],
     settings: ['api-key-module.d.ts', 'card.d.ts', 'collapsible-module.d.ts', 'details-module.d.ts', 'field-heading.d.ts', 'preview-module.d.ts', 'scope.d.ts', 'sound-effects-module.d.ts', 'switch-module.d.ts', 'types.d.ts'],
     'sound-effects': ['click-classifier.d.ts', 'index.d.ts', 'task-watcher.d.ts', 'toggle-sound-player.d.ts', 'types.d.ts'],
@@ -671,46 +654,12 @@ test('automatic playback only consumes the latest message from a live run once',
   assert.match(clientSource, /playback\.observeSession\(sessionId, runningSnapshot && runArmed\.current, latestMessageId\)/)
   assert.match(client, /completedMessages\.get\(sessionId\) !== messageId/)
   assert.match(clientSource, /useSession\(snapshot => snapshot\)/)
-  assert.match(clientSource, /resolveConversationCompatState\(chatLegacy, sessionSnapshot, session\)/)
+  assert.match(clientSource, /const legacy = useChat\(chat => chat\.legacy\)/)
+  assert.doesNotMatch(clientSource, /resolveConversationCompatState|SettingsScopeCompat|ClientContextCompat/)
   assert.match(client, /message\.latestMessageId !== messageId/)
   assert.match(client, /running \|\|/)
   assert.match(client, /automaticallyPlayed\.has\(key\)/)
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
-})
-
-test('normalizes the rc.2 session snapshot and the 0.1.2 chat snapshot', () => {
-  const oldSession = {
-    running: true,
-    nodes: [{ kind: 'assistant', messageId: 'old-message', blocks: [{ kind: 'text', text: 'old' }], turn: 1, step: 2, time: 3 }],
-    partial: null,
-  }
-  const oldState = resolveConversationCompatState(undefined, oldSession, undefined)
-  assert.equal(oldState.legacy, oldSession)
-  assert.equal(oldState.running, true)
-
-  const ownerSession = {
-    running: false,
-    nodes: [{ kind: 'assistant', messageId: 'owner-message', blocks: [], turn: 1, step: 1, time: 1 }],
-    partial: null,
-  }
-  const chatLegacy = {
-    nodes: [{ kind: 'assistant', messageId: 'new-message', blocks: [], turn: 4, step: 5, time: 6 }],
-    partial: null,
-  }
-  const newState = resolveConversationCompatState(chatLegacy, { running: true }, ownerSession)
-  assert.equal(newState.legacy, chatLegacy)
-  assert.equal(newState.running, true)
-})
-
-test('conversation compatibility falls back to owner state and then an empty snapshot', () => {
-  const ownerSession = { running: true, nodes: [], partial: null }
-  const ownerState = resolveConversationCompatState(undefined, { running: false }, ownerSession)
-  assert.equal(ownerState.legacy, ownerSession)
-  assert.equal(ownerState.running, false)
-
-  const emptyState = resolveConversationCompatState({ nodes: 'invalid' }, { running: 'invalid' }, {})
-  assert.equal(emptyState.legacy, EMPTY_LEGACY_CONVERSATION)
-  assert.equal(emptyState.running, false)
 })
 
 test('completed preset replies stream only for PCM and complete formats keep pause and resume', () => {

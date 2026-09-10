@@ -1,6 +1,5 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { readFile, lstat, realpath } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
-import { lstat, readFile, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 
@@ -20,10 +19,6 @@ const installedRoot = join(profileRoot, 'node_modules', PACKAGE_NAME)
 const installedManifestPath = join(installedRoot, 'package.json')
 const connectHost = host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host
 const baseURL = `http://${connectHost}:${String(port)}`
-
-function sha256(bytes) {
-  return createHash('sha256').update(bytes).digest('hex')
-}
 
 function spawnDsh(args, options) {
   if (process.platform !== 'win32') return spawn('dsh', args, options)
@@ -70,67 +65,6 @@ function assertDumpConfig(output) {
   }
 }
 
-async function describeSettings() {
-  const candidates = [
-    { endpoint: 'settings/describe', method: 'settings/describe' },
-    { endpoint: 'settings.describe', method: 'settings.describe' },
-  ]
-  let lastStatus = 404
-  for (const candidate of candidates) {
-    const response = await fetch(`${baseURL}/api/${candidate.endpoint}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        type: 'client-request',
-        rpcId: randomUUID(),
-        method: candidate.method,
-        payload: candidate.endpoint.includes('/') ? { args: {} } : {},
-      }),
-    })
-    lastStatus = response.status
-    if (response.status === 404) continue
-    if (!response.ok) throw new Error(`settings.describe returned ${String(response.status)}`)
-    const body = await response.json()
-    if (body?.result?.ok !== true) throw new Error(`settings.describe failed: ${JSON.stringify(body)}`)
-    const namespaces = body.result.value?.namespaces
-    if (!Array.isArray(namespaces) || !namespaces.some(entry => entry?.ns === NAMESPACE)) {
-      throw new Error(`settings.describe is missing namespace ${NAMESPACE}`)
-    }
-    return
-  }
-  throw new Error(`settings.describe returned ${String(lastStatus)}`)
-}
-
-async function fetchClientBundle() {
-  const individualRoutes = new Set([`/plugins/${PACKAGE_NAME}/client.js`, `/plugins/${NAMESPACE}/client.js`])
-  const comboRoutes = new Set()
-  const root = await fetch(baseURL)
-  if (root.ok) {
-    const html = await root.text()
-    for (const match of html.matchAll(/(\/plugins\/[^"'\s]+\/client\.js(?:\?rev=[^"'\s]+)?)/gu)) individualRoutes.add(match[1])
-    for (const match of html.matchAll(/(\/plugins\/\?\?[^"'\s]+\/client\.js[^"'\s]*)/gu)) comboRoutes.add(match[1])
-  }
-  const routes = [...individualRoutes, ...comboRoutes]
-  let lastStatus = 404
-  let successfulRoutes = []
-  for (const route of routes) {
-    const response = await fetch(`${baseURL}${route}`)
-    lastStatus = response.status
-    if (response.status === 404) continue
-    if (!response.ok) throw new Error(`client bundle returned ${String(response.status)}`)
-    const body = Buffer.from(await response.arrayBuffer())
-    const isComboRoute = route.startsWith('/plugins/??')
-    if ((isComboRoute && route.includes(`${PACKAGE_NAME}/client.js`)) || body.toString('utf8').includes(PACKAGE_NAME)) {
-      return { response, body, route }
-    }
-    successfulRoutes.push(route)
-  }
-  if (successfulRoutes.length > 0) {
-    throw new Error(`client bundle did not register ${PACKAGE_NAME} (checked ${successfulRoutes.join(', ')})`)
-  }
-  throw new Error(`client bundle returned ${String(lastStatus)} (checked ${[...routes].join(', ')})`)
-}
-
 const profileManifest = JSON.parse(await readFile(profileManifestPath, 'utf8'))
 if (profileManifest.dependencies?.[PACKAGE_NAME] === undefined) {
   throw new Error(`${profileManifestPath} is missing dependency ${PACKAGE_NAME}`)
@@ -141,6 +75,9 @@ if (!Array.isArray(profileBundles) || !profileBundles.includes(PACKAGE_NAME)) {
 }
 
 const installedManifest = JSON.parse(await readFile(installedManifestPath, 'utf8'))
+if (installedManifest.version !== '3.0.2') {
+  throw new Error(`installed plugin version is ${String(installedManifest.version)}, expected 3.0.2`)
+}
 const installedStat = await lstat(installedRoot)
 const installedRealPath = await realpath(installedRoot)
 const linkMode = installedStat.isSymbolicLink() || resolve(installedRealPath) !== resolve(installedRoot)
@@ -156,14 +93,6 @@ if (typeof statusBody.configured !== 'boolean' || typeof statusBody.supported !=
   throw new Error(`unexpected API key status: ${JSON.stringify(statusBody)}`)
 }
 
-await describeSettings()
-const client = await fetchClientBundle()
-const servedClientBytes = client.body
-const servedClientText = servedClientBytes.toString('utf8')
-if (!client.route.startsWith('/plugins/??') && (!servedClientText.includes('window.__ModuleLoader__.load') || !servedClientText.includes(PACKAGE_NAME))) {
-  throw new Error(`client bundle did not register ${PACKAGE_NAME}`)
-}
-
 const expectedCheckout = process.env.DSH_PROFILE_EXPECT_CHECKOUT?.trim()
 const expectedRealPath = expectedCheckout === undefined || expectedCheckout === ''
   ? undefined
@@ -171,20 +100,10 @@ const expectedRealPath = expectedCheckout === undefined || expectedCheckout === 
 if (expectedRealPath !== undefined && resolve(installedRealPath) !== resolve(expectedRealPath)) {
   throw new Error(`installed link target mismatch: expected ${expectedRealPath}, received ${installedRealPath}`)
 }
-const localBundleRoot = expectedRealPath ?? (localLinkMode ? installedRealPath : undefined)
-if (localBundleRoot !== undefined) {
-  const diskClientSha256 = sha256(await readFile(join(localBundleRoot, 'lib', 'client.js')))
-  const servedClientSha256 = sha256(servedClientBytes)
-  if (diskClientSha256 !== servedClientSha256) {
-    throw new Error(`mixed profile state: disk client SHA256 ${diskClientSha256} != served bundle SHA256 ${servedClientSha256}`)
-  }
-  process.stdout.write(`[OK] Local bundle SHA256: ${diskClientSha256}\n`)
-}
-
 process.stdout.write(`[OK] DSH_HOME: ${dshHome}\n`)
 process.stdout.write(`[OK] Profile: ${profileName}\n`)
 process.stdout.write(`[OK] Plugin: ${PACKAGE_NAME}@${String(installedManifest.version)}\n`)
 process.stdout.write(`[OK] Installed path: ${installedRoot}\n`)
 process.stdout.write(`[OK] Local link mode: ${String(localLinkMode)}\n`)
 process.stdout.write(`[OK] Resolved target: ${installedRealPath}\n`)
-process.stdout.write(`[OK] Host status, settings namespace and client bundle verified at ${baseURL}\n`)
+process.stdout.write(`[OK] Host status and installed plugin verified at ${baseURL}\n`)

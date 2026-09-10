@@ -5,7 +5,7 @@ import { prepareTtsText, resolveTtsSettings } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import { streamPcmAudio } from '../../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
-import type { SettingsScopeCompat } from '../dsh-compat.js'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsService {
   private readonly logPrefix = '[MiMoTTS Service]'
@@ -19,7 +19,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
 
   constructor(
     ctx: Context,
-    private readonly settings: SettingsScopeCompat<TtsSettings>,
+    private readonly settings: SettingsScope<TtsSettings>,
     private readonly interruptConversationPlayback: () => void,
   ) {
     super(ctx, 'xiaomiMimoTts')
