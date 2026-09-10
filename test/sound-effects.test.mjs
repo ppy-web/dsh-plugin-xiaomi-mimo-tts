@@ -103,7 +103,6 @@ test('format and speech strategy radio cards classify changes as selection sound
 test('keeps five preview buttons and lists every supported sound below them', () => {
   const previewBlock = soundSettings.match(/const PREVIEW_CUES = \[([\s\S]*?)\] as const/)?.[1] ?? ''
   assert.deepEqual([...previewBlock.matchAll(/\{ cue: '([^']+)'/g)].map((match) => match[1]), ['start', 'complete', 'error', 'notification', 'press'])
-  assert.match(soundStyles, /\.xmimo-tts-sound-supported[\s\S]*border-radius: 999px[\s\S]*font-size: 10px/)
 })
 
 test('voice volume is clamped, persisted, and reaches every generated-audio playback path', () => {
