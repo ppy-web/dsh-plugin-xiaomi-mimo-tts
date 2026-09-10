@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react'
-import { SOUND_PACKS, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MODELS, TTS_VOICE_DESIGN_PLAYBACK_MODES } from '../shared.js'
-import type { TtsSettings } from '../shared.js'
-import type { SettingsScopeCompat } from './dsh-compat.js'
+import { SOUND_PACKS, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MODELS, TTS_VOICE_DESIGN_PLAYBACK_MODES } from '../../shared.js'
+import type { TtsSettings } from '../../shared.js'
+import type { SettingsScopeCompat } from '../dsh-compat.js'
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)

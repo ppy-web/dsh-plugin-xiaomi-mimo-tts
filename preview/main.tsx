@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
-import { SettingsCard } from '../src/client/settings-card.js'
+import { SettingsCard } from '../src/client/settings/card.js'
 import { createSoundEffectsController } from '../src/client/sound-effects/index.js'
-import { CLIENT_STYLES } from '../src/client/styles.js'
+import { CLIENT_STYLES } from '../src/client/style/index.js'
 import { en, zh } from '../src/client/localization.js'
 import type { LocaleKey, Translate } from '../src/client/localization.js'
 import {

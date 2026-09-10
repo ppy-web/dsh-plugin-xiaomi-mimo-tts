@@ -1,7 +1,7 @@
 import { extractMarkdownPlainText } from '@deepseek-ai/dsh-client-ui-primitives'
-import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, prepareTtsText, splitCompletedTtsSentences, splitTtsSegments } from '../shared.js'
-import type { LiveSpeechCursor } from '../shared.js'
-import type { LiveMessageIdentity, PlaybackStatus } from './playback-types.js'
+import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, prepareTtsText, splitCompletedTtsSentences, splitTtsSegments } from '../../shared.js'
+import type { LiveSpeechCursor } from '../../shared.js'
+import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
 
 function browserVoices(): SpeechSynthesisVoice[] {
   if (typeof window === 'undefined' || window.speechSynthesis === undefined) return []

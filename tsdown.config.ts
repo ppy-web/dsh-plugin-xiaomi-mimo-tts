@@ -21,7 +21,7 @@ const GENERATED_REMOTE = /^@deepseek-ai\/dsh-[a-z0-9]+(?:-[a-z0-9]+)*\/remote$/
 
 /**
  * Vite-style `?raw` text imports for the client bundle (tsdown/rolldown has
- * no built-in support; see src/client/styles.ts). `<file>.css?raw` resolves
+ * no built-in support; see src/client/style/index.ts). `<file>.css?raw` resolves
  * to the real file and imports as its text content as the default export.
  */
 function rawTextImports() {

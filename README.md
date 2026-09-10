@@ -1,4 +1,4 @@
-![social](assets/social.png)
+![social](assets/social.webp)
 
 # dsh-xiaomi-tts
 
@@ -104,8 +104,9 @@ Release tgz 已包含构建产物，无需执行 `pnpm approve-builds`。
 可选音色来自浏览器 Web Speech API，是否离线及实际可用范围取决于浏览器、操作系统和网络服务。
 
 ## 🔌 三方插件联动
-![whale-girls](assets/whale-girls.png)
-我们对外暴露了PCM流式播放能力。
+![whale-girls](assets/whale-girls.webp)
+
+> 我们对外暴露了PCM流式播放能力。
 Web 插件可以直接调用本插件的服务进行流式播放。可直接在需要播放的位置写一行：
 
 ```ts
@@ -154,8 +155,7 @@ flowchart LR
 ```bash
 pnpm dev
 ```
-
-命令会打开本地 UI 预览壳，直接渲染 `src/client/settings-card.tsx` 并热更新，无需安装插件或重启 DSH。预览壳使用内存设置和本地模拟接口，不会调用 MiMo API，也不会真的卸载插件。运行 `pnpm dev:build` 可检查预览壳能否独立打包。
+命令会打开本地 UI 预览壳，直接渲染 `src/client/settings-card.tsx` 并热更新。
 
 ```bash
 pnpm install

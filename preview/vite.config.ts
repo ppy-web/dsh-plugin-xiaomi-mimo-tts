@@ -19,6 +19,7 @@ const assetDirectories = new Map([
 ])
 
 const assetFiles = new Map([
+  ['mimo.svg', path.join(repositoryRoot, 'assets', 'mimo.svg')],
   ['toggle-characters.png', path.join(repositoryRoot, 'assets', 'ui', 'toggle-characters.png')],
   ['api-key-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'api-key-whale.png')],
   ['mixer-whale.png', path.join(repositoryRoot, 'assets', 'ui', 'mixer-whale.png')],
@@ -44,6 +45,7 @@ function resolvePreviewAsset(url: string | undefined): string | undefined {
 }
 
 function contentType(filename: string): string {
+  if (filename.endsWith('.svg')) return 'image/svg+xml'
   if (filename.endsWith('.png')) return 'image/png'
   if (filename.endsWith('.webp')) return 'image/webp'
   if (filename.endsWith('.mp3')) return 'audio/mpeg'

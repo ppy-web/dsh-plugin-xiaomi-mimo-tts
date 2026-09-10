@@ -1,18 +1,8 @@
 /*
- * Settings page scaffolding: sections stack, settings/switch modules, API-key module padding.
+ * Settings modules: shared module surface plus the switch and API-key variants.
  */
 
-.xmimo-tts-sections {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px
-}
-
-.xmimo-tts-sections>.xmimo-tts-settings-module {
-  padding: 14px;
-  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2)
-}
-
-.xmimo-tts-sections>.xmimo-tts-switch-module {
+.xmimo-tts-switch-module {
   padding: 0;
   border: 0;
   background: transparent
@@ -24,11 +14,6 @@
   border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
   border-radius: 12px;
   background: var(--dsw-alias-bg-layer-1, #fff)
-}
-
-.xmimo-tts-sections+.xmimo-tts-settings-module,
-.xmimo-tts-settings-module+.xmimo-tts-settings-module {
-  margin-top: 12px
 }
 
 .xmimo-tts-switch-module .xmimo-tts-character-control {

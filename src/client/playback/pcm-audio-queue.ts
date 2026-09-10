@@ -1,4 +1,4 @@
-import { debugConsole } from '../debug-console.js'
+import { debugConsole } from '../../debug-console.js'
 
 export interface PcmAudioQueueCallbacks {
   onBusyChange: (busy: boolean) => void

@@ -5,11 +5,11 @@ import {
   classifyLiveSpeechTransition,
   prepareTtsText,
   splitCompletedTtsSentences,
-} from '../shared.js'
-import type { LiveSpeechCursor } from '../shared.js'
-import { streamPcmAudio } from '../pcm-stream.js'
+} from '../../shared.js'
+import type { LiveSpeechCursor } from '../../shared.js'
+import { streamPcmAudio } from '../../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
-import type { LiveMessageIdentity, PlaybackStatus } from './playback-types.js'
+import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
 
 interface CompletedStreamPlayback {
   sessionId: string

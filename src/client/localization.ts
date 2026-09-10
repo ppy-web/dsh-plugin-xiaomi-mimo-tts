@@ -46,7 +46,7 @@ export const zh = {
   "settings.autoPlayHint": "浏览器可能会拒绝自动播放。",
   "settings.detailedVoiceConfig": "调音台",
   "settings.voiceVolume": "语音音量",
-  "settings.summaryPresetModel": "预置模型",
+  "settings.summaryPresetModel": "预置音色",
   "settings.summaryVoiceDesignModel": "自定义音色",
   "settings.localSpeechAutoSummary": "MiMo 优先",
   "settings.stateOn": "已开启",
@@ -97,10 +97,13 @@ export const zh = {
   "settings.voiceDesignPlaybackMode": "朗读方式",
   "settings.voiceDesignPlaybackComplete": "完整朗读",
   "settings.voiceDesignPlaybackSegmented": "分片朗读",
+  "settings.voiceDesignPlaybackFirstSegment": "朗读首段",
   "settings.voiceDesignPlaybackCompleteHint":
     "整篇生成后播放，语调连续性更好。长文本会出现模型幻觉。",
   "settings.voiceDesignPlaybackSegmentedHint":
     "适合长文本，分段生成、更快播放。但会重新推导音色细节，语调连续性略差。",
+  "settings.voiceDesignPlaybackFirstSegmentHint":
+    "只生成并朗读首个分片，启动更快、消耗更低，适合快速试听或只听开头。",
   "settings.previewTitle": "演播厅",
   "settings.previewText": "试听文本",
   "settings.previewDefaultText":
@@ -136,11 +139,13 @@ export const zh = {
   "settings.soundEffectsTitle": "音效间",
   "settings.soundEffectsEnabled": "启用音效",
   "settings.soundEffectsVolume": "音量",
-  "settings.soundEffectsPack": "音色包",
+  "settings.soundEffectsPack": "音效包",
   "settings.soundEffectsTask": "任务音效",
   "settings.soundEffectsClick": "点击音效",
   "settings.soundEffectsOn": "已开启",
   "settings.soundEffectsOff": "已关闭",
+  "settings.soundEffectsBubbleOn": "uisfx 已开启",
+  "settings.soundEffectsBubbleOff": "uisfx 已关闭",
   "settings.soundEffectsTurnOn": "开启音效",
   "settings.soundEffectsTurnOff": "关闭音效",
   "settings.soundEffectsSynced": "任务 / 点击同步",
@@ -150,6 +155,7 @@ export const zh = {
   "settings.soundEffectsPreview.error": "失败",
   "settings.soundEffectsPreview.notification": "提醒",
   "settings.soundEffectsPreview.press": "点击",
+  "settings.soundEffectsSupported":"🔔 开始 完成 成功 失败 提醒 点击 选择 开启 关闭 发送 打开 关闭面板 删除 停止 排队",
 } as const;
 
 export const en: Record<keyof typeof zh, string> = {
@@ -261,10 +267,13 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.voiceDesignPlaybackMode": "Read-aloud mode",
   "settings.voiceDesignPlaybackComplete": "Complete",
   "settings.voiceDesignPlaybackSegmented": "Segmented",
+  "settings.voiceDesignPlaybackFirstSegment": "First segment",
   "settings.voiceDesignPlaybackCompleteHint":
     "Generates the entire reply before playback for better continuity.",
   "settings.voiceDesignPlaybackSegmentedHint":
     "Generates and plays semantic segments in order; better for long text and faster start.",
+  "settings.voiceDesignPlaybackFirstSegmentHint":
+    "Generates and plays only the first segment for a faster start and lower usage.",
   "settings.previewTitle": "Broadcast Studio",
   "settings.previewText": "Preview text",
   "settings.previewDefaultText":
@@ -307,6 +316,8 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.soundEffectsClick": "Click sounds",
   "settings.soundEffectsOn": "On",
   "settings.soundEffectsOff": "Off",
+  "settings.soundEffectsBubbleOn": "UISFX enabled",
+  "settings.soundEffectsBubbleOff": "UISFX disabled",
   "settings.soundEffectsTurnOn": "Turn sounds on",
   "settings.soundEffectsTurnOff": "Turn sounds off",
   "settings.soundEffectsSynced": "Task / click synced",
@@ -316,6 +327,7 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.soundEffectsPreview.error": "Preview error",
   "settings.soundEffectsPreview.notification": "Preview notification",
   "settings.soundEffectsPreview.press": "Preview click",
+  "settings.soundEffectsSupported": "Supported sounds: Start, Complete, Success, Error, Notification, Press, Select, Toggle On, Toggle Off, Send, Open, Close, Delete, Stop, Queued",
 };
 
 export type LocaleKey = keyof typeof zh

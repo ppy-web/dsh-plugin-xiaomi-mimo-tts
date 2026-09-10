@@ -1,5 +1,5 @@
-import { splitTtsSegments, TTS_ROUTE } from '../shared.js'
-import type { PlaybackStatus, PlaybackView } from './playback-types.js'
+import { splitTtsSegments, TTS_ROUTE } from '../../shared.js'
+import type { PlaybackStatus, PlaybackView } from './types.js'
 
 interface SynthesizedAudio {
   url: string

@@ -45,9 +45,6 @@
     margin-right: 12px;
     margin-left: 12px
   }
-  .xmimo-tts-sections>.xmimo-tts-settings-module {
-    padding: 12px
-  }
   .xmimo-tts-switch-module .xmimo-tts-character-portrait {
     width: 108px;
     height: 98px
@@ -72,10 +69,6 @@
   }
   .xmimo-tts-preview-title {
     padding-right: 54px
-  }
-  .xmimo-tts-preview-input>textarea {
-    height: 56px;
-    min-height: 56px
   }
   .xmimo-tts-api-key-input>.xmimo-tts-api-key-whale,
   .xmimo-tts-preview-input>.xmimo-tts-preview-whale-button {
@@ -137,7 +130,23 @@
     padding-left: 12px
   }
   .xmimo-tts-sound-pack-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr))
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px
+  }
+  .xmimo-tts-sound-pack-option {
+    min-height: 46px;
+    padding-right: 28px;
+    padding-left: 12px;
+    font-size: 10px
+  }
+  .xmimo-tts-format-options {
+    gap: 4px
+  }
+  .xmimo-tts-format-option {
+    min-height: 42px;
+    padding-right: 6px;
+    padding-left: 6px;
+    font-size: 11px
   }
   .xmimo-tts-sound-previews {
     grid-template-columns: repeat(5, minmax(0, 1fr));

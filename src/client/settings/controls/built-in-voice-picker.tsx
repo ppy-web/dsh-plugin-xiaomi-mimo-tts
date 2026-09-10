@@ -1,7 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
-import { TTS_VOICE_ASSET_ROUTE, TTS_VOICE_PRESETS } from '../shared.js'
+import { TTS_VOICE_ASSET_ROUTE, TTS_VOICE_PRESETS } from '../../../shared.js'
 
 type BuiltInVoicePreset = typeof TTS_VOICE_PRESETS[number]
 

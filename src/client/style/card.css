@@ -56,6 +56,17 @@
   font-weight: 600
 }
 
+.xmimo-tts-api-key-logo {
+  display: block;
+  width: 88px;
+  height: 12px;
+  max-width: 100%;
+  color: var(--dsw-alias-label-primary, #1f2328);
+  background-color: currentColor;
+  -webkit-mask: var(--xmimo-tts-api-key-logo-image) center / 100% 100% no-repeat;
+  mask: var(--xmimo-tts-api-key-logo-image) center / 100% 100% no-repeat;
+}
+
 .xmimo-tts-card-description {
   color: var(--dsw-alias-label-tertiary, #8b93a1);
   font-size: 13px;
@@ -85,5 +96,5 @@
 
 .xmimo-tts-card-body {
   margin: 0 16px;
-  padding: 16px 0
+  padding-bottom: 16px;
 }

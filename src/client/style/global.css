@@ -53,9 +53,7 @@
 }
 
 /* The stack owns vertical rhythm; modules no longer negotiate margins. */
-.xmimo-ui-stack > *,
-.xmimo-ui-stack > .xmimo-tts-sections + .xmimo-ui-module,
-.xmimo-ui-stack > .xmimo-ui-module + .xmimo-ui-module {
+.xmimo-ui-stack > * {
   margin-top: 0;
   margin-bottom: 0;
 }
@@ -196,8 +194,8 @@
 
 .xmimo-ui-module > .xmimo-tts-mixer-whale-button,
 .xmimo-ui-module > .xmimo-tts-sound-whale-button {
-  top: var(--xmimo-ui-space-1);
-  right: var(--xmimo-ui-module-padding);
+  top: -12px;
+  right: 20px;
 }
 
 .xmimo-ui-module .xmimo-tts-details-heading,

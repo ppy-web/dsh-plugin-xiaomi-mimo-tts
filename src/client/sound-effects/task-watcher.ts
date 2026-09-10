@@ -34,7 +34,7 @@ export function installTaskSoundWatcher(ctx: ClientContextCompat, controller: So
       const failed = snapshot.lastAgentError != null || hasTurnError()
       window.setTimeout(() => { if (getSettings().enabled && getSettings().taskSounds) controller.play(failed ? 'error' : 'complete') }, 50)
     }
-    if (pending > lastPending) controller.play('notification')
+    if (pending > lastPending) controller.play('queued')
     lastRunning = running
     lastPending = pending
   }

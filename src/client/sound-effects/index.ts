@@ -3,7 +3,7 @@ import type { SoundEffectsController, SoundEffectsSettings, SoundCue } from './t
 import { classifyClick } from './click-classifier.js'
 import type { ClientContextCompat } from '../dsh-compat.js'
 
-const VALID_CUES = new Set<SoundCue>(['start', 'complete', 'success', 'error', 'notification', 'press', 'select', 'toggle-on', 'send', 'close', 'delete', 'open'])
+const VALID_CUES = new Set<SoundCue>(['start', 'complete', 'success', 'error', 'notification', 'press', 'select', 'toggle-on', 'toggle-off', 'send', 'close', 'delete', 'open', 'stop', 'queued'])
 
 export function createSoundEffectsController(): SoundEffectsController {
   let settings: SoundEffectsSettings = { enabled: true, volume: 0.35, pack: 'zen', taskSounds: true, clickSounds: true }
@@ -22,6 +22,14 @@ export function createSoundEffectsController(): SoundEffectsController {
     preview(cue) {
       if (!settings.enabled || !VALID_CUES.has(cue)) return
       try { getPlayer().play(cue) } catch { /* Preview is best effort. */ }
+    },
+    setVolume(value) {
+      settings = { ...settings, volume: Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : settings.volume }
+      if (player !== null) player.setVolume(settings.volume)
+    },
+    previewVolume() {
+      if (!settings.enabled) return
+      try { getPlayer().play('check', { retrigger: 'ignore' }) } catch { /* Preview is best effort. */ }
     },
     update(next) {
       settings = next

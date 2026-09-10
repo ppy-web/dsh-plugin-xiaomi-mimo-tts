@@ -14,7 +14,7 @@ import * as settingsApi from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { debugConsole } from './debug-console.js'
 import { installSettingsSectionCompat, resolveSettingsNamespace, type SettingsModuleCompat } from './settings-compat.js'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
 import type { VoiceDesignAiGenerateResult } from './shared.js'
 
 const compatibleSettingsApi = settingsApi as unknown as SettingsModuleCompat
@@ -513,13 +513,14 @@ export function apply(ctx: Context, config: Config): void {
     const data = readFileSync(new URL(`../assets/voice-avatars/${preset.id}.webp`, import.meta.url))
     return [path, data] as const
   }))
+  const mimoLogoAsset = readFileSync(new URL('../assets/mimo.svg', import.meta.url))
   const toggleCharacterAsset = readFileSync(new URL('../assets/ui/toggle-characters.png', import.meta.url))
   const apiKeyWhaleAsset = readFileSync(new URL('../assets/ui/api-key-whale.png', import.meta.url))
   const mixerWhaleAsset = readFileSync(new URL('../assets/ui/mixer-whale.png', import.meta.url))
   const previewWhaleAsset = readFileSync(new URL('../assets/ui/preview-whale.png', import.meta.url))
   const soundEffectsWhaleAsset = readFileSync(new URL('../assets/ui/sound-effects-whale.png', import.meta.url))
   const soundEffectCuesAsset = readFileSync(new URL('../assets/ui/sound-effect-cues.png', import.meta.url))
-  const toggleSoundAssets = new Map(Object.values(TTS_TOGGLE_SOUND_FILES).flat().map((file) => {
+  const toggleSoundAssets = new Map([...new Set([...Object.values(TTS_TOGGLE_SOUND_FILES).flat(), ...TTS_VOLUME_PREVIEW_FILES])].map((file) => {
     const path = `${TTS_TOGGLE_AUDIO_ASSET_ROUTE}/${file}`
     const data = readFileSync(new URL(`../assets/audio/${file}`, import.meta.url))
     return [path, data] as const
@@ -632,6 +633,26 @@ export function apply(ctx: Context, config: Config): void {
       })
     },
   }), 'xiaomi-mimo-tts: self-uninstall route')
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: TTS_MIMO_LOGO_ASSET_ROUTE,
+    handler(req, res) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405
+        res.setHeader('allow', 'GET, HEAD')
+        res.end()
+        return
+      }
+
+      res.statusCode = 200
+      res.setHeader('content-type', 'image/svg+xml')
+      res.setHeader('content-length', String(mimoLogoAsset.byteLength))
+      res.setHeader('cache-control', 'public, max-age=31536000, immutable')
+      res.setHeader('x-content-type-options', 'nosniff')
+      res.end(req.method === 'HEAD' ? undefined : mimoLogoAsset)
+    },
+  }), 'xiaomi-mimo-tts: MiMo logo asset')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',

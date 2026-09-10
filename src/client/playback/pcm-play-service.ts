@@ -1,11 +1,11 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
-import type { XiaomiMimoTtsService } from '../client-api.js'
-import { debugConsole } from '../debug-console.js'
-import { prepareTtsText, resolveTtsSettings } from '../shared.js'
-import type { TtsSettings } from '../shared.js'
-import { streamPcmAudio } from '../pcm-stream.js'
+import type { XiaomiMimoTtsService } from '../../client-api.js'
+import { debugConsole } from '../../debug-console.js'
+import { prepareTtsText, resolveTtsSettings } from '../../shared.js'
+import type { TtsSettings } from '../../shared.js'
+import { streamPcmAudio } from '../../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
-import type { SettingsScopeCompat } from './dsh-compat.js'
+import type { SettingsScopeCompat } from '../dsh-compat.js'
 
 export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsService {
   private readonly logPrefix = '[MiMoTTS Service]'

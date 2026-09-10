@@ -74,6 +74,9 @@ export function isNewerTtsVersion(candidate: string, current: string): boolean {
 /** Same-origin route that reports API key configuration status without exposing the key. */
 export const TTS_API_KEY_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-status'
 
+/** Same-origin route used by the Web client to load the MiMo brand logo. */
+export const TTS_MIMO_LOGO_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/mimo.svg'
+
 /** Same-origin prefix used by the Web client to load voice-design preset icons. */
 export const TTS_VOICE_DESIGN_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-presets'
 
@@ -110,6 +113,9 @@ export const TTS_TOGGLE_SOUND_FILES = {
 } as const
 
 export type TtsToggleSoundKind = keyof typeof TTS_TOGGLE_SOUND_FILES
+
+/** Bundled sounds used to preview the currently selected voice or UI volume. */
+export const TTS_VOLUME_PREVIEW_FILES = ['volume-01.mp3', 'volume-02.mp3', 'on02.mp3'] as const
 
 /** Default Xiaomi endpoint for Token Plan API keys. */
 export const TOKEN_PLAN_TTS_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
@@ -159,7 +165,7 @@ export const TTS_FORMATS = ['pcm', 'mp3', 'wav'] as const
 export type TtsFormat = typeof TTS_FORMATS[number]
 
 /** Voice-design playback strategies. Segmented playback keeps each upstream request short. */
-export const TTS_VOICE_DESIGN_PLAYBACK_MODES = ['complete', 'segmented'] as const
+export const TTS_VOICE_DESIGN_PLAYBACK_MODES = ['complete', 'segmented', 'first-segment'] as const
 
 export type TtsVoiceDesignPlaybackMode = typeof TTS_VOICE_DESIGN_PLAYBACK_MODES[number]
 
@@ -389,6 +395,11 @@ export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHA
     else segments.push(pending)
   }
   return segments
+}
+
+/** Return only the first semantic segment for low-latency VoiceDesign playback. */
+export function firstTtsSegment(value: string): string {
+  return splitTtsSegments(value)[0] ?? ''
 }
 
 /** Return the exact decoded size of canonical padded Base64, or null when invalid. */

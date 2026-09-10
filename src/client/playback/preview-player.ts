@@ -1,10 +1,11 @@
 import {
   TTS_ROUTE,
   TTS_STREAM_ROUTE,
+  firstTtsSegment,
   parseSseRecords,
   splitTtsSegments,
-} from '../shared.js'
-import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsVoiceDesignPlaybackMode } from '../shared.js'
+} from '../../shared.js'
+import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsVoiceDesignPlaybackMode } from '../../shared.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 
 export type PreviewStatus = 'idle' | 'loading' | 'playing' | 'error'
@@ -182,6 +183,12 @@ export class PreviewPlayer {
   private async playRemote(text: string, settings: PreviewSettings, generation: number): Promise<void> {
     if (settings.model === 'mimo-v2.5-tts-voicedesign' && settings.voiceDesignPlaybackMode === 'segmented') {
       await this.playSegmented(text, settings, generation)
+      return
+    }
+    if (settings.model === 'mimo-v2.5-tts-voicedesign' && settings.voiceDesignPlaybackMode === 'first-segment') {
+      const segment = firstTtsSegment(text)
+      if (segment.length === 0) throw new Error('no-text')
+      await this.playComplete(segment, settings, generation, 'wav')
       return
     }
     if (settings.model !== 'mimo-v2.5-tts-voicedesign' && settings.format === 'pcm') {

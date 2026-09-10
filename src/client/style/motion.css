@@ -28,8 +28,20 @@
 @media (prefers-reduced-motion: reduce) {
   .xmimo-tts-sound-collapse,
   .xmimo-tts-sound-whale,
-  .xmimo-tts-sound-previews button {
+  .xmimo-tts-sound-previews button,
+  .xmimo-tts-sound-pack-option,
+  .xmimo-tts-sound-pack-option::after,
+  .xmimo-tts-sound-pack-wave,
+  .xmimo-tts-sound-pack-wave i,
+  .xmimo-tts-format-option,
+  .xmimo-tts-format-option::after {
     transition: none !important
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-sound-pack-option-pending::after {
+    animation: none !important
   }
 }
 
