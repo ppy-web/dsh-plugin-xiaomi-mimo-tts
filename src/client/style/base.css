@@ -1,0 +1,18 @@
+/*
+ * Shared state text styles: inline errors, warning/error tints, failed state.
+ */
+
+.xmimo-tts-inline-error {
+  max-width: 220px;
+  color: var(--dsw-alias-state-error-primary, #dc2626);
+  font-size: 12px
+}
+
+.xmimo-tts-api-key-warning,
+.xmimo-tts-ai-generate-error {
+  color: var(--dsw-alias-state-error-primary, #dc2626) !important
+}
+
+.xmimo-tts-failed {
+  color: var(--dsw-alias-state-error-primary, #dc2626)
+}

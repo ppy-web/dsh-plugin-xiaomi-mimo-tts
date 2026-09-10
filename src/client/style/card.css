@@ -1,0 +1,100 @@
+/*
+ * Settings card shell: collapsible header, title, description, chevron, pending badge, body.
+ */
+
+.xmimo-tts-card {
+  list-style: none;
+  border: 1px solid var(--xmimo-ui-border-soft);
+  border-radius: 12px;
+  color: var(--xmimo-ui-text);
+  background: var(--dsw-alias-bg-layer-3, #fff);
+  overflow: hidden;
+  transition: border-color 160ms ease, background 160ms ease
+}
+
+.xmimo-tts-card:hover {
+  border-color: var(--dsw-alias-label-dimmed, #c8ccd4)
+}
+
+.xmimo-tts-card-open {
+  background: var(--dsw-alias-bg-layer-2, #f7f8fa);
+  border-color: var(--dsw-alias-label-dimmed, #c8ccd4)
+}
+
+.xmimo-tts-card-header {
+  appearance: none;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 12px;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  font: inherit;
+  cursor: pointer
+}
+
+.xmimo-tts-card-header:focus-visible {
+  outline: var(--xmimo-ui-focus);
+  outline-offset: -2px
+}
+
+.xmimo-tts-card-head-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px
+}
+
+.xmimo-tts-card-title {
+  font-size: 15px;
+  font-weight: 600
+}
+
+.xmimo-tts-api-key-logo {
+  display: block;
+  width: 88px;
+  height: 12px;
+  max-width: 100%;
+  color: var(--dsw-alias-label-primary, #1f2328);
+  background-color: currentColor;
+  -webkit-mask: var(--xmimo-tts-api-key-logo-image) center / 100% 100% no-repeat;
+  mask: var(--xmimo-tts-api-key-logo-image) center / 100% 100% no-repeat;
+}
+
+.xmimo-tts-card-description {
+  color: var(--xmimo-ui-text-subtle);
+  font-size: 13px;
+  line-height: 18px
+}
+
+.xmimo-tts-chevron {
+  flex: none;
+  color: var(--xmimo-ui-text-subtle);
+  transition: transform 160ms ease
+}
+
+.xmimo-tts-chevron-open {
+  transform: rotate(180deg)
+}
+
+.xmimo-tts-pending {
+  flex: none;
+  border-radius: 999px;
+  padding: 1px 8px;
+  color: var(--xmimo-ui-text-muted);
+  background: var(--xmimo-ui-chip-surface);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 17px
+}
+
+.xmimo-tts-card-body {
+  margin: 0 16px;
+  padding-bottom: 16px;
+}

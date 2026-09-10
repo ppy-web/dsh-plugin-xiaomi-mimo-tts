@@ -3,16 +3,18 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-connection/client'
-import { TTS_SETTINGS_NAMESPACE } from '../shared.js'
+import { TTS_SETTINGS_NAMESPACE, resolveTtsSettings } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
-import { ReadAloudAction, SessionPlaybackObserver } from './conversation.js'
+import { ReadAloudAction, SessionPlaybackObserver } from './conversation/read-aloud.js'
 import { NS, en, zh } from './localization.js'
 import type { Translate } from './localization.js'
-import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback.js'
-import { XiaomiMimoTtsPcmService } from './pcm-play-service.js'
-import { SettingsCard } from './settings-card.js'
-import { decodeSettings } from './settings-scope.js'
-import { CLIENT_STYLES } from './styles.js'
+import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback/index.js'
+import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
+import { SettingsCard } from './settings/card.js'
+import { createSoundEffectsController, installClickSounds } from './sound-effects/index.js'
+import { installTaskSoundWatcher } from './sound-effects/task-watcher.js'
+import { decodeSettings } from './settings/scope.js'
+import { CLIENT_STYLES } from './style/index.js'
 import type { ClientContextCompat } from './dsh-compat.js'
 
 /** Client services required by this plugin. */
@@ -22,6 +24,7 @@ export const inject = [
   'connection',
   'remote',
   'settingsScope',
+  'sessions',
 ]
 
 function formatStartupError(error: unknown): string {
@@ -63,6 +66,24 @@ export function apply(ctx: ClientContextCompat): void {
     namespace: TTS_SETTINGS_NAMESPACE,
     decode: decodeSettings,
   })
+  const soundEffects = createSoundEffectsController()
+  const getSoundSettings = () => {
+    const resolved = resolveTtsSettings(scope.getSnapshot().value)
+    return {
+      enabled: resolved.soundEnabled,
+      volume: resolved.soundVolume,
+      pack: resolved.soundPack,
+      taskSounds: resolved.soundEnabled,
+      clickSounds: resolved.soundEnabled,
+    }
+  }
+  soundEffects.update(getSoundSettings())
+  ctx.effect(() => {
+    const offClick = installClickSounds(ctx, soundEffects, getSoundSettings)
+    const offTask = installTaskSoundWatcher(ctx, soundEffects, getSoundSettings)
+    const offSettings = scope.subscribe(() => { soundEffects.update(getSoundSettings()) })
+    return () => { offClick(); offTask(); offSettings(); void soundEffects.dispose() }
+  }, 'xiaomi-mimo-tts: sound effects')
   const playback = new PlaybackController()
   const live = new LiveSpeechController()
   const local = new LocalSpeechController()
@@ -77,6 +98,9 @@ export function apply(ctx: ClientContextCompat): void {
   playback.setBeforePlayback(stopOptionalPcm)
   live.setStateChangeListener((sessionId, messageId, status) => playback.updateLivePlayback(sessionId, messageId, status, 'live'))
   local.setStateChangeListener((sessionId, messageId, status, error) => playback.updateLivePlayback(sessionId, messageId, status, 'system', error))
+  const updateVoiceVolume = () => { const volume = resolveTtsSettings(scope.getSnapshot().value).voiceVolume; live.setVolume(volume); local.setVolume(volume); playback.setVolume(volume); pcmService.setVolume(volume) }
+  updateVoiceVolume()
+  ctx.effect(() => scope.subscribe(updateVoiceVolume), 'xiaomi-mimo-tts: voice volume')
 
   ctx.effect(() => async () => {
     live.setBeforePlayback(null)
@@ -115,6 +139,6 @@ export function apply(ctx: ClientContextCompat): void {
     name: 'settings.plugin.item',
     key: TTS_SETTINGS_NAMESPACE,
     locale: NS,
-    inject: () => ({ scope, t, connection: ctx.connection }),
+    inject: () => ({ scope, t, connection: ctx.connection, controller: soundEffects }),
   }, SettingsCard))
 }

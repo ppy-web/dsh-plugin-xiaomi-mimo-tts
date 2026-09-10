@@ -4,6 +4,8 @@ node_modules/
 coverage/
 .preview-dist/
 .playwright-cli/
+output/
 lib/
 .agents/
 canvas/
+tmp/

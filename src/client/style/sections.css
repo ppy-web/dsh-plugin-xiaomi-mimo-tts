@@ -1,0 +1,30 @@
+/*
+ * Settings modules: shared module surface plus the switch and API-key variants.
+ */
+
+.xmimo-tts-switch-module {
+  padding: 0;
+  border: 0;
+  background: transparent
+}
+
+.xmimo-tts-switch-module .xmimo-tts-character-control {
+  border-color: transparent;
+  border-radius: 12px;
+  box-shadow: none
+}
+
+.xmimo-tts-switch-module .xmimo-tts-character-toggle-on .xmimo-tts-character-control {
+  border-color: transparent;
+  box-shadow: none
+}
+
+.xmimo-tts-switch-module .xmimo-tts-character-portrait {
+  width: 132px;
+  height: 120px
+}
+
+.xmimo-tts-api-key>.xmimo-tts-field-heading {
+  padding-right: 70px;
+  align-items: flex-start
+}

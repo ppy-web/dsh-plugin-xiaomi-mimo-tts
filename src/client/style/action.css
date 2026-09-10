@@ -1,0 +1,38 @@
+/*
+ * Read-aloud action button in the assistant message toolbar.
+ */
+
+.xmimo-tts-action {
+  width: 28px;
+  height: 28px;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 28px;
+  justify-content: center;
+  align-items: center;
+  padding: 6px;
+  display: inline-flex
+}
+
+.xmimo-tts-action:hover,
+.xmimo-tts-action[aria-pressed=true] {
+  background: var(--dsw-alias-interactive-bg-hover, #f3f4f6);
+  color: var(--dsw-alias-label-secondary, #5f6875)
+}
+
+.xmimo-tts-action:disabled {
+  cursor: default;
+  opacity: .45
+}
+
+.xmimo-tts-spin {
+  animation: xmimo-spin 1s linear infinite
+}
+
+@keyframes xmimo-spin {
+  to {
+    transform: rotate(360deg)
+  }
+}

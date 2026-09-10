@@ -24,14 +24,22 @@ const webStopScript = await readFile(new URL('../start/dsh-web-stop.bat', import
 const webStatusScript = await readFile(new URL('../start/dsh-web-status.bat', import.meta.url), 'utf8')
 const reinstallScript = await readFile(new URL('../start/dsh-plugin-reinstall.bat', import.meta.url), 'utf8')
 const profileCleanupScript = await readFile(new URL('../start/dsh-profile-cleanup.ps1', import.meta.url), 'utf8')
-const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.url)))
+const clientSourceFiles = (await readdir(new URL('../src/client/', import.meta.url), { recursive: true }))
   .filter((name) => /\.(?:ts|tsx)$/.test(name))
   .sort()
-const clientSource = (await Promise.all(clientSourceFiles.map((name) => readFile(new URL(`../src/client/${name}`, import.meta.url), 'utf8')))).join('\n')
-const settingsCardSource = await readFile(new URL('../src/client/settings-card.tsx', import.meta.url), 'utf8')
+const clientSource = (await Promise.all(clientSourceFiles.map((name) => readFile(new URL(`../src/client/${name.replaceAll('\\', '/')}`, import.meta.url), 'utf8')))).join('\n')
+const settingsCardSource = await readFile(new URL('../src/client/settings/card.tsx', import.meta.url), 'utf8')
+const settingsSwitchSource = await readFile(new URL('../src/client/settings/switch-module.tsx', import.meta.url), 'utf8')
+const settingsApiKeySource = await readFile(new URL('../src/client/settings/api-key-module.tsx', import.meta.url), 'utf8')
+const settingsDetailsSource = await readFile(new URL('../src/client/settings/details-module.tsx', import.meta.url), 'utf8')
+const settingsPreviewSource = await readFile(new URL('../src/client/settings/preview-module.tsx', import.meta.url), 'utf8')
+const settingsSoundEffectsSource = await readFile(new URL('../src/client/settings/sound-effects-module.tsx', import.meta.url), 'utf8')
+const settingsCollapsibleSource = await readFile(new URL('../src/client/settings/collapsible-module.tsx', import.meta.url), 'utf8')
+const voiceDesignPickerSource = await readFile(new URL('../src/client/settings/controls/voice-design-picker.tsx', import.meta.url), 'utf8')
+const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, settingsDetailsSource, settingsPreviewSource, settingsSoundEffectsSource, settingsCollapsibleSource, voiceDesignPickerSource].join('\n')
 const sharedModule = await import('../lib/shared.js')
 const conversationStateModule = await import('../lib/conversation-state.js')
-const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
+const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION } = sharedModule
 const { EMPTY_LEGACY_CONVERSATION, resolveConversationCompatState } = conversationStateModule
 
 const SUPPORTED_DSH_RANGE = '0.1.1-rc.2 || 0.1.2-rc.1'
@@ -43,6 +51,7 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.scripts.prepack, 'pnpm run build && node scripts/pack-package.mjs')
   assert.equal(packageJson.scripts.postpack, 'node scripts/restore-package-scripts.mjs')
   assert.equal(packageJson.files.includes('scripts/prepare-package.mjs'), true)
+  assert.equal(packageJson.files.includes('NOTICE'), true)
   assert.equal(packageJson.scripts['build:debug'], 'tsdown -c tsdown.debug.config.ts && tsc --emitDeclarationOnly')
   assert.equal(packageJson.scripts.prepublishOnly, undefined)
   assert.equal(packageJson.scripts['release:check'], 'pnpm run test')
@@ -148,13 +157,15 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.TTS_API_KEY_STATUS_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-status')
   assert.equal(sharedModule.TTS_VOICE_DESIGN_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-presets')
   assert.equal(sharedModule.TTS_VOICE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/voice-avatars')
-  assert.equal(sharedModule.TTS_TOGGLE_CHARACTER_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/toggle-characters.png')
-  assert.equal(sharedModule.TTS_API_KEY_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-whale.png')
-  assert.equal(sharedModule.TTS_MIXER_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/mixer-whale.png')
-  assert.equal(sharedModule.TTS_PREVIEW_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/preview-whale.png')
+  assert.equal(sharedModule.TTS_TOGGLE_CHARACTER_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/toggle-characters.webp')
+  assert.equal(sharedModule.TTS_API_KEY_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/api-key-whale.webp')
+  assert.equal(sharedModule.TTS_MIXER_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/mixer-whale.webp')
+  assert.equal(sharedModule.TTS_PREVIEW_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/preview-whale.webp')
+  assert.equal(sharedModule.TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/sound-effects-whale.webp')
+  assert.equal(sharedModule.TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/sound-effect-cues.webp')
   assert.equal(sharedModule.TTS_TOGGLE_AUDIO_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/audio')
   assert.deepEqual(sharedModule.TTS_TOGGLE_SOUND_FILES, {
-    on: ['on01.mp3', 'on02.mp3', 'on03.mp3', 'on04.mp3'],
+    on: ['on01.mp3', 'on02.mp3', 'on03.mp3'],
     off: ['off01.mp3', 'off02.mp3', 'off03.mp3'],
     'auto-on': ['auto-on01.mp3', 'auto-on02.mp3', 'auto-on03.mp3'],
     'auto-off': ['auto-off01.mp3', 'auto-off02.mp3', 'auto-off03.mp3'],
@@ -270,19 +281,20 @@ test('ships one official avatar for every built-in voice', async () => {
 })
 
 test('ships the transparent four-state character toggle sheet', async () => {
-  const data = await readFile(new URL('../assets/ui/toggle-characters.png', import.meta.url))
-  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
-  assert.equal(data.readUInt32BE(16), 656)
-  assert.equal(data.readUInt32BE(20), 600)
-  assert.match(settingsCardSource, /function CharacterToggle/)
-  assert.match(settingsCardSource, /kind="voice" checked=\{enabled\}/)
-  assert.match(settingsCardSource, /kind="autoplay" checked=\{enabled && autoPlay\}/)
-  assert.match(settingsCardSource, /type="checkbox" checked=\{checked\} disabled=\{disabled\}/)
+  const data = await readFile(new URL('../assets/ui/toggle-characters.webp', import.meta.url))
+  assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(data.toString('ascii', 8, 12), 'WEBP')
+  assert.match(settingsSwitchSource, /function CharacterToggle/)
+  assert.match(settingsSwitchSource, /kind="voice" checked=\{enabled\}/)
+  assert.match(settingsSwitchSource, /kind="autoplay" checked=\{enabled && autoPlay\}/)
+  assert.match(settingsSwitchSource, /type="checkbox" checked=\{checked\} disabled=\{disabled\}/)
 })
 
 test('keeps detailed voice settings behind one collapsible panel', () => {
-  assert.match(settingsCardSource, /detailsOpen/)
-  assert.match(settingsCardSource, /aria-expanded=\{detailsOpen\}/)
+  assert.match(settingsDetailsSource, /open/)
+  assert.match(settingsDetailsSource, /<CollapsibleModule/)
+  assert.match(settingsCollapsibleSource, /aria-expanded=\{open\}/)
+  assert.match(settingsSoundEffectsSource, /<CollapsibleModule/)
 })
 
 test('exposes optional zero-impact PCM playback to third-party client plugins', () => {
@@ -304,7 +316,7 @@ test('exposes optional zero-impact PCM playback to third-party client plugins', 
 
 test('ships randomized debounced feedback sounds for both switches', async () => {
   const audioFiles = (await readdir(new URL('../assets/audio/', import.meta.url))).sort()
-  const expected = Object.values(sharedModule.TTS_TOGGLE_SOUND_FILES).flat().sort()
+  const expected = [...new Set([...Object.values(sharedModule.TTS_TOGGLE_SOUND_FILES).flat(), ...sharedModule.TTS_VOLUME_PREVIEW_FILES])].sort()
   assert.deepEqual(audioFiles, expected)
   for (const file of audioFiles) {
     const data = await readFile(new URL(`../assets/audio/${file}`, import.meta.url))
@@ -312,7 +324,7 @@ test('ships randomized debounced feedback sounds for both switches', async () =>
     assert.equal(data[0], 0xff)
     assert.equal(data[1] & 0xe0, 0xe0)
   }
-  const toggleSoundSource = await readFile(new URL('../src/client/toggle-sound-player.ts', import.meta.url), 'utf8')
+  const toggleSoundSource = await readFile(new URL('../src/client/sound-effects/toggle-sound-player.ts', import.meta.url), 'utf8')
   assert.match(toggleSoundSource, /TOGGLE_SOUND_DEBOUNCE_MS = 200/)
   assert.match(toggleSoundSource, /window\.clearTimeout\(this\.timer\)/)
   assert.match(toggleSoundSource, /Math\.random\(\)/)
@@ -324,58 +336,82 @@ test('ships randomized debounced feedback sounds for both switches', async () =>
 })
 
 test('ships the API-key whale asset used by the settings card', async () => {
-  const data = await readFile(new URL('../assets/ui/api-key-whale.png', import.meta.url))
-  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
-  assert.match(settingsCardSource, /hostRoute\(TTS_API_KEY_WHALE_ASSET_ROUTE\)/)
-  assert.match(settingsCardSource, /API_KEY_IDLE_COPY_KEYS/)
-  assert.match(settingsCardSource, /API_KEY_FOCUS_COPY_KEYS/)
-  assert.match(settingsCardSource, /onFocus=\{\(\) => \{ setApiKeyBubbleKey/)
-  assert.match(settingsCardSource, /onBlur=\{\(\) => \{ setApiKeyBubbleKey/)
+  const data = await readFile(new URL('../assets/ui/api-key-whale.webp', import.meta.url))
+  assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(data.toString('ascii', 8, 12), 'WEBP')
+  assert.match(settingsApiKeySource, /hostRoute\(TTS_API_KEY_WHALE_ASSET_ROUTE\)/)
+  assert.match(settingsApiKeySource, /API_KEY_IDLE_COPY_KEYS/)
+  assert.match(settingsApiKeySource, /API_KEY_FOCUS_COPY_KEYS/)
+  assert.match(settingsApiKeySource, /onFocus=\{\(\) => \{ setBubbleKey/)
+  assert.match(settingsApiKeySource, /onBlur=\{\(\) => \{ setBubbleKey/)
 })
 
 test('wires the Voice Design generator to its packaged whale control', async () => {
-  const data = await readFile(new URL('../assets/ui/mixer-whale.png', import.meta.url))
-  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
-  assert.match(settingsCardSource, /hostRoute\(TTS_MIXER_WHALE_ASSET_ROUTE\)/)
-  assert.match(settingsCardSource, /onPointerDown=\{\(event\) => \{ event\.stopPropagation\(\) \}\}/)
-  assert.match(settingsCardSource, /disabled=\{model !== 'mimo-v2\.5-tts-voicedesign' \|\| !snapshot\.writable \|\| voiceDesignAiState === 'loading'\}/)
+  const data = await readFile(new URL('../assets/ui/mixer-whale.webp', import.meta.url))
+  assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(data.toString('ascii', 8, 12), 'WEBP')
+  assert.match(settingsDetailsSource, /hostRoute\(TTS_MIXER_WHALE_ASSET_ROUTE\)/)
+  assert.match(settingsDetailsSource, /onPointerDown=\{\(event\) => \{ event\.stopPropagation\(\) \}\}/)
+  assert.match(settingsDetailsSource, /disabled=\{model !== 'mimo-v2\.5-tts-voicedesign' \|\| !writable \|\| voiceDesignAiState === 'loading'\}/)
 })
 
 test('announces preview playback status accessibly', () => {
-  assert.match(settingsCardSource, /aria-live="polite">\{t\(previewMessageKey\)\}/)
-  assert.match(settingsCardSource, /xmimo-tts-character-bubble xmimo-tts-preview-status/)
-  assert.match(settingsCardSource, /\{enabled \? <section className="xmimo-tts-settings-module xmimo-tts-preview">/)
+  assert.match(settingsPreviewSource, /aria-live="polite">\{t\(messageKey\)\}/)
+  assert.match(settingsPreviewSource, /xmimo-tts-character-bubble xmimo-tts-preview-status/)
+  assert.match(settingsCardSource, /\{enabled \? <PreviewModule/)
   assert.match(settingsCardSource, /if \(!next\) \{\s+previewPlayer\.stop\(\)/)
 })
 
 test('ships the preview whale asset used by the settings card', async () => {
-  const data = await readFile(new URL('../assets/ui/preview-whale.png', import.meta.url))
-  assert.equal(data.toString('hex', 0, 8), '89504e470d0a1a0a')
-  assert.match(settingsCardSource, /hostRoute\(TTS_PREVIEW_WHALE_ASSET_ROUTE\)/)
+  const data = await readFile(new URL('../assets/ui/preview-whale.webp', import.meta.url))
+  assert.equal(data.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(data.toString('ascii', 8, 12), 'WEBP')
+  assert.match(settingsPreviewSource, /hostRoute\(TTS_PREVIEW_WHALE_ASSET_ROUTE\)/)
+})
+
+test('ships the generated sound-effects whale assets', async () => {
+  const header = await readFile(new URL('../assets/ui/sound-effects-whale.webp', import.meta.url))
+  const cues = await readFile(new URL('../assets/ui/sound-effect-cues.webp', import.meta.url))
+  assert.equal(header.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(header.toString('ascii', 8, 12), 'WEBP')
+  assert.equal(cues.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(cues.toString('ascii', 8, 12), 'WEBP')
+  assert.match(host, /xiaomi-mimo-tts: sound effects whale asset/)
+  assert.match(host, /xiaomi-mimo-tts: sound effect cue asset/)
 })
 
 test('model picker uses a compact two-button toggle', () => {
-  assert.match(settingsCardSource, /function ModelPicker/)
-  assert.doesNotMatch(settingsCardSource, /<select value=\{model\}/)
-  assert.match(settingsCardSource, /className="xmimo-tts-model-switch" role="group"/)
-  assert.match(settingsCardSource, /aria-pressed=\{option\.value === value\}/)
+  assert.match(settingsDetailsSource, /function ModelPicker/)
+  assert.doesNotMatch(settingsDetailsSource, /<select value=\{model\}/)
+  assert.match(settingsDetailsSource, /className="xmimo-tts-model-switch" role="group"/)
+  assert.match(settingsDetailsSource, /aria-pressed=\{option\.value === value\}/)
 })
 
 test('build emits declarations only for the private client modules', async () => {
   const clientArtifacts = (await readdir(new URL('../lib/client', import.meta.url))).sort()
-  assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map')))
-  assert.deepEqual(
-    clientArtifacts.filter((name) => name.endsWith('.d.ts')),
-    ['built-in-voice-picker.d.ts', 'conversation-state.d.ts', 'conversation.d.ts', 'dsh-compat.d.ts', 'index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'local-voice-picker.d.ts', 'localization.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'playback-types.d.ts', 'playback.d.ts', 'preview-player.d.ts', 'settings-card.d.ts', 'settings-scope.d.ts', 'styles.d.ts', 'toggle-sound-player.d.ts', 'voice-design-picker.d.ts'],
-  )
+  assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map') || ['conversation', 'playback', 'settings', 'sound-effects', 'style'].includes(name)))
+  assert.deepEqual(clientArtifacts.filter((name) => name.endsWith('.d.ts')), ['dsh-compat.d.ts', 'host-route.d.ts', 'index.d.ts', 'localization.d.ts'])
+  const expectedDeclarations = {
+    conversation: ['read-aloud.d.ts', 'state.d.ts'],
+    playback: ['index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'preview-player.d.ts', 'types.d.ts'],
+    settings: ['api-key-module.d.ts', 'card.d.ts', 'collapsible-module.d.ts', 'details-module.d.ts', 'field-heading.d.ts', 'preview-module.d.ts', 'scope.d.ts', 'sound-effects-module.d.ts', 'switch-module.d.ts', 'types.d.ts'],
+    'sound-effects': ['click-classifier.d.ts', 'index.d.ts', 'task-watcher.d.ts', 'toggle-sound-player.d.ts', 'types.d.ts'],
+    style: ['index.d.ts'],
+  }
+  for (const [directory, expected] of Object.entries(expectedDeclarations)) {
+    const artifacts = (await readdir(new URL(`../lib/client/${directory}`, import.meta.url))).sort()
+    assert.deepEqual(artifacts.filter((name) => name.endsWith('.d.ts')), expected, directory)
+  }
+  const controls = (await readdir(new URL('../lib/client/settings/controls', import.meta.url))).sort()
+  assert.deepEqual(controls.filter((name) => name.endsWith('.d.ts')), ['built-in-voice-picker.d.ts', 'energy-volume-slider.d.ts', 'local-voice-picker.d.ts', 'voice-design-picker.d.ts'])
 })
 
 test('keeps the client entry focused on DSH composition', async () => {
   const entry = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
   assert.ok(entry.split(/\r?\n/).length < 150)
-  assert.match(entry, /from '\.\/playback\.js'/)
-  assert.match(entry, /from '\.\/conversation\.js'/)
-  assert.match(entry, /from '\.\/settings-card\.js'/)
+  assert.match(entry, /from '\.\/playback\/index\.js'/)
+  assert.match(entry, /from '\.\/conversation\/read-aloud\.js'/)
+  assert.match(entry, /from '\.\/settings\/card\.js'/)
   assert.doesNotMatch(entry, /class PcmAudioQueue/)
   assert.doesNotMatch(entry, /function SettingsCard/)
 })
@@ -396,17 +432,17 @@ test('resolves the Voice Design settings without exposing a preset voice in the 
   assert.equal(resolved.voiceDesignCustomPrompt, '青年女性，清亮自然，语速适中。')
   assert.match(client, /mimo-v2\.5-tts-voicedesign/)
   assert.match(client, /model === ["']mimo-v2\.5-tts-voicedesign["']/)
-  assert.match(clientSource, /model === 'mimo-v2\.5-tts' \? <>/)
+  assert.match(settingsModulesSource, /model === 'mimo-v2\.5-tts' \? <>/)
   assert.match(client, /CUSTOM_VOICE_DESIGN_OPTION = ["']__custom__["']/)
-  assert.match(clientSource, /function VoiceDesignPresetPicker/)
-  assert.match(clientSource, /aria-haspopup="listbox"/)
-  assert.match(clientSource, /role="option"/)
-  assert.match(clientSource, /TTS_VOICE_DESIGN_ASSET_ROUTE/)
-  assert.match(clientSource, /value=\{isPresetVoiceDesignPrompt\(voiceDesignPrompt\) \? voiceDesignPrompt : CUSTOM_VOICE_DESIGN_OPTION\}/)
+  assert.match(settingsModulesSource, /function VoiceDesignPresetPicker/)
+  assert.match(settingsModulesSource, /aria-haspopup="listbox"/)
+  assert.match(settingsModulesSource, /role="option"/)
+  assert.match(settingsModulesSource, /TTS_VOICE_DESIGN_ASSET_ROUTE/)
+  assert.match(settingsModulesSource, /value=\{isPresetVoiceDesignPrompt\(voiceDesignPrompt\) \? voiceDesignPrompt : CUSTOM_VOICE_DESIGN_OPTION\}/)
   assert.match(client, /setVoiceDesignCustomPrompt\(next\)/)
   assert.match(client, /voiceDesignCustomPrompt/)
   assert.match(clientSource, /useState\(initial\.format\)/)
-  assert.match(clientSource, /<BuiltInVoicePicker value=\{voice\}/)
+  assert.match(settingsModulesSource, /<BuiltInVoicePicker value=\{voice\}/)
   assert.match(clientSource, /TTS_VOICE_ASSET_ROUTE/)
   assert.doesNotMatch(client, /xmimo-tts-select-column/)
 })
@@ -434,6 +470,15 @@ test('keeps default VoiceDesign segments conservative', () => {
 test('resolves complete VoiceDesign playback by default', () => {
   assert.equal(resolveTtsSettings({}).voiceDesignPlaybackMode, 'complete')
   assert.equal(resolveTtsSettings({ voiceDesignPlaybackMode: 'segmented' }).voiceDesignPlaybackMode, 'segmented')
+  assert.equal(resolveTtsSettings({ voiceDesignPlaybackMode: 'first-segment' }).voiceDesignPlaybackMode, 'first-segment')
+})
+
+test('selects only the first VoiceDesign segment for first-segment playback', () => {
+  const text = Array.from({ length: 16 }, (_, index) => `第${index + 1}句内容足够长，用于验证首段朗读。`).join('')
+  const segments = splitTtsSegments(text)
+  assert.ok(segments.length > 1)
+  assert.equal(firstTtsSegment(text), segments[0])
+  assert.ok(firstTtsSegment(text).length < prepareTtsText(text).length)
 })
 
 test('keeps Markdown link labels while removing links, URLs, paths, and code blocks', () => {
@@ -691,10 +736,12 @@ test('both MiMo models share persistent bidirectional browser-speech fallback', 
   assert.match(clientSource, /\(source === 'live' \|\| source === 'system'\) && \(status === 'loading' \|\| status === 'playing' \|\| status === 'paused'\)/)
   assert.match(clientSource, /playCompletedReply\(false\)/)
   assert.doesNotMatch(clientSource, /<option value="browser-local-fallback">/)
-  assert.equal((clientSource.match(/<LocalVoicePicker /g) ?? []).length, 1)
-  assert.match(settingsCardSource, /xmimo-tts-settings-module xmimo-tts-api-key xmimo-tts-wide[\s\S]*\{enabled \? <section className="xmimo-tts-settings-module xmimo-tts-details xmimo-tts-wide"[\s\S]*<LocalVoicePicker /)
+  assert.equal((settingsDetailsSource.match(/<LocalVoicePicker /g) ?? []).length, 1)
+  assert.match(settingsCardSource, /<div className="xmimo-tts-card-body xmimo-ui-stack">\s*<SwitchModule[\s\S]*<ApiKeyModule/)
+  assert.doesNotMatch(settingsCardSource, /xmimo-tts-grid xmimo-tts-sections xmimo-ui-grid/)
+  assert.match(settingsCardSource, /\{enabled \? <DetailsModule[\s\S]*\/> : null\}/)
   assert.match(clientSource, /useApiKeySupported\(resolvedSettings\.localSpeechMode !== 'disabled'\)/)
-  assert.match(clientSource, /playback\.segmented\(sessionId, messageId, text, automatic, resolvedSettings\.localSpeechMode === 'auto'/)
+  assert.match(clientSource, /playback\.segmented\(sessionId, messageId, voiceDesignPlaybackText, automatic, resolvedSettings\.localSpeechMode === 'auto'/)
   assert.match(clientSource, /if \(!audioStarted && fallback !== undefined\) \{\s*this\.segmentedState = null\s*this\.publish\(this\.emptyView\(\)\)\s*fallback\(\)/)
   assert.doesNotMatch(clientSource, /fallbackAllowed/)
   assert.doesNotMatch(clientSource, /getVoices\(\)\.filter\(\(voice\) => voice\.localService === true\)/)

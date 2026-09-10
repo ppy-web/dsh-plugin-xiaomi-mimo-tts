@@ -1,0 +1,50 @@
+/*
+ * Voice-design details module: collapsible header, summary chip, collapse animation.
+ */
+
+.xmimo-tts-details {
+  padding: 0 !important;
+}
+
+.xmimo-tts-details-toggle {
+  min-height: 70px;
+}
+
+.xmimo-tts-details-heading {
+  flex: 1;
+  white-space: normal
+}
+
+.xmimo-tts-details-heading>strong {
+  flex: none;
+  font-size: 14px;
+  font-weight: 650
+}
+
+.xmimo-tts-details-summary {
+  flex: 1;
+  flex-wrap: nowrap;
+}
+
+.xmimo-tts-details-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 220ms ease, opacity 160ms ease
+}
+
+.xmimo-tts-details-collapse-open {
+  grid-template-rows: 1fr;
+  opacity: 1
+}
+
+.xmimo-tts-details-body {
+  min-height: 0;
+  overflow: hidden
+}
+
+.xmimo-tts-details-body>* {
+  padding-right: 16px;
+  padding-left: 16px;
+  border-top: 0
+}

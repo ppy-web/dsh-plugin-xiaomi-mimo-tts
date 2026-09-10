@@ -1,6 +1,18 @@
 /** Settings namespace used by the Host and Web client. */
 export const TTS_SETTINGS_NAMESPACE = 'xiaomi-mimo-tts'
 
+/** Sound packs migrated from uisfx 0.4.0. */
+export const SOUND_PACKS = ['minimal', 'soft', 'glass', 'arcade', 'mechanical', 'organic', 'dreamy', 'scifi', 'rubber', 'cinematic', 'studio', 'zen'] as const
+export type SoundPack = typeof SOUND_PACKS[number]
+
+export const DEFAULT_SOUND_SETTINGS = {
+  soundEnabled: true,
+  soundVolume: 0.35,
+  soundPack: 'zen' as SoundPack,
+  taskSounds: true,
+  clickSounds: true,
+}
+
 /** Same-origin route used by the Web client to request synthesized audio. */
 export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 
@@ -62,6 +74,9 @@ export function isNewerTtsVersion(candidate: string, current: string): boolean {
 /** Same-origin route that reports API key configuration status without exposing the key. */
 export const TTS_API_KEY_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-status'
 
+/** Same-origin route used by the Web client to load the MiMo brand logo. */
+export const TTS_MIMO_LOGO_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/mimo.svg'
+
 /** Same-origin prefix used by the Web client to load voice-design preset icons. */
 export const TTS_VOICE_DESIGN_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-presets'
 
@@ -69,29 +84,38 @@ export const TTS_VOICE_DESIGN_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-pres
 export const TTS_VOICE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-avatars'
 
 /** Same-origin route used by the Web client to load the four-state character toggle sheet. */
-export const TTS_TOGGLE_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/toggle-characters.png'
+export const TTS_TOGGLE_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/toggle-characters.webp'
 
 /** Same-origin route used by the Web client to load the API-key whale mascot sheet. */
-export const TTS_API_KEY_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-whale.png'
+export const TTS_API_KEY_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-whale.webp'
 
 /** Same-origin route used by the Web client to load the mixing-console whale mascot sheet. */
-export const TTS_MIXER_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/mixer-whale.png'
+export const TTS_MIXER_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/mixer-whale.webp'
 
 /** Same-origin route used by the Web client to load the preview play/pause whale mascot sheet. */
-export const TTS_PREVIEW_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/preview-whale.png'
+export const TTS_PREVIEW_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/preview-whale.webp'
+
+/** Same-origin route used by the Web client to load the sound-effects header mascot. */
+export const TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/sound-effects-whale.webp'
+
+/** Same-origin route used by the Web client to load the five sound preview mascots. */
+export const TTS_SOUND_EFFECT_CUES_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/sound-effect-cues.webp'
 
 /** Same-origin prefix used by the Web client to load switch feedback sounds. */
 export const TTS_TOGGLE_AUDIO_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/audio'
 
 /** Bundled switch feedback sounds grouped by the state they announce. */
 export const TTS_TOGGLE_SOUND_FILES = {
-  on: ['on01.mp3', 'on02.mp3', 'on03.mp3', 'on04.mp3'],
+  on: ['on01.mp3', 'on02.mp3', 'on03.mp3'],
   off: ['off01.mp3', 'off02.mp3', 'off03.mp3'],
   'auto-on': ['auto-on01.mp3', 'auto-on02.mp3', 'auto-on03.mp3'],
   'auto-off': ['auto-off01.mp3', 'auto-off02.mp3', 'auto-off03.mp3'],
 } as const
 
 export type TtsToggleSoundKind = keyof typeof TTS_TOGGLE_SOUND_FILES
+
+/** Bundled sounds used to preview the currently selected voice or UI volume. */
+export const TTS_VOLUME_PREVIEW_FILES = ['volume-01.mp3', 'volume-02.mp3', 'on02.mp3'] as const
 
 /** Default Xiaomi endpoint for Token Plan API keys. */
 export const TOKEN_PLAN_TTS_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
@@ -141,7 +165,7 @@ export const TTS_FORMATS = ['pcm', 'mp3', 'wav'] as const
 export type TtsFormat = typeof TTS_FORMATS[number]
 
 /** Voice-design playback strategies. Segmented playback keeps each upstream request short. */
-export const TTS_VOICE_DESIGN_PLAYBACK_MODES = ['complete', 'segmented'] as const
+export const TTS_VOICE_DESIGN_PLAYBACK_MODES = ['complete', 'segmented', 'first-segment'] as const
 
 export type TtsVoiceDesignPlaybackMode = typeof TTS_VOICE_DESIGN_PLAYBACK_MODES[number]
 
@@ -373,6 +397,11 @@ export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHA
   return segments
 }
 
+/** Return only the first semantic segment for low-latency VoiceDesign playback. */
+export function firstTtsSegment(value: string): string {
+  return splitTtsSegments(value)[0] ?? ''
+}
+
 /** Return the exact decoded size of canonical padded Base64, or null when invalid. */
 export function strictBase64DecodedLength(value: string): number | null {
   if (value.length === 0 || value.length % 4 !== 0) return null
@@ -504,6 +533,12 @@ export interface TtsSettings {
   maxMp3AudioBytes?: number
   maxWavAudioBytes?: number
   maxPausedPcmBytes?: number
+  voiceVolume?: number
+  soundEnabled?: boolean
+  soundVolume?: number
+  soundPack?: SoundPack
+  taskSounds?: boolean
+  clickSounds?: boolean
 }
 
 export interface ResolvedTtsSettings {
@@ -526,6 +561,12 @@ export interface ResolvedTtsSettings {
   maxMp3AudioBytes: number
   maxWavAudioBytes: number
   maxPausedPcmBytes: number
+  voiceVolume: number
+  soundEnabled: boolean
+  soundVolume: number
+  soundPack: SoundPack
+  taskSounds: boolean
+  clickSounds: boolean
 }
 
 /** Defaults shared by the Schemastery config and the Web settings form. */
@@ -549,6 +590,8 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   maxMp3AudioBytes: DEFAULT_MAX_MP3_AUDIO_BYTES,
   maxWavAudioBytes: DEFAULT_MAX_WAV_AUDIO_BYTES,
   maxPausedPcmBytes: DEFAULT_MAX_PAUSED_PCM_BYTES,
+  voiceVolume: 1,
+  ...DEFAULT_SOUND_SETTINGS,
 }
 
 /** Select the Xiaomi endpoint from the API key while preserving custom settings for other keys. */
@@ -567,6 +610,12 @@ export function isSupportedTtsApiKey(apiKey: string): boolean {
 /** Resolve an optional settings snapshot into the values used by the form. */
 export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsSettings {
   const resolved = { ...DEFAULT_TTS_SETTINGS, ...value }
+  const soundVolume = Number.isFinite(resolved.soundVolume)
+    ? Math.max(0, Math.min(1, resolved.soundVolume))
+    : DEFAULT_SOUND_SETTINGS.soundVolume
+  const voiceVolume = Number.isFinite(resolved.voiceVolume)
+    ? Math.max(0, Math.min(1, resolved.voiceVolume))
+    : DEFAULT_TTS_SETTINGS.voiceVolume
   const model = resolved.model === 'browser-local-fallback' ? 'mimo-v2.5-tts' : resolved.model
   const voiceDesignCustomPrompt = typeof value?.voiceDesignCustomPrompt === 'string'
     ? value.voiceDesignCustomPrompt
@@ -578,5 +627,8 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     model,
     voiceDesignCustomPrompt,
     autoPlay: resolved.enabled ? resolved.autoPlay : false,
+    soundVolume,
+    voiceVolume,
+    soundPack: SOUND_PACKS.includes(resolved.soundPack) ? resolved.soundPack : DEFAULT_SOUND_SETTINGS.soundPack,
   }
 }

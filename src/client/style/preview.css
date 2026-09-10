@@ -1,0 +1,109 @@
+/*
+ * TTS preview: text input, whale play button, status.
+ */
+
+.xmimo-tts-preview {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.xmimo-tts-preview-title {
+  display: block;
+  min-height: 20px;
+  padding-right: 58px;
+  color: var(--xmimo-ui-text);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 20px
+}
+
+.xmimo-tts-preview-whale-button {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 200% 100%;
+  cursor: pointer;
+  filter: saturate(.92);
+  transform-origin: bottom center;
+  transition: filter 160ms ease, transform 160ms ease
+}
+
+.xmimo-tts-preview-whale-button:hover:not(:disabled) {
+  filter: saturate(1.08)
+}
+
+.xmimo-tts-preview-whale-button:active:not(:disabled) {
+  transform: translateY(1px) scale(.97)
+}
+
+.xmimo-tts-preview-whale-button:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  outline-offset: 1px;
+  border-radius: 45%
+}
+
+.xmimo-tts-preview-whale-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(.45);
+  opacity: .5
+}
+
+.xmimo-tts-preview-whale-button-active {
+  background-position: right center
+}
+
+.xmimo-tts-preview-status {
+  color: var(--dsw-alias-label-secondary, #5f6875)
+}
+
+.xmimo-tts-preview-status.xmimo-tts-failed {
+  border-color: var(--dsw-alias-border-l2, #d7dbe2);
+  color: var(--dsw-alias-state-error-primary, #dc2626)
+}
+
+.xmimo-tts-preview+.xmimo-tts-card-actions {
+  border-top: 0
+}
+
+.xmimo-tts-preview-input {
+  position: relative
+}
+
+.xmimo-tts-preview-input>textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: var(--xmimo-ui-control-radius);
+  padding: 8px;
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-surface);
+  font: inherit;
+  line-height: 20px
+}
+
+.xmimo-tts-preview-input>textarea:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  outline-offset: 1px
+}
+
+.xmimo-tts-api-key-input>.xmimo-tts-api-key-whale,
+.xmimo-tts-preview-input>.xmimo-tts-preview-whale-button {
+  top: auto;
+  right: 8px;
+  bottom: calc(100% - 6px);
+  width: 56px;
+  height: 56px;
+  transform-origin: bottom center
+}
+
+.xmimo-tts-preview-input>.xmimo-tts-preview-whale-button:hover:not(:disabled) {
+  transform: scale(1.03)
+}

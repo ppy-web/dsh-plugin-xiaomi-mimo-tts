@@ -1,0 +1,54 @@
+/*
+ * API key input row: the input, the whale mascot and its speech bubble.
+ */
+
+.xmimo-tts-api-key-input {
+  position: relative;
+  display: flex
+}
+
+.xmimo-tts-api-key-input>input {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  z-index: 1
+}
+
+.xmimo-tts-api-key-whale {
+  position: absolute;
+  z-index: 2;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 200% 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(15, 23, 42, .16));
+  transition: transform 160ms ease, filter 160ms ease
+}
+
+.xmimo-tts-api-key-input:focus-within .xmimo-tts-api-key-whale {
+  background-position: right center;
+  transform: translateY(1px) scale(.97);
+  filter: drop-shadow(0 2px 3px rgba(15, 23, 42, .12))
+}
+
+.xmimo-tts-character-bubble {
+  position: absolute;
+  z-index: 3;
+  right: 62px;
+  bottom: calc(100% + 7px);
+  max-width: calc(100% - 82px);
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  color: var(--dsw-alias-label-secondary, #5f6875);
+  background: var(--dsw-alias-bg-layer-1, #fff);
+  font-size: 11px;
+  line-height: 16px;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, .12);
+  text-overflow: ellipsis;
+  white-space: nowrap
+}

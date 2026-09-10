@@ -1,0 +1,143 @@
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+import test from 'node:test'
+
+const shared = await import('../lib/shared.js')
+const clickClassifier = await readFile(new URL('../src/client/sound-effects/click-classifier.ts', import.meta.url), 'utf8')
+const taskWatcher = await readFile(new URL('../src/client/sound-effects/task-watcher.ts', import.meta.url), 'utf8')
+const soundIndex = await readFile(new URL('../src/client/sound-effects/index.ts', import.meta.url), 'utf8')
+const soundTypes = await readFile(new URL('../src/client/sound-effects/types.ts', import.meta.url), 'utf8')
+const soundSettings = await readFile(new URL('../src/client/settings/sound-effects-module.tsx', import.meta.url), 'utf8')
+const soundStyles = await readFile(new URL('../src/client/style/sound.css', import.meta.url), 'utf8')
+const soundRuntime = await import('../src/client/sound-effects/runtime.js')
+const localization = await readFile(new URL('../src/client/localization.ts', import.meta.url), 'utf8')
+const clientEntry = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
+const pcmQueue = await readFile(new URL('../src/client/playback/pcm-audio-queue.ts', import.meta.url), 'utf8')
+const playback = await readFile(new URL('../src/client/playback/playback-controller.ts', import.meta.url), 'utf8')
+const previewPlayer = await readFile(new URL('../src/client/playback/preview-player.ts', import.meta.url), 'utf8')
+const localSpeech = await readFile(new URL('../src/client/playback/local-speech-controller.ts', import.meta.url), 'utf8')
+const settingsCard = await readFile(new URL('../src/client/settings/card.tsx', import.meta.url), 'utf8')
+const settingsDetails = await readFile(new URL('../src/client/settings/details-module.tsx', import.meta.url), 'utf8')
+const energySlider = await readFile(new URL('../src/client/settings/controls/energy-volume-slider.tsx', import.meta.url), 'utf8')
+const toggleSound = await readFile(new URL('../src/client/sound-effects/toggle-sound-player.ts', import.meta.url), 'utf8')
+
+test('sound effects expose migrated packs and safe defaults', () => {
+  assert.deepEqual(shared.SOUND_PACKS, ['minimal', 'soft', 'glass', 'arcade', 'mechanical', 'organic', 'dreamy', 'scifi', 'rubber', 'cinematic', 'studio', 'zen'])
+  assert.equal(shared.DEFAULT_TTS_SETTINGS.soundEnabled, true)
+  assert.equal(shared.DEFAULT_TTS_SETTINGS.soundVolume, 0.35)
+  assert.equal(shared.DEFAULT_TTS_SETTINGS.soundPack, 'zen')
+})
+
+test('sound runtime keeps all selectable packs but only ships plugin cues', () => {
+  assert.deepEqual(soundRuntime.packNames, shared.SOUND_PACKS)
+  assert.deepEqual(soundRuntime.cueNames, ['press', 'select', 'toggle-on', 'toggle-off', 'check', 'delete', 'open', 'close', 'send', 'notification', 'success', 'error', 'start', 'stop', 'complete', 'queued'])
+})
+
+test('click classification covers semantic controls and disabled controls', () => {
+  assert.match(clickClassifier, /button, a, \[role='button'\], \[role='switch'\], \[role='checkbox'\]/)
+  assert.match(clickClassifier, /element\.disabled/)
+  assert.match(clickClassifier, /aria-checked/)
+  assert.match(clickClassifier, /return 'stop'/)
+  assert.match(clickClassifier, /停止\(\?:生成\|任务\|语音\|朗读\)/)
+  assert.match(clickClassifier, /取消\(\?:语音\)\?生成/)
+  assert.match(clickClassifier, /if \(currentState\?\.toLowerCase\(\) === 'true'\) return 'toggle-off'/)
+  assert.match(clickClassifier, /return 'send'/)
+  assert.match(clickClassifier, /return 'delete'/)
+  assert.match(clickClassifier, /return 'toggle-on'/)
+  assert.match(clickClassifier, /return 'toggle-off'/)
+  assert.match(clickClassifier, /if \(\/关闭\|取消\|close\|cancel\/.+return 'close'/s)
+  assert.match(clickClassifier, /return 'open'/)
+})
+
+test('registers the three additional runtime cues and keeps sound-off as a hard guard', () => {
+  for (const cue of ['stop', 'queued', 'toggle-off']) {
+    assert.match(soundTypes, new RegExp(`'${cue}'`))
+    assert.match(soundIndex, new RegExp(`'${cue}'`))
+  }
+  assert.equal((soundIndex.match(/if \(!settings\.enabled \|\| !VALID_CUES\.has\(cue\)\) return/g) ?? []).length, 2)
+})
+
+test('task watcher implements current-session lifecycle boundaries and cleanup', () => {
+  assert.match(clientEntry, /'sessions'/)
+  assert.match(taskWatcher, /running && !lastRunning/)
+  assert.match(taskWatcher, /lastAgentError != null \|\| hasTurnError\(\)/)
+  assert.match(taskWatcher, /pending > lastPending/)
+  assert.match(taskWatcher, /pending > lastPending\) controller\.play\('queued'\)/)
+  assert.doesNotMatch(taskWatcher, /pending > lastPending\) controller\.play\('notification'\)/)
+  assert.match(taskWatcher, /sessions\.list\.subscribe/)
+  assert.match(taskWatcher, /window\.clearTimeout\(retryTimer\)/)
+  assert.match(taskWatcher, /unbind\(\)/)
+})
+
+test('sound controller is local-only and disposes the Web Audio player', () => {
+  assert.doesNotMatch(soundIndex, /fetch\(/)
+  assert.match(soundIndex, /createUISFX\(/)
+  assert.match(soundIndex, /await current\.destroy\(\)/)
+  assert.match(soundIndex, /document\.addEventListener\('pointerdown'/)
+})
+
+test('sound settings preview locally and save only through the settings card', () => {
+  assert.doesNotMatch(soundSettings, /scope\.set\(/)
+  assert.match(soundSettings, /onEnabledChange\(next\)/)
+  assert.match(soundSettings, /onVolumeChange\(value\)/)
+  assert.match(soundSettings, /onPackChange\(nextPack\)/)
+  assert.match(soundSettings, /controller\.update\(\{ enabled, volume, pack: nextPack, taskSounds, clickSounds \}\)/)
+  assert.match(settingsCard, /'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds'/)
+  assert.match(settingsCard, /await scope\.set\(field, draft\[field\]\)/)
+  assert.match(settingsCard, /<SoundEffectsPanel[\s\S]*onEnabledChange=/)
+  assert.match(settingsCard, /setSoundEffectsOpen\(false\)/)
+  assert.match(settingsCard, /open=\{soundEffectsOpen\}/)
+  assert.match(clientEntry, /taskSounds: resolved\.soundEnabled/)
+  assert.match(clientEntry, /clickSounds: resolved\.soundEnabled/)
+  assert.match(soundSettings, /aria-pressed=\{enabled\}/)
+  assert.match(soundSettings, /onClick=\{\(\) => \{ setEnabled\(!enabled\) \}\}/)
+  assert.match(soundSettings, /useEffect\(\(\) => \{[\s\S]*controller\.update\(\{[\s\S]*pack,[\s\S]*\}\)/)
+  assert.match(soundSettings, /data-xmimo-sound-pack-option="true"/)
+  assert.match(soundSettings, /controller\.update\(\{ enabled, volume, pack: nextPack, taskSounds, clickSounds \}\)[\s\S]*controller\.play\('press'\)/)
+  assert.match(soundSettings, /\{ cue: 'press', position: '100%' \}/)
+  assert.doesNotMatch(soundSettings, /packStatus|soundEffectsPackApplying|soundEffectsPackSelected|soundEffectsPackChangeFailed/)
+  assert.doesNotMatch(soundStyles, /xmimo-tts-sound-pack-status/)
+  assert.doesNotMatch(localization, /soundEffectsPackApplying|soundEffectsPackSelected|soundEffectsPackChangeFailed/)
+  assert.match(clickClassifier, /data-xmimo-sound-preview/)
+  assert.match(clickClassifier, /data-xmimo-sound-pack-option/)
+})
+
+test('format and speech strategy radio cards classify changes as selection sounds', () => {
+  assert.match(settingsDetails, /data-xmimo-select-option="true"/)
+  assert.match(clickClassifier, /target\.closest<HTMLElement>\('\[data-xmimo-select-option\]'\)/)
+  assert.match(clickClassifier, /if \(radio\?\.disabled\) return null/)
+})
+
+test('keeps five preview buttons and lists every supported sound below them', () => {
+  const previewBlock = soundSettings.match(/const PREVIEW_CUES = \[([\s\S]*?)\] as const/)?.[1] ?? ''
+  assert.deepEqual([...previewBlock.matchAll(/\{ cue: '([^']+)'/g)].map((match) => match[1]), ['start', 'complete', 'error', 'notification', 'press'])
+})
+
+test('voice volume is clamped, persisted, and reaches every generated-audio playback path', () => {
+  assert.equal(shared.DEFAULT_TTS_SETTINGS.voiceVolume, 1)
+  assert.equal(shared.resolveTtsSettings({ voiceVolume: -1 }).voiceVolume, 0)
+  assert.equal(shared.resolveTtsSettings({ voiceVolume: 2 }).voiceVolume, 1)
+  assert.match(settingsCard, /'voiceVolume'/)
+  assert.match(settingsDetails, /<EnergyVolumeSlider value=\{voiceVolume\}/)
+  assert.match(pcmQueue, /source\.connect\(this\.getGain\(context\)\)/)
+  assert.match(pcmQueue, /linearRampToValueAtTime\(this\.volume, now \+ \.02\)/)
+  assert.match(playback, /audio\.volume = this\.volume/)
+  assert.match(previewPlayer, /this\.pcm\.setVolume\(this\.volume\)/)
+  assert.match(localSpeech, /utterance\.volume = this\.volume/)
+  assert.match(clientEntry, /updateVoiceVolume/)
+  assert.match(energySlider, /data-high=\{normalized > \.85\}/)
+  assert.match(toggleSound, /setVolume\(value: number\)/)
+  assert.match(toggleSound, /previewVolume\(value: number\)/)
+  assert.match(toggleSound, /TTS_VOLUME_PREVIEW_FILES/)
+  assert.match(toggleSound, /this\.volumePreviewAudio !== null \|\| typeof window === 'undefined'/)
+  assert.match(toggleSound, /if \(this\.audio !== null\) this\.audio\.volume = this\.volume/)
+  assert.match(toggleSound, /audio\.volume = this\.volume/)
+  assert.match(energySlider, /onInteractionEnd\?: \(value: number\) => void/)
+  assert.match(energySlider, /onInteractionEnd\?\.\(latestValueRef\.current\)/)
+  assert.match(settingsCard, /toggleSoundPlayer\.previewVolume\(next\)/)
+  assert.match(soundIndex, /setVolume\(value\)/)
+  assert.match(soundIndex, /getPlayer\(\)\.play\('check', \{ retrigger: 'ignore' \}\)/)
+  assert.match(soundSettings, /controller\.setVolume\(value\)/)
+  assert.match(soundSettings, /onInteractionEnd=\{\(\) => \{ controller\.previewVolume\(\) \}\}/)
+  assert.doesNotMatch(soundSettings, /TTS_VOLUME_PREVIEW_FILES/)
+})

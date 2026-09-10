@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
-import { SettingsCard } from '../src/client/settings-card.js'
-import { CLIENT_STYLES } from '../src/client/styles.js'
+import { SettingsCard } from '../src/client/settings/card.js'
+import { createSoundEffectsController } from '../src/client/sound-effects/index.js'
+import { CLIENT_STYLES } from '../src/client/style/index.js'
 import { en, zh } from '../src/client/localization.js'
 import type { LocaleKey, Translate } from '../src/client/localization.js'
 import {
@@ -17,8 +18,9 @@ type PreviewTheme = 'light' | 'dark'
 
 const scope = new PreviewSettingsScope()
 const uninstallPreviewFetch = installPreviewFetch(scope)
+const soundEffects = createSoundEffectsController()
 
-if (import.meta.hot) import.meta.hot.dispose(uninstallPreviewFetch)
+if (import.meta.hot) import.meta.hot.dispose(() => { uninstallPreviewFetch(); void soundEffects.dispose() })
 
 const rpc = {
   async call(channel: string, endpoint: string, payload: unknown): Promise<unknown> {
@@ -113,7 +115,7 @@ function PreviewApp() {
         这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。远程语音、卸载和保存均为本地模拟。
       </div>
       <ul className="preview-settings-list" ref={listRef} key={instance}>
-        <SettingsCard scope={scope} t={t} connection={{ rpc }} />
+        <SettingsCard scope={scope} t={t} connection={{ rpc }} controller={soundEffects} />
       </ul>
     </main>
     <style>{CLIENT_STYLES}</style>
