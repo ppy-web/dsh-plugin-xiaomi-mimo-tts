@@ -76,6 +76,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
   const [open, setOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [soundEffectsOpen, setSoundEffectsOpen] = useState(false)
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>('idle')
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewStatus))
@@ -261,6 +262,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
 
   const save = async (): Promise<void> => {
     setDetailsOpen(false)
+    setSoundEffectsOpen(false)
     setState('saving')
     try {
       for (const field of EDITABLE_SETTING_FIELDS) {
@@ -435,6 +437,8 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           taskSounds={taskSounds}
           clickSounds={clickSounds}
           writable={snapshot.writable}
+          open={soundEffectsOpen}
+          onToggle={() => { setSoundEffectsOpen((current) => !current) }}
           onEnabledChange={(next) => {
             setSoundEnabled(next)
             setTaskSounds(next)

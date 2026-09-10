@@ -17,6 +17,8 @@ interface SoundEffectsPanelProps {
   taskSounds: boolean
   clickSounds: boolean
   writable: boolean
+  open: boolean
+  onToggle: () => void
   onEnabledChange: (enabled: boolean) => void
   onVolumeChange: (volume: number) => void
   onPackChange: (pack: SoundPack) => void
@@ -48,8 +50,7 @@ const SOUND_PACK_TONES: Record<SoundPack, SoundPackTone> = {
 }
 
 /** A settings module rendered directly below the Broadcast Studio preview. */
-export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, onEnabledChange, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
-  const [open, setOpen] = useState(false)
+export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, open, onToggle, onEnabledChange, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
   const [previewingCue, setPreviewingCue] = useState<SoundCue | null>(null)
   const packOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
 
@@ -138,7 +139,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
       <span>{t('settings.soundEffectsSynced')}</span>
     </span>}
     open={open}
-    onToggle={() => { setOpen((current) => !current) }}
+    onToggle={onToggle}
     ariaLabel={`${t(open ? 'settings.collapse' : 'settings.expand')}: ${t('settings.soundEffectsTitle')}`}
     action={whaleAction}
   >

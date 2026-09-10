@@ -136,7 +136,7 @@ export const zh = {
   "settings.secretPlaceholder": "输入新的 Xiaomi MiMo API Key",
   "settings.expand": "展开设置",
   "settings.collapse": "收起设置",
-  "settings.soundEffectsTitle": "音效间",
+  "settings.soundEffectsTitle": "音效库",
   "settings.soundEffectsEnabled": "启用音效",
   "settings.soundEffectsVolume": "音量",
   "settings.soundEffectsPack": "音效包",

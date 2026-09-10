@@ -85,6 +85,8 @@ test('sound settings preview locally and save only through the settings card', (
   assert.match(settingsCard, /'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds'/)
   assert.match(settingsCard, /await scope\.set\(field, draft\[field\]\)/)
   assert.match(settingsCard, /<SoundEffectsPanel[\s\S]*onEnabledChange=/)
+  assert.match(settingsCard, /setSoundEffectsOpen\(false\)/)
+  assert.match(settingsCard, /open=\{soundEffectsOpen\}/)
   assert.match(clientEntry, /taskSounds: resolved\.soundEnabled/)
   assert.match(clientEntry, /clickSounds: resolved\.soundEnabled/)
   assert.match(soundSettings, /aria-pressed=\{enabled\}/)
