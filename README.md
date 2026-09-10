@@ -174,7 +174,8 @@ pnpm pack:check
 ```
 
 ## 🤝 推荐
-> 本插件的鲸鱼娘形象来源 `dsh-deep-whale` `dsh-whale-musume`
+> 本插件的鲸鱼娘形象参考 `dsh-deep-whale` `dsh-whale-musume`由GPT生成。本插件的uisfx音效参考 `dsh-plugin-uisfx`实现
+
 - [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme)：鲸鱼娘主题皮肤系列。
 - [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme)：元气鲸鱼娘桌宠。
 - [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme)：语义化 UI 音效。
