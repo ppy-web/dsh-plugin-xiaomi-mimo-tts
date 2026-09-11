@@ -22,7 +22,8 @@ Add Xiaomi MiMo TTS read-aloud playback to DeepSeek Harness Web.
 ## ✨ Features
 
 - One-click read-aloud: adds a **Read aloud** button to the conversation action bar (enabled by default).
-- Built-in voices: uses `mimo-v2.5-tts` for smooth, clear audio with PCM streaming playback.
+- Built-in voices: uses `mimo-v2.5-tts` for smooth, clear audio with streaming playback.
+- Playback speed: adjustable from 0.5× to 2.0× for both MiMo and browser-local speech.
 - Custom voices: uses `mimo-v2.5-tts-voicedesign` to create a voice from a text description.
 - Browser-local voices: uses offline or online voices provided by the browser host.
 - Automatic text cleaning: removes URLs, file paths, code blocks, emoji, icons, and control characters before synthesis.
@@ -80,7 +81,7 @@ Below **Broadcast Studio** in the voice settings card, control the master switch
 When switching from a local development version to the npm package on Windows, stop DSH Web first and run:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.2
+.\start\dsh-plugin-reinstall.bat 3.0.3
 ```
 
 ## ⚙️ Configuration
@@ -92,11 +93,10 @@ When switching from a local development version to the npm package on Windows, s
 - English female: `Mia`, `Chloe`
 - English male: `Milo`, `Dean`
 
-Preset voices default to **PCM (streaming)**. Playback starts as audio chunks arrive, reducing wait time. **MP3 (complete audio)** and **WAV (complete audio)** wait for the complete file; MP3 is smaller, while WAV preserves lossless audio at a larger size.
+Preset voices use streaming playback to reduce the wait before speech starts.
 
 **Custom voices (`mimo-v2.5-tts-voicedesign`)**
 
-Voice Design currently does not support PCM. It will be adapted when Xiaomi officially enables it.
 
 Common voice-description templates are provided, and you can edit and save the description directly:
 
@@ -107,6 +107,14 @@ Young adult woman, bright and approachable voice, clear articulation, moderate p
 **Browser-local fallback speech**
 
 Three strategies are available: **MiMo first** falls back to browser speech when MiMo fails; **Local first** prefers browser speech; **Disable local speech** uses MiMo only. Voices come from the browser Web Speech API. Offline availability and the actual voice list depend on the browser, operating system, and network speech services.
+
+**Read-aloud range**
+
+- **Smart selection**: automatic playback prefers the opening semantic segment, while manual playback reads the full reply. Short replies without a separable segment are read in full.
+- **Full mode**: both automatic and manual playback read the full reply.
+- **First-segment mode**: both automatic and manual playback read only the opening semantic segment.
+
+Keyboard support is available in the settings panel: press `Tab` to move between controls, use the arrow keys to adjust sliders or switch options, and press `Space` to confirm the focused control.
 
 ## 🔌 Third-party plugin integration
 

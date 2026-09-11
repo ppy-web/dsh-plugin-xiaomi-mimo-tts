@@ -40,7 +40,7 @@ export const TTS_UNINSTALL_ROUTE = '/plugins/xiaomi-mimo-tts/uninstall'
 export const TTS_UPDATE_ROUTE = '/plugins/xiaomi-mimo-tts/update'
 
 /** Keep the UI version visible without making the browser bundle load package.json. */
-export const TTS_VERSION = '3.0.2'
+export const TTS_VERSION = '3.0.3'
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/
 
@@ -85,6 +85,9 @@ export const TTS_VOICE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-avatars'
 
 /** Same-origin route used by the Web client to load the four-state character toggle sheet. */
 export const TTS_TOGGLE_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/toggle-characters.webp'
+
+/** Same-origin route used by the Web client to load the two-state sound-effects character sheet. */
+export const TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/sound-effects-toggle-characters.webp'
 
 /** Same-origin route used by the Web client to load the API-key whale mascot sheet. */
 export const TTS_API_KEY_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-whale.webp'
@@ -169,9 +172,16 @@ export const TTS_VOICE_DESIGN_PLAYBACK_MODES = ['complete', 'segmented', 'first-
 
 export type TtsVoiceDesignPlaybackMode = typeof TTS_VOICE_DESIGN_PLAYBACK_MODES[number]
 
-export const DEFAULT_TTS_SEGMENT_CHARACTERS = 120
-export const MAX_TTS_SEGMENT_CHARACTERS = 180
-export const MIN_TTS_SEGMENT_CHARACTERS = 40
+/** User-facing read range, independent from the audio transport selected by the client. */
+export const TTS_READ_SCOPES = ['smart', 'full', 'first-segment'] as const
+
+export type TtsReadScope = typeof TTS_READ_SCOPES[number]
+
+export type TtsEffectiveReadScope = 'full' | 'first-segment'
+
+export const DEFAULT_TTS_SEGMENT_CHARACTERS = 160
+export const MAX_TTS_SEGMENT_CHARACTERS = 240
+export const MIN_TTS_SEGMENT_CHARACTERS = 50
 
 /** Minimum spoken characters to accumulate before starting one PCM stream request. */
 export const MIN_TTS_STREAM_CHARACTERS = 20
@@ -402,6 +412,29 @@ export function firstTtsSegment(value: string): string {
   return splitTtsSegments(value)[0] ?? ''
 }
 
+/** Resolve Smart into a concrete range for this playback invocation. */
+export function resolveTtsReadScope(scope: TtsReadScope, automatic: boolean): TtsEffectiveReadScope {
+  return scope === 'first-segment' || (scope === 'smart' && automatic) ? 'first-segment' : 'full'
+}
+
+/** Apply a concrete read range to already-filtered speech text. */
+export function applyTtsReadScope(value: string, scope: TtsEffectiveReadScope): string {
+  return scope === 'first-segment' ? firstTtsSegment(value) : value
+}
+
+/** Keep the first semantic segment monotonic while an assistant reply is growing. */
+export class TtsFirstSegmentLimiter {
+  private locked: string | null = null
+
+  limit(value: string, final = false): string {
+    if (this.locked !== null) return this.locked
+    const candidate = firstTtsSegment(value)
+    if (candidate.length === 0) return ''
+    if (final || countTtsSpeechCharacters(candidate) >= DEFAULT_TTS_SEGMENT_CHARACTERS) this.locked = candidate
+    return candidate
+  }
+}
+
 /** Return the exact decoded size of canonical padded Base64, or null when invalid. */
 export function strictBase64DecodedLength(value: string): number | null {
   if (value.length === 0 || value.length % 4 !== 0) return null
@@ -524,8 +557,11 @@ export interface TtsSettings {
   voiceDesignPrompt?: string
   voiceDesignCustomPrompt?: string
   presetStylePrompt?: string
+  /** @deprecated Retained for Host/API compatibility; Web playback selects its transport automatically. */
   format?: TtsFormat
+  /** @deprecated Retained for settings migration; use readScope for user-facing playback range. */
   voiceDesignPlaybackMode?: TtsVoiceDesignPlaybackMode
+  readScope?: TtsReadScope
   autoPlay?: boolean
   instruction?: string
   maxTextLength?: number
@@ -555,6 +591,7 @@ export interface ResolvedTtsSettings {
   presetStylePrompt: string
   format: TtsFormat
   voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
+  readScope: TtsReadScope
   autoPlay: boolean
   instruction: string
   maxTextLength: number
@@ -585,6 +622,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   presetStylePrompt: '使用清晰、自然、准确的声音朗读，语速适中，停顿自然，语气平和克制，避免夸张表达。',
   format: 'pcm',
   voiceDesignPlaybackMode: 'complete',
+  readScope: 'smart',
   autoPlay: true,
   instruction: '请忠实朗读原文，根据文本语气自然表达，不添加或改写内容。',
   maxTextLength: 12000,
@@ -624,6 +662,11 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     ? Math.max(0, Math.min(1, resolved.voiceVolume))
     : DEFAULT_TTS_SETTINGS.voiceVolume
   const voiceRate = normalizeVoiceRate(resolved.voiceRate)
+  const readScope = value?.readScope !== undefined && TTS_READ_SCOPES.includes(value.readScope)
+    ? value.readScope
+    : value?.voiceDesignPlaybackMode === 'first-segment'
+      ? 'first-segment'
+      : DEFAULT_TTS_SETTINGS.readScope
   const model = resolved.model === 'browser-local-fallback' ? 'mimo-v2.5-tts' : resolved.model
   const voiceDesignCustomPrompt = typeof value?.voiceDesignCustomPrompt === 'string'
     ? value.voiceDesignCustomPrompt
@@ -638,6 +681,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     soundVolume,
     voiceVolume,
     voiceRate,
+    readScope,
     soundPack: SOUND_PACKS.includes(resolved.soundPack) ? resolved.soundPack : DEFAULT_SOUND_SETTINGS.soundPack,
   }
 }

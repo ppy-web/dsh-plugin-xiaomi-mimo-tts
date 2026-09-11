@@ -204,7 +204,7 @@ export class PlaybackController {
     }
   }
 
-  async toggle(sessionId: string, messageId: string, text: string, automatic: boolean, fallback?: () => void): Promise<void> {
+  async toggle(sessionId: string, messageId: string, text: string, automatic: boolean, fallback?: () => void, format: 'mp3' | 'wav' = 'mp3'): Promise<void> {
     if (this.activeSessionId !== sessionId) return
     this.beforePlayback?.()
     if (this.view.source === 'complete' && this.view.sessionId === sessionId && this.view.messageId === messageId && this.current !== null) {
@@ -243,7 +243,7 @@ export class PlaybackController {
       const response = await fetch(TTS_ROUTE, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, format }),
         signal: controller.signal,
       })
       if (!response.ok) {

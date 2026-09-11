@@ -103,6 +103,14 @@ test('sound settings preview locally and save only through the settings card', (
   assert.match(clickClassifier, /data-xmimo-sound-pack-option/)
 })
 
+test('sound-library toggles use UISFX cues without generic click duplication', () => {
+  assert.match(settingsCard, /controller\.play\('toggle-on'\)/)
+  assert.match(settingsCard, /controller\.play\('toggle-off'\)/)
+  assert.match(settingsCard, /controller\.play\('toggle-off'\)[\s\S]*controller\.update\(\{ enabled: false/)
+  assert.match(clickClassifier, /data-xmimo-sound-toggle/)
+  assert.doesNotMatch(settingsCard, /changeSoundEnabled[\s\S]*?toggleSoundPlayer\.schedule/)
+})
+
 test('format and speech strategy radio cards classify changes as selection sounds', () => {
   assert.match(settingsDetails, /data-xmimo-select-option="true"/)
   assert.match(clickClassifier, /target\.closest<HTMLElement>\('\[data-xmimo-select-option\]'\)/)

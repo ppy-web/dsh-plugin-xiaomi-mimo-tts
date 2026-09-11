@@ -48,6 +48,14 @@ export const zh = {
   "settings.voiceVolume": "语音音量",
   "settings.voiceRate": "播放语速",
   "settings.voiceRatePcmHint": "适用于全部语音；流式 PCM 倍速会同时改变音调。",
+  "settings.readScope": "朗读范围",
+  "settings.readScopeSmart": "智能选择",
+  "settings.readScopeFull": "全文模式",
+  "settings.readScopeFirstSegment": "首段模式",
+  "settings.readScopeSmartHint":
+    "自动播报短回复全部朗读、长回复智能截取首段，手动点击朗读全文。",
+  "settings.readScopeFullHint": "自动播报和手动朗读都播放全文。",
+  "settings.readScopeFirstSegmentHint": "保守朗读，自动播报和手动朗读都只播放首段。",
   "settings.summaryPresetModel": "预置音色",
   "settings.summaryVoiceDesignModel": "自定义音色",
   "settings.localSpeechAutoSummary": "MiMo 优先",
@@ -72,7 +80,7 @@ export const zh = {
   "settings.localVoiceUnavailable": "没有可用的浏览器音色",
   "settings.localVoiceOffline": "离线",
   "settings.localVoiceOnline": "在线",
-  "settings.modelAutoPlayHintPreset": "预置音色的播放方式由音频格式决定。",
+  "settings.modelAutoPlayHintPreset": "预置音色自动使用低延迟流式播放。",
   "settings.modelAutoPlayHintVoiceDesign":
     "自定义音色仅支持在回复完成后自动播放。",
   "settings.voice": "内置音色",
@@ -146,6 +154,8 @@ export const zh = {
   "settings.soundEffectsClick": "点击音效",
   "settings.soundEffectsOn": "已开启",
   "settings.soundEffectsOff": "已关闭",
+  "settings.soundEffectsOnLabel": "音效开启",
+  "settings.soundEffectsOffLabel": "音效关闭",
   "settings.soundEffectsBubbleOn": "uisfx 已开启",
   "settings.soundEffectsBubbleOff": "uisfx 已关闭",
   "settings.soundEffectsTurnOn": "开启音效",
@@ -157,8 +167,10 @@ export const zh = {
   "settings.soundEffectsPreview.error": "失败",
   "settings.soundEffectsPreview.notification": "提醒",
   "settings.soundEffectsPreview.press": "点击",
-  "settings.soundEffectsDescription": "为DSH接入uisfx语义化UI音效。在DSH中探索更多音效...",
-  "settings.soundEffectsSupported":"🔔 开始 完成 成功 失败 提醒 点击 选择 开启 关闭 发送 打开 关闭面板 删除 停止 排队",
+  "settings.soundEffectsDescription":
+    "为DSH接入uisfx语义化UI音效。在DSH中探索更多音效...",
+  "settings.soundEffectsSupported":
+    "🔔 开始 完成 成功 失败 提醒 点击 选择 开启 关闭 发送 打开 关闭面板 删除 停止 排队",
 } as const;
 
 export const en: Record<keyof typeof zh, string> = {
@@ -215,6 +227,13 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.voiceVolume": "Voice volume",
   "settings.voiceRate": "Playback speed",
   "settings.voiceRatePcmHint": "Applies to all speech; streamed PCM changes pitch with playback speed.",
+  "settings.readScope": "Read-aloud range",
+  "settings.readScopeSmart": "Smart selection",
+  "settings.readScopeFull": "Full mode",
+  "settings.readScopeFirstSegment": "First-segment mode",
+  "settings.readScopeSmartHint": "Automatic playback reads the opening segment; manual playback reads the full reply.",
+  "settings.readScopeFullHint": "Both automatic and manual playback read the full reply.",
+  "settings.readScopeFirstSegmentHint": "Both automatic and manual playback read only the opening segment.",
   "settings.summaryPresetModel": "Preset model",
   "settings.summaryVoiceDesignModel": "Custom voicedesign",
   "settings.localSpeechAutoSummary": "MiMo first",
@@ -242,7 +261,7 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.localVoiceOffline": "Offline",
   "settings.localVoiceOnline": "Online",
   "settings.modelAutoPlayHintPreset":
-    "The selected audio format controls preset-voice playback.",
+    "Preset voices use low-latency streaming automatically.",
   "settings.modelAutoPlayHintVoiceDesign":
     "Custom voice design supports automatic playback only after the reply is complete.",
   "settings.voice": "Built-in voice",
@@ -321,6 +340,8 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.soundEffectsClick": "Click sounds",
   "settings.soundEffectsOn": "On",
   "settings.soundEffectsOff": "Off",
+  "settings.soundEffectsOnLabel": "Magic sounds on",
+  "settings.soundEffectsOffLabel": "Magic sounds off",
   "settings.soundEffectsBubbleOn": "UISFX enabled",
   "settings.soundEffectsBubbleOff": "UISFX disabled",
   "settings.soundEffectsTurnOn": "Turn sounds on",

@@ -36,13 +36,13 @@ const settingsCollapsibleSource = await readFile(new URL('../src/client/settings
 const voiceDesignPickerSource = await readFile(new URL('../src/client/settings/controls/voice-design-picker.tsx', import.meta.url), 'utf8')
 const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, settingsDetailsSource, settingsPreviewSource, settingsSoundEffectsSource, settingsCollapsibleSource, voiceDesignPickerSource].join('\n')
 const sharedModule = await import('../lib/shared.js')
-const { batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsSettings, splitTtsSegments, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, VOICE_DESIGN_AI_RPC_CHANNEL } = sharedModule
+const { applyTtsReadScope, batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TTS_READ_SCOPES, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, TtsFirstSegmentLimiter, VOICE_DESIGN_AI_RPC_CHANNEL } = sharedModule
 
 const SUPPORTED_DSH_VERSION = '0.1.5-rc.1'
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
-  assert.equal(packageJson.version, '3.0.2')
+  assert.equal(packageJson.version, '3.0.3')
   assert.equal(TTS_VERSION, packageJson.version)
   assert.equal(packageJson.scripts.prepare, 'node scripts/prepare-package.mjs')
   assert.equal(packageJson.scripts.prepack, 'pnpm run build && node scripts/pack-package.mjs')
@@ -100,7 +100,7 @@ test('profile lifecycle scripts pin the daily web profile and reject mixed link 
   assert.match(profileVerifySource, /process\.env\.DSH_HOME/u)
   assert.match(profileVerifySource, /profileManifest\.dependencies/u)
   assert.match(profileVerifySource, /profileManifest\.dsh\?\.profile\?\.bundles/u)
-  assert.match(profileVerifySource, /installedManifest\.version !== ['"]3\.0\.2['"]/u)
+  assert.match(profileVerifySource, /installedManifest\.version !== ['"]3\.0\.3['"]/u)
   assert.match(profileVerifySource, /installed link target mismatch/u)
   assert.match(profileVerifySource, /DSH_PROFILE_EXPECT_CHECKOUT/u)
   assert.match(reinstallScript, /IsNullOrWhiteSpace\(\$env:DSH_HOME\)/u)
@@ -168,6 +168,8 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.localSpeechMode, 'auto')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.localVoiceURI, '')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.format, 'pcm')
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.readScope, 'smart')
+  assert.deepEqual(TTS_READ_SCOPES, ['smart', 'full', 'first-segment'])
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.maxMp3AudioBytes, 32 * 1024 * 1024)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.maxWavAudioBytes, 128 * 1024 * 1024)
@@ -423,7 +425,10 @@ test('resolves the Voice Design settings without exposing a preset voice in the 
   assert.match(settingsModulesSource, /value=\{isPresetVoiceDesignPrompt\(voiceDesignPrompt\) \? voiceDesignPrompt : CUSTOM_VOICE_DESIGN_OPTION\}/)
   assert.match(client, /setVoiceDesignCustomPrompt\(next\)/)
   assert.match(client, /voiceDesignCustomPrompt/)
-  assert.match(clientSource, /useState\(initial\.format\)/)
+  assert.match(clientSource, /useState\(initial\.readScope\)/)
+  assert.match(settingsDetailsSource, /settings\.readScope/)
+  assert.doesNotMatch(settingsDetailsSource, /settings\.format/)
+  assert.doesNotMatch(settingsDetailsSource, /voiceDesignPlaybackMode/)
   assert.match(settingsModulesSource, /<BuiltInVoicePicker value=\{voice\}/)
   assert.match(clientSource, /TTS_VOICE_ASSET_ROUTE/)
   assert.doesNotMatch(client, /xmimo-tts-select-column/)
@@ -445,14 +450,30 @@ test('splits VoiceDesign text at natural boundaries within the request limit', (
 })
 
 test('keeps default VoiceDesign segments conservative', () => {
-  assert.equal(DEFAULT_TTS_SEGMENT_CHARACTERS, 120)
-  assert.equal(MAX_TTS_SEGMENT_CHARACTERS, 180)
+  assert.equal(DEFAULT_TTS_SEGMENT_CHARACTERS, 160)
+  assert.equal(MAX_TTS_SEGMENT_CHARACTERS, 240)
+  assert.equal(MIN_TTS_SEGMENT_CHARACTERS, 50)
 })
 
-test('resolves complete VoiceDesign playback by default', () => {
+test('resolves read scope and migrates the legacy first-segment setting', () => {
   assert.equal(resolveTtsSettings({}).voiceDesignPlaybackMode, 'complete')
-  assert.equal(resolveTtsSettings({ voiceDesignPlaybackMode: 'segmented' }).voiceDesignPlaybackMode, 'segmented')
-  assert.equal(resolveTtsSettings({ voiceDesignPlaybackMode: 'first-segment' }).voiceDesignPlaybackMode, 'first-segment')
+  assert.equal(resolveTtsSettings({}).readScope, 'smart')
+  assert.equal(resolveTtsSettings({ readScope: 'full' }).readScope, 'full')
+  assert.equal(resolveTtsSettings({ voiceDesignPlaybackMode: 'first-segment' }).readScope, 'first-segment')
+  assert.equal(resolveTtsReadScope('smart', true), 'first-segment')
+  assert.equal(resolveTtsReadScope('smart', false), 'full')
+  assert.equal(resolveTtsReadScope('first-segment', false), 'first-segment')
+  assert.ok(countTtsSpeechCharacters(applyTtsReadScope('你好。' + '很长的内容。'.repeat(50), 'first-segment')) <= MAX_TTS_SEGMENT_CHARACTERS)
+})
+
+test('limits realtime first-segment text monotonically and stops after the boundary', () => {
+  const limiter = new TtsFirstSegmentLimiter()
+  const text = '第一句内容足够长，用于验证实时首段边界。'.repeat(12) + '第二句不应进入播放队列。'
+  const first = limiter.limit(text.slice(0, 90))
+  const locked = limiter.limit(text, true)
+  assert.ok(first.length > 0)
+  assert.ok(locked.startsWith(first))
+  assert.equal(limiter.limit(text + '第三句。'), locked)
 })
 
 test('selects only the first VoiceDesign segment for first-segment playback', () => {
@@ -661,17 +682,21 @@ test('automatic playback only consumes the latest message from a live run once',
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
 })
 
-test('completed preset replies stream only for PCM and complete formats keep pause and resume', () => {
+test('completed preset replies always use PCM streaming with MP3 fallback', () => {
   assert.match(client, /live\.setStateChangeListener/)
   assert.match(client, /updateLivePlayback/)
   assert.match(clientSource, /live\.stop\(sessionId\)/)
   assert.match(clientSource, /source === 'live'/)
   assert.match(clientSource, /disabled=\{status === 'loading' && !liveActive\}/)
   assert.match(clientSource, /resolvedSettings\.model === 'mimo-v2\.5-tts'/)
-  assert.match(clientSource, /live\.playCompleted\(sessionId, messageId, text/)
-  assert.match(clientSource, /playback\.toggle\(sessionId, messageId, text, automatic\)/)
-  assert.match(clientSource, /live\.playCompleted\(sessionId, messageId, text/)
-  assert.match(clientSource, /resolvedSettings\.format === 'pcm'/)
+  assert.match(clientSource, /!automatic && resolvedSettings\.readScope === 'smart'/)
+  assert.match(clientSource, /playback\.toggle\(sessionId, messageId, scopedText, false,[\s\S]*'mp3'/)
+  assert.match(clientSource, /live\.playCompleted\(sessionId, messageId, scopedText/)
+  assert.match(clientSource, /playback\.toggle\(sessionId, messageId, scopedText, automatic/)
+  assert.match(clientSource, /format: 'mp3'/)
+  assert.match(clientSource, /body: JSON\.stringify\(\{ text: segment, format: 'wav' \}\)/)
+  assert.match(clientSource, /splitTtsSegments\(text\)\.length > 1/)
+  assert.doesNotMatch(clientSource, /resolvedSettings\.format === 'pcm'/)
   assert.match(clientSource, /if \(audio\.paused\)[\s\S]*await audio\.play\(\)[\s\S]*else \{\s*audio\.pause\(\)/)
   assert.match(clientSource, /private completed: CompletedStreamPlayback \| null = null/)
   assert.match(clientSource, /completed !== null && !completed\.audioStarted/)
@@ -680,7 +705,7 @@ test('completed preset replies stream only for PCM and complete formats keep pau
 })
 
 test('both MiMo models share persistent bidirectional browser-speech fallback', () => {
-  assert.match(clientSource, /const localModel = resolvedSettings\.model === 'mimo-v2\.5-tts'\s*const realtimeSpeechEnabled = localModel && \(resolvedSettings\.localSpeechMode !== 'disabled' \|\| resolvedSettings\.format === 'pcm'\)/)
+  assert.match(clientSource, /const localModel = resolvedSettings\.model === 'mimo-v2\.5-tts'\s*const realtimeSpeechEnabled = localModel/)
   assert.match(clientSource, /\(source === 'live' \|\| source === 'system'\) && \(status === 'loading' \|\| status === 'playing' \|\| status === 'paused'\)/)
   assert.match(clientSource, /playCompletedReply\(false\)/)
   assert.doesNotMatch(clientSource, /<option value="browser-local-fallback">/)
@@ -689,7 +714,7 @@ test('both MiMo models share persistent bidirectional browser-speech fallback', 
   assert.doesNotMatch(settingsCardSource, /xmimo-tts-grid xmimo-tts-sections xmimo-ui-grid/)
   assert.match(settingsCardSource, /\{enabled \? <DetailsModule[\s\S]*\/> : null\}/)
   assert.match(clientSource, /useApiKeySupported\(resolvedSettings\.localSpeechMode !== 'disabled'\)/)
-  assert.match(clientSource, /playback\.segmented\(sessionId, messageId, voiceDesignPlaybackText, automatic, resolvedSettings\.localSpeechMode === 'auto'/)
+  assert.match(clientSource, /playback\.segmented\(sessionId, messageId, segments, automatic, resolvedSettings\.localSpeechMode === 'auto'/)
   assert.match(clientSource, /if \(!audioStarted && fallback !== undefined\) \{\s*this\.segmentedState = null\s*this\.publish\(this\.emptyView\(\)\)\s*fallback\(\)/)
   assert.doesNotMatch(clientSource, /fallbackAllowed/)
   assert.doesNotMatch(clientSource, /getVoices\(\)\.filter\(\(voice\) => voice\.localService === true\)/)

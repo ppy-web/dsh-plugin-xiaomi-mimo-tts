@@ -12,7 +12,7 @@ import {
   VOICE_DESIGN_AI_RPC_CHANNEL,
   VOICE_DESIGN_AI_RPC_ENDPOINT,
 } from '../../shared.js'
-import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsSettings, TtsVoiceDesignPlaybackMode, VoiceDesignAiGeneratePayload, VoiceDesignAiGenerateResult } from '../../shared.js'
+import type { TtsSettings, VoiceDesignAiGeneratePayload, VoiceDesignAiGenerateResult } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PreviewPlayer } from '../playback/preview-player.js'
@@ -37,7 +37,7 @@ interface SettingsCardProps {
 
 type DraftSettings = SettingsValues
 
-const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'voiceVolume', 'voiceRate', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format', 'voiceDesignPlaybackMode', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
+const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'voiceVolume', 'voiceRate', 'readScope', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
 const RELEASES_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/releases'
 
 function layerSettings(value: unknown): TtsSettings | undefined {
@@ -57,12 +57,11 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
   const [voiceVolume, setVoiceVolume] = useState(initial.voiceVolume)
   const [voiceRate, setVoiceRate] = useState(initial.voiceRate)
+  const [readScope, setReadScope] = useState(initial.readScope)
   const [model, setModel] = useState(initial.model)
   const [localSpeechMode, setLocalSpeechMode] = useState(initial.localSpeechMode)
   const [localVoiceURI, setLocalVoiceURI] = useState(initial.localVoiceURI)
   const [voice, setVoice] = useState(initial.voice)
-  const [format, setFormat] = useState(initial.format)
-  const [voiceDesignPlaybackMode, setVoiceDesignPlaybackMode] = useState(initial.voiceDesignPlaybackMode)
   const [voiceDesignPrompt, setVoiceDesignPrompt] = useState(initial.voiceDesignPrompt)
   const [voiceDesignCustomPrompt, setVoiceDesignCustomPrompt] = useState(initial.voiceDesignCustomPrompt)
   const [soundEnabled, setSoundEnabled] = useState(initial.soundEnabled)
@@ -87,7 +86,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format, voiceDesignPlaybackMode, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -162,12 +161,12 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
     setVoiceVolume(next.voiceVolume)
+    setVoiceRate(next.voiceRate)
+    setReadScope(next.readScope)
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
     setLocalVoiceURI(next.localVoiceURI)
     setVoice(next.voice)
-    setFormat(next.format)
-    setVoiceDesignPlaybackMode(next.voiceDesignPlaybackMode)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
     setSoundEnabled(next.soundEnabled)
@@ -223,12 +222,11 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
     if (field === 'voiceVolume') setVoiceVolume(base.voiceVolume)
     if (field === 'voiceRate') setVoiceRate(base.voiceRate)
+    if (field === 'readScope') setReadScope(base.readScope)
     if (field === 'model') setModel(base.model)
     if (field === 'localSpeechMode') setLocalSpeechMode(base.localSpeechMode)
     if (field === 'localVoiceURI') setLocalVoiceURI(base.localVoiceURI)
     if (field === 'voice') setVoice(base.voice)
-    if (field === 'format') setFormat(base.format)
-    if (field === 'voiceDesignPlaybackMode') setVoiceDesignPlaybackMode(base.voiceDesignPlaybackMode)
     if (field === 'voiceDesignPrompt') { setVoiceDesignPrompt(base.voiceDesignPrompt); setVoiceDesignAiState('idle') }
     if (field === 'voiceDesignCustomPrompt') { setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt); setVoiceDesignAiState('idle') }
     if (field === 'soundEnabled') setSoundEnabled(base.soundEnabled)
@@ -244,12 +242,11 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     setAutoPlay(next.autoPlay)
     setVoiceVolume(next.voiceVolume)
     setVoiceRate(next.voiceRate)
+    setReadScope(next.readScope)
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
     setLocalVoiceURI(next.localVoiceURI)
     setVoice(next.voice)
-    setFormat(next.format)
-    setVoiceDesignPlaybackMode(next.voiceDesignPlaybackMode)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
     setSoundEnabled(next.soundEnabled)
@@ -320,8 +317,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       localVoiceURI,
       voice,
       voiceDesignPrompt,
-      format,
-      voiceDesignPlaybackMode,
       voiceVolume,
       voiceRate,
     })
@@ -352,6 +347,21 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     setState('idle')
   }
 
+  const changeSoundEnabled = (next: boolean): void => {
+    if (next) {
+      controller.update({ enabled: true, volume: soundVolume, pack: soundPack, taskSounds: true, clickSounds: true })
+      controller.play('toggle-on')
+    } else {
+      controller.play('toggle-off')
+      controller.update({ enabled: false, volume: soundVolume, pack: soundPack, taskSounds: false, clickSounds: false })
+    }
+    setSoundEnabled(next)
+    setTaskSounds(next)
+    setClickSounds(next)
+    setChanges((current) => ({ ...current, soundEnabled: { kind: 'set' }, taskSounds: { kind: 'set' }, clickSounds: { kind: 'set' } }))
+    setState('idle')
+  }
+
   return (
     <li className={open ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope' : 'xmimo-tts-card xmimo-ui-scope'}>
       <button
@@ -373,9 +383,11 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           t={t}
           enabled={enabled}
           autoPlay={autoPlay}
+          soundEnabled={soundEnabled}
           writable={snapshot.writable}
           onEnabledChange={changeEnabled}
           onAutoPlayChange={changeAutoPlay}
+          onSoundEnabledChange={changeSoundEnabled}
         />
         <ApiKeyModule
           t={t}
@@ -394,12 +406,11 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           autoPlay={autoPlay}
           voiceVolume={voiceVolume}
           voiceRate={voiceRate}
+          readScope={readScope}
           model={model}
           localSpeechMode={localSpeechMode}
           localVoiceURI={localVoiceURI}
           voice={voice}
-          format={format}
-          voiceDesignPlaybackMode={voiceDesignPlaybackMode}
           voiceDesignPrompt={voiceDesignPrompt}
           voiceDesignCustomPrompt={voiceDesignCustomPrompt}
           voiceDesignAiState={voiceDesignAiState}
@@ -411,6 +422,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           onVoiceVolumeInteractionEnd={(next) => { toggleSoundPlayer.previewVolume(next) }}
           onVoiceRateChange={(next) => { setVoiceRate(next); markChange('voiceRate') }}
           onVoiceRateInteractionEnd={(next) => { controller.play('success', { playbackRate: next }) }}
+          onReadScopeChange={(next) => { setReadScope(next); markChange('readScope') }}
           onModelChange={(nextModel) => { setModel(nextModel); setVoiceDesignAiState('idle'); markChange('model'); if (nextModel === 'mimo-v2.5-tts-voicedesign') chooseVoiceDesignAiCopy() }}
           onVoiceDesignPromptChange={(next) => {
             setVoiceDesignPrompt(next)
@@ -419,9 +431,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
             setState('idle')
             setVoiceDesignAiState('idle')
           }}
-          onVoiceDesignPlaybackModeChange={(next) => { setVoiceDesignPlaybackMode(next); markChange('voiceDesignPlaybackMode') }}
           onVoiceChange={(next) => { setVoice(next); markChange('voice') }}
-          onFormatChange={(next) => { setFormat(next); markChange('format') }}
           onLocalVoiceURIChange={(next) => { setLocalVoiceURI(next); markChange('localVoiceURI') }}
           onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
           onVoiceDesignAiCopyChange={chooseVoiceDesignAiCopy}
@@ -446,13 +456,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           writable={snapshot.writable}
           open={soundEffectsOpen}
           onToggle={() => { setSoundEffectsOpen((current) => !current) }}
-          onEnabledChange={(next) => {
-            setSoundEnabled(next)
-            setTaskSounds(next)
-            setClickSounds(next)
-            setChanges((current) => ({ ...current, soundEnabled: { kind: 'set' }, taskSounds: { kind: 'set' }, clickSounds: { kind: 'set' } }))
-            setState('idle')
-          }}
+          onEnabledChange={changeSoundEnabled}
           onVolumeChange={(next) => { setSoundVolume(next); markChange('soundVolume') }}
           onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
         />

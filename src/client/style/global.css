@@ -131,7 +131,7 @@
   overflow: hidden;
   border: 1px solid var(--xmimo-ui-border);
   border-radius: var(--xmimo-ui-control-radius);
-  padding: 6px calc(var(--xmimo-ui-mascot-size) + var(--xmimo-ui-space-4)) 6px var(--xmimo-ui-space-2);
+  padding: 6px 6px 6px var(--xmimo-ui-space-2);
   background: var(--xmimo-ui-control-surface);
 }
 

@@ -73,6 +73,16 @@
   background-position: right bottom
 }
 
+.xmimo-tts-character-sound-on {
+  background-size: 200% 100%;
+  background-position: left center
+}
+
+.xmimo-tts-character-sound-off {
+  background-size: 200% 100%;
+  background-position: right center
+}
+
 .xmimo-tts-character-copy {
   display: flex !important;
   min-width: 0;

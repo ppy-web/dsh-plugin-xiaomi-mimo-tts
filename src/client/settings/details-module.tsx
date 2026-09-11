@@ -1,14 +1,13 @@
 import type { ReactElement } from 'react'
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import {
-  TTS_FORMATS,
   TTS_LOCAL_SPEECH_MODES,
   TTS_MIXER_WHALE_ASSET_ROUTE,
   TTS_MODELS,
-  TTS_VOICE_DESIGN_PLAYBACK_MODES,
+  TTS_READ_SCOPES,
   TTS_VOICE_DESIGN_PRESETS,
 } from '../../shared.js'
-import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsVoiceDesignPlaybackMode } from '../../shared.js'
+import type { TtsLocalSpeechMode, TtsModel, TtsReadScope } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { BuiltInVoicePicker } from './controls/built-in-voice-picker.js'
 import { EnergyVolumeSlider } from './controls/energy-volume-slider.js'
@@ -44,20 +43,20 @@ export const VOICE_DESIGN_AI_COPY_KEYS = [
   'settings.voiceDesignAiCopy4',
 ] as const
 
-function voiceDesignPlaybackLabel(mode: TtsVoiceDesignPlaybackMode): Parameters<Translate>[0] {
-  return mode === 'complete'
-    ? 'settings.voiceDesignPlaybackComplete'
-    : mode === 'segmented'
-      ? 'settings.voiceDesignPlaybackSegmented'
-      : 'settings.voiceDesignPlaybackFirstSegment'
+function readScopeLabel(scope: TtsReadScope): Parameters<Translate>[0] {
+  return scope === 'smart'
+    ? 'settings.readScopeSmart'
+    : scope === 'full'
+      ? 'settings.readScopeFull'
+      : 'settings.readScopeFirstSegment'
 }
 
-function voiceDesignPlaybackHint(mode: TtsVoiceDesignPlaybackMode): Parameters<Translate>[0] {
-  return mode === 'complete'
-    ? 'settings.voiceDesignPlaybackCompleteHint'
-    : mode === 'segmented'
-      ? 'settings.voiceDesignPlaybackSegmentedHint'
-      : 'settings.voiceDesignPlaybackFirstSegmentHint'
+function readScopeHint(scope: TtsReadScope): Parameters<Translate>[0] {
+  return scope === 'smart'
+    ? 'settings.readScopeSmartHint'
+    : scope === 'full'
+      ? 'settings.readScopeFullHint'
+      : 'settings.readScopeFirstSegmentHint'
 }
 
 function ModelPicker({ value, disabled, label, presetLabel, voiceDesignLabel, onChange }: ModelPickerProps): ReactElement {
@@ -83,12 +82,11 @@ export interface DetailsModuleProps {
   autoPlay: boolean
   voiceVolume: number
   voiceRate: number
+  readScope: TtsReadScope
   model: TtsModel
   localSpeechMode: TtsLocalSpeechMode
   localVoiceURI: string
   voice: string
-  format: TtsFormat
-  voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
   voiceDesignPrompt: string
   voiceDesignCustomPrompt: string
   voiceDesignAiState: VoiceDesignAiState
@@ -100,29 +98,26 @@ export interface DetailsModuleProps {
   onVoiceVolumeInteractionEnd: (value: number) => void
   onVoiceRateChange: (value: number) => void
   onVoiceRateInteractionEnd: (value: number) => void
+  onReadScopeChange: (value: TtsReadScope) => void
   onModelChange: (value: TtsModel) => void
   onVoiceDesignPromptChange: (value: string) => void
-  onVoiceDesignPlaybackModeChange: (value: TtsVoiceDesignPlaybackMode) => void
   onVoiceChange: (value: string) => void
-  onFormatChange: (value: TtsFormat) => void
   onLocalVoiceURIChange: (value: string) => void
   onLocalSpeechModeChange: (value: TtsLocalSpeechMode) => void
   onVoiceDesignAiCopyChange: () => void
   onGenerateVoiceDesign: () => void
 }
 
-export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVolume, voiceRate, model, localSpeechMode, localVoiceURI, voice, format, voiceDesignPlaybackMode, voiceDesignPrompt, voiceDesignCustomPrompt, voiceDesignAiState, voiceDesignAiCopy, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onModelChange, onVoiceDesignPromptChange, onVoiceDesignPlaybackModeChange, onVoiceChange, onFormatChange, onLocalVoiceURIChange, onLocalSpeechModeChange, onVoiceDesignAiCopyChange, onGenerateVoiceDesign }: DetailsModuleProps): ReactElement {
+export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, voiceDesignAiState, voiceDesignAiCopy, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalSpeechModeChange, onVoiceDesignAiCopyChange, onGenerateVoiceDesign }: DetailsModuleProps): ReactElement {
   const summaryModel = t(model === 'mimo-v2.5-tts-voicedesign' ? 'settings.summaryVoiceDesignModel' : 'settings.summaryPresetModel')
   const voiceDesignPreset = TTS_VOICE_DESIGN_PRESETS.find((item) => item.prompt === voiceDesignPrompt)
   const summaryVoice = model === 'mimo-v2.5-tts-voicedesign'
     ? voiceDesignPreset?.label ?? t('settings.customVoiceOption')
     : voice
-  const summaryPlayback = model === 'mimo-v2.5-tts-voicedesign'
-    ? t(voiceDesignPlaybackLabel(voiceDesignPlaybackMode))
-    : format.toUpperCase()
+  const summaryReadScope = t(readScopeLabel(readScope))
   const summaryStrategy = t(localSpeechMode === 'auto' ? 'settings.localSpeechAutoSummary' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled')
-  const summaryVoiceVolume = `${t('settings.voiceVolume')} ${Math.round(voiceVolume * 100)}%`
-  const summaryVoiceRate = `${t('settings.voiceRate')} ${voiceRate.toFixed(1)}×`
+  const summaryVoiceVolume = `${Math.round(voiceVolume * 100)}%`
+  const summaryVoiceRate = `${voiceRate.toFixed(1)}×`
 
   const mixerAction = <button
     type="button"
@@ -149,7 +144,7 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
     collapseOpenClassName="xmimo-tts-details-collapse-open"
     title={t('settings.detailedVoiceConfig')}
     summary={<span className="xmimo-tts-details-summary xmimo-ui-summary">
-      <span>{summaryVoiceVolume}</span><span>{summaryVoiceRate}</span><span>{summaryModel}</span><span>{summaryVoice}</span><span>{summaryPlayback}</span><span>{summaryStrategy}</span>
+      <span>{summaryVoiceVolume}</span><span>{summaryVoiceRate}</span><span>{summaryReadScope}</span><span>{summaryModel}</span><span>{summaryVoice}</span><span>{summaryStrategy}</span>
     </span>}
     open={open}
     onToggle={onToggle}
@@ -157,7 +152,7 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
   >
     <div className="xmimo-tts-grid xmimo-ui-grid xmimo-tts-details-body xmimo-ui-module-body">
       <div className="xmimo-tts-volume">
-        <SettingFieldHeading label={summaryVoiceVolume} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceVolume')} resettable disabled={!writable} onReset={() => { resetField('voiceVolume') }} />
+        <SettingFieldHeading label={`${t('settings.voiceVolume')} ${summaryVoiceVolume}`} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceVolume')} resettable disabled={!writable} onReset={() => { resetField('voiceVolume') }} />
         <EnergyVolumeSlider value={voiceVolume} label={t('settings.voiceVolume')} disabled={!writable} onChange={onVoiceVolumeChange} onInteractionEnd={onVoiceVolumeInteractionEnd} />
       </div>
       <div className="xmimo-tts-volume">
@@ -204,36 +199,26 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
         />
         {voiceDesignAiState === 'failed' ? <small className="xmimo-tts-ai-generate-error" role="status">{t('settings.voiceDesignGenerateFailed')}</small> : null}
         <small>{t('settings.voiceDesignPromptHint')}</small>
-        <div className="xmimo-tts-format">
-          <SettingFieldHeading label={t('settings.voiceDesignPlaybackMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceDesignPlaybackMode')} resettable disabled={!writable} onReset={() => { resetField('voiceDesignPlaybackMode') }} />
-          <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.voiceDesignPlaybackMode')}>
-            {TTS_VOICE_DESIGN_PLAYBACK_MODES.map((item) => <label key={item} data-xmimo-select-option="true" className={voiceDesignPlaybackMode === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
-              <input type="radio" name="xmimo-tts-voice-design-playback" value={item} checked={voiceDesignPlaybackMode === item} disabled={!writable} onChange={() => { onVoiceDesignPlaybackModeChange(item) }} />
-              <span>{t(voiceDesignPlaybackLabel(item))}</span>
-            </label>)}
-          </div>
-          <small>{t(voiceDesignPlaybackHint(voiceDesignPlaybackMode))}</small>
-        </div>
       </div> : null}
       {model === 'mimo-v2.5-tts' ? <>
         <div className="xmimo-tts-voice">
           <SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voice')} resettable disabled={!writable} onReset={() => { resetField('voice') }} />
           <BuiltInVoicePicker value={voice} disabled={!writable} label={t('settings.voice')} onChange={onVoiceChange} />
         </div>
-        <div className="xmimo-tts-format">
-          <SettingFieldHeading label={t('settings.format')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('format')} resettable disabled={!writable} onReset={() => { resetField('format') }} />
-          <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.format')}>
-            {TTS_FORMATS.map((item) => <label key={item} data-xmimo-select-option="true" className={format === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
-              <input type="radio" name="xmimo-tts-format" value={item} checked={format === item} disabled={!writable} onChange={() => { onFormatChange(item) }} />
-              <span>{item.toUpperCase()}</span>
-            </label>)}
-          </div>
-          <small>{t(format === 'pcm' ? 'settings.formatPcmHint' : format === 'mp3' ? 'settings.formatMp3Hint' : 'settings.formatWavHint')}</small>
-        </div>
       </> : null}
       <div className="xmimo-tts-voice">
-        <SettingFieldHeading label={t('settings.localVoice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localVoiceURI')} resettable disabled={!writable} onReset={() => { resetField('localVoiceURI') }} />
+        <SettingFieldHeading label={t('settings.localVoice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localVoiceURI')} resettable disabled={!writable} onReset={() => { resetField('localVoiceURI') }} suffix={<small className="xmimo-tts-hint" style={{ fontSize: '11px' }}>Microsoft Edge – Better</small>} />
         <LocalVoicePicker value={localVoiceURI} disabled={!writable || localSpeechMode === 'disabled'} label={t('settings.localVoice')} loadingLabel={t('settings.localVoiceLoading')} unavailableLabel={t('settings.localVoiceUnavailable')} offlineLabel={t('settings.localVoiceOffline')} onlineLabel={t('settings.localVoiceOnline')} onChange={onLocalVoiceURIChange} />
+      </div>
+      <div className="xmimo-tts-format">
+        <SettingFieldHeading label={t('settings.readScope')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('readScope')} resettable disabled={!writable} onReset={() => { resetField('readScope') }} />
+        <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.readScope')}>
+          {TTS_READ_SCOPES.map((item) => <label key={item} data-xmimo-select-option="true" className={readScope === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
+            <input type="radio" name="xmimo-tts-read-scope" value={item} checked={readScope === item} disabled={!writable} onChange={() => { onReadScopeChange(item) }} />
+            <span>{t(readScopeLabel(item))}</span>
+          </label>)}
+        </div>
+        <small>{t(readScopeHint(readScope))}</small>
       </div>
       <div className="xmimo-tts-format">
         <SettingFieldHeading label={t('settings.localSpeechMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localSpeechMode')} resettable disabled={!writable} onReset={() => { resetField('localSpeechMode') }} />

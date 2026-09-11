@@ -2,6 +2,7 @@ import type { SoundCue } from './types.js'
 
 export function classifyClick(target: EventTarget | null): SoundCue | null {
   if (!(target instanceof Element)) return null
+  if (target.closest('[data-xmimo-sound-toggle]') !== null) return null
   if (target.closest('[data-xmimo-sound-preview]') !== null) return null
   if (target.closest('[data-xmimo-sound-pack-option]') !== null) return null
   const selectOption = target.closest<HTMLElement>('[data-xmimo-select-option]')

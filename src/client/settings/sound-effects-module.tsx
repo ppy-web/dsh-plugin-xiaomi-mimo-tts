@@ -65,7 +65,6 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
   }, [clickSounds, controller, enabled, pack, taskSounds, volume])
 
   const setEnabled = (next: boolean): void => {
-    controller.update({ enabled: next, volume, pack, taskSounds: next, clickSounds: next })
     onEnabledChange(next)
   }
   const selectPack = (nextPack: typeof SOUND_PACKS[number]): void => {
@@ -110,6 +109,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
   const whaleAction = <button
     type="button"
     className="xmimo-tts-sound-whale-button"
+    data-xmimo-sound-toggle="true"
     aria-pressed={enabled}
     aria-label={t(enabled ? 'settings.soundEffectsTurnOff' : 'settings.soundEffectsTurnOn')}
     disabled={!writable}

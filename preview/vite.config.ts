@@ -21,6 +21,7 @@ const assetDirectories = new Map([
 const assetFiles = new Map([
   ['mimo.svg', path.join(repositoryRoot, 'assets', 'mimo.svg')],
   ['toggle-characters.webp', path.join(repositoryRoot, 'assets', 'ui', 'toggle-characters.webp')],
+  ['sound-effects-toggle-characters.webp', path.join(repositoryRoot, 'assets', 'ui', 'sound-effects-toggle-characters.webp')],
   ['api-key-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'api-key-whale.webp')],
   ['mixer-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'mixer-whale.webp')],
   ['preview-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'preview-whale.webp')],

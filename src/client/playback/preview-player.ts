@@ -1,12 +1,11 @@
 import {
   TTS_ROUTE,
   TTS_STREAM_ROUTE,
-  firstTtsSegment,
   normalizeVoiceRate,
   parseSseRecords,
   splitTtsSegments,
 } from '../../shared.js'
-import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsVoiceDesignPlaybackMode } from '../../shared.js'
+import type { TtsLocalSpeechMode, TtsModel } from '../../shared.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 import { applyMediaVoiceRate, applySpeechVoiceRate } from './voice-rate.js'
 
@@ -18,8 +17,6 @@ export interface PreviewSettings {
   localVoiceURI: string
   voice: string
   voiceDesignPrompt: string
-  format: TtsFormat
-  voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
   voiceVolume: number
   voiceRate: number
 }
@@ -187,21 +184,12 @@ export class PreviewPlayer {
   }
 
   private async playRemote(text: string, settings: PreviewSettings, generation: number): Promise<void> {
-    if (settings.model === 'mimo-v2.5-tts-voicedesign' && settings.voiceDesignPlaybackMode === 'segmented') {
-      await this.playSegmented(text, settings, generation)
+    if (settings.model === 'mimo-v2.5-tts-voicedesign') {
+      if (splitTtsSegments(text).length > 1) await this.playSegmented(text, settings, generation)
+      else await this.playComplete(text, settings, generation, 'mp3')
       return
     }
-    if (settings.model === 'mimo-v2.5-tts-voicedesign' && settings.voiceDesignPlaybackMode === 'first-segment') {
-      const segment = firstTtsSegment(text)
-      if (segment.length === 0) throw new Error('no-text')
-      await this.playComplete(segment, settings, generation, 'wav')
-      return
-    }
-    if (settings.model !== 'mimo-v2.5-tts-voicedesign' && settings.format === 'pcm') {
-      await this.playPcm(text, settings, generation)
-      return
-    }
-    await this.playComplete(text, settings, generation, settings.format === 'wav' ? 'wav' : 'mp3')
+    await this.playPcm(text, settings, generation)
   }
 
   private async playComplete(text: string, settings: PreviewSettings, generation: number, format: 'mp3' | 'wav'): Promise<void> {
