@@ -314,6 +314,15 @@
   opacity: .5
 }
 
+.xmimo-tts-sound-preview-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--dsw-alias-label-primary, #1f2328);
+  font-size: 13px
+}
+
 .xmimo-tts-sound-previews {
   display: grid;
   min-width: 0;
@@ -386,6 +395,12 @@
   .xmimo-tts-sound-preview-character-bounce {
     animation: none
   }
+}
+
+.xmimo-tts-sound-description {
+  color: var(--dsw-alias-label-tertiary, #8b93a1);
+  font-size: 12px;
+  line-height: 18px
 }
 
 .xmimo-tts-sound-supported {

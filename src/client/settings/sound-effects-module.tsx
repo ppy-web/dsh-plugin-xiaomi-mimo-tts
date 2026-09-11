@@ -179,24 +179,28 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
           </button>)}
         </div>
       </div>
-      <div className="xmimo-tts-sound-previews" role="group" aria-label={t('settings.soundEffectsPreviewLabel')}>
-        {PREVIEW_CUES.map(({ cue, position }) => <button
-          key={cue}
-          type="button"
-          data-xmimo-sound-preview="true"
-          disabled={!enabled}
-          aria-label={previewLabel(cue)}
-          onClick={() => { previewCue(cue) }}
-        >
-          <span
-            className={previewingCue === cue ? 'xmimo-tts-sound-preview-character xmimo-tts-sound-preview-character-bounce' : 'xmimo-tts-sound-preview-character'}
-            style={{ backgroundImage: `url(${hostRoute(TTS_SOUND_EFFECT_CUES_ASSET_ROUTE)})`, backgroundPosition: `${position} center` }}
-            onAnimationEnd={() => { setPreviewingCue((current) => current === cue ? null : current) }}
-            aria-hidden="true"
-          />
-          <span>{previewLabel(cue)}</span>
-        </button>)}
+      <div className="xmimo-tts-sound-preview-section">
+        <span id="xmimo-tts-sound-preview-label">{t('settings.soundEffectsPreviewLabel')}</span>
+        <div className="xmimo-tts-sound-previews" role="group" aria-labelledby="xmimo-tts-sound-preview-label">
+          {PREVIEW_CUES.map(({ cue, position }) => <button
+            key={cue}
+            type="button"
+            data-xmimo-sound-preview="true"
+            disabled={!enabled}
+            aria-label={previewLabel(cue)}
+            onClick={() => { previewCue(cue) }}
+          >
+            <span
+              className={previewingCue === cue ? 'xmimo-tts-sound-preview-character xmimo-tts-sound-preview-character-bounce' : 'xmimo-tts-sound-preview-character'}
+              style={{ backgroundImage: `url(${hostRoute(TTS_SOUND_EFFECT_CUES_ASSET_ROUTE)})`, backgroundPosition: `${position} center` }}
+              onAnimationEnd={() => { setPreviewingCue((current) => current === cue ? null : current) }}
+              aria-hidden="true"
+            />
+            <span>{previewLabel(cue)}</span>
+          </button>)}
+        </div>
       </div>
+      <small className="xmimo-tts-sound-description">{t('settings.soundEffectsDescription')}</small>
       <small className="xmimo-tts-sound-supported">{t('settings.soundEffectsSupported')}</small>
       {!writable ? <small>{t('settings.readOnly')}</small> : null}
     </div>

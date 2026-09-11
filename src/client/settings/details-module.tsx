@@ -82,6 +82,7 @@ export interface DetailsModuleProps {
   writable: boolean
   autoPlay: boolean
   voiceVolume: number
+  voiceRate: number
   model: TtsModel
   localSpeechMode: TtsLocalSpeechMode
   localVoiceURI: string
@@ -97,6 +98,8 @@ export interface DetailsModuleProps {
   onToggle: () => void
   onVoiceVolumeChange: (value: number) => void
   onVoiceVolumeInteractionEnd: (value: number) => void
+  onVoiceRateChange: (value: number) => void
+  onVoiceRateInteractionEnd: (value: number) => void
   onModelChange: (value: TtsModel) => void
   onVoiceDesignPromptChange: (value: string) => void
   onVoiceDesignPlaybackModeChange: (value: TtsVoiceDesignPlaybackMode) => void
@@ -108,7 +111,7 @@ export interface DetailsModuleProps {
   onGenerateVoiceDesign: () => void
 }
 
-export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVolume, model, localSpeechMode, localVoiceURI, voice, format, voiceDesignPlaybackMode, voiceDesignPrompt, voiceDesignCustomPrompt, voiceDesignAiState, voiceDesignAiCopy, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onModelChange, onVoiceDesignPromptChange, onVoiceDesignPlaybackModeChange, onVoiceChange, onFormatChange, onLocalVoiceURIChange, onLocalSpeechModeChange, onVoiceDesignAiCopyChange, onGenerateVoiceDesign }: DetailsModuleProps): ReactElement {
+export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVolume, voiceRate, model, localSpeechMode, localVoiceURI, voice, format, voiceDesignPlaybackMode, voiceDesignPrompt, voiceDesignCustomPrompt, voiceDesignAiState, voiceDesignAiCopy, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onModelChange, onVoiceDesignPromptChange, onVoiceDesignPlaybackModeChange, onVoiceChange, onFormatChange, onLocalVoiceURIChange, onLocalSpeechModeChange, onVoiceDesignAiCopyChange, onGenerateVoiceDesign }: DetailsModuleProps): ReactElement {
   const summaryModel = t(model === 'mimo-v2.5-tts-voicedesign' ? 'settings.summaryVoiceDesignModel' : 'settings.summaryPresetModel')
   const voiceDesignPreset = TTS_VOICE_DESIGN_PRESETS.find((item) => item.prompt === voiceDesignPrompt)
   const summaryVoice = model === 'mimo-v2.5-tts-voicedesign'
@@ -119,6 +122,7 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
     : format.toUpperCase()
   const summaryStrategy = t(localSpeechMode === 'auto' ? 'settings.localSpeechAutoSummary' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled')
   const summaryVoiceVolume = `${t('settings.voiceVolume')} ${Math.round(voiceVolume * 100)}%`
+  const summaryVoiceRate = `${t('settings.voiceRate')} ${voiceRate.toFixed(1)}×`
 
   const mixerAction = <button
     type="button"
@@ -145,7 +149,7 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
     collapseOpenClassName="xmimo-tts-details-collapse-open"
     title={t('settings.detailedVoiceConfig')}
     summary={<span className="xmimo-tts-details-summary xmimo-ui-summary">
-      <span>{summaryVoiceVolume}</span><span>{summaryModel}</span><span>{summaryVoice}</span><span>{summaryPlayback}</span><span>{summaryStrategy}</span>
+      <span>{summaryVoiceVolume}</span><span>{summaryVoiceRate}</span><span>{summaryModel}</span><span>{summaryVoice}</span><span>{summaryPlayback}</span><span>{summaryStrategy}</span>
     </span>}
     open={open}
     onToggle={onToggle}
@@ -153,8 +157,13 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
   >
     <div className="xmimo-tts-grid xmimo-ui-grid xmimo-tts-details-body xmimo-ui-module-body">
       <div className="xmimo-tts-volume">
-        <SettingFieldHeading label={t('settings.voiceVolume')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceVolume')} resettable disabled={!writable} onReset={() => { resetField('voiceVolume') }} />
+        <SettingFieldHeading label={summaryVoiceVolume} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceVolume')} resettable disabled={!writable} onReset={() => { resetField('voiceVolume') }} />
         <EnergyVolumeSlider value={voiceVolume} label={t('settings.voiceVolume')} disabled={!writable} onChange={onVoiceVolumeChange} onInteractionEnd={onVoiceVolumeInteractionEnd} />
+      </div>
+      <div className="xmimo-tts-volume">
+        <SettingFieldHeading label={`${t('settings.voiceRate')} ${voiceRate.toFixed(1)}×`} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceRate')} resettable disabled={!writable} onReset={() => { resetField('voiceRate') }} />
+        <EnergyVolumeSlider value={voiceRate} min={0.5} max={2} step={0.1} formatValue={(value) => `${value.toFixed(1)}×`} label={t('settings.voiceRate')} disabled={!writable} onChange={onVoiceRateChange} onInteractionEnd={onVoiceRateInteractionEnd} />
+        <small>{t('settings.voiceRatePcmHint')}</small>
       </div>
       <div className="xmimo-tts-model">
         <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('model')} resettable disabled={!writable} onReset={() => { resetField('model') }} />

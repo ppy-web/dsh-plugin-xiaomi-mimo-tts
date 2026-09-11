@@ -1,7 +1,8 @@
 import { extractMarkdownPlainText } from '@deepseek-ai/dsh-client-ui-primitives'
-import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, prepareTtsText, splitCompletedTtsSentences, splitTtsSegments } from '../../shared.js'
+import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, normalizeVoiceRate, prepareTtsText, splitCompletedTtsSentences, splitTtsSegments } from '../../shared.js'
 import type { LiveSpeechCursor } from '../../shared.js'
 import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
+import { applySpeechVoiceRate } from './voice-rate.js'
 
 function browserVoices(): SpeechSynthesisVoice[] {
   if (typeof window === 'undefined' || window.speechSynthesis === undefined) return []
@@ -40,6 +41,8 @@ export class LocalSpeechController {
   private fallbackHandler: ((cursor: LiveSpeechCursor, text: string) => void) | null = null
   private beforePlayback: (() => void) | null = null
   private volume = 1
+  private voiceRate = 1
+  private activeVoiceRate = 1
 
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus, error: string | null) => void): void { this.onStateChange = listener }
 
@@ -55,6 +58,8 @@ export class LocalSpeechController {
     this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
     if (this.current !== null) this.current.volume = this.volume
   }
+
+  setVoiceRate(value: number): void { this.voiceRate = normalizeVoiceRate(value) }
 
   activateSession(sessionId: string): void {
     if (this.sessionId === sessionId) return
@@ -97,6 +102,7 @@ export class LocalSpeechController {
     if (this.sessionId !== sessionId || text.length === 0) return
     this.beforePlayback?.()
     this.resetState()
+    this.activeVoiceRate = this.voiceRate
     this.messageId = messageId
     this.completedFallback = fallback ?? null
     const segments = this.segments(text)
@@ -156,6 +162,7 @@ export class LocalSpeechController {
 
   private reset(next: LiveSpeechCursor): void {
     this.resetState()
+    this.activeVoiceRate = this.voiceRate
     this.active = next
     this.setStatus('idle')
   }
@@ -250,6 +257,7 @@ export class LocalSpeechController {
       utterance.voice = voice
       utterance.lang = voice.lang
       utterance.volume = this.volume
+      applySpeechVoiceRate(utterance, this.activeVoiceRate)
       this.current = utterance
       let settled = false
       let timeout: number | null = null

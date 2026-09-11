@@ -3,6 +3,7 @@ import {
   AbortableSentenceQueue,
   batchTtsStreamText,
   classifyLiveSpeechTransition,
+  normalizeVoiceRate,
   prepareTtsText,
   splitCompletedTtsSentences,
 } from '../../shared.js'
@@ -44,6 +45,7 @@ export class LiveSpeechController {
   private fallbackHandler: ((cursor: LiveSpeechCursor, text: string) => void) | null = null
   private onStateChange: ((sessionId: string, messageId: string, status: PlaybackStatus) => void) | null = null
   private beforePlayback: (() => void) | null = null
+  private voiceRate = 1
 
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus) => void): void {
     this.onStateChange = listener
@@ -56,6 +58,8 @@ export class LiveSpeechController {
   setMaxPausedPcmBytes(value: number): void { this.audio.setMaxPausedPcmBytes(value) }
 
   setVolume(value: number): void { this.audio.setVolume(value) }
+
+  setVoiceRate(value: number): void { this.voiceRate = normalizeVoiceRate(value) }
 
   async pause(sessionId: string): Promise<boolean> {
     if (this.sessionId !== sessionId || this.status !== 'playing') return false
@@ -109,6 +113,7 @@ export class LiveSpeechController {
     if (this.sessionId !== sessionId || text.length === 0) return
     this.beforePlayback?.()
     this.resetState()
+    this.audio.setPlaybackRate(this.voiceRate)
     this.completed = { sessionId, messageId, audioStarted: false, fallback }
     this.audioStarted = false
     this.messageId = messageId
@@ -169,6 +174,7 @@ export class LiveSpeechController {
   private reset(next: LiveSpeechCursor): void {
     this.replaceQueue()
     this.audio.stop()
+    this.audio.setPlaybackRate(this.voiceRate)
     this.beginSegment(next, false)
     this.setStatus('idle')
   }

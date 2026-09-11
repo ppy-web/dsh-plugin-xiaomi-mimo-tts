@@ -10,8 +10,12 @@ export interface SoundEffectsSettings {
   clickSounds: boolean
 }
 
+export interface SoundEffectsPlayOptions {
+  playbackRate?: number
+}
+
 export interface SoundEffectsController {
-  play(cue: SoundCue): void
+  play(cue: SoundCue, options?: SoundEffectsPlayOptions): void
   preview(cue: SoundCue): void
   setVolume(value: number): void
   previewVolume(): void

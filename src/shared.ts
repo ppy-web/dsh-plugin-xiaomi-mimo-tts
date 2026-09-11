@@ -534,6 +534,7 @@ export interface TtsSettings {
   maxWavAudioBytes?: number
   maxPausedPcmBytes?: number
   voiceVolume?: number
+  voiceRate?: number
   soundEnabled?: boolean
   soundVolume?: number
   soundPack?: SoundPack
@@ -562,6 +563,7 @@ export interface ResolvedTtsSettings {
   maxWavAudioBytes: number
   maxPausedPcmBytes: number
   voiceVolume: number
+  voiceRate: number
   soundEnabled: boolean
   soundVolume: number
   soundPack: SoundPack
@@ -591,6 +593,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   maxWavAudioBytes: DEFAULT_MAX_WAV_AUDIO_BYTES,
   maxPausedPcmBytes: DEFAULT_MAX_PAUSED_PCM_BYTES,
   voiceVolume: 1,
+  voiceRate: 1,
   ...DEFAULT_SOUND_SETTINGS,
 }
 
@@ -608,6 +611,10 @@ export function isSupportedTtsApiKey(apiKey: string): boolean {
 }
 
 /** Resolve an optional settings snapshot into the values used by the form. */
+export function normalizeVoiceRate(value: number): number {
+  return Number.isFinite(value) ? Math.round(Math.max(0.5, Math.min(2, value)) * 10) / 10 : 1
+}
+
 export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsSettings {
   const resolved = { ...DEFAULT_TTS_SETTINGS, ...value }
   const soundVolume = Number.isFinite(resolved.soundVolume)
@@ -616,6 +623,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
   const voiceVolume = Number.isFinite(resolved.voiceVolume)
     ? Math.max(0, Math.min(1, resolved.voiceVolume))
     : DEFAULT_TTS_SETTINGS.voiceVolume
+  const voiceRate = normalizeVoiceRate(resolved.voiceRate)
   const model = resolved.model === 'browser-local-fallback' ? 'mimo-v2.5-tts' : resolved.model
   const voiceDesignCustomPrompt = typeof value?.voiceDesignCustomPrompt === 'string'
     ? value.voiceDesignCustomPrompt
@@ -629,6 +637,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     autoPlay: resolved.enabled ? resolved.autoPlay : false,
     soundVolume,
     voiceVolume,
+    voiceRate,
     soundPack: SOUND_PACKS.includes(resolved.soundPack) ? resolved.soundPack : DEFAULT_SOUND_SETTINGS.soundPack,
   }
 }

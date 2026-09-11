@@ -37,7 +37,7 @@ interface SettingsCardProps {
 
 type DraftSettings = SettingsValues
 
-const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'voiceVolume', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format', 'voiceDesignPlaybackMode', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
+const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'voiceVolume', 'voiceRate', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'format', 'voiceDesignPlaybackMode', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
 const RELEASES_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/releases'
 
 function layerSettings(value: unknown): TtsSettings | undefined {
@@ -56,6 +56,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   const [enabled, setEnabled] = useState(initial.enabled)
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
   const [voiceVolume, setVoiceVolume] = useState(initial.voiceVolume)
+  const [voiceRate, setVoiceRate] = useState(initial.voiceRate)
   const [model, setModel] = useState(initial.model)
   const [localSpeechMode, setLocalSpeechMode] = useState(initial.localSpeechMode)
   const [localVoiceURI, setLocalVoiceURI] = useState(initial.localVoiceURI)
@@ -86,7 +87,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, voiceVolume, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format, voiceDesignPlaybackMode, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, format, voiceDesignPlaybackMode, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -221,6 +222,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     if (field === 'enabled') setEnabled(base.enabled)
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
     if (field === 'voiceVolume') setVoiceVolume(base.voiceVolume)
+    if (field === 'voiceRate') setVoiceRate(base.voiceRate)
     if (field === 'model') setModel(base.model)
     if (field === 'localSpeechMode') setLocalSpeechMode(base.localSpeechMode)
     if (field === 'localVoiceURI') setLocalVoiceURI(base.localVoiceURI)
@@ -241,6 +243,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
     setVoiceVolume(next.voiceVolume)
+    setVoiceRate(next.voiceRate)
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
     setLocalVoiceURI(next.localVoiceURI)
@@ -320,6 +323,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       format,
       voiceDesignPlaybackMode,
       voiceVolume,
+      voiceRate,
     })
   }
 
@@ -389,6 +393,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           writable={snapshot.writable}
           autoPlay={autoPlay}
           voiceVolume={voiceVolume}
+          voiceRate={voiceRate}
           model={model}
           localSpeechMode={localSpeechMode}
           localVoiceURI={localVoiceURI}
@@ -404,6 +409,8 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           onToggle={() => { setDetailsOpen((current) => !current) }}
           onVoiceVolumeChange={(next) => { previewPlayer.setVolume(next); toggleSoundPlayer.setPreviewVolume(next); setVoiceVolume(next); markChange('voiceVolume') }}
           onVoiceVolumeInteractionEnd={(next) => { toggleSoundPlayer.previewVolume(next) }}
+          onVoiceRateChange={(next) => { setVoiceRate(next); markChange('voiceRate') }}
+          onVoiceRateInteractionEnd={(next) => { controller.play('success', { playbackRate: next }) }}
           onModelChange={(nextModel) => { setModel(nextModel); setVoiceDesignAiState('idle'); markChange('model'); if (nextModel === 'mimo-v2.5-tts-voicedesign') chooseVoiceDesignAiCopy() }}
           onVoiceDesignPromptChange={(next) => {
             setVoiceDesignPrompt(next)

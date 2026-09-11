@@ -57,6 +57,7 @@ export const Config = z.object({
   maxWavAudioBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxWavAudioBytes),
   maxPausedPcmBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxPausedPcmBytes),
   voiceVolume: z.number().min(0).max(1).default(DEFAULT_TTS_SETTINGS.voiceVolume),
+  voiceRate: z.number().step(0.1).min(0.5).max(2).default(DEFAULT_TTS_SETTINGS.voiceRate),
   soundEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.soundEnabled),
   soundVolume: z.number().min(0).max(1).default(DEFAULT_TTS_SETTINGS.soundVolume),
   soundPack: z.union(SOUND_PACKS).default(DEFAULT_TTS_SETTINGS.soundPack),

@@ -57,6 +57,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       debugConsole?.info(this.logPrefix, '[准备] 已请求中断会话朗读')
       this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
       this.audio.setVolume(settings.voiceVolume)
+      this.audio.setPlaybackRate(settings.voiceRate)
 
       const generation = this.generation
       const controller = new AbortController()

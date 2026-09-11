@@ -1,5 +1,6 @@
-import { splitTtsSegments, TTS_ROUTE } from '../../shared.js'
+import { normalizeVoiceRate, splitTtsSegments, TTS_ROUTE } from '../../shared.js'
 import type { PlaybackStatus, PlaybackView } from './types.js'
+import { applyMediaVoiceRate } from './voice-rate.js'
 
 interface SynthesizedAudio {
   url: string
@@ -18,12 +19,13 @@ export class PlaybackController {
   private readonly completedMessages = new Map<string, string>()
   private current: SynthesizedAudio | null = null
   private segmentQueue: HTMLAudioElement[] = []
-  private segmentedState: { sessionId: string; messageId: string; segments: string[]; index: number } | null = null
+  private segmentedState: { sessionId: string; messageId: string; segments: string[]; index: number; voiceRate: number } | null = null
   private request: AbortController | null = null
   private generation = 0
   private activeSessionId: string | null = null
   private beforePlayback: (() => void) | null = null
   private volume = 1
+  private voiceRate = 1
 
   getSnapshot = (): PlaybackView => this.view
 
@@ -39,6 +41,8 @@ export class PlaybackController {
     if (this.current !== null) this.current.audio.volume = this.volume
     for (const audio of this.segmentQueue) audio.volume = this.volume
   }
+
+  setVoiceRate(value: number): void { this.voiceRate = normalizeVoiceRate(value) }
 
   interrupt(): void {
     this.generation += 1
@@ -131,11 +135,12 @@ export class PlaybackController {
     this.stopCurrent()
     const segments = resume ? previous.segments : splitTtsSegments(text)
     const startIndex = resume ? previous.index : 0
+    const voiceRate = resume ? previous.voiceRate : this.voiceRate
     if (segments.length === 0) {
       this.publish({ sessionId, messageId, source: 'segmented', status: 'error', error: 'no-text' })
       return
     }
-    this.segmentedState = { sessionId, messageId, segments, index: startIndex }
+    this.segmentedState = { sessionId, messageId, segments, index: startIndex, voiceRate }
     const generation = ++this.generation
     const controller = new AbortController()
     this.request = controller
@@ -163,6 +168,7 @@ export class PlaybackController {
         if (index + 1 < segments.length) nextAudio = synthesize(segments[index + 1]!)
         const audio = new Audio(URL.createObjectURL(blob))
         audio.volume = this.volume
+        applyMediaVoiceRate(audio, voiceRate)
         this.segmentQueue.push(audio)
         await new Promise<void>((resolve, reject) => {
           const cleanup = (): void => { audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed) }
@@ -226,6 +232,7 @@ export class PlaybackController {
     }
 
     this.stopCurrent()
+    const voiceRate = this.voiceRate
     const generation = ++this.generation
     const controller = new AbortController()
     this.request = controller
@@ -256,6 +263,7 @@ export class PlaybackController {
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
       audio.volume = this.volume
+      applyMediaVoiceRate(audio, voiceRate)
       audioCreated = true
       const current: SynthesizedAudio = {
         url,

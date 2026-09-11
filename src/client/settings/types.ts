@@ -1,4 +1,4 @@
-export type EditableSettingField = 'enabled' | 'autoPlay' | 'voiceVolume' | 'model' | 'localSpeechMode' | 'localVoiceURI' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format' | 'voiceDesignPlaybackMode' | 'soundEnabled' | 'soundVolume' | 'soundPack' | 'taskSounds' | 'clickSounds'
+export type EditableSettingField = 'enabled' | 'autoPlay' | 'voiceVolume' | 'voiceRate' | 'model' | 'localSpeechMode' | 'localVoiceURI' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'format' | 'voiceDesignPlaybackMode' | 'soundEnabled' | 'soundVolume' | 'soundPack' | 'taskSounds' | 'clickSounds'
 export type SettingField = EditableSettingField | 'apiKey'
 export type DraftChange = { kind: 'set' } | { kind: 'clear' }
 export type DraftChanges = Partial<Record<SettingField, DraftChange>>

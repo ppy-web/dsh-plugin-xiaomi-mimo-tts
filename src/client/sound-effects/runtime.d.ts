@@ -1,5 +1,5 @@
 export interface UisfxPlayer {
-  play(cue: string, options?: { volume?: number; cooldownMs?: number; retrigger?: 'ignore' | 'restart' | 'overlap' }): unknown
+  play(cue: string, options?: { volume?: number; cooldownMs?: number; playbackRate?: number; retrigger?: 'ignore' | 'restart' | 'overlap' }): unknown
   unlock(): Promise<boolean>
   setPack(pack: string): void
   setVolume(volume: number): void

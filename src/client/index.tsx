@@ -105,6 +105,10 @@ export function apply(ctx: Context): void {
   updateVoiceVolume()
   ctx.effect(() => scope.subscribe(updateVoiceVolume), 'xiaomi-mimo-tts: voice volume')
 
+  const updateVoiceRate = () => { const rate = resolveTtsSettings(scope.getSnapshot().value).voiceRate; live.setVoiceRate(rate); local.setVoiceRate(rate); playback.setVoiceRate(rate) }
+  updateVoiceRate()
+  ctx.effect(() => scope.subscribe(updateVoiceRate), 'xiaomi-mimo-tts: voice rate')
+
   ctx.effect(() => async () => {
     live.setBeforePlayback(null)
     local.setBeforePlayback(null)

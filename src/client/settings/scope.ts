@@ -25,6 +25,7 @@ export function decodeSettings(value: unknown): TtsSettings | undefined {
   if (typeof value.maxTextLength === 'number') decoded.maxTextLength = value.maxTextLength
   if (typeof value.requestTimeoutMs === 'number') decoded.requestTimeoutMs = value.requestTimeoutMs
   if (typeof value.maxPausedPcmBytes === 'number') decoded.maxPausedPcmBytes = value.maxPausedPcmBytes
+  if (typeof value.voiceRate === 'number') decoded.voiceRate = value.voiceRate
   if (typeof value.soundEnabled === 'boolean') decoded.soundEnabled = value.soundEnabled
   if (typeof value.soundVolume === 'number') decoded.soundVolume = value.soundVolume
   if (SOUND_PACKS.includes(value.soundPack as typeof SOUND_PACKS[number])) decoded.soundPack = value.soundPack as typeof SOUND_PACKS[number]

@@ -43,30 +43,21 @@
 
 .xmimo-tts-energy-dots {
   position: absolute;
-  inset: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  inset: 0;
   pointer-events: none
 }
 
 .xmimo-tts-energy-dots i {
+  position: absolute;
+  left: var(--dot-x);
+  top: var(--dot-y);
   display: block;
-  width: 3px;
-  height: 3px;
+  width: var(--dot-size);
+  height: var(--dot-size);
   border-radius: 50%;
   background: #fff;
-  transform: translateY(3px)
-}
-
-.xmimo-tts-energy-dots i:nth-child(3n) {
-  width: 2px;
-  height: 2px;
-  transform: translateY(-4px)
-}
-
-.xmimo-tts-energy-dots i:nth-child(4n) {
-  transform: translateY(7px)
+  transform: translate(-50%, -50%);
+  animation: xmimo-energy-drift var(--drift-duration) ease-in-out var(--drift-delay) infinite alternate
 }
 
 .xmimo-tts-energy input[type=range] {
@@ -131,8 +122,8 @@
 }
 
 .xmimo-tts-energy-pulse i {
-  animation: xmimo-energy-flash 480ms ease-out both;
-  animation-delay: calc(var(--dot) * 16ms)
+  animation: xmimo-energy-drift var(--drift-duration) ease-in-out var(--drift-delay) infinite alternate, xmimo-energy-flash 480ms ease-out both;
+  animation-delay: var(--drift-delay), calc(var(--dot) * 16ms)
 }
 
 .xmimo-tts-energy[data-disabled=true] {
@@ -162,6 +153,15 @@
   35% {
     filter: brightness(2);
     box-shadow: 0 0 5px 2px #fff9
+  }
+}
+
+@keyframes xmimo-energy-drift {
+  from {
+    transform: translate(-50%, -50%) translate(0, 0)
+  }
+  to {
+    transform: translate(-50%, -50%) translate(var(--drift-x), var(--drift-y))
   }
 }
 

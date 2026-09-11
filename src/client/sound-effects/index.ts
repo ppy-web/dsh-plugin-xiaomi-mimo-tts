@@ -15,9 +15,9 @@ export function createSoundEffectsController(): SoundEffectsController {
   }
 
   return {
-    play(cue) {
+    play(cue, options) {
       if (!settings.enabled || !VALID_CUES.has(cue)) return
-      try { getPlayer().play(cue) } catch { /* AudioContext may be unavailable. */ }
+      try { getPlayer().play(cue, options) } catch { /* AudioContext may be unavailable. */ }
     },
     preview(cue) {
       if (!settings.enabled || !VALID_CUES.has(cue)) return

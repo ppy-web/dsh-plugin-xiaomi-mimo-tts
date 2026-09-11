@@ -1,4 +1,6 @@
 import { debugConsole } from '../../debug-console.js'
+import { normalizeVoiceRate } from '../../shared.js'
+import { applyPcmVoiceRate, pcmPlaybackDuration } from './voice-rate.js'
 
 export interface PcmAudioQueueCallbacks {
   onBusyChange: (busy: boolean) => void
@@ -10,6 +12,7 @@ export class PcmAudioQueue {
   private context: AudioContext | null = null
   private gain: GainNode | null = null
   private volume = 1
+  private playbackRate = 1
   private scheduledAt = 0
   private readonly sources = new Set<AudioBufferSourceNode>()
   private readonly sourceBytes = new Map<AudioBufferSourceNode, number>()
@@ -34,6 +37,8 @@ export class PcmAudioQueue {
     gain.gain.setValueAtTime(gain.gain.value, now)
     gain.gain.linearRampToValueAtTime(this.volume, now + .02)
   }
+
+  setPlaybackRate(value: number): void { this.playbackRate = normalizeVoiceRate(value) }
 
   async pause(): Promise<void> {
     this.userPaused = true
@@ -108,10 +113,11 @@ export class PcmAudioQueue {
 
     const source = context.createBufferSource()
     source.buffer = buffer
+    applyPcmVoiceRate(source, this.playbackRate)
     source.connect(this.getGain(context))
     const startAt = Math.max(context.currentTime + 0.03, this.scheduledAt)
-    this.scheduledAt = startAt + buffer.duration
-    debugConsole?.info(this.logPrefix, '[调度] 准备播放 PCM', { bytes: bytes.byteLength, samples: sampleCount, duration: buffer.duration, currentTime: context.currentTime, startAt, scheduledUntil: this.scheduledAt })
+    this.scheduledAt = startAt + pcmPlaybackDuration(buffer.duration, this.playbackRate)
+    debugConsole?.info(this.logPrefix, '[调度] 准备播放 PCM', { bytes: bytes.byteLength, samples: sampleCount, duration: buffer.duration, playbackRate: this.playbackRate, currentTime: context.currentTime, startAt, scheduledUntil: this.scheduledAt })
     if (this.userPaused && this.queuedBytes + bytes.byteLength > this.maxPausedPcmBytes) throw new Error('pcm-pause-buffer-limit')
     this.sources.add(source)
     this.sourceBytes.set(source, bytes.byteLength)

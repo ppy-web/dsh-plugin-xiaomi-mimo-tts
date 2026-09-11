@@ -2,11 +2,13 @@ import {
   TTS_ROUTE,
   TTS_STREAM_ROUTE,
   firstTtsSegment,
+  normalizeVoiceRate,
   parseSseRecords,
   splitTtsSegments,
 } from '../../shared.js'
 import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsVoiceDesignPlaybackMode } from '../../shared.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
+import { applyMediaVoiceRate, applySpeechVoiceRate } from './voice-rate.js'
 
 export type PreviewStatus = 'idle' | 'loading' | 'playing' | 'error'
 
@@ -19,6 +21,7 @@ export interface PreviewSettings {
   format: TtsFormat
   voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
   voiceVolume: number
+  voiceRate: number
 }
 
 interface PreviewRequestBody {
@@ -83,6 +86,7 @@ export class PreviewPlayer {
   private pcmBusy = false
   private status: PreviewStatus = 'idle'
   private volume = 1
+  private voiceRate = 1
 
   constructor(private readonly onStatusChange: (status: PreviewStatus) => void) {}
 
@@ -98,6 +102,8 @@ export class PreviewPlayer {
   async play(text: string, settings: PreviewSettings): Promise<void> {
     this.stop()
     this.setVolume(settings.voiceVolume)
+    this.voiceRate = normalizeVoiceRate(settings.voiceRate)
+    this.pcm.setPlaybackRate(this.voiceRate)
     const normalized = text.trim()
     if (normalized.length === 0) {
       this.publish('error')
@@ -215,6 +221,7 @@ export class PreviewPlayer {
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
     audio.volume = this.volume
+    applyMediaVoiceRate(audio, this.voiceRate)
     this.audioUrl = url
     this.audio = audio
     await new Promise<void>((resolve, reject) => {
@@ -305,6 +312,7 @@ export class PreviewPlayer {
       utterance.voice = voice
       utterance.lang = voice.lang
       utterance.volume = this.volume
+      applySpeechVoiceRate(utterance, this.voiceRate)
       this.utterance = utterance
       let settled = false
       const finish = (error?: Error): void => {
