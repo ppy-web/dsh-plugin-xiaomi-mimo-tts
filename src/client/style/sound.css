@@ -97,7 +97,7 @@
 }
 
 .xmimo-tts-sound-whale-off {
-  background-position: right center
+  background-position: calc(100% + 2px) center
 }
 
 .xmimo-tts-sound-whale-button:hover:not(:disabled) .xmimo-tts-sound-whale {

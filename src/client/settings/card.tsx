@@ -352,7 +352,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       controller.update({ enabled: true, volume: soundVolume, pack: soundPack, taskSounds: true, clickSounds: true })
       controller.play('toggle-on')
     } else {
-      controller.play('toggle-off')
       controller.update({ enabled: false, volume: soundVolume, pack: soundPack, taskSounds: false, clickSounds: false })
     }
     setSoundEnabled(next)

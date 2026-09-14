@@ -11,6 +11,7 @@ export interface LocalVoicePickerProps {
   offlineLabel: string
   onlineLabel: string
   onChange: (voiceURI: string) => void
+  onAvailabilityChange: (available: boolean) => void
 }
 
 function availableVoices(): SpeechSynthesisVoice[] {
@@ -36,7 +37,7 @@ function pickVoice(voices: readonly SpeechSynthesisVoice[], value: string): Spee
     ?? voices[0]
 }
 
-export function LocalVoicePicker({ value, disabled = false, label, unavailableLabel, loadingLabel, offlineLabel, onlineLabel, onChange }: LocalVoicePickerProps): ReactElement {
+export function LocalVoicePicker({ value, disabled = false, label, unavailableLabel, loadingLabel, offlineLabel, onlineLabel, onChange, onAvailabilityChange }: LocalVoicePickerProps): ReactElement {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [voicesReady, setVoicesReady] = useState(false)
   const [open, setOpen] = useState(false)
@@ -46,8 +47,13 @@ export function LocalVoicePicker({ value, disabled = false, label, unavailableLa
   const listboxId = useId()
 
   useEffect(() => {
-    if (typeof window === 'undefined' || window.speechSynthesis === undefined) { setVoicesReady(true); return }
-    const update = (): void => { setVoices(availableVoices()); setVoicesReady(true) }
+    if (typeof window === 'undefined' || window.speechSynthesis === undefined) { setVoicesReady(true); onAvailabilityChange(false); return }
+    const update = (): void => {
+      const nextVoices = availableVoices()
+      setVoices(nextVoices)
+      setVoicesReady(true)
+      onAvailabilityChange(nextVoices.length > 0)
+    }
     update()
     window.speechSynthesis.addEventListener('voiceschanged', update)
     return () => window.speechSynthesis.removeEventListener('voiceschanged', update)

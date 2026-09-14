@@ -422,6 +422,38 @@ export function applyTtsReadScope(value: string, scope: TtsEffectiveReadScope): 
   return scope === 'first-segment' ? firstTtsSegment(value) : value
 }
 
+/** Natural spoken cues used when Smart automatic playback leaves substantial text unread. */
+export const TTS_SMART_TRUNCATION_OUTROS = [
+  '后面还有内容，先陪你念到这里啦～',
+  '剩下的部分，查看文字回复吧。',
+  '完整内容，你来接着往下看吧～',
+  '后面内容太长了，我就不读了，请查阅。',
+  '我先念到这里，后面的内容在文字回复里哦。',
+  '这一段先帮你读到这里，剩下的继续看文字吧。',
+] as const
+
+const TTS_OUTRO_PAUSE_END = /[,.;:!?，。！？；、：…]$/u
+
+/** Append one Smart-mode closing cue when the unread text is at least as long as the spoken segment. */
+export function appendTtsSmartTruncationOutro(fullText: string, spokenText: string, random: () => number = Math.random): string {
+  const spokenLength = countTtsSpeechCharacters(spokenText)
+  const unreadLength = Math.max(0, countTtsSpeechCharacters(fullText) - spokenLength)
+  if (spokenLength === 0 || unreadLength < spokenLength) return spokenText
+
+  const trimmed = spokenText.trimEnd()
+  const index = Math.min(TTS_SMART_TRUNCATION_OUTROS.length - 1, Math.max(0, Math.floor(random() * TTS_SMART_TRUNCATION_OUTROS.length)))
+  const separator = TTS_OUTRO_PAUSE_END.test(trimmed) ? '' : '。'
+  return `${trimmed}${separator}${TTS_SMART_TRUNCATION_OUTROS[index]}`
+}
+
+/** Apply the configured playback range and Smart automatic closing cue to a completed reply. */
+export function applyTtsPlaybackScope(value: string, scope: TtsReadScope, automatic: boolean, random: () => number = Math.random): string {
+  const scoped = applyTtsReadScope(value, resolveTtsReadScope(scope, automatic))
+  return scope === 'smart' && automatic
+    ? appendTtsSmartTruncationOutro(value, scoped, random)
+    : scoped
+}
+
 /** Keep the first semantic segment monotonic while an assistant reply is growing. */
 export class TtsFirstSegmentLimiter {
   private locked: string | null = null

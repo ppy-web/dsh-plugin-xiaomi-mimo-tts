@@ -74,9 +74,6 @@ After installation, restart `dsh web`, then open **Settings → Plugins → Plug
 
 Click **Save** after changing any setting.
 
-### Sound Effects
-
-Below **Broadcast Studio** in the voice settings card, control the master switch, volume, sound pack, click sounds, and task sounds, and preview common cues. Sounds are synthesized with browser Web Audio; no network request or audio file persistence is used.
 
 When switching from a local development version to the npm package on Windows, stop DSH Web first and run:
 
@@ -110,7 +107,7 @@ Three strategies are available: **MiMo first** falls back to browser speech when
 
 **Read-aloud range**
 
-- **Smart selection**: automatic playback prefers the opening semantic segment, while manual playback reads the full reply. Short replies without a separable segment are read in full.
+- **Smart mode**: automatic playback prefers the opening semantic segment and adds a random natural closing cue when the unread portion is at least as long as the spoken segment. Manual playback reads the full reply; short replies without a separable segment are read in full.
 - **Full mode**: both automatic and manual playback read the full reply.
 - **First-segment mode**: both automatic and manual playback read only the opening semantic segment.
 

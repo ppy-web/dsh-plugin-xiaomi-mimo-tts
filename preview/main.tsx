@@ -11,10 +11,41 @@ import {
   VOICE_DESIGN_AI_RPC_ENDPOINT,
 } from '../src/shared.js'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
+import { PreviewBackground } from './background-icons.js'
+import { UserManual } from './user-manual.js'
 import './preview.css'
 
 type PreviewLocale = 'zh' | 'en'
 type PreviewTheme = 'light' | 'dark'
+
+const TOOLBAR_COPY: Record<PreviewLocale, {
+  subtitle: string
+  language: string
+  theme: string
+  readOnly: string
+  reset: string
+  light: string
+  dark: string
+}> = {
+  zh: {
+    subtitle: '真实组件 · Vite 热更新 · 本地模拟数据',
+    language: '语言',
+    theme: '主题',
+    readOnly: '只读',
+    reset: '重置状态',
+    light: '浅色',
+    dark: '深色',
+  },
+  en: {
+    subtitle: 'Real components · Vite HMR · local mock data',
+    language: 'Language',
+    theme: 'Theme',
+    readOnly: 'Read-only',
+    reset: 'Reset state',
+    light: 'Light',
+    dark: 'Dark',
+  },
+}
 
 const scope = new PreviewSettingsScope()
 const uninstallPreviewFetch = installPreviewFetch(scope)
@@ -53,6 +84,7 @@ function PreviewApp() {
   const [instance, setInstance] = useState(0)
   const listRef = useRef<HTMLUListElement | null>(null)
   const t = useMemo(() => translator(locale), [locale])
+  const toolbar = TOOLBAR_COPY[locale]
 
   useEffect(() => {
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en'
@@ -83,40 +115,48 @@ function PreviewApp() {
   }
 
   return <div className="preview-shell">
+    <PreviewBackground />
     <header className="preview-toolbar">
       <div>
         <strong>MiMo TTS UI Lab</strong>
-        <span>真实组件 · Vite 热更新 · 本地模拟数据</span>
+        <span>{toolbar.subtitle}</span>
       </div>
       <div className="preview-controls">
         <label>
-          <span>语言</span>
+          <span>{toolbar.language}</span>
           <select value={locale} onChange={(event) => { changeLocale(event.target.value as PreviewLocale) }}>
             <option value="zh">中文</option>
             <option value="en">English</option>
           </select>
         </label>
         <label>
-          <span>主题</span>
+          <span>{toolbar.theme}</span>
           <select value={theme} onChange={(event) => { setTheme(event.target.value as PreviewTheme) }}>
-            <option value="light">浅色</option>
-            <option value="dark">深色</option>
+            <option value="light">{toolbar.light}</option>
+            <option value="dark">{toolbar.dark}</option>
           </select>
         </label>
         <label className="preview-checkbox">
           <input type="checkbox" checked={readOnly} onChange={(event) => { toggleReadOnly(event.target.checked) }} />
-          <span>只读</span>
+          <span>{toolbar.readOnly}</span>
         </label>
-        <button type="button" onClick={reset}>重置状态</button>
+        <button type="button" onClick={reset}>{toolbar.reset}</button>
       </div>
     </header>
     <main className="preview-stage">
-      <div className="preview-note" role="note">
-        这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。远程语音、卸载和保存均为本地模拟。
+      <div className="preview-workspace">
+        <UserManual locale={locale} />
+        <section className="preview-settings-pane" aria-label={locale === 'zh' ? '设置页预览' : 'Settings preview'}>
+          <div className="preview-note" role="note">
+            {locale === 'zh'
+              ? <>这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。远程语音、卸载和保存均为本地模拟。</>
+              : <>This is the real plugin settings card. Changes in <code>src/client</code> hot-reload here; remote speech, uninstall, and save are mocked locally.</>}
+          </div>
+          <ul className="preview-settings-list" ref={listRef} key={instance}>
+            <SettingsCard scope={scope} t={t} connection={{ rpc }} controller={soundEffects} />
+          </ul>
+        </section>
       </div>
-      <ul className="preview-settings-list" ref={listRef} key={instance}>
-        <SettingsCard scope={scope} t={t} connection={{ rpc }} controller={soundEffects} />
-      </ul>
     </main>
     <style>{CLIENT_STYLES}</style>
   </div>

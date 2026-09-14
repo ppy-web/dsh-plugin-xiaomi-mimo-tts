@@ -34,9 +34,10 @@ const settingsPreviewSource = await readFile(new URL('../src/client/settings/pre
 const settingsSoundEffectsSource = await readFile(new URL('../src/client/settings/sound-effects-module.tsx', import.meta.url), 'utf8')
 const settingsCollapsibleSource = await readFile(new URL('../src/client/settings/collapsible-module.tsx', import.meta.url), 'utf8')
 const voiceDesignPickerSource = await readFile(new URL('../src/client/settings/controls/voice-design-picker.tsx', import.meta.url), 'utf8')
-const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, settingsDetailsSource, settingsPreviewSource, settingsSoundEffectsSource, settingsCollapsibleSource, voiceDesignPickerSource].join('\n')
+const localVoicePickerSource = await readFile(new URL('../src/client/settings/controls/local-voice-picker.tsx', import.meta.url), 'utf8')
+const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, settingsDetailsSource, settingsPreviewSource, settingsSoundEffectsSource, settingsCollapsibleSource, voiceDesignPickerSource, localVoicePickerSource].join('\n')
 const sharedModule = await import('../lib/shared.js')
-const { applyTtsReadScope, batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TTS_READ_SCOPES, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, TtsFirstSegmentLimiter, VOICE_DESIGN_AI_RPC_CHANNEL } = sharedModule
+const { appendTtsSmartTruncationOutro, applyTtsPlaybackScope, applyTtsReadScope, batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TTS_READ_SCOPES, TTS_SMART_TRUNCATION_OUTROS, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, TtsFirstSegmentLimiter, VOICE_DESIGN_AI_RPC_CHANNEL } = sharedModule
 
 const SUPPORTED_DSH_VERSION = '0.1.5-rc.1'
 
@@ -466,6 +467,38 @@ test('resolves read scope and migrates the legacy first-segment setting', () => 
   assert.ok(countTtsSpeechCharacters(applyTtsReadScope('你好。' + '很长的内容。'.repeat(50), 'first-segment')) <= MAX_TTS_SEGMENT_CHARACTERS)
 })
 
+test('keeps Smart closing cues nonempty and unique', () => {
+  assert.ok(Array.isArray(TTS_SMART_TRUNCATION_OUTROS))
+  assert.ok(TTS_SMART_TRUNCATION_OUTROS.length > 0)
+  assert.ok(TTS_SMART_TRUNCATION_OUTROS.every((cue) => typeof cue === 'string' && cue.trim().length > 0))
+  assert.equal(new Set(TTS_SMART_TRUNCATION_OUTROS).size, TTS_SMART_TRUNCATION_OUTROS.length)
+})
+
+test('adds a Smart closing cue only when unread speech is at least as long as the spoken segment', () => {
+  const spoken = '甲'.repeat(10)
+  assert.equal(appendTtsSmartTruncationOutro(spoken, spoken, () => 0), spoken)
+  assert.equal(appendTtsSmartTruncationOutro(`${spoken}${'乙'.repeat(9)}`, spoken, () => 0), spoken)
+  assert.equal(
+    appendTtsSmartTruncationOutro(`${spoken}${'乙'.repeat(10)}`, spoken, () => 0),
+    `${spoken}。${TTS_SMART_TRUNCATION_OUTROS[0]}`,
+  )
+  assert.equal(
+    appendTtsSmartTruncationOutro(`${spoken},${'乙'.repeat(11)}`, `${spoken},`, () => 0.999),
+    `${spoken},${TTS_SMART_TRUNCATION_OUTROS.at(-1)}`,
+  )
+})
+
+test('limits randomized closing cues to Smart automatic playback', () => {
+  const text = prepareTtsText(`${'甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS)}。${'乙'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS)}。`)
+  const first = firstTtsSegment(text)
+  assert.equal(applyTtsPlaybackScope(text, 'smart', true, () => 0), `${first}${TTS_SMART_TRUNCATION_OUTROS[0]}`)
+  assert.equal(applyTtsPlaybackScope(text, 'smart', false, () => 0), text)
+  assert.equal(applyTtsPlaybackScope(text, 'full', true, () => 0), text)
+  assert.equal(applyTtsPlaybackScope(text, 'first-segment', true, () => 0), first)
+  assert.equal(applyTtsPlaybackScope(text, 'first-segment', false, () => 0), first)
+  assert.equal(applyTtsPlaybackScope('简短回复。', 'smart', true, () => 0), prepareTtsText('简短回复。'))
+})
+
 test('limits realtime first-segment text monotonically and stops after the boundary', () => {
   const limiter = new TtsFirstSegmentLimiter()
   const text = '第一句内容足够长，用于验证实时首段边界。'.repeat(12) + '第二句不应进入播放队列。'
@@ -725,6 +758,14 @@ test('both MiMo models share persistent bidirectional browser-speech fallback', 
   assert.match(clientSource, /finish\(new Error\('local-speech-timeout'\)\)/)
   assert.match(clientSource, /const canFallback = !this\.audioStarted \|\| code === 'local-speech-timeout'/)
   assert.match(clientSource, /if \(!audioCreated && fallback !== undefined\) \{\s*this\.request = null\s*this\.publish\(this\.emptyView\(\)\)\s*fallback\(\)/)
+})
+
+test('disables local speech strategies when no browser voices are available', () => {
+  assert.match(localVoicePickerSource, /onAvailabilityChange: \(available: boolean\) => void/)
+  assert.match(localVoicePickerSource, /onAvailabilityChange\(nextVoices\.length > 0\)/)
+  assert.match(settingsDetailsSource, /localVoicesAvailable === false && localSpeechMode !== 'auto'/)
+  assert.match(settingsDetailsSource, /disabled=\{!writable \|\| \(localVoicesAvailable === false && item !== 'auto'\)\}/)
+  assert.match(settingsDetailsSource, /onAvailabilityChange=\{onLocalVoicesAvailabilityChange\}/)
 })
 
 test('switching sessions resets every playback path and ignores a run re-entered mid-stream', () => {

@@ -105,8 +105,8 @@ test('sound settings preview locally and save only through the settings card', (
 
 test('sound-library toggles use UISFX cues without generic click duplication', () => {
   assert.match(settingsCard, /controller\.play\('toggle-on'\)/)
-  assert.match(settingsCard, /controller\.play\('toggle-off'\)/)
-  assert.match(settingsCard, /controller\.play\('toggle-off'\)[\s\S]*controller\.update\(\{ enabled: false/)
+  assert.doesNotMatch(settingsCard, /controller\.play\('toggle-off'\)/)
+  assert.match(settingsCard, /controller\.update\(\{ enabled: false, volume: soundVolume, pack: soundPack, taskSounds: false, clickSounds: false \}\)/)
   assert.match(clickClassifier, /data-xmimo-sound-toggle/)
   assert.doesNotMatch(settingsCard, /changeSoundEnabled[\s\S]*?toggleSoundPlayer\.schedule/)
 })
