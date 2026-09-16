@@ -65,6 +65,21 @@
       ]
     }
   },
+  "scripts": {
+    "dev": "vite --config preview/vite.config.ts",
+    "dev:build": "tsc -p preview/tsconfig.json && vite build --config preview/vite.config.ts",
+    "build": "tsdown -c tsdown.prepare.config.ts && tsc --emitDeclarationOnly",
+    "build:debug": "tsdown -c tsdown.debug.config.ts && tsc --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm run build && node --test test/*.test.mjs",
+    "text": "node test/filter-test-server.mjs",
+    "profile:check": "node scripts/dsh-profile-verify.mjs",
+    "release:check": "pnpm run test",
+    "prepare": "node scripts/prepare-package.mjs",
+    "prepack": "pnpm run build && node scripts/pack-package.mjs",
+    "postpack": "node scripts/restore-package-scripts.mjs",
+    "pack:check": "pnpm pack --dry-run"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
     "@deepseek-ai/dsh-api-session-controller": "0.1.5-rc.2",
