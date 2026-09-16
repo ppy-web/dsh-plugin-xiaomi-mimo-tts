@@ -20,8 +20,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .xmimo-tts-mixer-whale-button>.xmimo-tts-mixer-whale-thinking {
-    animation: none;
-    background-position: left center
+    /* Keep the model-selected resting frame; only drop the blink animation. */
+    animation: none
   }
 }
 

@@ -27,10 +27,10 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       {
         id: 'manual-start',
         title: '01 · 开始使用',
-        summary: '先完成密钥，再打开语音播放。',
+        summary: '先保存密钥，再试听 MiMo；自动播报和音效按需开启。',
         items: [
           { label: '设置卡片标题按钮', detail: '点击“语音朗读 (Xiaomi MiMo)”标题栏可展开或收起全部设置。标题栏右侧的箭头和 aria 状态会同步变化；有未保存修改时，标题栏会显示“未保存”。' },
-          { label: '推荐操作顺序', detail: '依次填写 API Key → 打开“语音播放” → 选择模型和声音 → 在“演播厅”输入试听文本 → 点击底部“保存”。没有点击“保存”前，右侧的改动都只是预览。' },
+          { label: '推荐操作顺序', detail: '依次填写 API Key → 点击底部“保存” → 选择模型和声音 → 在“演播厅”试听 → 按需开启自动播报和音效。除 API Key 外，演播厅会即时使用当前草稿；新密钥必须先保存到 Host 才能用于 MiMo。' },
           { label: '只读状态', detail: '如果顶部勾选“只读”，所有输入、开关、滑块和选择器都会禁用；仍可阅读内容，但不能提交设置。' },
         ],
       },
@@ -40,8 +40,8 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         summary: '三个角色卡片控制插件、自动播放和音效。',
         items: [
           { label: '语音播放', detail: '点击鲸鱼娘卡片或其中的复选框切换总开关。关闭后会隐藏调音台和演播厅，并同时关闭自动播放；正在播放的试听也会停止。再次打开后，语音相关设置会重新出现。' },
-          { label: '自动播放', detail: '点击第二张角色卡片切换自动朗读。打开后，助手回复会自动尝试朗读；浏览器可能因自动播放策略拒绝播放。打开它会自动打开“语音播放”，关闭它只关闭自动朗读。' },
-          { label: '音效', detail: '点击第三张角色卡片切换 UI 音效。开启时会同步打开任务音效和点击音效；关闭时两者也会一起关闭。详细的音效包和试听按钮在下方“音效库”中。' },
+          { label: '自动播放', detail: '新安装默认关闭。点击第二张角色卡片切换自动朗读；打开后，助手回复会自动尝试朗读，浏览器仍可能因自动播放策略拒绝。打开它会自动打开“语音播放”，关闭它只关闭自动朗读。' },
+          { label: '音效', detail: '新安装默认关闭。点击第三张角色卡片切换音效总开关；开启时会同步打开任务音效和点击音效，关闭时两者也会一起关闭。详细的音效包和试听按钮在下方“音效库”中。' },
         ],
       },
       {
@@ -51,7 +51,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: '获取 API Key 链接', detail: '点击 API Key 标题右侧的“获取 API Key”，会在新标签页打开 Xiaomi MiMo 控制台的密钥页面。创建或复制密钥后，回到 Preview。' },
           { label: '密钥输入框', detail: '在密码框中输入新的 Xiaomi MiMo API Key。输入内容会被隐藏；聚焦和移出输入框时，旁边的鲸鱼提示会切换文案。输入后状态提示会即时检查格式，但不会立即保存。' },
-          { label: '已配置 / 警告', detail: '“已配置”表示当前设置层已有密钥；格式不支持或尚未配置时会显示提示。确认密钥正确后，点击底部“保存”才会替换已有值。' },
+          { label: '状态与清除', detail: '提示会区分读取中、未配置、格式已识别、格式异常、Host 状态不可用和待保存。格式识别不等于连接已验证；保存后请用演播厅确认。存在个人密钥覆盖时可点击“清除个人密钥”，保存后移除该覆盖；若基础配置仍有密钥，会恢复继承。' },
         ],
       },
       {
@@ -73,10 +73,10 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       {
         id: 'manual-broadcast',
         title: '05 · 演播厅',
-        summary: '用当前草稿设置立即试听一小段文本。',
+        summary: '用当前草稿试听，并明确显示 MiMo 或浏览器本地语音来源。',
         items: [
-          { label: '试听文本框', detail: '点击文本框输入或替换试听内容，最多 100 个字符。文本为空时，鲸鱼按钮会禁用；试听文本本身不会随设置自动写入 DSH。' },
-          { label: '播放 / 停止鲸鱼按钮', detail: '点击“播放试听”按当前模型、声音、音量和速度生成并播放；准备中或播放中再次点击会变成“停止试听”，用于中断本次试听。试听失败时，气泡会提示检查设置。' },
+          { label: '试听文本框', detail: '点击文本框输入或替换试听内容，最多 100 个字符。文本为空时，鲸鱼按钮会禁用；试听文本本身不会写入 DSH。模型、声音、音量和速度可直接使用草稿，但新 API Key 必须先保存。' },
+          { label: '播放 / 停止鲸鱼按钮', detail: '点击“播放试听”生成并播放；准备中或播放中再次点击可中断。气泡会显示正在连接 MiMo 或使用浏览器本地语音，并针对未配置密钥、密钥被拒绝、限流、超时、本地音色不可用和自动播放限制给出对应提示。' },
         ],
       },
       {
@@ -84,11 +84,11 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         title: '06 · 音效库',
         summary: '为 DSH 的任务和点击动作选择 UI 音效。',
         items: [
-          { label: '音效库标题与鲸鱼按钮', detail: '点击“音效库”标题栏展开或收起内容；点击右侧鲸鱼按钮直接开启/关闭音效。关闭音效会禁用音效包和试听按钮，但设置会保留，重新开启即可继续使用。' },
-          { label: '音效音量滑块', detail: '拖动或用键盘调整音效音量；完成操作时会试听当前音量。音效总开关关闭时滑块不可操作。' },
+          { label: '音效库标题与鲸鱼按钮', detail: '点击“音效库”标题栏展开或收起内容；点击右侧鲸鱼按钮会按“音效总开关开（任务 / 点击同步开启）→ 音效总开关关（任务 / 点击同步关闭）→ 仅开启点击音效 → 仅开启任务音效”的顺序循环。总开关关闭时隐藏音效库内容，但鲸鱼按钮仍可点击切换；气泡会显示当前状态。' },
+          { label: '音效音量滑块', detail: '拖动或用键盘调整音效音量；完成操作时会试听当前音量。音效总开关关闭时音效库内容隐藏，重新开启后保留原来的音量和音效包。' },
           { label: '音效包按钮', detail: '点击一个音效包卡片选择它；再次点击当前卡片会播放一次点击提示音。也可用方向键、Home、End 在 12 个音效包之间移动。当前选项会显示选中状态。' },
           { label: '音效试听按钮', detail: '点击“开始”“完成”“失败”“提醒”或“点击”试听对应声音。每次点击都会播放一次，即使音效库当前折叠也不影响已开始的播放；总开关关闭时这些按钮禁用。' },
-          { label: '任务音效 / 点击音效', detail: '这两个能力由顶部“音效”角色卡片一起控制。开启总开关会同步开启，关闭总开关会同步关闭；最终状态在点击底部“保存”后写入 DSH。' },
+          { label: '任务音效 / 点击音效', detail: '顶部“音效”角色卡片只负责总开关：开启总开关会同步开启两者，关闭总开关会同步关闭两者。音效库鲸鱼按钮可以进一步切换为仅开启点击音效或仅开启任务音效；最终状态在点击底部“保存”后写入 DSH。' },
         ],
       },
       {
@@ -129,10 +129,10 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       {
         id: 'manual-start',
         title: '01 · Getting started',
-        summary: 'Set the key first, then turn voice playback on.',
+        summary: 'Save the key before testing MiMo; enable autoplay and sounds only when wanted.',
         items: [
           { label: 'Settings card header', detail: 'Click the “Text To Speech (Xiaomi MiMo)” header to expand or collapse all settings. The arrow and aria state update together; “Unsaved” appears while a draft is dirty.' },
-          { label: 'Recommended order', detail: 'Enter an API key → enable Voice playback → choose a model and voice → enter preview text in Broadcast Studio → click Save. Until Save is clicked, changes are only a local preview.' },
+          { label: 'Recommended order', detail: 'Enter an API key → click Save → choose a model and voice → test it in Broadcast Studio → optionally enable automatic playback and sounds. Broadcast Studio uses most drafts immediately, but a new key must be saved to the Host before MiMo can use it.' },
           { label: 'Read-only state', detail: 'Check Read-only in the toolbar to disable inputs, switches, sliders, and pickers. You can still read the guide, but cannot submit settings.' },
         ],
       },
@@ -142,8 +142,8 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         summary: 'Three character cards control the plugin, autoplay, and sounds.',
         items: [
           { label: 'Voice playback', detail: 'Click the Whale Maid card or its checkbox to toggle the main switch. Turning it off hides the console and studio and stops an active preview. Turn it on again to reveal voice settings.' },
-          { label: 'Automatic playback', detail: 'Click the second character card to toggle automatic reading. The browser may reject autoplay. Enabling it also enables Voice playback; disabling it only turns off automatic reading.' },
-          { label: 'Sound effects', detail: 'Click the third character card to toggle UI sounds. Turning it on synchronizes task and click sounds on; turning it off synchronizes both off. Detailed packs and previews are in Sound Effects below.' },
+          { label: 'Automatic playback', detail: 'New installs start with this off. Click the second character card to toggle automatic reading; the browser may still reject autoplay. Enabling it also enables Voice playback; disabling it only turns off automatic reading.' },
+          { label: 'Sound effects', detail: 'New installs start with this off. Click the third character card to toggle the sound master switch. Turning it on synchronizes task and click sounds on; turning it off synchronizes both off. Detailed packs and previews are below.' },
         ],
       },
       {
@@ -153,7 +153,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: 'Get API Key link', detail: 'Click Get API Key beside the heading to open the Xiaomi MiMo console key page in a new tab. Create or copy a key, then return to Preview.' },
           { label: 'Key input', detail: 'Enter a new Xiaomi MiMo API key in the password field. The value is hidden; focusing and leaving the field changes the Whale Maid message. Format feedback is immediate, but the key is not saved yet.' },
-          { label: 'Configured / warning state', detail: 'Configured means the current settings layer already has a key. Unsupported or missing keys show a warning. Confirm the value, then click Save to replace an existing key.' },
+          { label: 'Status and clearing', detail: 'The status distinguishes loading, missing, recognized format, unrecognized format, unavailable Host state, and unsaved changes. A recognized prefix is not a connection check; use Broadcast Studio after saving. When a personal override exists, Clear personal key removes it on Save and falls back to a base key if one exists.' },
         ],
       },
       {
@@ -175,10 +175,10 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       {
         id: 'manual-broadcast',
         title: '05 · Broadcast Studio',
-        summary: 'Preview a short passage with the current draft settings.',
+        summary: 'Preview the current draft and see whether MiMo or browser-local speech is used.',
         items: [
-          { label: 'Preview text field', detail: 'Click and replace the preview text, up to 100 characters. An empty field disables the Whale button; preview text itself is not written to DSH settings.' },
-          { label: 'Play / stop Whale button', detail: 'Click Play preview to generate and play using the current model, voice, volume, and speed. Click again while preparing or playing to stop. A failure message asks you to check the settings.' },
+          { label: 'Preview text field', detail: 'Click and replace the preview text, up to 100 characters. An empty field disables the Whale button. Model, voice, volume, and speed drafts apply immediately, but a new API key must be saved first.' },
+          { label: 'Play / stop Whale button', detail: 'Click Play preview to generate and play; click again while preparing or playing to stop. The bubble identifies MiMo or browser-local speech and distinguishes missing or rejected keys, rate limits, timeouts, unavailable local voices, and autoplay restrictions.' },
         ],
       },
       {
@@ -186,11 +186,11 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         title: '06 · Sound Effects',
         summary: 'Choose UI sounds for DSH tasks and clicks.',
         items: [
-          { label: 'Sound Effects header and Whale button', detail: 'Click the Sound Effects header to expand or collapse its content. Click the Whale button on the right to turn sounds on or off. When off, pack and preview controls are disabled but their values remain.' },
-          { label: 'Sound volume slider', detail: 'Drag or use arrow keys to change sound volume; finishing the interaction previews the level. The slider is disabled while the sound switch is off.' },
+          { label: 'Sound Effects header and Whale button', detail: 'Click the Sound Effects header to expand or collapse its content. Click the Whale button on the right to cycle through master on (task / click synced on) → master off (task / click synced off) → click sounds only → task sounds only. When the master switch is off, the library content is hidden but the Whale button remains available; its bubble shows the current state.' },
+          { label: 'Sound volume slider', detail: 'Drag or use arrow keys to change sound volume; finishing the interaction previews the level. The library content is hidden while the master switch is off; the volume and pack are preserved when sounds are enabled again.' },
           { label: 'Sound pack buttons', detail: 'Click a pack card to select it; clicking the current card again plays a click cue. Arrow keys, Home, and End move through all 12 packs. The selected card exposes its checked state.' },
           { label: 'Sound preview buttons', detail: 'Click Start, Complete, Error, Notification, or Press to preview that cue once. The sound switch disables these buttons when off.' },
-          { label: 'Task / click sounds', detail: 'These capabilities are controlled together by the Sound Effects character card. The synchronized state is persisted in DSH only after Save.' },
+          { label: 'Task / click sounds', detail: 'The Sound Effects character card controls the master switch: enabling it synchronizes both capabilities on, and disabling it synchronizes both off. The Whale button can then select click-only or task-only mode. The final state is persisted in DSH only after Save.' },
         ],
       },
       {

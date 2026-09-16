@@ -1,27 +1,46 @@
 import type { ReactElement } from 'react'
 import { TTS_PREVIEW_WHALE_ASSET_ROUTE } from '../../shared.js'
 import type { Translate } from '../localization.js'
-import type { PreviewStatus } from '../playback/preview-player.js'
+import type { PreviewError, PreviewSource, PreviewStatus } from '../playback/preview-player.js'
 import { hostRoute } from '../host-route.js'
 
 export interface PreviewModuleProps {
   t: Translate
   enabled: boolean
   status: PreviewStatus
+  source: PreviewSource
+  error: PreviewError | null
   text: string
   onToggle: () => void
   onTextChange: (value: string) => void
 }
 
-export function PreviewModule({ t, enabled, status, text, onToggle, onTextChange }: PreviewModuleProps): ReactElement {
+export function PreviewModule({ t, enabled, status, source, error, text, onToggle, onTextChange }: PreviewModuleProps): ReactElement {
   const busy = status === 'loading' || status === 'playing'
+  const errorKey = error === 'api-key-not-configured'
+    ? 'settings.previewErrorApiKeyMissing'
+    : error === 'api-key-rejected'
+      ? 'settings.previewErrorApiKeyRejected'
+      : error === 'rate-limited'
+        ? 'settings.previewErrorRateLimited'
+        : error === 'timeout'
+          ? 'settings.previewErrorTimeout'
+          : error === 'local-voice-unavailable'
+            ? 'settings.previewErrorLocalUnavailable'
+            : error === 'autoplay-blocked'
+              ? 'settings.previewErrorAutoplay'
+              : 'settings.previewFailed'
   const messageKey = status === 'error'
-    ? 'settings.previewFailed'
+    ? errorKey
     : status === 'loading'
-      ? 'settings.previewLoading'
+      ? source === 'local' ? 'settings.previewLoadingLocal' : 'settings.previewLoadingMimo'
       : status === 'playing'
-        ? 'settings.previewPlaying'
-        : 'settings.previewHint'
+        ? source === 'local' ? 'settings.previewPlayingLocal' : 'settings.previewPlayingMimo'
+        : source === 'local'
+          ? 'settings.previewCompletedLocal'
+          : source === 'mimo'
+            ? 'settings.previewCompletedMimo'
+            : 'settings.previewHint'
 
   return <section className="xmimo-tts-settings-module xmimo-tts-preview xmimo-ui-module xmimo-ui-module-padded">
     <strong className="xmimo-tts-preview-title xmimo-ui-module-heading">{t('settings.previewTitle')}</strong>

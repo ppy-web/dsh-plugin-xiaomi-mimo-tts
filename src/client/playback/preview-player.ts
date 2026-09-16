@@ -10,6 +10,14 @@ import { PcmAudioQueue } from './pcm-audio-queue.js'
 import { applyMediaVoiceRate, applySpeechVoiceRate } from './voice-rate.js'
 
 export type PreviewStatus = 'idle' | 'loading' | 'playing' | 'error'
+export type PreviewSource = 'mimo' | 'local' | null
+export type PreviewError = 'api-key-not-configured' | 'api-key-rejected' | 'rate-limited' | 'timeout' | 'local-voice-unavailable' | 'autoplay-blocked' | 'request-failed'
+
+export interface PreviewView {
+  status: PreviewStatus
+  source: PreviewSource
+  error: PreviewError | null
+}
 
 export interface PreviewSettings {
   model: TtsModel
@@ -52,16 +60,37 @@ function pcmDelta(data: string): string | null {
   return typeof audio === 'string' && audio.length > 0 ? audio : null
 }
 
-async function responseError(response: Response): Promise<Error> {
+class PreviewPlaybackError extends Error {
+  constructor(readonly code: PreviewError, message: string = code) {
+    super(message)
+  }
+}
+
+function previewError(error: unknown): PreviewError {
+  return error instanceof PreviewPlaybackError ? error.code : 'request-failed'
+}
+
+async function responseError(response: Response): Promise<PreviewPlaybackError> {
+  let upstreamCode = ''
   let message = `request-${response.status}`
   try {
     const body = await response.json() as { message?: unknown; error?: unknown }
+    if (typeof body.error === 'string') upstreamCode = body.error
     if (typeof body.message === 'string') message = body.message
-    else if (typeof body.error === 'string') message = body.error
+    else if (upstreamCode.length > 0) message = upstreamCode
   } catch {
     // Keep the status-derived fallback for non-JSON responses.
   }
-  return new Error(message)
+  const code: PreviewError = response.status === 409 && upstreamCode === 'api-key-not-configured'
+    ? 'api-key-not-configured'
+    : response.status === 401 || response.status === 403
+      ? 'api-key-rejected'
+      : response.status === 429
+        ? 'rate-limited'
+        : response.status === 504 || upstreamCode === 'xiaomi-timeout'
+          ? 'timeout'
+          : 'request-failed'
+  return new PreviewPlaybackError(code, message)
 }
 
 export class PreviewPlayer {
@@ -82,12 +111,14 @@ export class PreviewPlayer {
   private requestBusy = false
   private pcmBusy = false
   private status: PreviewStatus = 'idle'
+  private source: PreviewSource = null
+  private error: PreviewError | null = null
   private volume = 1
   private voiceRate = 1
 
-  constructor(private readonly onStatusChange: (status: PreviewStatus) => void) {}
+  constructor(private readonly onViewChange: (view: PreviewView) => void) {}
 
-  getStatus(): PreviewStatus { return this.status }
+  getView(): PreviewView { return { status: this.status, source: this.source, error: this.error } }
 
   setVolume(value: number): void {
     this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
@@ -103,11 +134,10 @@ export class PreviewPlayer {
     this.pcm.setPlaybackRate(this.voiceRate)
     const normalized = text.trim()
     if (normalized.length === 0) {
-      this.publish('error')
+      this.publish('error', null, 'request-failed')
       return
     }
     const generation = this.generation
-    this.publish('loading')
     try {
       if (settings.localSpeechMode === 'local-first') {
         try {
@@ -118,24 +148,27 @@ export class PreviewPlayer {
       } else {
         try {
           await this.playRemote(normalized, settings, generation)
-        } catch (error) {
-          if (settings.localSpeechMode !== 'auto' || generation !== this.generation || this.status === 'playing') throw error
+        } catch (remoteError) {
+          if (settings.localSpeechMode !== 'auto' || generation !== this.generation || this.status === 'playing') throw remoteError
           this.request = null
           this.requestBusy = false
           this.pcmBusy = false
           this.pcm.stop()
-          this.publish('loading')
-          await this.playLocal(normalized, settings.localVoiceURI, generation)
+          try {
+            await this.playLocal(normalized, settings.localVoiceURI, generation)
+          } catch {
+            throw remoteError
+          }
         }
       }
-      if (generation === this.generation && this.status !== 'playing') this.publish('idle')
-    } catch {
+      if (generation === this.generation && this.status !== 'playing') this.publish('idle', this.source)
+    } catch (error) {
       if (generation === this.generation) {
         this.request = null
         this.requestBusy = false
         this.pcmBusy = false
         this.pcm.stop()
-        this.publish('error')
+        this.publish('error', this.source, previewError(error))
       }
     }
   }
@@ -165,7 +198,7 @@ export class PreviewPlayer {
       window.speechSynthesis.cancel()
       this.utterance = null
     }
-    this.publish('idle')
+    this.publish('idle', null)
   }
 
   async dispose(): Promise<void> {
@@ -193,7 +226,7 @@ export class PreviewPlayer {
   }
 
   private async playComplete(text: string, settings: PreviewSettings, generation: number, format: 'mp3' | 'wav'): Promise<void> {
-    this.publish('loading')
+    this.publish('loading', 'mimo')
     const controller = new AbortController()
     this.request = controller
     const response = await fetch(TTS_ROUTE, {
@@ -224,16 +257,19 @@ export class PreviewPlayer {
         settled = true
         cleanup()
         this.releaseAudio(audio)
-        if (generation === this.generation) this.publish(error === undefined ? 'idle' : 'error')
+        if (generation === this.generation) {
+          if (error === undefined) this.publish('idle', 'mimo')
+          else this.publish('error', 'mimo', previewError(error))
+        }
         if (error === undefined) resolve()
         else reject(error)
       }
       this.finishAudio = () => finish()
       audio.onended = () => finish()
-      audio.onerror = () => finish(new Error('preview-audio-failed'))
+      audio.onerror = () => finish(new PreviewPlaybackError('request-failed', 'preview-audio-failed'))
       void audio.play().then(() => {
-        if (generation === this.generation) this.publish('playing')
-      }).catch(() => finish(new Error('preview-audio-blocked')))
+        if (generation === this.generation) this.publish('playing', 'mimo')
+      }).catch(() => finish(new PreviewPlaybackError('autoplay-blocked', 'preview-audio-blocked')))
     })
   }
 
@@ -245,6 +281,7 @@ export class PreviewPlayer {
   }
 
   private async playPcm(text: string, settings: PreviewSettings, generation: number): Promise<void> {
+    this.publish('loading', 'mimo')
     const controller = new AbortController()
     this.request = controller
     this.requestBusy = true
@@ -292,9 +329,10 @@ export class PreviewPlayer {
   }
 
   private playLocal(text: string, voiceURI: string, generation: number): Promise<void> {
-    if (typeof window === 'undefined' || window.speechSynthesis === undefined) return Promise.reject(new Error('local-speech-unavailable'))
+    this.publish('loading', 'local')
+    if (typeof window === 'undefined' || window.speechSynthesis === undefined) return Promise.reject(new PreviewPlaybackError('local-voice-unavailable', 'local-speech-unavailable'))
     const voice = browserVoice(voiceURI)
-    if (voice === undefined) return Promise.reject(new Error('local-voice-unavailable'))
+    if (voice === undefined) return Promise.reject(new PreviewPlaybackError('local-voice-unavailable'))
     return new Promise<void>((resolve, reject) => {
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.voice = voice
@@ -311,16 +349,20 @@ export class PreviewPlayer {
         utterance.onerror = null
         if (this.utterance === utterance) this.utterance = null
         if (this.finishUtterance === finish) this.finishUtterance = null
-        if (generation === this.generation) this.publish(error === undefined ? 'idle' : 'error')
+        if (generation === this.generation) {
+          if (error === undefined) this.publish('idle', 'local')
+          else this.publish('error', 'local', previewError(error))
+        }
         if (error === undefined) resolve()
         else reject(error)
       }
       this.finishUtterance = () => finish()
-      utterance.onstart = () => { if (generation === this.generation) this.publish('playing') }
+      utterance.onstart = () => { if (generation === this.generation) this.publish('playing', 'local') }
       utterance.onend = () => finish()
       utterance.onerror = (event) => {
         if (event.error === 'canceled' || event.error === 'interrupted') finish()
-        else finish(new Error('local-speech-failed'))
+        else if (event.error === 'not-allowed') finish(new PreviewPlaybackError('autoplay-blocked', 'local-speech-not-allowed'))
+        else finish(new PreviewPlaybackError('request-failed', 'local-speech-failed'))
       }
       window.speechSynthesis.speak(utterance)
     })
@@ -337,12 +379,15 @@ export class PreviewPlayer {
   }
 
   private maybeFinishPcm(): void {
-    if (!this.requestBusy && !this.pcmBusy && (this.status === 'loading' || this.status === 'playing')) this.publish('idle')
+    if (!this.requestBusy && !this.pcmBusy && (this.status === 'loading' || this.status === 'playing')) this.publish('idle', 'mimo')
   }
 
-  private publish(status: PreviewStatus): void {
-    if (this.status === status) return
+  private publish(status: PreviewStatus, source: PreviewSource = this.source, error: PreviewError | null = null): void {
+    const nextError = status === 'error' ? error : null
+    if (this.status === status && this.source === source && this.error === nextError) return
     this.status = status
-    this.onStatusChange(status)
+    this.source = source
+    this.error = nextError
+    this.onViewChange(this.getView())
   }
 }

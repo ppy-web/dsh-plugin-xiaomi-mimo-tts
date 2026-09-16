@@ -13,8 +13,8 @@ import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { debugConsole } from './debug-console.js'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_READ_SCOPES, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
-import type { VoiceDesignAiGenerateResult } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_READ_SCOPES, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_AI_STATUS_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
+import type { VoiceDesignAiGenerateResult, VoiceDesignAiStatus } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -538,25 +538,57 @@ export function apply(ctx: Context, config: Config): void {
     },
   })
 
-  ctx.inject(['connection', 'webServer'], (rpcCtx) => {
-    registerVoiceDesignAiRpc(rpcCtx, async (endpoint, payload, signal) => {
-      if (endpoint !== VOICE_DESIGN_AI_RPC_ENDPOINT) return voiceDesignAiFailure('unknown-endpoint', `unknown endpoint "${endpoint}"`)
-      try {
-        return { ok: true, value: await generateVoiceDesignAiText(ctx, voiceDesignAiInput(payload), signal) }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        const code = signal.aborted
-          ? 'aborted'
-          : message === 'invalid-payload' || message === 'invalid-input' || message === 'input-too-long'
-            ? message
-            : message === 'no-default-model'
-              ? 'no-default-model'
-              : message === 'empty-output' || message === 'output-too-long' || message === 'non-plain-text-output'
-                ? message
-                : 'llm-failed'
-        return voiceDesignAiFailure(code, message)
+  /**
+   * Whether the Voice Design AI RPC channel actually mounted.
+   *
+   * DSH 0.1.5+ resolves the channel route through the connection plugin's own
+   * context, which stopped declaring `webServer`; the resulting throw is swallowed
+   * by the inject fiber, so the plugin loads normally and the channel silently
+   * answers 405. Record the real outcome here and let the Web half hide the
+   * assistant instead of offering a button that cannot work.
+   */
+  let voiceDesignAiRpcAvailable = false
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: TTS_VOICE_DESIGN_AI_STATUS_ROUTE,
+    handler(req, res) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405
+        res.setHeader('allow', 'GET, HEAD')
+        res.end()
+        return
       }
-    })
+      const status: VoiceDesignAiStatus = { available: voiceDesignAiRpcAvailable }
+      json(res, 200, status)
+    },
+  }), 'xiaomi-mimo-tts: voice design AI status route')
+
+  ctx.inject(['connection', 'webServer'], (rpcCtx) => {
+    try {
+      registerVoiceDesignAiRpc(rpcCtx, async (endpoint, payload, signal) => {
+        if (endpoint !== VOICE_DESIGN_AI_RPC_ENDPOINT) return voiceDesignAiFailure('unknown-endpoint', `unknown endpoint "${endpoint}"`)
+        try {
+          return { ok: true, value: await generateVoiceDesignAiText(ctx, voiceDesignAiInput(payload), signal) }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          const code = signal.aborted
+            ? 'aborted'
+            : message === 'invalid-payload' || message === 'invalid-input' || message === 'input-too-long'
+              ? message
+              : message === 'no-default-model'
+                ? 'no-default-model'
+                : message === 'empty-output' || message === 'output-too-long' || message === 'non-plain-text-output'
+                  ? message
+                  : 'llm-failed'
+          return voiceDesignAiFailure(code, message)
+        }
+      })
+      voiceDesignAiRpcAvailable = true
+    } catch (error) {
+      voiceDesignAiRpcAvailable = false
+      debugConsole?.warn('[MiMoTTS Host] Voice Design AI RPC 通道未注册，已隐藏该功能', error)
+    }
   })
 
   ctx.effect(() => ctx.webServer.register({

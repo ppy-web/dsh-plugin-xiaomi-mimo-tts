@@ -6,121 +6,146 @@
 [![GitHub stars](https://img.shields.io/github/stars/ppy-web/dsh-plugin-xiaomi-mimo-tts.svg)](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts)
 [![npm downloads](https://img.shields.io/npm/dm/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
 [![dsh](https://img.shields.io/badge/dsh-0.1.5--rc.1-2563eb)](https://github.com/deepseek-ai)
-![Xiaomi MiMo](https://img.shields.io/badge/Xiaomi-Mimo?logo=xiaomi&logoColor=%23ff6900&label=power%20by&color=%23ff6900&link=https%3A%2F%2Fmimo.mi.com%2F)
+![Xiaomi MiMo](https://img.shields.io/badge/Xiaomi-MiMo-ff6900?logo=xiaomi&logoColor=white)
 
-为 DSH Web 添加 Xiaomi MiMo TTS 语音朗读。
+为 DSH Web 添加 Xiaomi MiMo TTS 语音朗读、浏览器本地语音兜底和可选 UI 音效。
 
-> 基于 Xiaomi MiMo TTS，将文字转为流畅、清晰的自然语音。MiMo TTS 当前为限时免费服务，具体政策请关注官方平台。
+> MiMo TTS 当前可能处于限时免费或调整计费阶段，请以 Xiaomi MiMo 官方平台的最新政策为准。
 
 <p><a href="README.en.md"><strong>English README →</strong></a></p>
 
 ## 🎨 预览
 
-> [🧐 Preview Pages 预览本插件](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
+- [在线打开 Preview Pages](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 
-| 设置界面 | UI示例 |
+| 设置界面 | 对话朗读入口 |
 |:---:|:---:|
-| ![UI](assets/setting.png) | ![UI](assets/image.png) |
+| ![插件设置界面](assets/setting.png) | ![对话中的朗读按钮](assets/image.png) |
 
 ## ✨ 功能
 
-- 一键播报：在对话操作栏中显示“朗读”按钮（默认开启）。
-- 内置音色：使用 `mimo-v2.5-tts` 输出流畅、清晰的音频，并支持流式播放。
-- 倍速播放：支持 0.5×–2.0× 调整播放语速，设置会作用于 MiMo 和浏览器本地语音。
-- 自定义音色：使用 `mimo-v2.5-tts-voicedesign` 通过文字描述创造你想要的声音。
-- 浏览器本地音色：使用浏览器宿主提供的离线或在线音色。
-- 自动清洗文本：移除网址、文件路径、代码块、表情符号、图标和控制字符等。
-- 音效库：提供全局语义点击音效，以及当前任务开始、成功、失败和待处理提醒音效。
+- 一键朗读：在助手消息操作栏中提供“朗读”按钮。
+- 低延迟播放：`mimo-v2.5-tts` 支持 PCM 流式播放，并在必要时回退到完整音频或浏览器语音。
+- 内置与自定义音色：支持官方内置音色，以及 `mimo-v2.5-tts-voicedesign` 音色描述。
+- 浏览器本地语音：可选择 MiMo 优先、本地优先或仅使用 MiMo。
+- 朗读范围：支持智能、全文和首段模式。
+- 播放控制：支持 0.5×–2.0× 语速、语音音量、暂停、继续和停止。
+- 文本清洗：朗读前移除网址、路径、代码块、表情符号和控制字符等不适合播报的内容。
+- 演播厅：试听时明确显示正在使用 MiMo 还是浏览器本地语音，并区分常见失败原因。
+- 可选音效：提供任务状态和语义化点击音效，默认关闭。
+- 插件联动：向其他 DSH Web 插件暴露可选的 PCM 播放服务。
 
 ## 📋 环境要求
 
-- `@deepseek-ai/dsh` `0.1.5-rc.1`（当前插件仅适配此版本）
+- `@deepseek-ai/dsh` `0.1.5-rc.1`（当前仅验证此版本）
 - Node.js 22+
-- Xiaomi MiMo API Key
+- 使用 MiMo 语音时需要 Xiaomi MiMo API Key
 - [官方 TTS API 文档](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
 
-## 🚀 安装与使用
+## 🚀 安装
 
-- 从 npm 安装 **（推荐）**：
+### 从 npm 安装（推荐）
 
 ```bash
-dsh plugin --profile web add dsh-xiaomi-tts
+dsh plugin --profile web add dsh-xiaomi-tts@latest
 ```
 
-- 从 [DSH 插件市场](https://github.com/dsh-market/dsh-market) 安装 **（推荐）**：
+### 从插件市场安装
 
-打开 **设置 → 插件市场**，搜索 `xiaomi-mimo-tts` 并点击安装。
+当前 DSH 插件市场已收录本插件，可在 **设置 → 插件市场** 中搜索 `xiaomi-mimo-tts`。
 
-- 让 DSH 或 任意AI Agent 帮你装——把下面这段提示词发给AI
-
-```text
-帮我给此电脑上的dsh安装 dsh-xiaomi-tts 插件。
-1. 优先通过命令安装 dsh plugin --profile web add dsh-xiaomi-tts@latest
-2. 如果失败，请尝试源码 https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts
-```
-
-- 从 GitHub 安装：
+### 从 GitHub 安装
 
 ```bash
 dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```
 
-- 从 GitHub Release 下载 `.tgz` 后安装：
+也可以下载 GitHub Release 中的 `.tgz`：
 
 ```powershell
 dsh plugin --profile web add "<下载路径>\dsh-xiaomi-tts-<版本>.tgz"
 ```
 
-Release tgz 已包含构建产物，无需执行 `pnpm approve-builds`。
+Release 压缩包已包含构建产物，无需执行 `pnpm approve-builds`。
 
-安装后重启 `dsh web`，打开 **设置 → 插件 → 插件配置 → 语音朗读(Xiaomi MiMo)**
-[获取并填写 API Key](https://platform.xiaomimimo.com/console/api-keys) 。支持标准API Key / Token Plan 专属 API key
+安装完成后，重启正在运行的 DSH Web `web` profile，然后打开：
 
-修改任意设置后需要点击 **保存** 生效。
+**设置 → 插件 → 插件配置 → 语音朗读 (Xiaomi MiMo)**
 
+## 🐋 首次使用
 
-## ⚙️ 配置
+新安装的默认行为：
 
-**官方内置音色（`mimo-v2.5-tts`）**：
+- 朗读按钮可用；
+- **自动播报默认关闭**；
+- **UI 音效默认关闭**；
+- 未保存 API Key 时，“MiMo 优先”策略可能回退到浏览器本地语音。
+
+推荐配置顺序：
+
+1. [获取 Xiaomi MiMo API Key](https://platform.xiaomimimo.com/console/api-keys)。
+2. 在插件设置中输入 Key，并点击底部 **保存**。
+3. 打开“调音台”，选择模型和音色。
+4. 在“演播厅”试听；状态气泡会显示实际使用的是 MiMo 还是浏览器本地语音。
+5. 按需开启自动播报和 UI 音效，再次保存。
+
+> 新输入的 API Key 只有保存到 DSH Host 后才会用于 MiMo 试听。界面中的 `sk-` / `tp-` 检查只是格式识别，不代表服务端已经验证密钥有效。
+
+### 更换或清除 API Key
+
+- 输入新 Key 并保存，会替换当前个人设置层的密钥。
+- 点击 **清除个人密钥** 并保存，会移除当前用户层覆盖。
+- 如果 DSH 基础配置仍提供密钥，清除个人覆盖后会恢复继承该密钥；因此该操作不等同于撤销 Xiaomi 平台上的密钥。
+- 如需彻底失效，请同时前往 Xiaomi MiMo 控制台撤销对应 Key。
+
+## ⚙️ 配置说明
+
+### 官方内置音色
+
+`mimo-v2.5-tts` 当前提供：
 
 - 中文女声：`冰糖`、`茉莉`
 - 中文男声：`苏打`、`白桦`
 - 英文女声：`Mia`、`Chloe`
 - 英文男声：`Milo`、`Dean`
 
-**自定义音色（`mimo-v2.5-tts-voicedesign`）**
+### 自定义音色
 
-提供了常用音色描述模板；用户可以直接修改并保存描述。
+`mimo-v2.5-tts-voicedesign` 支持从音色描述生成声音。设置面板包含预设模板，也可以手动编辑：
+
 ```text
 青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。
 ```
 
-**浏览器本地兜底语音**
+“AI 生成”功能使用 DSH 当前配置的默认 LLM 来改写音色描述；生成结果仍需保存。
 
-支持三种策略：“MiMo 优先”在 MiMo 失败时改用浏览器语音；“本地优先”优先使用浏览器语音；“关闭本地语音”仅使用 MiMo。
-可选音色来自浏览器 Web Speech API，是否离线及实际可用范围取决于浏览器、操作系统和网络服务。
+### 浏览器本地语音
 
-**朗读范围**
+- **MiMo 优先**：MiMo 在首段音频开始前失败时，尝试浏览器语音。
+- **本地优先**：先使用浏览器语音，失败后尝试 MiMo。
+- **关闭本地语音**：只使用 MiMo，不进行本地兜底。
 
-- **智能模式**：自动播报优先朗读回复的首个语义段；当未读内容不少于已读首段时，会随机补一句自然收尾语。手动点击“朗读”时播放全文；短回复没有可拆分的段落时会完整播放。
+浏览器音色来自 Web Speech API。是否离线、可用语言和实际声音取决于浏览器、操作系统及其语音服务。
+
+### 朗读范围
+
+- **智能模式**：自动播报优先朗读首个语义段；未读内容较多时可能补一句收尾提示。手动朗读播放全文。
 - **全文模式**：自动播报和手动朗读都播放全文。
 - **首段模式**：自动播报和手动朗读都只播放首个语义段。
 
-设置面板支持键盘操作：按 `Tab` 在控件间移动，使用方向键调整滑块或切换选项，按空格确认当前操作。
+设置面板支持键盘操作：使用 `Tab` 移动焦点，方向键调整滑块或选项，空格键确认按钮和开关。
 
 ## 🔌 三方插件联动
-![whale-girls](assets/whale-girls.webp)
 
-> 我们对外暴露了PCM流式播放能力。
-Web 插件可以直接调用本插件的服务进行流式播放。可直接在需要播放的位置写一行：
+本插件向 Web 插件提供可选 PCM 流式播放能力：
 
 ```ts
 ctx.get('xiaomiMimoTts')?.play('欢迎回来')
 ```
 
-建议通过 `ctx.get()` 动态获取这项能力，不必声明为必需的 `inject` 服务。插件未安装或未就绪时调用会安全跳过；`play()` 使用用户已保存的 MiMo 设置播放 PCM 流，`stop()` 可主动停止。新播放会自动打断当前朗读。
+建议通过 `ctx.get()` 动态获取，不要声明为必需注入。插件未安装、未就绪或已关闭时，调用会安全跳过；新播放会中断当前朗读，`stop()` 可主动停止。
 
-需要 TypeScript 类型提示时可仅导入类型：
+需要 TypeScript 类型时：
 
 ```ts
 import type { XiaomiMimoTtsService } from 'dsh-xiaomi-tts/client-api'
@@ -129,18 +154,21 @@ const tts = ctx.get('xiaomiMimoTts') as XiaomiMimoTtsService | undefined
 tts?.play('欢迎回来')
 ```
 
-## 🔒 隐私
+## 🔒 隐私与网络访问
 
-- API Key 保存在 DSH Host，不会发送给浏览器。
-- 生成语音时，正文会被发送给 Xiaomi MiMo 服务。
-- 音频在浏览器内存中通过 Web Audio 或临时 Blob URL 播放，不会持久化到磁盘。
+- API Key 由 DSH Host 保存，浏览器只读取“是否已配置/格式是否识别”的状态，不读取密钥正文。
+- 生成 MiMo 语音时，待朗读正文和相关音色指令会发送至 Xiaomi MiMo 服务。
+- 使用“AI 生成音色描述”时，输入内容会发送给 DSH 当前默认 LLM 的服务提供方。
+- 浏览器本地语音由 Web Speech API 提供；标记为在线的音色可能把文本交给浏览器、操作系统或其网络语音服务。
+- 展开设置卡片时，DSH Host 会访问 npm Registry 检查是否存在新版本。
+- 音频在浏览器内存中通过 Web Audio 或临时 Blob URL 播放，插件不会主动持久化音频文件。
 - 音效核心移植自 [uisfx 0.4.0](https://github.com/romainsimon/uisfx)，遵循 MIT License，详见 `NOTICE`。
 
 ## 🏗️ 架构
 
-- **共享层**：统一配置、文本清理、分段和 SSE 契约。
-- **Host 插件**：管理设置与静态资源，并代理 MiMo 完整音频和 PCM 流式请求。
-- **Web Client**：提供设置与朗读入口，负责播放状态、浏览器语音兜底和第三方播放服务。
+- **共享层**：配置默认值、文本处理、分段、SSE 和播放契约。
+- **Host 插件**：注册设置与静态资源，并代理 MiMo 完整音频和 PCM 流式请求。
+- **Web Client**：提供设置、消息朗读、浏览器语音兜底、试听和第三方播放服务。
 
 ```mermaid
 flowchart LR
@@ -148,40 +176,45 @@ flowchart LR
     THIRD["第三方 Web 插件"] -. "ctx.get('xiaomiMimoTts')" .-> CLIENT
     CLIENT -->|"完整音频 / PCM 流"| HOST["Host 插件<br/>设置与 API 代理"]
     HOST --> MIMO["Xiaomi MiMo API"]
-    CLIENT -->|"本地语音兜底"| SPEECH["浏览器 Web Speech API"]
+    CLIENT -->|"Web Speech API"| SPEECH["浏览器 / 系统语音服务"]
+    CLIENT -->|"音色描述生成"| LLM["DSH 默认 LLM"]
     SHARED["共享层<br/>配置、文本处理、SSE"] -.-> CLIENT
     SHARED -.-> HOST
 ```
 
 ## 🛠️ 开发
 
-修改设置面板时运行：
-
-```bash
-pnpm dev
-```
-命令会打开本地 UI 预览壳，直接渲染 `src/client/settings-card.tsx` 并热更新。
-
 ```bash
 pnpm install
+pnpm dev
+```
+
+`pnpm dev` 会启动本地 UI Lab，直接渲染 `src/client/settings/card.tsx`。设置保存、远程语音、版本检查和卸载均使用本地 mock，不会调用真实 MiMo 服务或卸载插件。
+
+常用检查：
+
+```bash
 pnpm typecheck
 pnpm test
+pnpm dev:build
 pnpm pack:check
 ```
 
-日常构建使用 `pnpm build`。
-排查 PCM 流式链路时使用 `pnpm build:debug`。
+- `pnpm build`：正常构建。
+- `pnpm build:debug`：启用 PCM 链路调试日志的构建。
+- `pnpm profile:check`：验证本机 DSH Web profile 中的安装状态。
 
-> windows用户从本地开发版切换到 npm 版时，请先停止 DSH Web，避免 Windows Junction 被运行中的 Node 进程占用：
+Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避免运行中的 Node 进程占用 Junction：
 
 ```powershell
 .\start\dsh-plugin-reinstall.bat 3.0.3
 ```
 
-## 🤝 推荐
+## 🤝 推荐插件
+
 > 本插件的鲸鱼娘形象参考 `dsh-deep-whale` `dsh-whale-musume`由GPT生成。本插件的uisfx音效参考 `dsh-plugin-uisfx`实现
 
 - [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme)：鲸鱼娘主题皮肤系列。
 - [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme)：元气鲸鱼娘桌宠。
 - [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme)：语义化 UI 音效。
-- [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme)：原生换肤、背景壁纸、强调色、主题包 。
+- [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme)：原生换肤、背景壁纸、强调色和主题包。

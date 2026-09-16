@@ -5,12 +5,40 @@ export const TTS_SETTINGS_NAMESPACE = 'xiaomi-mimo-tts'
 export const SOUND_PACKS = ['minimal', 'soft', 'glass', 'arcade', 'mechanical', 'organic', 'dreamy', 'scifi', 'rubber', 'cinematic', 'studio', 'zen'] as const
 export type SoundPack = typeof SOUND_PACKS[number]
 
+export const SOUND_EFFECTS_MODES = ['all', 'off', 'click', 'task'] as const
+export type SoundEffectsMode = typeof SOUND_EFFECTS_MODES[number]
+
+export interface SoundEffectsModeFlags {
+  enabled: boolean
+  taskSounds: boolean
+  clickSounds: boolean
+}
+
+export function resolveSoundEffectsMode(enabled: boolean, taskSounds: boolean, clickSounds: boolean): SoundEffectsMode {
+  if (!enabled || (!taskSounds && !clickSounds)) return 'off'
+  if (taskSounds && clickSounds) return 'all'
+  return taskSounds ? 'task' : 'click'
+}
+
+export function nextSoundEffectsMode(mode: SoundEffectsMode): SoundEffectsMode {
+  const index = SOUND_EFFECTS_MODES.indexOf(mode)
+  return SOUND_EFFECTS_MODES[(index + 1) % SOUND_EFFECTS_MODES.length]!
+}
+
+export function getSoundEffectsModeFlags(mode: SoundEffectsMode): SoundEffectsModeFlags {
+  return {
+    enabled: mode !== 'off',
+    taskSounds: mode === 'all' || mode === 'task',
+    clickSounds: mode === 'all' || mode === 'click',
+  }
+}
+
 export const DEFAULT_SOUND_SETTINGS = {
-  soundEnabled: true,
+  soundEnabled: false,
   soundVolume: 0.35,
   soundPack: 'zen' as SoundPack,
-  taskSounds: true,
-  clickSounds: true,
+  taskSounds: false,
+  clickSounds: false,
 }
 
 /** Same-origin route used by the Web client to request synthesized audio. */
@@ -24,6 +52,19 @@ export const VOICE_DESIGN_AI_RPC_CHANNEL = '/xiaomi-mimo-tts'
 
 /** Endpoint that generates a plain-text MiMo voice-design description. */
 export const VOICE_DESIGN_AI_RPC_ENDPOINT = 'voice-design/generate'
+
+/**
+ * Same-origin route reporting whether the Voice Design AI RPC channel mounted.
+ *
+ * DSH 0.1.5+ cannot mount a third-party `connection.rpc.handle()` channel, so
+ * the browser half asks the Host instead of discovering the failure as a 405.
+ */
+export const TTS_VOICE_DESIGN_AI_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/voice-design-ai-status'
+
+/** Host-reported availability of the Voice Design AI RPC channel. */
+export interface VoiceDesignAiStatus {
+  available: boolean
+}
 
 export interface VoiceDesignAiGeneratePayload {
   input: string
@@ -655,7 +696,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   format: 'pcm',
   voiceDesignPlaybackMode: 'complete',
   readScope: 'smart',
-  autoPlay: true,
+  autoPlay: false,
   instruction: '请忠实朗读原文，根据文本语气自然表达，不添加或改写内容。',
   maxTextLength: 12000,
   requestTimeoutMs: 120000,

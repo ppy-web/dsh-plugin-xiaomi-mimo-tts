@@ -1,7 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { SOUND_PACKS, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE } from '../../shared.js'
-import type { SoundPack } from '../../shared.js'
+import { resolveSoundEffectsMode, SOUND_PACKS, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE } from '../../shared.js'
+import type { SoundEffectsMode, SoundPack } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { EnergyVolumeSlider } from './controls/energy-volume-slider.js'
 import type { SoundEffectsController, SoundCue } from '../sound-effects/types.js'
@@ -19,7 +19,7 @@ interface SoundEffectsPanelProps {
   writable: boolean
   open: boolean
   onToggle: () => void
-  onEnabledChange: (enabled: boolean) => void
+  onCycle: () => void
   onVolumeChange: (volume: number) => void
   onPackChange: (pack: SoundPack) => void
 }
@@ -50,9 +50,18 @@ const SOUND_PACK_TONES: Record<SoundPack, SoundPackTone> = {
 }
 
 /** A settings module rendered directly below the Broadcast Studio preview. */
-export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, open, onToggle, onEnabledChange, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
+export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, open, onToggle, onCycle, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
   const [previewingCue, setPreviewingCue] = useState<SoundCue | null>(null)
   const packOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const mode: SoundEffectsMode = resolveSoundEffectsMode(enabled, taskSounds, clickSounds)
+  const modeLabel = mode === 'all'
+    ? t('settings.soundEffectsOn')
+    : mode === 'off'
+      ? t('settings.soundEffectsOff')
+      : mode === 'click'
+        ? t('settings.soundEffectsClickOnly')
+        : t('settings.soundEffectsTaskOnly')
+  const bubbleLabel = mode === 'all' ? t('settings.soundEffectsBubbleOn') : modeLabel
 
   useEffect(() => {
     controller.update({
@@ -64,9 +73,6 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     })
   }, [clickSounds, controller, enabled, pack, taskSounds, volume])
 
-  const setEnabled = (next: boolean): void => {
-    onEnabledChange(next)
-  }
   const selectPack = (nextPack: typeof SOUND_PACKS[number]): void => {
     if (!writable || !enabled) return
     if (nextPack === pack) {
@@ -111,17 +117,17 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     className="xmimo-tts-sound-whale-button"
     data-xmimo-sound-toggle="true"
     aria-pressed={enabled}
-    aria-label={t(enabled ? 'settings.soundEffectsTurnOff' : 'settings.soundEffectsTurnOn')}
+    aria-label={`${t('settings.soundEffectsCycle')}: ${modeLabel}`}
     disabled={!writable}
-    onClick={() => { setEnabled(!enabled) }}
+    onClick={onCycle}
   >
     <span
-      className={enabled ? 'xmimo-tts-sound-whale xmimo-tts-sound-whale-on' : 'xmimo-tts-sound-whale xmimo-tts-sound-whale-off'}
+      className={`xmimo-tts-sound-whale xmimo-tts-sound-whale-${mode}`}
       style={{ backgroundImage: `url(${hostRoute(TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE)})` }}
       aria-hidden="true"
     />
     <span className="xmimo-tts-sound-bubble" aria-live="polite">
-      {t(enabled ? 'settings.soundEffectsBubbleOn' : 'settings.soundEffectsBubbleOff')}
+      {bubbleLabel}
     </span>
   </button>
 
@@ -133,17 +139,16 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     collapseOpenClassName="xmimo-tts-sound-collapse-open"
     title={t('settings.soundEffectsTitle')}
     summary={<span className="xmimo-tts-sound-summary xmimo-ui-summary">
-      <span>{t(enabled ? 'settings.soundEffectsOn' : 'settings.soundEffectsOff')}</span>
+      <span>{modeLabel}</span>
       <span>{t('settings.soundEffectsVolume')} {Math.round(volume * 100)}%</span>
       <span>{pack}</span>
-      <span>{t('settings.soundEffectsSynced')}</span>
     </span>}
     open={open}
     onToggle={onToggle}
     ariaLabel={`${t(open ? 'settings.collapse' : 'settings.expand')}: ${t('settings.soundEffectsTitle')}`}
     action={whaleAction}
   >
-    <div className="xmimo-tts-sound-body xmimo-ui-module-body">
+    {enabled ? <div className="xmimo-tts-sound-body xmimo-ui-module-body">
       <label className="xmimo-tts-sound-volume">
         <span>{t('settings.soundEffectsVolume')} {Math.round(volume * 100)}%</span>
         <EnergyVolumeSlider
@@ -203,6 +208,6 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
       <small className="xmimo-tts-sound-description">{t('settings.soundEffectsDescription')}</small>
       <small className="xmimo-tts-sound-supported">{t('settings.soundEffectsSupported')}</small>
       {!writable ? <small>{t('settings.readOnly')}</small> : null}
-    </div>
+    </div> : null}
   </CollapsibleModule>
 }
