@@ -80,6 +80,8 @@ export interface DetailsModuleProps {
   connection: { rpc: ClientConnectionRpc }
   open: boolean
   writable: boolean
+  /** False when the Host reports its Voice Design AI RPC channel never mounted. */
+  voiceDesignAiAvailable: boolean
   autoPlay: boolean
   voiceVolume: number
   voiceRate: number
@@ -109,7 +111,7 @@ export interface DetailsModuleProps {
   onGenerateVoiceDesign: () => void
 }
 
-export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, voiceDesignAiState, voiceDesignAiCopy, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalSpeechModeChange, onVoiceDesignAiCopyChange, onGenerateVoiceDesign }: DetailsModuleProps): ReactElement {
+export function DetailsModule({ t, connection, open, writable, voiceDesignAiAvailable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, voiceDesignAiState, voiceDesignAiCopy, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalSpeechModeChange, onVoiceDesignAiCopyChange, onGenerateVoiceDesign }: DetailsModuleProps): ReactElement {
   const [localVoicesAvailable, setLocalVoicesAvailable] = useState<boolean | null>(null)
   const onLocalVoicesAvailabilityChange = useCallback((available: boolean): void => { setLocalVoicesAvailable(available) }, [])
   useEffect(() => {
@@ -125,16 +127,30 @@ export function DetailsModule({ t, connection, open, writable, autoPlay, voiceVo
   const summaryVoiceVolume = `${Math.round(voiceVolume * 100)}%`
   const summaryVoiceRate = `${voiceRate.toFixed(1)}×`
 
+  // The whale is decorative and always shown; only the AI assistant part of the
+  // control depends on the Host actually mounting the RPC channel. When the
+  // channel never mounted the button falls back to the same static, non-
+  // interactive whale the preset model already uses — it must not disappear.
+  const voiceDesignAiInteractive = voiceDesignAiAvailable && model === 'mimo-v2.5-tts-voicedesign'
+
+  // The packaged sheet is a two-frame sprite: the left frame is the resting
+  // mascot and the right frame (closed eyes, music notes) is the Voice Design
+  // one. The selected model decides which frame the control rests on, so the
+  // sprite follows the model toggle independently of AI availability.
+  const mixerFrameClass = model === 'mimo-v2.5-tts-voicedesign'
+    ? 'xmimo-tts-mixer-whale-button-voicedesign'
+    : 'xmimo-tts-mixer-whale-button-preset'
+
   const mixerAction = <button
     type="button"
-    className={model === 'mimo-v2.5-tts-voicedesign' ? 'xmimo-tts-mixer-whale-button' : 'xmimo-tts-mixer-whale-button xmimo-tts-mixer-whale-button-static'}
-    disabled={model !== 'mimo-v2.5-tts-voicedesign' || !writable || voiceDesignAiState === 'loading'}
+    className={`xmimo-tts-mixer-whale-button ${mixerFrameClass}${voiceDesignAiInteractive ? '' : ' xmimo-tts-mixer-whale-button-static'}`}
+    disabled={!voiceDesignAiInteractive || !writable || voiceDesignAiState === 'loading'}
     aria-label={t('settings.voiceDesignGenerate')}
     aria-busy={voiceDesignAiState === 'loading'}
     onPointerDown={(event) => { event.stopPropagation() }}
-    onClick={(event) => { event.stopPropagation(); if (model !== 'mimo-v2.5-tts-voicedesign') return; onVoiceDesignAiCopyChange(); onGenerateVoiceDesign() }}
+    onClick={(event) => { event.stopPropagation(); if (!voiceDesignAiInteractive) return; onVoiceDesignAiCopyChange(); onGenerateVoiceDesign() }}
   >
-    {model === 'mimo-v2.5-tts-voicedesign' ? <span className="xmimo-tts-ai-copy">{voiceDesignAiState === 'loading' ? t('settings.voiceDesignGenerating') : voiceDesignAiState === 'success' ? t('settings.voiceDesignAiSuccess') : voiceDesignAiState === 'failed' ? t('settings.voiceDesignGenerateFailed') : voiceDesignAiCopy}</span> : null}
+    {voiceDesignAiInteractive ? <span className="xmimo-tts-ai-copy">{voiceDesignAiState === 'loading' ? t('settings.voiceDesignGenerating') : voiceDesignAiState === 'success' ? t('settings.voiceDesignAiSuccess') : voiceDesignAiState === 'failed' ? t('settings.voiceDesignGenerateFailed') : voiceDesignAiCopy}</span> : null}
     <span
       className={voiceDesignAiState === 'loading' ? 'xmimo-tts-mixer-whale xmimo-tts-mixer-whale-thinking' : 'xmimo-tts-mixer-whale'}
       style={{ backgroundImage: `url(${hostRoute(TTS_MIXER_WHALE_ASSET_ROUTE)})` }}

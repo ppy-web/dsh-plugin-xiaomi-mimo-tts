@@ -2,6 +2,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from '../../../shared.js'
+import { hostRoute } from '../../host-route.js'
 
 export const CUSTOM_VOICE_DESIGN_OPTION = '__custom__'
 
@@ -14,7 +15,7 @@ type VoiceDesignPreset = typeof TTS_VOICE_DESIGN_PRESETS[number]
 function VoicePresetAvatar({ preset }: { preset: VoiceDesignPreset }): ReactElement {
   return <img
     className="xmimo-tts-builtin-voice-avatar"
-    src={`${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`}
+    src={hostRoute(`${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`)}
     alt=""
     width={40}
     height={40}

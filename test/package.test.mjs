@@ -41,6 +41,17 @@ const { appendTtsSmartTruncationOutro, applyTtsPlaybackScope, applyTtsReadScope,
 
 const SUPPORTED_DSH_VERSION = '0.1.5-rc.1'
 
+async function assertLocalReadmeTargets(source, label) {
+  const targets = [...source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)|(?:src|href)="([^"]+)"/g)]
+    .map((match) => match[1] ?? match[2])
+    .filter((target) => !/^(?:[a-z]+:|#)/iu.test(target))
+    .map((target) => decodeURIComponent(target.split('#', 1)[0]))
+  assert.ok(targets.length > 0, `${label} should contain local links or assets`)
+  for (const target of targets) {
+    await assert.doesNotReject(readFile(new URL(`../${target}`, import.meta.url)), `${label}: missing local target ${target}`)
+  }
+}
+
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
   assert.equal(packageJson.version, '3.0.3')
@@ -72,6 +83,30 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.match(pcmStream, /mimo-v2\.5-tts/)
   assert.match(patch, /id: xiaomi-mimo-tts/)
   assert.match(patch, /name: 'dsh-xiaomi-tts'/)
+  assert.match(patch, /autoPlay: false/)
+  assert.match(patch, /soundEnabled: false/)
+  assert.match(patch, /taskSounds: false/)
+  assert.match(patch, /clickSounds: false/)
+})
+
+test('bilingual READMEs keep local assets, onboarding, privacy, and development guidance in sync', async () => {
+  await Promise.all([
+    assertLocalReadmeTargets(readmeZh, 'README.md'),
+    assertLocalReadmeTargets(readmeEn, 'README.en.md'),
+  ])
+  for (const readme of [readmeZh, readmeEn]) {
+    assert.match(readme, /https:\/\/ppy-web\.github\.io\/dsh-plugin-xiaomi-mimo-tts/u)
+    assert.match(readme, /src\/client\/settings\/card\.tsx/u)
+    assert.match(readme, /pnpm dev:build/u)
+    assert.match(readme, /default LLM|默认 LLM/u)
+    assert.match(readme, /Web Speech API/u)
+    assert.match(readme, /npm Registry/u)
+    assert.doesNotMatch(readme, /src\/client\/settings-card\.tsx/u)
+  }
+  assert.match(readmeZh, /自动播报默认关闭/u)
+  assert.match(readmeEn, /automatic playback disabled/u)
+  assert.match(readmeZh, /清除个人密钥/u)
+  assert.match(readmeEn, /Clear personal key/u)
 })
 
 test('voice design AI generation is wired through Host LLM RPC', () => {
@@ -85,6 +120,23 @@ test('voice design AI generation is wired through Host LLM RPC', () => {
   assert.match(host, /ctx\.llm\.stream/u)
   assert.match(host, /chunk\.type === ["']text-delta["']/u)
   assert.match(settingsCardSource, /VOICE_DESIGN_AI_RPC_ENDPOINT/u)
+})
+
+test('hides Voice Design AI assistance when the RPC channel never mounted', () => {
+  assert.equal(sharedModule.TTS_VOICE_DESIGN_AI_STATUS_ROUTE, '/plugins/xiaomi-mimo-tts/voice-design-ai-status')
+  assert.match(host, /TTS_VOICE_DESIGN_AI_STATUS_ROUTE/)
+  assert.match(host, /voiceDesignAiRpcAvailable = true/)
+  assert.match(host, /voiceDesignAiRpcAvailable = false/)
+  assert.match(host, /catch \(error\) \{\s+voiceDesignAiRpcAvailable = false/u)
+  assert.match(settingsCardSource, /TTS_VOICE_DESIGN_AI_STATUS_ROUTE/)
+  assert.match(settingsCardSource, /resolveVoiceDesignAiAvailability/)
+  assert.match(settingsCardSource, /isUnmountedChannelFailure/)
+  assert.match(settingsCardSource, /voiceDesignAiAvailable=\{voiceDesignAiAvailability === 'available'\}/)
+  assert.match(settingsDetailsSource, /voiceDesignAiAvailable: boolean/)
+  // The whale mascot is decorative and must stay visible; only its interactivity
+  // depends on the Host actually mounting the RPC channel.
+  assert.match(settingsDetailsSource, /^\s+action=\{mixerAction\}$/m)
+  assert.doesNotMatch(settingsDetailsSource, /\{\.\.\.\(voiceDesignAiAvailable \? \{ action: mixerAction \} : \{\}\)\}/)
 })
 
 test('profile lifecycle scripts pin the daily web profile and reject mixed link state', () => {
@@ -164,7 +216,10 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(new Set(sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => item.prompt)).size, sharedModule.TTS_VOICE_DESIGN_PRESETS.length)
   assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.every((item) => typeof item.label === 'string' && item.label.trim().length > 0 && typeof item.summary === 'string' && item.summary.trim().length > 0 && typeof item.prompt === 'string' && item.prompt.trim().length > 0))
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
-  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, true)
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, false)
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.soundEnabled, false)
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.taskSounds, false)
+  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.clickSounds, false)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.model, 'mimo-v2.5-tts')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.localSpeechMode, 'auto')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.localVoiceURI, '')
@@ -330,6 +385,12 @@ test('ships the API-key whale asset used by the settings card', async () => {
   assert.match(settingsApiKeySource, /API_KEY_FOCUS_COPY_KEYS/)
   assert.match(settingsApiKeySource, /onFocus=\{\(\) => \{ setBubbleKey/)
   assert.match(settingsApiKeySource, /onBlur=\{\(\) => \{ setBubbleKey/)
+  assert.match(settingsApiKeySource, /aria-describedby=\{messageId\}/)
+  assert.match(settingsApiKeySource, /aria-invalid=\{invalid\}/)
+  assert.match(settingsApiKeySource, /resetLabel=\{t\('settings\.apiKeyClear'\)\}/)
+  assert.match(settingsCardSource, /onClear=\{clearApiKey\}/)
+  assert.match(settingsCardSource, /apiKeyChange\?\.kind === 'clear'/)
+  assert.match(settingsCardSource, /await scope\.unset\('apiKey'\)/)
 })
 
 test('wires the Voice Design generator to its packaged whale control', async () => {
@@ -338,7 +399,23 @@ test('wires the Voice Design generator to its packaged whale control', async () 
   assert.equal(data.toString('ascii', 8, 12), 'WEBP')
   assert.match(settingsDetailsSource, /hostRoute\(TTS_MIXER_WHALE_ASSET_ROUTE\)/)
   assert.match(settingsDetailsSource, /onPointerDown=\{\(event\) => \{ event\.stopPropagation\(\) \}\}/)
-  assert.match(settingsDetailsSource, /disabled=\{model !== 'mimo-v2\.5-tts-voicedesign' \|\| !writable \|\| voiceDesignAiState === 'loading'\}/)
+  assert.match(settingsDetailsSource, /const voiceDesignAiInteractive = voiceDesignAiAvailable && model === 'mimo-v2\.5-tts-voicedesign'/)
+  assert.match(settingsDetailsSource, /disabled=\{!voiceDesignAiInteractive \|\| !writable \|\| voiceDesignAiState === 'loading'\}/)
+})
+
+test('selects the whale sprite frame from the active voice model', async () => {
+  const mixerStyles = await readFile(new URL('../src/client/style/mixer.css', import.meta.url), 'utf8')
+  const motionStyles = await readFile(new URL('../src/client/style/motion.css', import.meta.url), 'utf8')
+  // The preset voice rests on the left frame, Voice Design on the right one.
+  assert.match(settingsDetailsSource, /const mixerFrameClass = model === 'mimo-v2\.5-tts-voicedesign'/)
+  assert.match(settingsDetailsSource, /'xmimo-tts-mixer-whale-button-voicedesign'/)
+  assert.match(settingsDetailsSource, /'xmimo-tts-mixer-whale-button-preset'/)
+  assert.match(settingsDetailsSource, /className=\{`xmimo-tts-mixer-whale-button \$\{mixerFrameClass\}/)
+  assert.match(mixerStyles, /--xmimo-tts-mixer-frame: left center/)
+  assert.match(mixerStyles, /\.xmimo-tts-mixer-whale-button-voicedesign \{\s+--xmimo-tts-mixer-frame: right center/)
+  assert.match(mixerStyles, /background-position: var\(--xmimo-tts-mixer-frame, left center\)/)
+  // Reduced motion must not snap the frame back to the left one.
+  assert.doesNotMatch(motionStyles, /xmimo-tts-mixer-whale-thinking \{\s+animation: none;\s+background-position: left center/)
 })
 
 test('announces preview playback status accessibly', () => {
@@ -380,7 +457,7 @@ test('build emits declarations only for the private client modules', async () =>
   const expectedDeclarations = {
     conversation: ['read-aloud.d.ts'],
     playback: ['index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'preview-player.d.ts', 'types.d.ts', 'voice-rate.d.ts'],
-    settings: ['api-key-module.d.ts', 'card.d.ts', 'collapsible-module.d.ts', 'details-module.d.ts', 'field-heading.d.ts', 'preview-module.d.ts', 'scope.d.ts', 'sound-effects-module.d.ts', 'switch-module.d.ts', 'types.d.ts'],
+    settings: ['api-key-module.d.ts', 'api-key-state.d.ts', 'card.d.ts', 'collapsible-module.d.ts', 'details-module.d.ts', 'field-heading.d.ts', 'preview-module.d.ts', 'scope.d.ts', 'sound-effects-module.d.ts', 'switch-module.d.ts', 'types.d.ts', 'voice-design-ai-state.d.ts'],
     'sound-effects': ['click-classifier.d.ts', 'index.d.ts', 'task-watcher.d.ts', 'toggle-sound-player.d.ts', 'types.d.ts'],
     style: ['index.d.ts'],
   }
@@ -684,10 +761,11 @@ test('client output registers the message action and plugin settings card', () =
   assert.doesNotMatch(client, /Date\.now\(\) - this\.autoPlayArmedAt < 30000/)
   assert.match(clientSource, /playCompletedReply\(true\)/)
   assert.match(client, /claimAutomaticPlayback\(sessionId, messageId\)/)
-  assert.match(clientSource, /const apiKeyMessage = enteredApiKey\.length > 0/)
-  assert.match(clientSource, /isSupportedTtsApiKey\(enteredApiKey\) \? t\('settings\.apiKeyStatus'\) : t\('settings\.apiKeyUnsupported'\)/)
+  assert.match(clientSource, /resolveApiKeyViewState\(apiKey, isSupportedTtsApiKey\(apiKey\), apiKeyStatus, changes\.apiKey\?\.kind\)/)
+  assert.match(clientSource, /apiKeyViewState === 'pending-invalid'/)
   assert.match(clientSource, /fetch\(TTS_API_KEY_STATUS_ROUTE/)
-  assert.match(clientSource, /apiKeyStatus === 'missing' \|\| apiKeyStatus === 'unsupported'/)
+  assert.match(clientSource, /setApiKeyStatus\('unavailable'\)/)
+  assert.match(clientSource, /markChange\('apiKey', 'clear'\)/)
   assert.match(client, /platform\.xiaomimimo\.com\/console\/api-keys/)
   assert.match(client, /noopener noreferrer/)
   assert.match(client, /new-password/)

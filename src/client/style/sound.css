@@ -86,18 +86,26 @@
   height: 56px;
   pointer-events: none;
   background-repeat: no-repeat;
-  background-size: 200% 100%;
+  background-size: 400% 100%;
   filter: drop-shadow(0 3px 5px rgba(15, 23, 42, .14));
   transform-origin: bottom center;
   transition: filter 180ms ease, transform 180ms ease
 }
 
-.xmimo-tts-sound-whale-on {
+.xmimo-tts-sound-whale-all {
   background-position: left center
 }
 
 .xmimo-tts-sound-whale-off {
-  background-position: calc(100% + 2px) center
+  background-position: 33.333333% center
+}
+
+.xmimo-tts-sound-whale-click {
+  background-position: 66.666667% center
+}
+
+.xmimo-tts-sound-whale-task {
+  background-position: right center
 }
 
 .xmimo-tts-sound-whale-button:hover:not(:disabled) .xmimo-tts-sound-whale {

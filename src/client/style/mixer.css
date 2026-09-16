@@ -7,7 +7,7 @@
   display: block !important;
   pointer-events: none;
   background-repeat: no-repeat;
-  background-position: left center;
+  background-position: var(--xmimo-tts-mixer-frame, left center);
   background-size: 200% 100%;
   filter: saturate(.86);
   transform-origin: 50% 80%;
@@ -26,7 +26,17 @@
   color: var(--dsw-alias-label-secondary, #5f6875);
   background: transparent;
   font: inherit;
-  cursor: pointer
+  cursor: pointer;
+  /* Resting sprite frame, overridden per voice model below. */
+  --xmimo-tts-mixer-frame: left center
+}
+
+/*
+ * Sprite frame selection: the preset voice rests on the left frame, Voice
+ * Design on the right one (closed eyes, music notes).
+ */
+.xmimo-tts-mixer-whale-button-voicedesign {
+  --xmimo-tts-mixer-frame: right center
 }
 
 .xmimo-tts-mixer-whale-button:disabled {
@@ -75,7 +85,7 @@
 .xmimo-tts-mixer-whale-button>.xmimo-tts-mixer-whale-thinking {
   animation: xmimo-tts-mixer-think 1.2s ease-in-out infinite, xmimo-tts-mixer-face 2.4s steps(1, end) infinite;
   filter: saturate(1.08);
-  background-position: left center;
+  background-position: var(--xmimo-tts-mixer-frame, left center);
   transform-origin: 50% 80%
 }
 

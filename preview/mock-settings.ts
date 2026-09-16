@@ -10,12 +10,10 @@ import {
 import type { TtsSettings } from '../src/shared.js'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 
-const PREVIEW_API_KEY = 'sk-preview-only'
-
 export class PreviewSettingsScope implements SettingsScope<TtsSettings> {
   private readonly listeners = new Set<() => void>()
   private readonly base: TtsSettings = { ...DEFAULT_TTS_SETTINGS, apiKey: '' }
-  private user: TtsSettings = { apiKey: PREVIEW_API_KEY }
+  private user: TtsSettings = {}
   private writable = true
   private revision = 1
   private snapshot = this.createSnapshot()
@@ -59,7 +57,7 @@ export class PreviewSettingsScope implements SettingsScope<TtsSettings> {
   }
 
   reset(): void {
-    this.user = { apiKey: PREVIEW_API_KEY }
+    this.user = {}
     this.writable = true
     this.publish()
   }

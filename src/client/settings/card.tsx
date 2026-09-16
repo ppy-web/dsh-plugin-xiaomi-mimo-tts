@@ -7,7 +7,11 @@ import {
   TTS_MIMO_LOGO_ASSET_ROUTE,
   TTS_UNINSTALL_ROUTE,
   TTS_UPDATE_ROUTE,
+  TTS_VOICE_DESIGN_AI_STATUS_ROUTE,
+  getSoundEffectsModeFlags,
   isSupportedTtsApiKey,
+  nextSoundEffectsMode,
+  resolveSoundEffectsMode,
   resolveTtsSettings,
   VOICE_DESIGN_AI_RPC_CHANNEL,
   VOICE_DESIGN_AI_RPC_ENDPOINT,
@@ -16,11 +20,18 @@ import type { TtsSettings, VoiceDesignAiGeneratePayload, VoiceDesignAiGenerateRe
 import type { Translate } from '../localization.js'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PreviewPlayer } from '../playback/preview-player.js'
-import type { PreviewStatus } from '../playback/preview-player.js'
+import type { PreviewView } from '../playback/preview-player.js'
 import { isRecord, useSettingsSnapshot } from './scope.js'
 import { ToggleSoundPlayer } from '../sound-effects/toggle-sound-player.js'
 import type { SoundEffectsController } from '../sound-effects/types.js'
 import { ApiKeyModule } from './api-key-module.js'
+import { resolveApiKeyViewState } from './api-key-state.js'
+import type { ApiKeyStatus } from './api-key-state.js'
+import {
+  isUnmountedChannelFailure,
+  resolveVoiceDesignAiAvailability,
+} from './voice-design-ai-state.js'
+import type { VoiceDesignAiAvailability } from './voice-design-ai-state.js'
 import { DetailsModule, VOICE_DESIGN_AI_COPY_KEYS } from './details-module.js'
 import { PreviewModule } from './preview-module.js'
 import { SoundEffectsPanel } from './sound-effects-module.js'
@@ -78,10 +89,11 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [soundEffectsOpen, setSoundEffectsOpen] = useState(false)
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
-  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>('idle')
-  const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewStatus))
+  const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
+  const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView))
   const [toggleSoundPlayer] = useState(() => new ToggleSoundPlayer())
-  const [apiKeyStatus, setApiKeyStatus] = useState<'loading' | 'missing' | 'supported' | 'unsupported'>('loading')
+  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>('loading')
+  const [voiceDesignAiAvailability, setVoiceDesignAiAvailability] = useState<VoiceDesignAiAvailability>('checking')
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
 
   const accepted = resolveTtsSettings(value)
@@ -108,17 +120,24 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     ? hasOverride('apiKey')
     : changes.apiKey?.kind === 'set' && apiKey.trim().length > 0
   const dirty = EDITABLE_SETTING_FIELDS.some(fieldDirty) || apiKeyDirty === true
-  const enteredApiKey = apiKey.trim()
-  const apiKeyWarning = enteredApiKey.length > 0
-    ? !isSupportedTtsApiKey(enteredApiKey)
-    : apiKeyStatus === 'missing' || apiKeyStatus === 'unsupported'
-  const apiKeyMessage = enteredApiKey.length > 0
-    ? isSupportedTtsApiKey(enteredApiKey) ? t('settings.apiKeyStatus') : t('settings.apiKeyUnsupported')
-    : apiKeyStatus === 'missing'
-      ? t('settings.apiKeyMissing')
-      : apiKeyStatus === 'unsupported'
-        ? t('settings.apiKeyUnsupported')
-        : t('settings.apiKeyStatus')
+  const apiKeyViewState = resolveApiKeyViewState(apiKey, isSupportedTtsApiKey(apiKey), apiKeyStatus, changes.apiKey?.kind)
+  const apiKeyMessage = t(apiKeyViewState === 'loading'
+    ? 'settings.apiKeyLoading'
+    : apiKeyViewState === 'missing'
+      ? 'settings.apiKeyMissing'
+      : apiKeyViewState === 'recognized'
+        ? 'settings.apiKeyRecognized'
+        : apiKeyViewState === 'unrecognized'
+          ? 'settings.apiKeyUnsupportedSaved'
+          : apiKeyViewState === 'unavailable'
+            ? 'settings.apiKeyUnavailable'
+            : apiKeyViewState === 'pending-save'
+              ? 'settings.apiKeyPendingSave'
+              : apiKeyViewState === 'pending-clear'
+                ? 'settings.apiKeyPendingClear'
+                : 'settings.apiKeyUnsupported')
+  const apiKeyInvalid = apiKeyViewState === 'pending-invalid' || apiKeyViewState === 'unrecognized'
+  const apiKeyClearable = hasOverride('apiKey') && changes.apiKey?.kind !== 'clear'
 
   useEffect(() => {
     if (snapshot.status === 'unavailable') return
@@ -131,10 +150,10 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       })
       .then((status) => {
         if (!active) return
-        setApiKeyStatus(status.configured !== true ? 'missing' : status.supported === true ? 'supported' : 'unsupported')
+        setApiKeyStatus(status.configured !== true ? 'missing' : status.supported === true ? 'recognized' : 'unrecognized')
       })
       .catch(() => {
-        if (active) setApiKeyStatus('missing')
+        if (active) setApiKeyStatus('unavailable')
       })
     return () => { active = false }
   }, [snapshot.status, value])
@@ -152,6 +171,24 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
         setLatestVersion(result.updateAvailable === true && typeof result.latestVersion === 'string' ? result.latestVersion : null)
       })
       .catch(() => { if (active) setLatestVersion(null) })
+    return () => { active = false }
+  }, [open])
+
+  // DSH 0.1.5+ cannot mount a third-party `connection.rpc.handle()` channel: the
+  // route is resolved through the connection plugin's own context, which stopped
+  // injecting `webServer`. The plugin still loads, so the failure is invisible
+  // until the button answers 405 — ask the Host whether the channel mounted and
+  // hide the assistant when it did not.
+  useEffect(() => {
+    if (!open) return
+    let active = true
+    void fetch(hostRoute(TTS_VOICE_DESIGN_AI_STATUS_ROUTE), { cache: 'no-store', headers: { accept: 'application/json' } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('voice-design-ai-status-failed')
+        return await response.json() as unknown
+      })
+      .then((status) => { if (active) setVoiceDesignAiAvailability(resolveVoiceDesignAiAvailability(status)) })
+      .catch(() => { if (active) setVoiceDesignAiAvailability('unavailable') })
     return () => { active = false }
   }, [open])
 
@@ -207,7 +244,9 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       setChanges((current) => ({ ...current, voiceDesignPrompt: { kind: 'set' }, voiceDesignCustomPrompt: { kind: 'set' } }))
       setState('idle')
       setVoiceDesignAiState('success')
-    } catch {
+    } catch (error) {
+      // A 405 here means the Host never mounted the channel; stop offering it.
+      if (isUnmountedChannelFailure(error instanceof Error ? error.message : error)) setVoiceDesignAiAvailability('unavailable')
       setVoiceDesignAiState('failed')
     }
   }
@@ -234,6 +273,11 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     if (field === 'soundPack') setSoundPack(base.soundPack)
     if (field === 'taskSounds') setTaskSounds(base.taskSounds)
     if (field === 'clickSounds') setClickSounds(base.clickSounds)
+  }
+
+  const clearApiKey = (): void => {
+    setApiKey('')
+    markChange('apiKey', 'clear')
   }
 
   const discard = (): void => {
@@ -304,7 +348,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     }
   }
 
-  const previewBusy = previewStatus === 'loading' || previewStatus === 'playing'
+  const previewBusy = previewView.status === 'loading' || previewView.status === 'playing'
 
   const togglePreview = (): void => {
     if (previewBusy) {
@@ -347,18 +391,25 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     setState('idle')
   }
 
-  const changeSoundEnabled = (next: boolean): void => {
-    if (next) {
-      controller.update({ enabled: true, volume: soundVolume, pack: soundPack, taskSounds: true, clickSounds: true })
-      controller.play('toggle-on')
-    } else {
-      controller.update({ enabled: false, volume: soundVolume, pack: soundPack, taskSounds: false, clickSounds: false })
-    }
-    setSoundEnabled(next)
-    setTaskSounds(next)
-    setClickSounds(next)
+  const applySoundEffectsMode = (mode: ReturnType<typeof resolveSoundEffectsMode>): void => {
+    const previousMode = resolveSoundEffectsMode(soundEnabled, taskSounds, clickSounds)
+    const flags = getSoundEffectsModeFlags(mode)
+    controller.update({ ...flags, volume: soundVolume, pack: soundPack })
+    if (previousMode === 'off' && mode !== 'off') controller.play('toggle-on')
+    setSoundEnabled(flags.enabled)
+    setTaskSounds(flags.taskSounds)
+    setClickSounds(flags.clickSounds)
     setChanges((current) => ({ ...current, soundEnabled: { kind: 'set' }, taskSounds: { kind: 'set' }, clickSounds: { kind: 'set' } }))
     setState('idle')
+  }
+
+  const changeSoundEnabled = (next: boolean): void => {
+    applySoundEffectsMode(next ? 'all' : 'off')
+  }
+
+  const cycleSoundEffectsMode = (): void => {
+    const currentMode = resolveSoundEffectsMode(soundEnabled, taskSounds, clickSounds)
+    applySoundEffectsMode(nextSoundEffectsMode(currentMode))
   }
 
   return (
@@ -392,16 +443,19 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           t={t}
           value={apiKey}
           message={apiKeyMessage}
-          warning={apiKeyWarning}
+          invalid={apiKeyInvalid}
           overridden={fieldOverridden('apiKey')}
+          clearable={apiKeyClearable}
           writable={snapshot.writable}
           onChange={(next) => { setApiKey(next); markChange('apiKey') }}
+          onClear={clearApiKey}
         />
         {enabled ? <DetailsModule
           t={t}
           connection={connection}
           open={detailsOpen}
           writable={snapshot.writable}
+          voiceDesignAiAvailable={voiceDesignAiAvailability === 'available'}
           autoPlay={autoPlay}
           voiceVolume={voiceVolume}
           voiceRate={voiceRate}
@@ -439,7 +493,9 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
         {enabled ? <PreviewModule
           t={t}
           enabled={enabled}
-          status={previewStatus}
+          status={previewView.status}
+          source={previewView.source}
+          error={previewView.error}
           text={previewText}
           onToggle={togglePreview}
           onTextChange={setPreviewText}
@@ -455,7 +511,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           writable={snapshot.writable}
           open={soundEffectsOpen}
           onToggle={() => { setSoundEffectsOpen((current) => !current) }}
-          onEnabledChange={changeSoundEnabled}
+          onCycle={cycleSoundEffectsMode}
           onVolumeChange={(next) => { setSoundVolume(next); markChange('soundVolume') }}
           onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
         />

@@ -76,8 +76,8 @@ export function apply(ctx: Context): void {
       enabled: resolved.soundEnabled,
       volume: resolved.soundVolume,
       pack: resolved.soundPack,
-      taskSounds: resolved.soundEnabled,
-      clickSounds: resolved.soundEnabled,
+      taskSounds: resolved.taskSounds,
+      clickSounds: resolved.clickSounds,
     }
   }
   soundEffects.update(getSoundSettings())
