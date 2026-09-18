@@ -37,7 +37,7 @@
 
 ## 📋 环境要求
 
-- `@deepseek-ai/dsh` `0.1.5-rc.1`（当前仅验证此版本）
+- `@deepseek-ai/dsh` `0.1.6-alpha.2`（当前兼容目标版本）
 - Node.js 22+
 - 使用 MiMo 语音时需要 Xiaomi MiMo API Key
 - [官方 TTS API 文档](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -70,7 +70,7 @@ Release 压缩包已包含构建产物，无需执行 `pnpm approve-builds`。
 
 安装完成后，重启正在运行的 DSH Web `web` profile，然后打开：
 
-**设置 → 插件 → 插件配置 → 语音朗读 (Xiaomi MiMo)**
+**侧边栏 → 插件 → dsh-xiaomi-tts → 语音朗读 (Xiaomi MiMo)**
 
 ## 🐋 首次使用
 
@@ -207,7 +207,7 @@ pnpm pack:check
 Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避免运行中的 Node 进程占用 Junction：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.3
+.\start\dsh-plugin-reinstall.bat 3.0.4
 ```
 
 ## 🤝 推荐插件

@@ -315,7 +315,7 @@ function PreviewApp() {
               : <>This is the real plugin settings card. Changes in <code>src/client</code> hot-reload here; remote speech, uninstall, and save are mocked locally.</>}
           </div>
           <ul className="preview-settings-list" ref={listRef} key={instance}>
-            <SettingsCard scope={scope} t={t} connection={{ rpc }} controller={soundEffects} />
+            <SettingsCard view="page" scope={scope} t={t} connection={{ rpc }} controller={soundEffects} />
           </ul>
         </section>
       </div>

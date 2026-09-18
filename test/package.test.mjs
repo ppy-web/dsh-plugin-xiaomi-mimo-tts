@@ -39,7 +39,7 @@ const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, setti
 const sharedModule = await import('../lib/shared.js')
 const { appendTtsSmartTruncationOutro, applyTtsPlaybackScope, applyTtsReadScope, batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TTS_READ_SCOPES, TTS_SMART_TRUNCATION_OUTROS, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, TtsFirstSegmentLimiter, VOICE_DESIGN_AI_RPC_CHANNEL } = sharedModule
 
-const SUPPORTED_DSH_VERSION = '0.1.5-rc.2'
+const SUPPORTED_DSH_VERSION = '0.1.6-alpha.2'
 
 async function assertLocalReadmeTargets(source, label) {
   const targets = [...source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)|(?:src|href)="([^"]+)"/g)]
@@ -54,7 +54,7 @@ async function assertLocalReadmeTargets(source, label) {
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
-  assert.equal(packageJson.version, '3.0.3')
+  assert.equal(packageJson.version, '3.0.4')
   assert.equal(TTS_VERSION, packageJson.version)
   assert.equal(packageJson.scripts.prepare, 'node scripts/prepare-package.mjs')
   assert.equal(packageJson.scripts.prepack, 'pnpm run build && node scripts/pack-package.mjs')
@@ -153,7 +153,7 @@ test('profile lifecycle scripts pin the daily web profile and reject mixed link 
   assert.match(profileVerifySource, /process\.env\.DSH_HOME/u)
   assert.match(profileVerifySource, /profileManifest\.dependencies/u)
   assert.match(profileVerifySource, /profileManifest\.dsh\?\.profile\?\.bundles/u)
-  assert.match(profileVerifySource, /installedManifest\.version !== ['"]3\.0\.3['"]/u)
+  assert.match(profileVerifySource, /installedManifest\.version !== ['"]3\.0\.4['"]/u)
   assert.match(profileVerifySource, /installed link target mismatch/u)
   assert.match(profileVerifySource, /DSH_PROFILE_EXPECT_CHECKOUT/u)
   assert.match(reinstallScript, /IsNullOrWhiteSpace\(\$env:DSH_HOME\)/u)
@@ -772,7 +772,8 @@ test('client output registers the message action and plugin settings card', () =
   assert.match(client, /data-lpignore/)
   assert.match(client, /data-bwignore/)
   assert.match(client, /locale: NS/)
-  assert.match(client, /aria-expanded": open/)
+  assert.match(client, /plugins\.bundle\.config/)
+  assert.match(clientSource, /view === 'summary'/)
   assert.doesNotMatch(client, /window\.confirm/)
   assert.match(client, /enabled\s*&&\s*autoPlay/)
   assert.match(client, /scope\.unset/)

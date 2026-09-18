@@ -37,7 +37,7 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 
 ## 📋 Requirements
 
-- `@deepseek-ai/dsh` `0.1.5-rc.1` (the currently verified version)
+- `@deepseek-ai/dsh` `0.1.6-alpha.2` (the current compatibility target)
 - Node.js 22+
 - A Xiaomi MiMo API key for MiMo speech
 - [Official TTS API documentation](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -70,7 +70,7 @@ Release tarballs include the build output and do not require `pnpm approve-build
 
 After installation, restart the running DSH Web `web` profile, then open:
 
-**Settings → Plugins → Plugin configuration → Text To Speech (Xiaomi MiMo)**
+**Sidebar → Plugins → dsh-xiaomi-tts → Text To Speech (Xiaomi MiMo)**
 
 ## 🐋 First use
 
@@ -207,7 +207,7 @@ pnpm pack:check
 On Windows, stop DSH Web before replacing a local development link with the npm package so the running Node process does not hold the Junction:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.3
+.\start\dsh-plugin-reinstall.bat 3.0.4
 ```
 
 ## 🤝 Recommended plugins

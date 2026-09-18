@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react'
 import { useEffect, useState } from 'react'
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
-import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   TTS_API_KEY_STATUS_ROUTE,
   TTS_MIMO_LOGO_ASSET_ROUTE,
@@ -40,6 +39,7 @@ import { hostRoute } from '../host-route.js'
 import type { DraftChange, DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 
 interface SettingsCardProps {
+  view: 'summary' | 'page'
   scope: SettingsScope<TtsSettings>
   t: Translate
   connection: { rpc: ClientConnectionRpc }
@@ -59,7 +59,12 @@ function hasLayerField(value: unknown, field: string): boolean {
   return isRecord(value) && Object.hasOwn(value, field)
 }
 
-export function SettingsCard({ scope, t, connection, controller }: SettingsCardProps): ReactElement | null {
+export function SettingsCard(props: SettingsCardProps): ReactElement | null {
+  if (props.view === 'summary') return <>{props.t('settings.description')}</>
+  return <SettingsPage scope={props.scope} t={props.t} connection={props.connection} controller={props.controller} />
+}
+
+function SettingsPage({ scope, t, connection, controller }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
   const initial = resolveTtsSettings(value)
@@ -85,7 +90,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
-  const [open, setOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [soundEffectsOpen, setSoundEffectsOpen] = useState(false)
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
@@ -159,7 +163,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   }, [snapshot.status, value])
 
   useEffect(() => {
-    if (!open) return
     let active = true
     void fetch(hostRoute(TTS_UPDATE_ROUTE), { cache: 'no-store', headers: { accept: 'application/json' } })
       .then(async (response) => {
@@ -172,7 +175,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       })
       .catch(() => { if (active) setLatestVersion(null) })
     return () => { active = false }
-  }, [open])
+  }, [])
 
   // DSH 0.1.5+ cannot mount a third-party `connection.rpc.handle()` channel: the
   // route is resolved through the connection plugin's own context, which stopped
@@ -180,7 +183,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   // until the button answers 405 — ask the Host whether the channel mounted and
   // hide the assistant when it did not.
   useEffect(() => {
-    if (!open) return
     let active = true
     void fetch(hostRoute(TTS_VOICE_DESIGN_AI_STATUS_ROUTE), { cache: 'no-store', headers: { accept: 'application/json' } })
       .then(async (response) => {
@@ -190,7 +192,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       .then((status) => { if (active) setVoiceDesignAiAvailability(resolveVoiceDesignAiAvailability(status)) })
       .catch(() => { if (active) setVoiceDesignAiAvailability('unavailable') })
     return () => { active = false }
-  }, [open])
+  }, [])
 
   useEffect(() => {
     if (dirty) return
@@ -413,22 +415,8 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   }
 
   return (
-    <li className={open ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope' : 'xmimo-tts-card xmimo-ui-scope'}>
-      <button
-        type="button"
-        className="xmimo-tts-card-header"
-        aria-expanded={open}
-        aria-label={`${t(open ? 'settings.collapse' : 'settings.expand')}: ${t('settings.title')}`}
-        onClick={() => { setOpen((current) => !current) }}
-      >
-        <span className="xmimo-tts-card-head-text">
-          <span className="xmimo-tts-card-title">{t('settings.title')}</span>
-          <span className="xmimo-tts-card-description">{t('settings.description')}</span>
-        </span>
-        {dirty ? <span className="xmimo-tts-pending" role="status">{t('settings.unsaved')}</span> : null}
-        <IconChevronDownOutline14 className={open ? 'xmimo-tts-chevron xmimo-tts-chevron-open' : 'xmimo-tts-chevron'} />
-      </button>
-      {open ? <div className="xmimo-tts-card-body xmimo-ui-stack">
+    <div className="xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope">
+      <div className="xmimo-tts-card-body xmimo-ui-stack">
         <SwitchModule
           t={t}
           enabled={enabled}
@@ -559,7 +547,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
             {state === 'saving' ? t('settings.saving') : t('settings.save')}
           </button>
         </div>
-      </div> : null}
-    </li>
+      </div>
+    </div>
   )
 }
