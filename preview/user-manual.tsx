@@ -227,32 +227,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
 export function UserManual({ locale }: { locale: ManualLocale }): ReactElement {
   const copy = COPY[locale]
   const manualRef = useRef<HTMLElement | null>(null)
-  const tocSentinelRef = useRef<HTMLSpanElement | null>(null)
-  const [tocStuck, setTocStuck] = useState(false)
   const [activeSection, setActiveSection] = useState(copy.sections[0]?.id ?? '')
-
-  useEffect(() => {
-    const media = window.matchMedia('(min-width: 1081px)')
-    let observer: IntersectionObserver | undefined
-    const observe = (): void => {
-      observer?.disconnect()
-      observer = undefined
-      if (!media.matches || manualRef.current === null || tocSentinelRef.current === null || typeof IntersectionObserver === 'undefined') {
-        setTocStuck(false)
-        return
-      }
-      observer = new IntersectionObserver(([entry]) => {
-        setTocStuck(entry?.isIntersecting !== true)
-      }, { root: manualRef.current, rootMargin: '-14px 0px 0px 0px', threshold: 0 })
-      observer.observe(tocSentinelRef.current)
-    }
-    observe()
-    media.addEventListener('change', observe)
-    return () => {
-      observer?.disconnect()
-      media.removeEventListener('change', observe)
-    }
-  }, [])
 
   useEffect(() => {
     setActiveSection(copy.sections[0]?.id ?? '')
@@ -277,8 +252,7 @@ export function UserManual({ locale }: { locale: ManualLocale }): ReactElement {
       <h1>{copy.title}</h1>
       <p>{copy.intro}</p>
     </div>
-    <span className="preview-manual-toc-sentinel" ref={tocSentinelRef} aria-hidden="true" />
-    <nav className={tocStuck ? 'preview-manual-toc preview-manual-toc-stuck' : 'preview-manual-toc'} aria-label={copy.toc}>
+    <nav className="preview-manual-toc" aria-label={copy.toc}>
       <span>{copy.toc}</span>
       <div>
         {copy.sections.map((section) => <a

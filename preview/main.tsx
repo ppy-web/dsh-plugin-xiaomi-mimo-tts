@@ -217,6 +217,11 @@ function PreviewApp() {
         <span>{toolbar.subtitle}</span>
       </div>
       <div className="preview-song-control">
+        {isSongPlaying ? <span
+          className="preview-singing-character"
+          aria-hidden="true"
+          style={{ backgroundImage: `url(${import.meta.env.BASE_URL}plugins/xiaomi-mimo-tts/preview-assets/preview-singing-characters.png)` }}
+        /> : null}
         <button
           className="preview-song-button"
           type="button"
