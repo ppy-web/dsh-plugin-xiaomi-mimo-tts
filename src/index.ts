@@ -1,10 +1,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection'
-import { spawn } from 'node:child_process'
-import { existsSync, lstatSync, readFileSync, rmSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -13,15 +11,13 @@ import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { debugConsole } from './debug-console.js'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_READ_SCOPES, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_AI_STATUS_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_READ_SCOPES, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_AI_STATUS_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
 import type { VoiceDesignAiGenerateResult, VoiceDesignAiStatus } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
   ? `dsh-xiaomi-tts/${packageJson.version}`
   : 'dsh-xiaomi-tts'
-const PACKAGE_NAME = 'dsh-xiaomi-tts'
-const WEB_PROFILE_NAME = 'web'
 const NPM_LATEST_URL = 'https://registry.npmjs.org/dsh-xiaomi-tts/latest'
 const STREAM_HOST_LOG = '[MiMoTTS Host]'
 let nextHostStreamRequestId = 1
@@ -223,47 +219,6 @@ function decodeCompleteAudio(value: string, format: CompleteAudioFormat, limit: 
   return audio
 }
 
-interface CommandResult {
-  ok: boolean
-  output: string
-  error?: string
-}
-
-interface ProfileManifest {
-  dependencies?: Record<string, string>
-  dsh?: { profile?: { bundles?: string[] } }
-}
-
-function webProfileDirectory(): string {
-  const dshHome = process.env.DSH_HOME?.trim() || join(homedir(), '.dsh')
-  return join(dshHome, 'profiles', WEB_PROFILE_NAME)
-}
-
-function readWebProfileManifest(): ProfileManifest | undefined {
-  const path = join(webProfileDirectory(), 'package.json')
-  if (!existsSync(path)) return undefined
-  try {
-    return JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/u, '')) as ProfileManifest
-  } catch {
-    return undefined
-  }
-}
-
-function resolveDshCommand(): { command: string; args: string[] } | undefined {
-  const entry = process.argv[1]
-  if (typeof entry === 'string' && /[\\/]node_modules[\\/]@deepseek-ai[\\/]dsh[\\/]lib[\\/]bin\.js$/iu.test(entry)) {
-    return { command: process.execPath, args: [entry] }
-  }
-
-  const executable = process.execPath.split(/[\\/]/u).at(-1) ?? ''
-  if (/^dsh(?:\.exe)?$/iu.test(executable)) return { command: process.execPath, args: [] }
-
-  // A global pnpm/npm wrapper can hide the real JS entry from argv on POSIX.
-  // In that case the same PATH that launched DSH is the most reliable fallback.
-  if (process.platform !== 'win32') return { command: 'dsh', args: [] }
-  return undefined
-}
-
 async function latestTtsVersion(): Promise<string | null> {
   try {
     const response = await fetch(NPM_LATEST_URL, {
@@ -275,153 +230,6 @@ async function latestTtsVersion(): Promise<string | null> {
     return typeof body.version === 'string' ? body.version : null
   } catch {
     return null
-  }
-}
-
-function scheduleProfileLinkCleanup(profileRoot: string): Promise<void> {
-  const cleanupScript = String.raw`
-const { lstatSync, rmSync } = require('node:fs')
-const { join } = require('node:path')
-const [parentPidSource, profileRoot, packageName] = process.argv.slice(1)
-const parentPid = Number(parentPidSource)
-const linkPath = join(profileRoot, 'node_modules', packageName)
-let cleanupAttempts = 0
-
-function cleanupLink() {
-  cleanupAttempts += 1
-  try {
-    const item = lstatSync(linkPath)
-    if (!item.isSymbolicLink()) process.exit(2)
-    rmSync(linkPath, { force: true })
-    process.exit(0)
-  } catch (error) {
-    if (error && error.code === 'ENOENT') process.exit(0)
-    if (cleanupAttempts >= 40) process.exit(1)
-    setTimeout(cleanupLink, 500)
-  }
-}
-
-function waitForParentExit() {
-  try {
-    process.kill(parentPid, 0)
-    setTimeout(waitForParentExit, 1000)
-  } catch {
-    cleanupLink()
-  }
-}
-
-waitForParentExit()
-`
-
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['-e', cleanupScript, String(process.pid), profileRoot, PACKAGE_NAME], {
-      cwd: profileRoot,
-      env: { ...process.env, CI: 'true' },
-      windowsHide: true,
-      detached: true,
-      stdio: 'ignore',
-    })
-    child.once('error', reject)
-    child.once('spawn', () => {
-      child.unref()
-      resolve()
-    })
-  })
-}
-
-function removeStaleProfileLink(profileRoot: string): void {
-  const linkPath = join(profileRoot, 'node_modules', PACKAGE_NAME)
-  try {
-    const item = lstatSync(linkPath)
-    if (!item.isSymbolicLink()) throw new Error(`Refusing to remove non-link plugin path: ${linkPath}`)
-    rmSync(linkPath, { force: true })
-  } catch (error) {
-    if (error !== null && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') return
-    throw error
-  }
-}
-
-async function uninstallFromWebProfile(): Promise<CommandResult> {
-  const manifest = readWebProfileManifest()
-  if (manifest === undefined) {
-    return { ok: false, output: '', error: 'DSH Web profile manifest was not found or could not be read.' }
-  }
-  const installed = Object.hasOwn(manifest.dependencies ?? {}, PACKAGE_NAME)
-    || manifest.dsh?.profile?.bundles?.includes(PACKAGE_NAME) === true
-  if (!installed) {
-    try {
-      if (process.platform === 'win32') {
-        await scheduleProfileLinkCleanup(webProfileDirectory())
-        return { ok: true, output: 'The plugin was already removed from the Web profile; link cleanup is scheduled after this process exits.' }
-      }
-      removeStaleProfileLink(webProfileDirectory())
-      return { ok: true, output: 'The plugin was already removed from the Web profile and its stale link has been cleaned up.' }
-    } catch (error) {
-      return { ok: false, output: '', error: error instanceof Error ? error.message : String(error) }
-    }
-  }
-
-  const dsh = resolveDshCommand()
-  if (dsh === undefined) {
-    return { ok: false, output: '', error: 'Could not resolve the running DSH executable.' }
-  }
-
-  const deferPackageCleanup = process.platform === 'win32'
-  const result = await new Promise<CommandResult>((resolve) => {
-    const args = [
-      ...dsh.args,
-      'plugin',
-      '--profile',
-      WEB_PROFILE_NAME,
-      'remove',
-      PACKAGE_NAME,
-      ...(deferPackageCleanup ? ['--lockfile-only'] : []),
-    ]
-    const child = spawn(dsh.command, args, {
-      cwd: webProfileDirectory(),
-      env: { ...process.env, CI: 'true' },
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    let output = ''
-    child.stdout?.setEncoding('utf8')
-    child.stderr?.setEncoding('utf8')
-    child.stdout?.on('data', (chunk: string) => { output += chunk })
-    child.stderr?.on('data', (chunk: string) => { output += chunk })
-    child.once('error', (error) => {
-      resolve({ ok: false, output: output.trim(), error: error.message })
-    })
-    child.once('close', (code) => {
-      resolve({
-        ok: code === 0,
-        output: output.trim(),
-        ...(code === 0 ? {} : { error: `DSH plugin removal exited with code ${String(code)}.` }),
-      })
-    })
-  })
-
-  if (!result.ok) return result
-  const updatedManifest = readWebProfileManifest()
-  if (updatedManifest === undefined
-    || Object.hasOwn(updatedManifest.dependencies ?? {}, PACKAGE_NAME)
-    || updatedManifest.dsh?.profile?.bundles?.includes(PACKAGE_NAME) === true) {
-    return { ok: false, output: result.output, error: 'DSH did not remove the plugin from the Web profile.' }
-  }
-
-  if (!deferPackageCleanup) {
-    try {
-      removeStaleProfileLink(webProfileDirectory())
-      return { ok: true, output: result.output }
-    } catch (error) {
-      return { ok: false, output: result.output, error: error instanceof Error ? error.message : String(error) }
-    }
-  }
-
-  try {
-    await scheduleProfileLinkCleanup(webProfileDirectory())
-    return { ok: true, output: result.output }
-  } catch (error) {
-    return { ok: false, output: result.output, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
@@ -494,7 +302,6 @@ function registerVoiceDesignAiRpc(
 /** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
   let current = () => config
-  let uninstalling: Promise<CommandResult> | undefined
 
   const voicePresetAssets = new Map(TTS_VOICE_DESIGN_PRESETS.map((preset) => {
     const path = `${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`
@@ -641,45 +448,6 @@ export function apply(ctx: Context, config: Config): void {
       })
     },
   }), 'xiaomi-mimo-tts: API key status route')
-
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: TTS_UNINSTALL_ROUTE,
-    async handler(req, res) {
-      if (req.method !== 'POST') {
-        res.setHeader('allow', 'POST')
-        json(res, 405, { ok: false, error: 'method-not-allowed' })
-        return
-      }
-
-      const fetchSite = req.headers['sec-fetch-site']
-      if (fetchSite !== undefined && fetchSite !== 'same-origin') {
-        json(res, 403, { ok: false, error: 'same-origin-required' })
-        return
-      }
-      const contentType = req.headers['content-type'] ?? ''
-      if (!contentType.toLowerCase().startsWith('application/json')) {
-        json(res, 415, { ok: false, error: 'application-json-required' })
-        return
-      }
-
-      try {
-        await readJsonBody(req, 1024)
-      } catch {
-        json(res, 400, { ok: false, error: 'invalid-json' })
-        return
-      }
-
-      uninstalling ??= uninstallFromWebProfile()
-      const result = await uninstalling
-      if (!result.ok) uninstalling = undefined
-      json(res, result.ok ? 200 : 500, {
-        ok: result.ok,
-        requiresRestart: result.ok,
-        ...(result.error === undefined ? {} : { error: result.error }),
-      })
-    },
-  }), 'xiaomi-mimo-tts: self-uninstall route')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',

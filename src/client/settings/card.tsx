@@ -4,7 +4,6 @@ import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/cli
 import {
   TTS_API_KEY_STATUS_ROUTE,
   TTS_MIMO_LOGO_ASSET_ROUTE,
-  TTS_UNINSTALL_ROUTE,
   TTS_UPDATE_ROUTE,
   TTS_VOICE_DESIGN_AI_STATUS_ROUTE,
   getSoundEffectsModeFlags,
@@ -89,7 +88,6 @@ function SettingsPage({ scope, t, connection, controller }: Omit<SettingsCardPro
   const [voiceDesignAiCopyIndex, setVoiceDesignAiCopyIndex] = useState(() => Math.floor(Math.random() * VOICE_DESIGN_AI_COPY_KEYS.length))
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
-  const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [soundEffectsOpen, setSoundEffectsOpen] = useState(false)
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
@@ -334,22 +332,6 @@ function SettingsPage({ scope, t, connection, controller }: Omit<SettingsCardPro
     }
   }
 
-  const uninstall = async (): Promise<void> => {
-    setUninstallState('uninstalling')
-    try {
-      const response = await fetch(hostRoute(TTS_UNINSTALL_ROUTE), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: '{}',
-      })
-      const result = await response.json() as { ok?: unknown }
-      if (!response.ok || result.ok !== true) throw new Error('plugin-uninstall-failed')
-      setUninstallState('uninstalled')
-    } catch {
-      setUninstallState('failed')
-    }
-  }
-
   const previewBusy = previewView.status === 'loading' || previewView.status === 'playing'
 
   const togglePreview = (): void => {
@@ -504,29 +486,9 @@ function SettingsPage({ scope, t, connection, controller }: Omit<SettingsCardPro
           onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
         />
         <div className="xmimo-tts-card-actions">
-          {uninstallState === 'idle' && latestVersion !== null
+          {latestVersion !== null
             ? <a className="xmimo-tts-update" href={RELEASES_URL} target="_blank" rel="noopener noreferrer">{t('settings.updateAvailable')}</a>
             : null}
-          {uninstallState === 'confirming'
-            ? (
-              <span className="xmimo-tts-uninstall-confirmation">
-                <span>{t('settings.uninstallQuestion')}</span>
-                <span className="xmimo-tts-uninstall-choice">
-                  <button type="button" onClick={() => { void uninstall() }}>{t('settings.uninstallConfirm')}</button>
-                  <button type="button" onClick={() => { setUninstallState('idle') }}>{t('settings.uninstallCancel')}</button>
-                </span>
-              </span>
-              )
-            : (
-              <button
-                type="button"
-                className="xmimo-tts-uninstall"
-                disabled={uninstallState === 'uninstalling' || uninstallState === 'uninstalled'}
-                onClick={() => { setUninstallState('confirming') }}
-              >
-                {uninstallState === 'uninstalling' ? t('settings.uninstalling') : t('settings.uninstall')}
-              </button>
-              )}
           <a
             className="xmimo-tts-star"
             href="https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts"
@@ -536,8 +498,6 @@ function SettingsPage({ scope, t, connection, controller }: Omit<SettingsCardPro
             {t('settings.source')}
           </a>
           {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
-          {uninstallState === 'uninstalled' ? <span role="status">{t('settings.uninstalled')}</span> : null}
-          {uninstallState === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.uninstallFailed')}</span> : null}
           {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
           {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}
           <button type="button" className="xmimo-tts-discard" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={discard}>

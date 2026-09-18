@@ -189,7 +189,7 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` 会启动本地 UI Lab，直接渲染 `src/client/settings/card.tsx`。设置保存、远程语音、版本检查和卸载均使用本地 mock，不会调用真实 MiMo 服务或卸载插件。
+`pnpm dev` 会启动本地 UI Lab，直接渲染 `src/client/settings/card.tsx`。设置保存、远程语音和版本检查使用本地 mock，不会调用真实 MiMo 服务。
 
 常用检查：
 

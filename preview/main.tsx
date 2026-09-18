@@ -63,10 +63,10 @@ const TOOLBAR_COPY: Record<PreviewLocale, {
 }
 
 const scope = new PreviewSettingsScope()
-const uninstallPreviewFetch = installPreviewFetch(scope)
+const restorePreviewFetch = installPreviewFetch(scope)
 const soundEffects = createSoundEffectsController()
 
-if (import.meta.hot) import.meta.hot.dispose(() => { uninstallPreviewFetch(); void soundEffects.dispose() })
+if (import.meta.hot) import.meta.hot.dispose(() => { restorePreviewFetch(); void soundEffects.dispose() })
 
 const rpc = {
   async call(channel: string, endpoint: string, payload: unknown): Promise<unknown> {
@@ -311,8 +311,8 @@ function PreviewApp() {
         <section className="preview-settings-pane" aria-label={locale === 'zh' ? '设置页预览' : 'Settings preview'}>
           <div className="preview-note" role="note">
             {locale === 'zh'
-              ? <>这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。远程语音、卸载和保存均为本地模拟。</>
-              : <>This is the real plugin settings card. Changes in <code>src/client</code> hot-reload here; remote speech, uninstall, and save are mocked locally.</>}
+              ? <>这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。远程语音和保存均为本地模拟。</>
+              : <>This is the real plugin settings card. Changes in <code>src/client</code> hot-reload here; remote speech and save are mocked locally.</>}
           </div>
           <ul className="preview-settings-list" ref={listRef} key={instance}>
             <SettingsCard view="page" scope={scope} t={t} connection={{ rpc }} controller={soundEffects} />

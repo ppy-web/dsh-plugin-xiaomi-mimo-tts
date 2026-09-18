@@ -189,7 +189,7 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` starts the local UI Lab and renders `src/client/settings/card.tsx` directly. Saving, remote speech, update checks, and uninstall are mocked locally; the preview does not call the real MiMo service or remove the plugin.
+`pnpm dev` starts the local UI Lab and renders `src/client/settings/card.tsx` directly. Saving, remote speech, and update checks are mocked locally; the preview does not call the real MiMo service.
 
 Common checks:
 

@@ -282,14 +282,6 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
       return
     }
     if (resolvedSettings.model === 'mimo-v2.5-tts') {
-      if (!automatic && resolvedSettings.readScope === 'smart') {
-        live.cancelSession(sessionId)
-        playback.cancelPlayback(sessionId)
-        void playback.toggle(sessionId, messageId, scopedText, false, resolvedSettings.localSpeechMode === 'auto'
-          ? () => local.playCompleted(sessionId, messageId, scopedText)
-          : undefined, 'mp3')
-        return
-      }
       playback.cancelPlayback(sessionId)
       live.playCompleted(sessionId, messageId, scopedText, () => {
         if (resolvedSettings.localSpeechMode === 'auto') local.playCompleted(sessionId, messageId, scopedText)

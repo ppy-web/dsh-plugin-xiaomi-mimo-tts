@@ -94,10 +94,9 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       {
         id: 'manual-actions',
         title: '07 · 底部操作栏',
-        summary: '统一处理更新、卸载、放弃和保存。',
+        summary: '统一处理更新、放弃和保存。',
         items: [
           { label: '🎉 新版已发布', detail: '当检测到新版本时显示。点击后在新标签页打开 GitHub Releases；它只是查看发布页，不会自动升级。' },
-          { label: '卸载 / 确认 / 取消', detail: '点击“卸载”先进入确认状态；点击“确认”向 DSH 发送卸载请求，点击“取消”返回普通状态。卸载成功后需按提示重启 DSH 才不会再次加载插件。' },
           { label: '✨ 查看源码', detail: '点击后在新标签页打开插件 GitHub 仓库，用于查看源代码、问题和发布记录。' },
           { label: '放弃修改', detail: '点击后丢弃当前所有未保存草稿，恢复到设置层最近一次已接受的值；不会写入新的配置。没有未保存修改或只读时按钮不可用。' },
           { label: '保存', detail: '点击后按字段提交所有修改，并在提交前收起调音台和音效库。成功显示“已保存”；失败显示错误提示，可在修正后重试。保存是 API Key、语音和音效设置真正持久化的边界。' },
@@ -196,10 +195,9 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       {
         id: 'manual-actions',
         title: '07 · Bottom action bar',
-        summary: 'Handle updates, uninstall, discard, and save in one place.',
+        summary: 'Handle updates, discard, and save in one place.',
         items: [
           { label: '🎉 New release', detail: 'Appears when an update is detected. Click it to open GitHub Releases in a new tab; it only opens the release page and does not upgrade automatically.' },
-          { label: 'Uninstall / Confirm / Cancel', detail: 'Click Uninstall to enter confirmation. Confirm sends an uninstall request to DSH; Cancel returns to the normal state. Restart DSH as prompted so the plugin is not loaded again.' },
           { label: '✨ View source', detail: 'Click to open the plugin GitHub repository in a new tab for source, issues, and release history.' },
           { label: 'Discard changes', detail: 'Click to drop every unsaved draft and restore the last accepted settings-layer values. It writes no new configuration and is disabled when clean or read-only.' },
           { label: 'Save', detail: 'Click to submit all changed fields and collapse the Console and Sound Effects panels first. Success shows Saved; failure shows an error so you can retry. Save is the persistence boundary for API keys, voice, and sound settings.' },

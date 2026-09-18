@@ -74,9 +74,6 @@ export interface VoiceDesignAiGenerateResult {
   text: string
 }
 
-/** Same-origin route that removes this plugin from the DSH Web profile. */
-export const TTS_UNINSTALL_ROUTE = '/plugins/xiaomi-mimo-tts/uninstall'
-
 /** Same-origin route that checks the published npm version. */
 export const TTS_UPDATE_ROUTE = '/plugins/xiaomi-mimo-tts/update'
 
