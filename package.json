@@ -41,6 +41,7 @@
     "README.md",
     "README.en.md",
     "assets",
+    "!assets/audio/preview-song.mp3",
     "LICENSE",
     "NOTICE"
   ],
