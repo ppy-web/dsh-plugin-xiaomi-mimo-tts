@@ -293,7 +293,7 @@ function PreviewApp() {
           ref={songRef}
           autoPlay
           preload="auto"
-          src={`${import.meta.env.BASE_URL}plugins/xiaomi-mimo-tts/audio/preview-song.mp3`}
+          src={`${import.meta.env.BASE_URL}plugins/xiaomi-mimo-tts/preview-audio/preview-song.mp3`}
           onPlay={() => { setIsSongPlaying(true) }}
           onPause={() => { setIsSongPlaying(false) }}
           onEnded={() => { setIsSongPlaying(false) }}
