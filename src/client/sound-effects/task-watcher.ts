@@ -20,7 +20,7 @@ export function installTaskSoundWatcher(ctx: Context, controller: SoundEffectsCo
     const settings = getSettings()
     if (!settings.enabled || !settings.taskSounds) return
     const running = snapshot.running === true
-    const pending = snapshot.queue.length + snapshot.pendingSubmissions.length
+    const pending = snapshot.pendingSubmissions.length
     if (lastRunning === null) { lastRunning = running; lastPending = pending; return }
     if (running && !lastRunning) controller.play('start')
     if (!running && lastRunning) {

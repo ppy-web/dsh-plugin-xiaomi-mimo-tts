@@ -37,7 +37,7 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 
 ## 📋 Requirements
 
-- `@deepseek-ai/dsh` `0.1.5-rc.1` (the currently verified version)
+- `@deepseek-ai/dsh` `0.1.6-alpha.2` (the currently verified version)
 - Node.js 22+
 - A Xiaomi MiMo API key for MiMo speech
 - [Official TTS API documentation](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)

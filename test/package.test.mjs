@@ -39,7 +39,7 @@ const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, setti
 const sharedModule = await import('../lib/shared.js')
 const { appendTtsSmartTruncationOutro, applyTtsPlaybackScope, applyTtsReadScope, batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TTS_READ_SCOPES, TTS_SMART_TRUNCATION_OUTROS, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, TtsFirstSegmentLimiter, VOICE_DESIGN_AI_RPC_CHANNEL } = sharedModule
 
-const SUPPORTED_DSH_VERSION = '0.1.5-rc.2'
+const SUPPORTED_DSH_VERSION = '0.1.6-alpha.2'
 
 async function assertLocalReadmeTargets(source, label) {
   const targets = [...source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)|(?:src|href)="([^"]+)"/g)]
@@ -821,7 +821,7 @@ test('both MiMo models share persistent bidirectional browser-speech fallback', 
   assert.match(clientSource, /playCompletedReply\(false\)/)
   assert.doesNotMatch(clientSource, /<option value="browser-local-fallback">/)
   assert.equal((settingsDetailsSource.match(/<LocalVoicePicker /g) ?? []).length, 1)
-  assert.match(settingsCardSource, /<div className="xmimo-tts-card-body xmimo-ui-stack">\s*<SwitchModule[\s\S]*<ApiKeyModule/)
+  assert.match(settingsCardSource, /<div className="xmimo-tts-card-body xmimo-ui-scope xmimo-ui-stack">\s*<SwitchModule[\s\S]*<ApiKeyModule/)
   assert.doesNotMatch(settingsCardSource, /xmimo-tts-grid xmimo-tts-sections xmimo-ui-grid/)
   assert.match(settingsCardSource, /\{enabled \? <DetailsModule[\s\S]*\/> : null\}/)
   assert.match(clientSource, /useApiKeySupported\(resolvedSettings\.localSpeechMode !== 'disabled'\)/)

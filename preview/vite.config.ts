@@ -99,5 +99,8 @@ export default defineConfig({
   build: {
     outDir: path.join(repositoryRoot, '.preview-dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      external: ['simple-icons'],
+    },
   },
 })

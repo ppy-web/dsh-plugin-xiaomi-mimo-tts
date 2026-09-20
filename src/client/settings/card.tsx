@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react'
 import { useEffect, useState } from 'react'
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
-import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
+import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   TTS_API_KEY_STATUS_ROUTE,
-  TTS_MIMO_LOGO_ASSET_ROUTE,
   TTS_UNINSTALL_ROUTE,
   TTS_UPDATE_ROUTE,
   TTS_VOICE_DESIGN_AI_STATUS_ROUTE,
@@ -39,7 +39,7 @@ import { SwitchModule } from './switch-module.js'
 import { hostRoute } from '../host-route.js'
 import type { DraftChange, DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 
-interface SettingsCardProps {
+interface SettingsCardProps extends PropsRuntime<'plugins.item'> {
   scope: SettingsScope<TtsSettings>
   t: Translate
   connection: { rpc: ClientConnectionRpc }
@@ -59,7 +59,7 @@ function hasLayerField(value: unknown, field: string): boolean {
   return isRecord(value) && Object.hasOwn(value, field)
 }
 
-export function SettingsCard({ scope, t, connection, controller }: SettingsCardProps): ReactElement | null {
+export function SettingsCard({ scope, t, connection, controller, view }: SettingsCardProps): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
   const initial = resolveTtsSettings(value)
@@ -85,7 +85,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
-  const [open, setOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [soundEffectsOpen, setSoundEffectsOpen] = useState(false)
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
@@ -159,7 +158,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   }, [snapshot.status, value])
 
   useEffect(() => {
-    if (!open) return
     let active = true
     void fetch(hostRoute(TTS_UPDATE_ROUTE), { cache: 'no-store', headers: { accept: 'application/json' } })
       .then(async (response) => {
@@ -172,7 +170,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       })
       .catch(() => { if (active) setLatestVersion(null) })
     return () => { active = false }
-  }, [open])
+  }, [])
 
   // DSH 0.1.5+ cannot mount a third-party `connection.rpc.handle()` channel: the
   // route is resolved through the connection plugin's own context, which stopped
@@ -180,7 +178,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   // until the button answers 405 — ask the Host whether the channel mounted and
   // hide the assistant when it did not.
   useEffect(() => {
-    if (!open) return
     let active = true
     void fetch(hostRoute(TTS_VOICE_DESIGN_AI_STATUS_ROUTE), { cache: 'no-store', headers: { accept: 'application/json' } })
       .then(async (response) => {
@@ -190,7 +187,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       .then((status) => { if (active) setVoiceDesignAiAvailability(resolveVoiceDesignAiAvailability(status)) })
       .catch(() => { if (active) setVoiceDesignAiAvailability('unavailable') })
     return () => { active = false }
-  }, [open])
+  }, [])
 
   useEffect(() => {
     if (dirty) return
@@ -223,6 +220,9 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   useEffect(() => { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setVolume(voiceVolume) }, [previewPlayer, toggleSoundPlayer, voiceVolume])
 
   if (snapshot.status === 'unavailable') return null
+
+  // Summary view: one-liner for the Plugins page card.
+  if (view === 'summary') return <>{t('settings.description')}</>
 
   const markChange = (field: SettingField, kind: DraftChange['kind'] = 'set'): void => {
     setChanges((current) => ({ ...current, [field]: { kind } }))
@@ -413,153 +413,137 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   }
 
   return (
-    <li className={open ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope' : 'xmimo-tts-card xmimo-ui-scope'}>
-      <button
-        type="button"
-        className="xmimo-tts-card-header"
-        aria-expanded={open}
-        aria-label={`${t(open ? 'settings.collapse' : 'settings.expand')}: ${t('settings.title')}`}
-        onClick={() => { setOpen((current) => !current) }}
-      >
-        <span className="xmimo-tts-card-head-text">
-          <span className="xmimo-tts-card-title">{t('settings.title')}</span>
-          <span className="xmimo-tts-card-description">{t('settings.description')}</span>
-        </span>
-        {dirty ? <span className="xmimo-tts-pending" role="status">{t('settings.unsaved')}</span> : null}
-        <IconChevronDownOutline14 className={open ? 'xmimo-tts-chevron xmimo-tts-chevron-open' : 'xmimo-tts-chevron'} />
-      </button>
-      {open ? <div className="xmimo-tts-card-body xmimo-ui-stack">
-        <SwitchModule
-          t={t}
-          enabled={enabled}
-          autoPlay={autoPlay}
-          soundEnabled={soundEnabled}
-          writable={snapshot.writable}
-          onEnabledChange={changeEnabled}
-          onAutoPlayChange={changeAutoPlay}
-          onSoundEnabledChange={changeSoundEnabled}
-        />
-        <ApiKeyModule
-          t={t}
-          value={apiKey}
-          message={apiKeyMessage}
-          invalid={apiKeyInvalid}
-          overridden={fieldOverridden('apiKey')}
-          clearable={apiKeyClearable}
-          writable={snapshot.writable}
-          onChange={(next) => { setApiKey(next); markChange('apiKey') }}
-          onClear={clearApiKey}
-        />
-        {enabled ? <DetailsModule
-          t={t}
-          connection={connection}
-          open={detailsOpen}
-          writable={snapshot.writable}
-          voiceDesignAiAvailable={voiceDesignAiAvailability === 'available'}
-          autoPlay={autoPlay}
-          voiceVolume={voiceVolume}
-          voiceRate={voiceRate}
-          readScope={readScope}
-          model={model}
-          localSpeechMode={localSpeechMode}
-          localVoiceURI={localVoiceURI}
-          voice={voice}
-          voiceDesignPrompt={voiceDesignPrompt}
-          voiceDesignCustomPrompt={voiceDesignCustomPrompt}
-          voiceDesignAiState={voiceDesignAiState}
-          voiceDesignAiCopy={t(VOICE_DESIGN_AI_COPY_KEYS[voiceDesignAiCopyIndex]!)}
-          fieldOverridden={fieldOverridden}
-          resetField={resetField}
-          onToggle={() => { setDetailsOpen((current) => !current) }}
-          onVoiceVolumeChange={(next) => { previewPlayer.setVolume(next); toggleSoundPlayer.setPreviewVolume(next); setVoiceVolume(next); markChange('voiceVolume') }}
-          onVoiceVolumeInteractionEnd={(next) => { toggleSoundPlayer.previewVolume(next) }}
-          onVoiceRateChange={(next) => { setVoiceRate(next); markChange('voiceRate') }}
-          onVoiceRateInteractionEnd={(next) => { controller.play('success', { playbackRate: next }) }}
-          onReadScopeChange={(next) => { setReadScope(next); markChange('readScope') }}
-          onModelChange={(nextModel) => { setModel(nextModel); setVoiceDesignAiState('idle'); markChange('model'); if (nextModel === 'mimo-v2.5-tts-voicedesign') chooseVoiceDesignAiCopy() }}
-          onVoiceDesignPromptChange={(next) => {
-            setVoiceDesignPrompt(next)
-            setVoiceDesignCustomPrompt(next)
-            setChanges((current) => ({ ...current, voiceDesignPrompt: { kind: 'set' }, voiceDesignCustomPrompt: { kind: 'set' } }))
-            setState('idle')
-            setVoiceDesignAiState('idle')
-          }}
-          onVoiceChange={(next) => { setVoice(next); markChange('voice') }}
-          onLocalVoiceURIChange={(next) => { setLocalVoiceURI(next); markChange('localVoiceURI') }}
-          onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
-          onVoiceDesignAiCopyChange={chooseVoiceDesignAiCopy}
-          onGenerateVoiceDesign={() => { void generateVoiceDesign() }}
-        /> : null}
-        {enabled ? <PreviewModule
-          t={t}
-          enabled={enabled}
-          status={previewView.status}
-          source={previewView.source}
-          error={previewView.error}
-          text={previewText}
-          onToggle={togglePreview}
-          onTextChange={setPreviewText}
-        /> : null}
-        <SoundEffectsPanel
-          t={t}
-          controller={controller}
-          enabled={soundEnabled}
-          volume={soundVolume}
-          pack={soundPack}
-          taskSounds={taskSounds}
-          clickSounds={clickSounds}
-          writable={snapshot.writable}
-          open={soundEffectsOpen}
-          onToggle={() => { setSoundEffectsOpen((current) => !current) }}
-          onCycle={cycleSoundEffectsMode}
-          onVolumeChange={(next) => { setSoundVolume(next); markChange('soundVolume') }}
-          onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
-        />
-        <div className="xmimo-tts-card-actions">
-          {uninstallState === 'idle' && latestVersion !== null
-            ? <a className="xmimo-tts-update" href={RELEASES_URL} target="_blank" rel="noopener noreferrer">{t('settings.updateAvailable')}</a>
-            : null}
-          {uninstallState === 'confirming'
-            ? (
-              <span className="xmimo-tts-uninstall-confirmation">
-                <span>{t('settings.uninstallQuestion')}</span>
-                <span className="xmimo-tts-uninstall-choice">
-                  <button type="button" onClick={() => { void uninstall() }}>{t('settings.uninstallConfirm')}</button>
-                  <button type="button" onClick={() => { setUninstallState('idle') }}>{t('settings.uninstallCancel')}</button>
-                </span>
+    <div className="xmimo-tts-card-body xmimo-ui-scope xmimo-ui-stack">
+      <SwitchModule
+        t={t}
+        enabled={enabled}
+        autoPlay={autoPlay}
+        soundEnabled={soundEnabled}
+        writable={snapshot.writable}
+        onEnabledChange={changeEnabled}
+        onAutoPlayChange={changeAutoPlay}
+        onSoundEnabledChange={changeSoundEnabled}
+      />
+      <ApiKeyModule
+        t={t}
+        value={apiKey}
+        message={apiKeyMessage}
+        invalid={apiKeyInvalid}
+        overridden={fieldOverridden('apiKey')}
+        clearable={apiKeyClearable}
+        writable={snapshot.writable}
+        onChange={(next) => { setApiKey(next); markChange('apiKey') }}
+        onClear={clearApiKey}
+      />
+      {enabled ? <DetailsModule
+        t={t}
+        connection={connection}
+        open={detailsOpen}
+        writable={snapshot.writable}
+        voiceDesignAiAvailable={voiceDesignAiAvailability === 'available'}
+        autoPlay={autoPlay}
+        voiceVolume={voiceVolume}
+        voiceRate={voiceRate}
+        readScope={readScope}
+        model={model}
+        localSpeechMode={localSpeechMode}
+        localVoiceURI={localVoiceURI}
+        voice={voice}
+        voiceDesignPrompt={voiceDesignPrompt}
+        voiceDesignCustomPrompt={voiceDesignCustomPrompt}
+        voiceDesignAiState={voiceDesignAiState}
+        voiceDesignAiCopy={t(VOICE_DESIGN_AI_COPY_KEYS[voiceDesignAiCopyIndex]!)}
+        fieldOverridden={fieldOverridden}
+        resetField={resetField}
+        onToggle={() => { setDetailsOpen((current) => !current) }}
+        onVoiceVolumeChange={(next) => { previewPlayer.setVolume(next); toggleSoundPlayer.setPreviewVolume(next); setVoiceVolume(next); markChange('voiceVolume') }}
+        onVoiceVolumeInteractionEnd={(next) => { toggleSoundPlayer.previewVolume(next) }}
+        onVoiceRateChange={(next) => { setVoiceRate(next); markChange('voiceRate') }}
+        onVoiceRateInteractionEnd={(next) => { controller.play('success', { playbackRate: next }) }}
+        onReadScopeChange={(next) => { setReadScope(next); markChange('readScope') }}
+        onModelChange={(nextModel) => { setModel(nextModel); setVoiceDesignAiState('idle'); markChange('model'); if (nextModel === 'mimo-v2.5-tts-voicedesign') chooseVoiceDesignAiCopy() }}
+        onVoiceDesignPromptChange={(next) => {
+          setVoiceDesignPrompt(next)
+          setVoiceDesignCustomPrompt(next)
+          setChanges((current) => ({ ...current, voiceDesignPrompt: { kind: 'set' }, voiceDesignCustomPrompt: { kind: 'set' } }))
+          setState('idle')
+          setVoiceDesignAiState('idle')
+        }}
+        onVoiceChange={(next) => { setVoice(next); markChange('voice') }}
+        onLocalVoiceURIChange={(next) => { setLocalVoiceURI(next); markChange('localVoiceURI') }}
+        onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
+        onVoiceDesignAiCopyChange={chooseVoiceDesignAiCopy}
+        onGenerateVoiceDesign={() => { void generateVoiceDesign() }}
+      /> : null}
+      {enabled ? <PreviewModule
+        t={t}
+        enabled={enabled}
+        status={previewView.status}
+        source={previewView.source}
+        error={previewView.error}
+        text={previewText}
+        onToggle={togglePreview}
+        onTextChange={setPreviewText}
+      /> : null}
+      <SoundEffectsPanel
+        t={t}
+        controller={controller}
+        enabled={soundEnabled}
+        volume={soundVolume}
+        pack={soundPack}
+        taskSounds={taskSounds}
+        clickSounds={clickSounds}
+        writable={snapshot.writable}
+        open={soundEffectsOpen}
+        onToggle={() => { setSoundEffectsOpen((current) => !current) }}
+        onCycle={cycleSoundEffectsMode}
+        onVolumeChange={(next) => { setSoundVolume(next); markChange('soundVolume') }}
+        onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
+      />
+      <div className="xmimo-tts-card-actions">
+        {uninstallState === 'idle' && latestVersion !== null
+          ? <a className="xmimo-tts-update" href={RELEASES_URL} target="_blank" rel="noopener noreferrer">{t('settings.updateAvailable')}</a>
+          : null}
+        {uninstallState === 'confirming'
+          ? (
+            <span className="xmimo-tts-uninstall-confirmation">
+              <span>{t('settings.uninstallQuestion')}</span>
+              <span className="xmimo-tts-uninstall-choice">
+                <button type="button" onClick={() => { void uninstall() }}>{t('settings.uninstallConfirm')}</button>
+                <button type="button" onClick={() => { setUninstallState('idle') }}>{t('settings.uninstallCancel')}</button>
               </span>
-              )
-            : (
-              <button
-                type="button"
-                className="xmimo-tts-uninstall"
-                disabled={uninstallState === 'uninstalling' || uninstallState === 'uninstalled'}
-                onClick={() => { setUninstallState('confirming') }}
-              >
-                {uninstallState === 'uninstalling' ? t('settings.uninstalling') : t('settings.uninstall')}
-              </button>
-              )}
-          <a
-            className="xmimo-tts-star"
-            href="https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t('settings.source')}
-          </a>
-          {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
-          {uninstallState === 'uninstalled' ? <span role="status">{t('settings.uninstalled')}</span> : null}
-          {uninstallState === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.uninstallFailed')}</span> : null}
-          {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
-          {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}
-          <button type="button" className="xmimo-tts-discard" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={discard}>
-            {t('settings.discard')}
-          </button>
-          <button type="button" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={() => { void save() }}>
-            {state === 'saving' ? t('settings.saving') : t('settings.save')}
-          </button>
-        </div>
-      </div> : null}
-    </li>
+            </span>
+            )
+          : (
+            <button
+              type="button"
+              className="xmimo-tts-uninstall"
+              disabled={uninstallState === 'uninstalling' || uninstallState === 'uninstalled'}
+              onClick={() => { setUninstallState('confirming') }}
+            >
+              {uninstallState === 'uninstalling' ? t('settings.uninstalling') : t('settings.uninstall')}
+            </button>
+            )}
+        <a
+          className="xmimo-tts-star"
+          href="https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t('settings.source')}
+        </a>
+        {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
+        {uninstallState === 'uninstalled' ? <span role="status">{t('settings.uninstalled')}</span> : null}
+        {uninstallState === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.uninstallFailed')}</span> : null}
+        {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
+        {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}
+        <button type="button" className="xmimo-tts-discard" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={discard}>
+          {t('settings.discard')}
+        </button>
+        <button type="button" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={() => { void save() }}>
+          {state === 'saving' ? t('settings.saving') : t('settings.save')}
+        </button>
+      </div>
+    </div>
   )
 }
