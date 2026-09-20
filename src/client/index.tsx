@@ -6,7 +6,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type {} from '@deepseek-ai/dsh-client-connection/client'
 import { TTS_SETTINGS_NAMESPACE, resolveTtsSettings } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 import { ReadAloudAction, SessionPlaybackObserver } from './conversation/read-aloud.js'
@@ -24,7 +23,6 @@ import { CLIENT_STYLES } from './style/index.js'
 export const inject = [
   'slots',
   'locale',
-  'connection',
   'remote',
   'settingsScope',
   'sessions',
@@ -146,6 +144,6 @@ export function apply(ctx: Context): void {
     name: 'plugins.bundle.config',
     key: 'dsh-xiaomi-tts',
     locale: NS,
-    inject: () => ({ scope, t, connection: ctx.connection, controller: soundEffects }),
+    inject: () => ({ scope, t, controller: soundEffects }),
   }, SettingsCard))
 }

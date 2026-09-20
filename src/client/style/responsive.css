@@ -53,7 +53,8 @@
     padding-right: 54px
   }
   .xmimo-tts-api-key-input>.xmimo-tts-api-key-whale,
-  .xmimo-tts-preview-input>.xmimo-tts-preview-whale-button {
+  .xmimo-tts-preview-input>.xmimo-tts-preview-whale-button,
+  .xmimo-ui-module>.xmimo-tts-mixer-decoration {
     right: 6px;
     width: 52px;
     height: 52px
@@ -62,22 +63,6 @@
     right: 58px;
     max-width: calc(100% - 72px);
     padding: 3px 6px;
-    font-size: 10px
-  }
-
-  .xmimo-tts-mixer-whale-button {
-    top: -9px;
-    right: 6px
-  }
-  .xmimo-tts-mixer-whale-button>.xmimo-tts-mixer-whale {
-    width: 52px;
-    height: 52px
-  }
-  .xmimo-tts-ai-copy {
-    right: 48px;
-    bottom: 28px;
-    font-size: 10px;
-    padding: 3px 6px
   }
 
   .xmimo-tts-sound-toggle {

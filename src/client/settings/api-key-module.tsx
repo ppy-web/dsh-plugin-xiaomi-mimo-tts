@@ -53,13 +53,14 @@ export function ApiKeyModule({ t, value, message, invalid, overridden, clearable
         aria-label={t('settings.apiKey')}
         style={{ '--xmimo-tts-api-key-logo-image': `url(${hostRoute(TTS_MIMO_LOGO_ASSET_ROUTE)})` } as CSSProperties}
       />}
-      suffix={<a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>}
+      suffix={<>
+        <a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>
+        {clearable ? <button type="button" className="xmimo-tts-reset" disabled={!writable} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClear() }}>{t('settings.apiKeyClear')}</button> : null}
+      </>}
       overriddenLabel={t('settings.apiKeyConfigured')}
-      resetLabel={t('settings.apiKeyClear')}
       overridden={overridden}
-      resettable={clearable}
       disabled={!writable}
-      onReset={onClear}
+      resettable={false}
     />
     <div className="xmimo-tts-api-key-input">
       <span className="xmimo-tts-character-bubble xmimo-tts-api-key-bubble" aria-hidden="true">{t(bubbleKey)}</span>

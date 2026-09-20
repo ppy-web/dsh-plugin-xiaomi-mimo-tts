@@ -1,18 +1,13 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection'
 import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type {} from '@deepseek-ai/dsh-agent-default-model'
-import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { debugConsole } from './debug-console.js'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_READ_SCOPES, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_AI_STATUS_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
-import type { VoiceDesignAiGenerateResult, VoiceDesignAiStatus } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_READ_SCOPES, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -26,7 +21,7 @@ let nextHostStreamRequestId = 1
 export const name = 'xiaomi-mimo-tts'
 
 /** Host services required by this plugin. */
-export const inject = ['webServer', 'connection', 'llm', 'agentDefaultModel', 'settings']
+export const inject = ['webServer', 'settings']
 
 /** Settings namespace registered with the DSH Host. */
 export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = TTS_SETTINGS_NAMESPACE
@@ -233,72 +228,6 @@ async function latestTtsVersion(): Promise<string | null> {
   }
 }
 
-const VOICE_DESIGN_AI_SYSTEM_PROMPT = [
-  '你是专业的 MiMo TTS 音色设计助手。',
-  '根据用户输入生成一段可直接用于 Xiaomi MiMo Voice Design 的中文音色设计。',
-  '内容应描述声音本身：年龄段与性别、语言和口音、音色与质感、音高、语速与节奏、咬字清晰度、基础情绪。',
-  '不要描述场景、动作、台词或背景音乐。',
-  '只返回一段纯文本，不要 Markdown、JSON、标题、引号、代码围栏或解释。',
-].join('\n')
-const MAX_VOICE_DESIGN_AI_INPUT_LENGTH = 2_000
-const MAX_VOICE_DESIGN_AI_OUTPUT_LENGTH = 1_000
-
-function voiceDesignAiFailure(code: string, message: string): ConnectionRpcResult<never> {
-  return { ok: false, error: { code, message, details: {} } }
-}
-
-function voiceDesignAiInput(payload: unknown): string {
-  if (payload === null || typeof payload !== 'object' || !('input' in payload)) {
-    throw new Error('invalid-payload')
-  }
-  const input = (payload as { input?: unknown }).input
-  if (typeof input !== 'string') throw new Error('invalid-input')
-  const normalized = input.trim()
-  if (normalized.length > MAX_VOICE_DESIGN_AI_INPUT_LENGTH) throw new Error('input-too-long')
-  return normalized
-}
-
-function normalizeVoiceDesignAiOutput(chunks: string): string {
-  const text = chunks.replace(/\r\n?/gu, '\n').trim()
-  if (text.length === 0) throw new Error('empty-output')
-  if (text.length > MAX_VOICE_DESIGN_AI_OUTPUT_LENGTH) throw new Error('output-too-long')
-  if (text.includes('```') || (/^\s*[\[{]/u.test(text) && /[\]}]\s*$/u.test(text))) {
-    throw new Error('non-plain-text-output')
-  }
-  return text
-}
-
-async function generateVoiceDesignAiText(ctx: Context, input: string, signal: AbortSignal): Promise<VoiceDesignAiGenerateResult> {
-  const selection = ctx.agentDefaultModel.currentSelection()
-  if (selection.provider.trim().length === 0 || selection.model.trim().length === 0) {
-    throw new Error('no-default-model')
-  }
-  const userInput = input.length > 0 ? input : '请设计一个自然、清晰、耐听，适合日常对话的中文女声音色。'
-  let text = ''
-  for await (const chunk of ctx.llm.stream({
-    provider: selection.provider,
-    model: selection.model,
-    system: VOICE_DESIGN_AI_SYSTEM_PROMPT,
-    messages: [createUserMessage({ content: [{ type: 'text', text: userInput }], source: { kind: 'user' } })],
-    temperature: 0.4,
-    maxTokens: 300,
-    signal,
-  })) {
-    if (chunk.type === 'text-delta') text += chunk.text
-    if (chunk.type === 'finish' && (chunk.reason.kind === 'error' || chunk.reason.kind === 'aborted')) {
-      throw new Error(chunk.reason.failure.message)
-    }
-  }
-  return { text: normalizeVoiceDesignAiOutput(text) }
-}
-
-function registerVoiceDesignAiRpc(
-  ctx: Context,
-  handler: Parameters<typeof ctx.connection.rpc.handle>[1],
-): ReturnType<typeof ctx.connection.rpc.handle> {
-  return ctx.connection.rpc.handle(VOICE_DESIGN_AI_RPC_CHANNEL, handler)
-}
-
 /** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
   let current = () => config
@@ -343,59 +272,6 @@ export function apply(ctx: Context, config: Config): void {
         throw new Error('format must be pcm, mp3, or wav')
       }
     },
-  })
-
-  /**
-   * Whether the Voice Design AI RPC channel actually mounted.
-   *
-   * DSH 0.1.5+ resolves the channel route through the connection plugin's own
-   * context, which stopped declaring `webServer`; the resulting throw is swallowed
-   * by the inject fiber, so the plugin loads normally and the channel silently
-   * answers 405. Record the real outcome here and let the Web half hide the
-   * assistant instead of offering a button that cannot work.
-   */
-  let voiceDesignAiRpcAvailable = false
-
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: TTS_VOICE_DESIGN_AI_STATUS_ROUTE,
-    handler(req, res) {
-      if (req.method !== 'GET' && req.method !== 'HEAD') {
-        res.statusCode = 405
-        res.setHeader('allow', 'GET, HEAD')
-        res.end()
-        return
-      }
-      const status: VoiceDesignAiStatus = { available: voiceDesignAiRpcAvailable }
-      json(res, 200, status)
-    },
-  }), 'xiaomi-mimo-tts: voice design AI status route')
-
-  ctx.inject(['connection', 'webServer'], (rpcCtx) => {
-    try {
-      registerVoiceDesignAiRpc(rpcCtx, async (endpoint, payload, signal) => {
-        if (endpoint !== VOICE_DESIGN_AI_RPC_ENDPOINT) return voiceDesignAiFailure('unknown-endpoint', `unknown endpoint "${endpoint}"`)
-        try {
-          return { ok: true, value: await generateVoiceDesignAiText(ctx, voiceDesignAiInput(payload), signal) }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
-          const code = signal.aborted
-            ? 'aborted'
-            : message === 'invalid-payload' || message === 'invalid-input' || message === 'input-too-long'
-              ? message
-              : message === 'no-default-model'
-                ? 'no-default-model'
-                : message === 'empty-output' || message === 'output-too-long' || message === 'non-plain-text-output'
-                  ? message
-                  : 'llm-failed'
-          return voiceDesignAiFailure(code, message)
-        }
-      })
-      voiceDesignAiRpcAvailable = true
-    } catch (error) {
-      voiceDesignAiRpcAvailable = false
-      debugConsole?.warn('[MiMoTTS Host] Voice Design AI RPC 通道未注册，已隐藏该功能', error)
-    }
   })
 
   ctx.effect(() => ctx.webServer.register({

@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 
 export type ManualLocale = 'zh' | 'en'
@@ -8,6 +9,7 @@ interface ManualCopy {
   title: string
   intro: string
   toc: string
+  closeDrawer: string
   sections: Array<{
     id: string
     title: string
@@ -23,6 +25,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
     title: '把鲸鱼娘调成你喜欢的样子',
     intro: '左侧是完整操作说明，右侧是真实设置卡片。你可以边读边在右侧试用；Preview 中的修改只存在于本地模拟状态。',
     toc: '目录',
+    closeDrawer: '关闭设置手册',
     sections: [
       {
         id: 'manual-start',
@@ -51,7 +54,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: '获取 API Key 链接', detail: '点击 API Key 标题右侧的“获取 API Key”，会在新标签页打开 Xiaomi MiMo 控制台的密钥页面。创建或复制密钥后，回到 Preview。' },
           { label: '密钥输入框', detail: '在密码框中输入新的 Xiaomi MiMo API Key。输入内容会被隐藏；聚焦和移出输入框时，旁边的鲸鱼提示会切换文案。输入后状态提示会即时检查格式，但不会立即保存。' },
-          { label: '状态与清除', detail: '提示会区分读取中、未配置、格式已识别、格式异常、Host 状态不可用和待保存。格式识别不等于连接已验证；保存后请用演播厅确认。存在个人密钥覆盖时可点击“清除个人密钥”，保存后移除该覆盖；若基础配置仍有密钥，会恢复继承。' },
+          { label: '状态与清除', detail: '提示会区分读取中、未配置、格式已识别、格式异常、Host 状态不可用和待保存。格式识别不等于连接已验证；保存后请用演播厅确认。存在个人密钥覆盖时可点击“清除”，保存后移除该覆盖；若基础配置仍有密钥，会恢复继承。' },
         ],
       },
       {
@@ -59,11 +62,11 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         title: '04 · 调音台',
         summary: '控制音量、速度、模型、声音来源和本地兜底策略。',
         items: [
-          { label: '调音台标题与箭头', detail: '点击“调音台”标题栏展开或收起详细设置。标题栏摘要会显示当前音量、倍速、朗读范围、模型、声音和策略。右上角的鲸鱼按钮仅在选择 Voice Design 模型时可用。' },
+          { label: '调音台标题与箭头', detail: '点击“调音台”标题栏展开或收起详细设置。标题栏摘要会显示当前音量、倍速、朗读范围、模型、声音和策略。右上角鲸鱼精灵图会随当前模型切换，并显示对应台词。' },
           { label: '音量滑块', detail: '拖动或用键盘方向键调整语音音量；松开鼠标或完成键盘操作时会试听当前音量。旁边的“恢复默认”按钮会把该项恢复为基础配置，恢复动作仍需点击“保存”。' },
           { label: '播放速度滑块', detail: '拖动或用键盘调整 0.5×–2.0× 速度；完成操作时会按当前速度播放提示音。PCM 流式播放会随速度改变音高。' },
           { label: '模型按钮', detail: '在“预设声音 (MiMo-TTS)”和“声音设计 (MiMo-VoiceDesign)”之间点击切换。预设模型显示内置声音选择器；Voice Design 模型显示预设/自定义声音设计输入。' },
-          { label: 'Voice Design 选择器与 AI 按钮', detail: '点击声音设计选择器，选择“自定义”或一个预设。选择自定义后可编辑文本框；点击右上角鲸鱼按钮“✨ 使用 AI 生成”会根据当前描述生成声音文案，生成后仍需保存。生成按钮在只读、生成中或预设模型下不可用。' },
+          { label: 'Voice Design 选择器与手动编辑', detail: '点击声音设计选择器，选择“自定义”或一个预设。选择自定义后可直接编辑音色描述文本框；右上角鲸鱼精灵图和台词会随模型切换。' },
           { label: '内置声音 / 浏览器声音选择器', detail: '点击选择器打开列表，再点击一个声音完成选择；也可用方向键、Home、End 浏览，Esc 关闭。浏览器声音会显示语言及在线/离线状态；本地语音策略关闭时，浏览器声音选择器会禁用。' },
           { label: '朗读范围单选项', detail: '点击“智能模式”“完整模式”或“首段模式”之一。智能模式会根据回复长度决定范围；完整模式朗读全文；首段模式只朗读开头。选择后下方说明会同步更新。' },
           { label: '语音策略单选项', detail: '点击“MiMo 优先”“本地优先”或“禁用本地语音”。前两者分别决定 MiMo 与浏览器语音的兜底顺序；禁用本地语音时只使用 MiMo。' },
@@ -124,6 +127,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
     title: 'Tune Whale Maid your way',
     intro: 'The complete guide is on the left and the real settings card is on the right. Try each control as you read; changes in Preview live only in its local mock state.',
     toc: 'Contents',
+    closeDrawer: 'Close settings manual',
     sections: [
       {
         id: 'manual-start',
@@ -152,7 +156,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: 'Get API Key link', detail: 'Click Get API Key beside the heading to open the Xiaomi MiMo console key page in a new tab. Create or copy a key, then return to Preview.' },
           { label: 'Key input', detail: 'Enter a new Xiaomi MiMo API key in the password field. The value is hidden; focusing and leaving the field changes the Whale Maid message. Format feedback is immediate, but the key is not saved yet.' },
-          { label: 'Status and clearing', detail: 'The status distinguishes loading, missing, recognized format, unrecognized format, unavailable Host state, and unsaved changes. A recognized prefix is not a connection check; use Broadcast Studio after saving. When a personal override exists, Clear personal key removes it on Save and falls back to a base key if one exists.' },
+          { label: 'Status and clearing', detail: 'The status distinguishes loading, missing, recognized format, unrecognized format, unavailable Host state, and unsaved changes. A recognized prefix is not a connection check; use Broadcast Studio after saving. When a personal override exists, Clear removes it on Save and falls back to a base key if one exists.' },
         ],
       },
       {
@@ -160,11 +164,11 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         title: '04 · Mixing Console',
         summary: 'Control volume, speed, model, voice source, and local fallback.',
         items: [
-          { label: 'Console header and arrow', detail: 'Click Mixing Console to expand or collapse detailed settings. Its summary shows volume, speed, read scope, model, voice, and strategy. The Whale Maid button on the right is available only for Voice Design.' },
+          { label: 'Console header and arrow', detail: 'Click Mixing Console to expand or collapse detailed settings. Its summary shows volume, speed, read scope, model, voice, and strategy.' },
           { label: 'Voice volume slider', detail: 'Drag or use arrow keys to change voice volume; releasing the pointer or finishing a keyboard interaction previews that level. Restore default returns this field to its base value, but still requires Save.' },
           { label: 'Playback speed slider', detail: 'Drag or use the keyboard to set 0.5×–2.0× speed; completing the interaction plays a cue at the selected rate. Streamed PCM changes pitch with playback speed.' },
           { label: 'Model buttons', detail: 'Click between Preset voices (MiMo-TTS) and Voice design (MiMo-VoiceDesign). Preset mode shows the built-in voice picker; Voice Design shows preset/custom voice-description controls.' },
-          { label: 'Voice Design picker and AI button', detail: 'Open the picker and choose Custom or a preset. Custom enables the editable description. Click the Whale Maid button labelled Generate with AI to generate a description from the current prompt; the result still needs Save. It is disabled when read-only, while generating, or in preset mode.' },
+          { label: 'Voice Design picker', detail: 'Open the picker and choose Custom or a preset. Custom enables the editable description. Edit the description directly and save the settings when it is ready.' },
           { label: 'Built-in / browser voice pickers', detail: 'Click a picker to open its list, then click a voice. Arrow keys, Home, End, and Escape also work. Browser voices show language and online/offline status; the browser voice picker is disabled when local speech is disabled.' },
           { label: 'Read-aloud scope radios', detail: 'Click Smart, Full, or First-segment mode. Smart chooses a range based on reply length; Full reads everything; First segment reads only the opening. The hint below updates with the selection.' },
           { label: 'Speech strategy radios', detail: 'Click MiMo first, Local first, or Disable local speech. The first two choose the fallback order; disabling local speech uses MiMo only.' },
@@ -222,10 +226,45 @@ const COPY: Record<ManualLocale, ManualCopy> = {
   },
 }
 
-export function UserManual({ locale }: { locale: ManualLocale }): ReactElement {
+export function UserManual({ locale, isOpen, onOpenChange, onFocusToggle }: {
+  locale: ManualLocale
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+  onFocusToggle: () => void
+}): ReactElement {
   const copy = COPY[locale]
   const manualRef = useRef<HTMLElement | null>(null)
+  const manualCloseRef = useRef<HTMLButtonElement | null>(null)
+  const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1080px)').matches)
   const [activeSection, setActiveSection] = useState(copy.sections[0]?.id ?? '')
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1080px)')
+    const updateLayout = (): void => {
+      setIsNarrow(mediaQuery.matches)
+      if (!mediaQuery.matches) onOpenChange(false)
+    }
+    updateLayout()
+    mediaQuery.addEventListener('change', updateLayout)
+    return () => mediaQuery.removeEventListener('change', updateLayout)
+  }, [onOpenChange])
+
+  useEffect(() => {
+    if (!isNarrow || !isOpen) return
+    manualCloseRef.current?.focus()
+    const closeWithEscape = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      onOpenChange(false)
+      onFocusToggle()
+    }
+    document.addEventListener('keydown', closeWithEscape)
+    return () => document.removeEventListener('keydown', closeWithEscape)
+  }, [isNarrow, isOpen, onFocusToggle, onOpenChange])
+
+  const closeManual = (): void => {
+    onOpenChange(false)
+    onFocusToggle()
+  }
 
   useEffect(() => {
     setActiveSection(copy.sections[0]?.id ?? '')
@@ -244,40 +283,70 @@ export function UserManual({ locale }: { locale: ManualLocale }): ReactElement {
     return () => observer.disconnect()
   }, [copy.sections])
 
-  return <aside className="preview-manual" ref={manualRef} aria-label={copy.title}>
-    <div className="preview-manual-intro">
-      <span className="preview-manual-eyebrow">{copy.eyebrow}</span>
-      <h1>{copy.title}</h1>
-      <p>{copy.intro}</p>
-    </div>
-    <nav className="preview-manual-toc" aria-label={copy.toc}>
-      <span>{copy.toc}</span>
-      <div>
-        {copy.sections.map((section) => <a
-          className={activeSection === section.id ? 'preview-manual-toc-link-active' : undefined}
-          key={section.id}
-          href={`#${section.id}`}
-          aria-current={activeSection === section.id ? 'location' : undefined}
-        >{section.title}</a>)}
+  const drawer = <div
+    className={`preview-manual-drawer${isOpen ? ' preview-manual-drawer-open' : ''}`}
+    id="preview-manual-drawer"
+  >
+    <div className="preview-manual-drawer-backdrop" aria-hidden="true" onClick={closeManual} />
+    <aside
+      className="preview-manual"
+      id="preview-manual-panel"
+      ref={manualRef}
+      aria-hidden={isNarrow && !isOpen ? true : undefined}
+      aria-label={copy.title}
+    >
+      <div className="preview-manual-close-row">
+        <button
+          ref={manualCloseRef}
+          className="preview-manual-close"
+          type="button"
+          aria-label={copy.closeDrawer}
+          title={copy.closeDrawer}
+          onClick={closeManual}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
       </div>
-    </nav>
-    <div className="preview-manual-sections">
-      {copy.sections.map((section) => <section className="preview-manual-section" id={section.id} key={section.id}>
-        <h2>{section.title}</h2>
-        <p className="preview-manual-summary">{section.summary}</p>
-        <dl>
-          {section.items.map((item) => <div key={item.label}>
-            <dt>{item.label}</dt>
-            <dd>{item.detail}</dd>
-          </div>)}
-        </dl>
-      </section>)}
-    </div>
-    <div className="preview-manual-notes">
-      {copy.notes.map((note) => <div className="preview-manual-note" key={note.title}>
-        <strong>{note.title}</strong>
-        <p>{note.body}</p>
-      </div>)}
-    </div>
-  </aside>
+      <div className="preview-manual-intro">
+        <span className="preview-manual-eyebrow">{copy.eyebrow}</span>
+        <h1>{copy.title}</h1>
+        <p>{copy.intro}</p>
+      </div>
+      <nav className="preview-manual-toc" aria-label={copy.toc}>
+        <span>{copy.toc}</span>
+        <div>
+          {copy.sections.map((section) => <a
+            className={activeSection === section.id ? 'preview-manual-toc-link-active' : undefined}
+            key={section.id}
+            href={`#${section.id}`}
+            aria-current={activeSection === section.id ? 'location' : undefined}
+          >{section.title}</a>)}
+        </div>
+      </nav>
+      <div className="preview-manual-sections">
+        {copy.sections.map((section) => <section className="preview-manual-section" id={section.id} key={section.id}>
+          <h2>{section.title}</h2>
+          <p className="preview-manual-summary">{section.summary}</p>
+          <dl>
+            {section.items.map((item) => <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>{item.detail}</dd>
+            </div>)}
+          </dl>
+        </section>)}
+      </div>
+      <div className="preview-manual-notes">
+        {copy.notes.map((note) => <div className="preview-manual-note" key={note.title}>
+          <strong>{note.title}</strong>
+          <p>{note.body}</p>
+        </div>)}
+      </div>
+    </aside>
+  </div>
+
+  return isNarrow && typeof document !== 'undefined'
+    ? createPortal(drawer, document.body)
+    : drawer
 }

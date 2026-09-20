@@ -94,7 +94,7 @@ Recommended setup order:
 ### Replace or clear an API key
 
 - Entering and saving a new key replaces the key in the personal settings layer.
-- **Clear personal key** removes that personal override after Save.
+- **Clear** removes that personal override after Save.
 - If a DSH base configuration still provides a key, clearing the personal override restores the inherited key. It does not revoke a key on Xiaomi's platform.
 - Revoke the key in the Xiaomi MiMo console when it must be made unusable everywhere.
 
@@ -117,7 +117,7 @@ Recommended setup order:
 Young adult woman with a bright, approachable voice, clear articulation, moderate pace, and a gentle, restrained emotional tone.
 ```
 
-Generate with AI uses the current DSH default LLM to rewrite the voice description. The result still requires Save.
+Voice descriptions support preset templates and direct manual editing; save the settings after changing one.
 
 ### Browser-local speech
 
@@ -158,7 +158,6 @@ tts?.play('Welcome back')
 
 - The DSH Host stores the API key. The browser reads only whether a key is configured and whether its prefix is recognized, not the secret itself.
 - MiMo synthesis sends the spoken text and relevant voice instructions to Xiaomi MiMo.
-- Generate with AI sends the entered voice-design text to the provider of the current DSH default LLM.
 - Browser-local speech uses the Web Speech API. Voices marked online may send text to browser, operating-system, or network speech services.
 - Opening the settings card makes the DSH Host query the npm Registry for a newer plugin version.
 - Audio plays from browser memory through Web Audio or temporary Blob URLs; the plugin does not intentionally persist generated audio.
@@ -177,7 +176,6 @@ flowchart LR
     CLIENT -->|"Complete audio / PCM stream"| HOST["Host plugin<br/>Settings and API proxy"]
     HOST --> MIMO["Xiaomi MiMo API"]
     CLIENT -->|"Web Speech API"| SPEECH["Browser / system speech service"]
-    CLIENT -->|"Voice-description generation"| LLM["DSH default LLM"]
     SHARED["Shared layer<br/>Configuration, text, SSE"] -.-> CLIENT
     SHARED -.-> HOST
 ```

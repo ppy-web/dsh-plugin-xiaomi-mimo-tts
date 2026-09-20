@@ -37,7 +37,7 @@ const voiceDesignPickerSource = await readFile(new URL('../src/client/settings/c
 const localVoicePickerSource = await readFile(new URL('../src/client/settings/controls/local-voice-picker.tsx', import.meta.url), 'utf8')
 const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, settingsDetailsSource, settingsPreviewSource, settingsSoundEffectsSource, settingsCollapsibleSource, voiceDesignPickerSource, localVoicePickerSource].join('\n')
 const sharedModule = await import('../lib/shared.js')
-const { appendTtsSmartTruncationOutro, applyTtsPlaybackScope, applyTtsReadScope, batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TTS_READ_SCOPES, TTS_SMART_TRUNCATION_OUTROS, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, TtsFirstSegmentLimiter, VOICE_DESIGN_AI_RPC_CHANNEL } = sharedModule
+const { appendTtsSmartTruncationOutro, applyTtsPlaybackScope, applyTtsReadScope, batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TTS_READ_SCOPES, TTS_SMART_TRUNCATION_OUTROS, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, TtsFirstSegmentLimiter } = sharedModule
 
 const SUPPORTED_DSH_VERSION = '0.1.6-alpha.2'
 
@@ -98,45 +98,28 @@ test('bilingual READMEs keep local assets, onboarding, privacy, and development 
     assert.match(readme, /https:\/\/ppy-web\.github\.io\/dsh-plugin-xiaomi-mimo-tts/u)
     assert.match(readme, /src\/client\/settings\/card\.tsx/u)
     assert.match(readme, /pnpm dev:build/u)
-    assert.match(readme, /default LLM|默认 LLM/u)
     assert.match(readme, /Web Speech API/u)
     assert.match(readme, /npm Registry/u)
     assert.doesNotMatch(readme, /src\/client\/settings-card\.tsx/u)
   }
   assert.match(readmeZh, /自动播报默认关闭/u)
   assert.match(readmeEn, /automatic playback disabled/u)
-  assert.match(readmeZh, /清除个人密钥/u)
-  assert.match(readmeEn, /Clear personal key/u)
+  assert.match(readmeZh, /点击 \*\*清除\*\*/u)
+  assert.match(readmeEn, /\*\*Clear\*\* removes/u)
 })
 
-test('voice design AI generation is wired through Host LLM RPC', () => {
-  assert.match(host, /VOICE_DESIGN_AI_RPC_CHANNEL/u)
-  assert.match(host, /ctx\.connection\.rpc\.handle/u)
-  assert.match(host, /ctx\.inject\(\["connection",\s*"webServer"\]/u)
-  assert.doesNotMatch(host, /ctx\.connection\.rpc\.intercept/u)
-  assert.equal(VOICE_DESIGN_AI_RPC_CHANNEL, '/xiaomi-mimo-tts')
-  assert.match(host, /VOICE_DESIGN_AI_RPC_ENDPOINT/u)
-  assert.doesNotMatch(host, /authority:\s*["']loopback["']/u)
-  assert.match(host, /ctx\.llm\.stream/u)
-  assert.match(host, /chunk\.type === ["']text-delta["']/u)
-  assert.match(settingsCardSource, /VOICE_DESIGN_AI_RPC_ENDPOINT/u)
-})
-
-test('hides Voice Design AI assistance when the RPC channel never mounted', () => {
-  assert.equal(sharedModule.TTS_VOICE_DESIGN_AI_STATUS_ROUTE, '/plugins/xiaomi-mimo-tts/voice-design-ai-status')
-  assert.match(host, /TTS_VOICE_DESIGN_AI_STATUS_ROUTE/)
-  assert.match(host, /voiceDesignAiRpcAvailable = true/)
-  assert.match(host, /voiceDesignAiRpcAvailable = false/)
-  assert.match(host, /catch \(error\) \{\s+voiceDesignAiRpcAvailable = false/u)
-  assert.match(settingsCardSource, /TTS_VOICE_DESIGN_AI_STATUS_ROUTE/)
-  assert.match(settingsCardSource, /resolveVoiceDesignAiAvailability/)
-  assert.match(settingsCardSource, /isUnmountedChannelFailure/)
-  assert.match(settingsCardSource, /voiceDesignAiAvailable=\{voiceDesignAiAvailability === 'available'\}/)
-  assert.match(settingsDetailsSource, /voiceDesignAiAvailable: boolean/)
-  // The whale mascot is decorative and must stay visible; only its interactivity
-  // depends on the Host actually mounting the RPC channel.
-  assert.match(settingsDetailsSource, /^\s+action=\{mixerAction\}$/m)
-  assert.doesNotMatch(settingsDetailsSource, /\{\.\.\.\(voiceDesignAiAvailable \? \{ action: mixerAction \} : \{\}\)\}/)
+test('removes Voice Design AI while preserving manual Voice Design', () => {
+  assert.equal(sharedModule.VOICE_DESIGN_AI_RPC_CHANNEL, undefined)
+  assert.equal(sharedModule.VOICE_DESIGN_AI_RPC_ENDPOINT, undefined)
+  assert.equal(sharedModule.TTS_VOICE_DESIGN_AI_STATUS_ROUTE, undefined)
+  assert.doesNotMatch(host, /ctx\.connection|ctx\.llm|agentDefaultModel|voice-design\/generate/u)
+  assert.doesNotMatch(clientSource, /VOICE_DESIGN_AI|voiceDesignAi|Generate with AI|AI生成/u)
+  assert.doesNotMatch(settingsDetailsSource, /mixerAction|voiceDesignAi|Generate with AI|AI生成/u)
+  assert.match(settingsDetailsSource, /VoiceDesignPresetPicker/u)
+  assert.match(settingsDetailsSource, /voiceDesignPrompt/u)
+  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-client-connection'], undefined)
+  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-agent-default-model'], undefined)
+  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-llm'], undefined)
 })
 
 test('profile lifecycle scripts pin the daily web profile and reject mixed link state', () => {
@@ -371,35 +354,27 @@ test('ships the API-key whale asset used by the settings card', async () => {
   assert.match(settingsApiKeySource, /onBlur=\{\(\) => \{ setBubbleKey/)
   assert.match(settingsApiKeySource, /aria-describedby=\{messageId\}/)
   assert.match(settingsApiKeySource, /aria-invalid=\{invalid\}/)
-  assert.match(settingsApiKeySource, /resetLabel=\{t\('settings\.apiKeyClear'\)\}/)
+  assert.match(settingsApiKeySource, /settings\.getApiKey[\s\S]*settings\.apiKeyClear/)
+  assert.match(settingsApiKeySource, /className="xmimo-tts-reset"/)
   assert.match(settingsCardSource, /onClear=\{clearApiKey\}/)
   assert.match(settingsCardSource, /apiKeyChange\?\.kind === 'clear'/)
   assert.match(settingsCardSource, /await scope\.unset\('apiKey'\)/)
 })
 
-test('wires the Voice Design generator to its packaged whale control', async () => {
+test('keeps the mixer whale asset for Preview decorations', async () => {
   const data = await readFile(new URL('../assets/ui/mixer-whale.webp', import.meta.url))
   assert.equal(data.toString('ascii', 0, 4), 'RIFF')
   assert.equal(data.toString('ascii', 8, 12), 'WEBP')
-  assert.match(settingsDetailsSource, /hostRoute\(TTS_MIXER_WHALE_ASSET_ROUTE\)/)
-  assert.match(settingsDetailsSource, /onPointerDown=\{\(event\) => \{ event\.stopPropagation\(\) \}\}/)
-  assert.match(settingsDetailsSource, /const voiceDesignAiInteractive = voiceDesignAiAvailable && model === 'mimo-v2\.5-tts-voicedesign'/)
-  assert.match(settingsDetailsSource, /disabled=\{!voiceDesignAiInteractive \|\| !writable \|\| voiceDesignAiState === 'loading'\}/)
-})
-
-test('selects the whale sprite frame from the active voice model', async () => {
-  const mixerStyles = await readFile(new URL('../src/client/style/mixer.css', import.meta.url), 'utf8')
-  const motionStyles = await readFile(new URL('../src/client/style/motion.css', import.meta.url), 'utf8')
-  // The preset voice rests on the left frame, Voice Design on the right one.
-  assert.match(settingsDetailsSource, /const mixerFrameClass = model === 'mimo-v2\.5-tts-voicedesign'/)
-  assert.match(settingsDetailsSource, /'xmimo-tts-mixer-whale-button-voicedesign'/)
-  assert.match(settingsDetailsSource, /'xmimo-tts-mixer-whale-button-preset'/)
-  assert.match(settingsDetailsSource, /className=\{`xmimo-tts-mixer-whale-button \$\{mixerFrameClass\}/)
-  assert.match(mixerStyles, /--xmimo-tts-mixer-frame: left center/)
-  assert.match(mixerStyles, /\.xmimo-tts-mixer-whale-button-voicedesign \{\s+--xmimo-tts-mixer-frame: right center/)
-  assert.match(mixerStyles, /background-position: var\(--xmimo-tts-mixer-frame, left center\)/)
-  // Reduced motion must not snap the frame back to the left one.
-  assert.doesNotMatch(motionStyles, /xmimo-tts-mixer-whale-thinking \{\s+animation: none;\s+background-position: left center/)
+  assert.equal(sharedModule.TTS_MIXER_WHALE_ASSET_ROUTE, '/plugins/xiaomi-mimo-tts/mixer-whale.webp')
+  assert.match(settingsDetailsSource, /TTS_MIXER_WHALE_ASSET_ROUTE/u)
+  assert.match(settingsDetailsSource, /mixerFrameClass/u)
+  assert.match(settingsDetailsSource, /mixerCopy/u)
+  assert.match(settingsDetailsSource, /settings\.mixerPresetCopy/u)
+  assert.match(settingsDetailsSource, /settings\.mixerVoiceDesignCopy/u)
+  assert.match(settingsDetailsSource, /xmimo-tts-mixer-whale-voicedesign/u)
+  assert.match(settingsDetailsSource, /xmimo-tts-mixer-whale-preset/u)
+  assert.match(settingsDetailsSource, /xmimo-tts-mixer-bubble/u)
+  assert.match(settingsDetailsSource, /action=\{mixerDecoration\}/u)
 })
 
 test('announces preview playback status accessibly', () => {
@@ -441,7 +416,7 @@ test('build emits declarations only for the private client modules', async () =>
   const expectedDeclarations = {
     conversation: ['read-aloud.d.ts'],
     playback: ['index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'preview-player.d.ts', 'types.d.ts', 'voice-rate.d.ts'],
-    settings: ['api-key-module.d.ts', 'api-key-state.d.ts', 'card.d.ts', 'collapsible-module.d.ts', 'details-module.d.ts', 'field-heading.d.ts', 'preview-module.d.ts', 'scope.d.ts', 'sound-effects-module.d.ts', 'switch-module.d.ts', 'types.d.ts', 'voice-design-ai-state.d.ts'],
+    settings: ['api-key-module.d.ts', 'api-key-state.d.ts', 'card.d.ts', 'collapsible-module.d.ts', 'details-module.d.ts', 'field-heading.d.ts', 'preview-module.d.ts', 'scope.d.ts', 'sound-effects-module.d.ts', 'switch-module.d.ts', 'types.d.ts'],
     'sound-effects': ['click-classifier.d.ts', 'index.d.ts', 'task-watcher.d.ts', 'toggle-sound-player.d.ts', 'types.d.ts'],
     style: ['index.d.ts'],
   }

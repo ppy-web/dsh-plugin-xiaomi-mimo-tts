@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import { SettingsCard } from '../src/client/settings/card.js'
 import { createSoundEffectsController } from '../src/client/sound-effects/index.js'
 import { CLIENT_STYLES } from '../src/client/style/index.js'
 import { en, zh } from '../src/client/localization.js'
 import type { LocaleKey, Translate } from '../src/client/localization.js'
-import {
-  VOICE_DESIGN_AI_RPC_CHANNEL,
-  VOICE_DESIGN_AI_RPC_ENDPOINT,
-} from '../src/shared.js'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
 import { PreviewBackground } from './background-icons.js'
 import { UserManual } from './user-manual.js'
@@ -27,6 +22,8 @@ const TOOLBAR_COPY: Record<PreviewLocale, {
   playSong: string
   pauseSong: string
   volume: string
+  openManual: string
+  closeManual: string
   controls: string
   closeControls: string
   light: string
@@ -41,6 +38,8 @@ const TOOLBAR_COPY: Record<PreviewLocale, {
     playSong: '播放歌曲',
     pauseSong: '暂停歌曲',
     volume: '音量',
+    openManual: '打开设置手册',
+    closeManual: '关闭设置手册',
     controls: '展开控制项',
     closeControls: '收起控制项',
     light: '浅色',
@@ -55,6 +54,8 @@ const TOOLBAR_COPY: Record<PreviewLocale, {
     playSong: 'Play song',
     pauseSong: 'Pause song',
     volume: 'Volume',
+    openManual: 'Open settings manual',
+    closeManual: 'Close settings manual',
     controls: 'Open controls',
     closeControls: 'Close controls',
     light: 'Light',
@@ -67,25 +68,6 @@ const restorePreviewFetch = installPreviewFetch(scope)
 const soundEffects = createSoundEffectsController()
 
 if (import.meta.hot) import.meta.hot.dispose(() => { restorePreviewFetch(); void soundEffects.dispose() })
-
-const rpc = {
-  async call(channel: string, endpoint: string, payload: unknown): Promise<unknown> {
-    if (channel !== VOICE_DESIGN_AI_RPC_CHANNEL || endpoint !== VOICE_DESIGN_AI_RPC_ENDPOINT) {
-      return { ok: false, error: { message: 'Unknown preview RPC endpoint' } }
-    }
-    const input = typeof payload === 'object' && payload !== null && 'input' in payload
-      ? String((payload as { input?: unknown }).input ?? '').trim()
-      : ''
-    return {
-      ok: true,
-      value: {
-        text: input.length > 0
-          ? `${input.replace(/[。.!！?？]+$/u, '')}，气息自然，语速舒缓，情绪温柔而有亲和力。`
-          : '青年女性，声线清亮柔和，吐字清楚，语速舒缓，情绪自然亲切。',
-      },
-    }
-  },
-} as unknown as ClientConnectionRpc
 
 function translator(locale: PreviewLocale): Translate {
   const dictionary: Record<LocaleKey, string> = locale === 'zh' ? zh : en
@@ -100,10 +82,12 @@ function PreviewApp() {
   const [isSongPlaying, setIsSongPlaying] = useState(false)
   const [songVolume, setSongVolume] = useState(0.5)
   const [isToolbarCompact, setIsToolbarCompact] = useState(false)
+  const [isManualOpen, setIsManualOpen] = useState(false)
   const [isControlsOpen, setIsControlsOpen] = useState(false)
   const songRef = useRef<HTMLAudioElement | null>(null)
   const lastScrollYRef = useRef(0)
   const toolbarRef = useRef<HTMLElement | null>(null)
+  const manualToggleRef = useRef<HTMLButtonElement | null>(null)
   const controlsToggleRef = useRef<HTMLButtonElement | null>(null)
   const listRef = useRef<HTMLUListElement | null>(null)
   const t = useMemo(() => translator(locale), [locale])
@@ -212,16 +196,26 @@ function PreviewApp() {
   return <div className="preview-shell">
     <PreviewBackground />
     <header ref={toolbarRef} className={`preview-toolbar${isToolbarCompact ? ' preview-toolbar-compact' : ''}`}>
+      <button
+        ref={manualToggleRef}
+        className="preview-manual-toggle"
+        type="button"
+        aria-expanded={isManualOpen}
+        aria-controls="preview-manual-panel"
+        aria-label={isManualOpen ? toolbar.closeManual : toolbar.openManual}
+        title={isManualOpen ? toolbar.closeManual : toolbar.openManual}
+        onClick={() => { setIsManualOpen((open) => !open) }}
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <path d="M5 5.5A1.5 1.5 0 0 1 6.5 4H19v15H6.5A1.5 1.5 0 0 0 5 20.5v-15Z" />
+          <path d="M5 5.5v15M9 8h6M9 11h6M9 14h4" />
+        </svg>
+      </button>
       <div className="preview-brand">
         <strong>MiMo TTS UI Lab</strong>
         <span>{toolbar.subtitle}</span>
       </div>
       <div className="preview-song-control">
-        {isSongPlaying ? <span
-          className="preview-singing-character"
-          aria-hidden="true"
-          style={{ backgroundImage: `url(${import.meta.env.BASE_URL}plugins/xiaomi-mimo-tts/preview-assets/preview-singing-characters.png)` }}
-        /> : null}
         <button
           className="preview-song-button"
           type="button"
@@ -307,7 +301,12 @@ function PreviewApp() {
     </header>
     <main className="preview-stage">
       <div className="preview-workspace">
-        <UserManual locale={locale} />
+        <UserManual
+          locale={locale}
+          isOpen={isManualOpen}
+          onOpenChange={setIsManualOpen}
+          onFocusToggle={() => { manualToggleRef.current?.focus() }}
+        />
         <section className="preview-settings-pane" aria-label={locale === 'zh' ? '设置页预览' : 'Settings preview'}>
           <div className="preview-note" role="note">
             {locale === 'zh'
@@ -315,7 +314,7 @@ function PreviewApp() {
               : <>This is the real plugin settings card. Changes in <code>src/client</code> hot-reload here; remote speech and save are mocked locally.</>}
           </div>
           <ul className="preview-settings-list" ref={listRef} key={instance}>
-            <SettingsCard view="page" scope={scope} t={t} connection={{ rpc }} controller={soundEffects} />
+             <SettingsCard view="page" scope={scope} t={t} controller={soundEffects} />
           </ul>
         </section>
       </div>

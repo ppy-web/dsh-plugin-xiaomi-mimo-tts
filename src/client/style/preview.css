@@ -64,8 +64,7 @@
 }
 
 .xmimo-tts-preview-status.xmimo-tts-failed {
-  border-color: var(--dsw-alias-border-l2, #d7dbe2);
-  color: var(--dsw-alias-state-error-primary, #dc2626)
+  color: var(--dsw-alias-label-secondary, #5f6875)
 }
 
 .xmimo-tts-preview+.xmimo-tts-card-actions {

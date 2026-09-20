@@ -47,33 +47,6 @@ export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 /** Same-origin route that proxies MiMo PCM16 server-sent audio chunks. */
 export const TTS_STREAM_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-stream'
 
-/** Shared authenticated API bridge used by the voice-design assistant. */
-export const VOICE_DESIGN_AI_RPC_CHANNEL = '/xiaomi-mimo-tts'
-
-/** Endpoint that generates a plain-text MiMo voice-design description. */
-export const VOICE_DESIGN_AI_RPC_ENDPOINT = 'voice-design/generate'
-
-/**
- * Same-origin route reporting whether the Voice Design AI RPC channel mounted.
- *
- * DSH 0.1.5+ cannot mount a third-party `connection.rpc.handle()` channel, so
- * the browser half asks the Host instead of discovering the failure as a 405.
- */
-export const TTS_VOICE_DESIGN_AI_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/voice-design-ai-status'
-
-/** Host-reported availability of the Voice Design AI RPC channel. */
-export interface VoiceDesignAiStatus {
-  available: boolean
-}
-
-export interface VoiceDesignAiGeneratePayload {
-  input: string
-}
-
-export interface VoiceDesignAiGenerateResult {
-  text: string
-}
-
 /** Same-origin route that checks the published npm version. */
 export const TTS_UPDATE_ROUTE = '/plugins/xiaomi-mimo-tts/update'
 
