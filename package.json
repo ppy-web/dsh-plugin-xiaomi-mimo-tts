@@ -1,6 +1,6 @@
 {
   "name": "dsh-xiaomi-tts",
-  "version": "3.0.4",
+  "version": "3.0.4-alpha",
   "description": "为 DeepSeek Harness Web 助手消息提供 Xiaomi MiMo 语音朗读控制",
   "license": "MIT",
   "type": "module",

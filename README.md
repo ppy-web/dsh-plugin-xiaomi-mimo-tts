@@ -205,7 +205,7 @@ pnpm pack:check
 Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避免运行中的 Node 进程占用 Junction：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.4
+.\start\dsh-plugin-reinstall.bat 3.0.4-alpha
 ```
 
 ## 🤝 推荐插件

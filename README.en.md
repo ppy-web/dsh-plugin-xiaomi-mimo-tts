@@ -205,7 +205,7 @@ pnpm pack:check
 On Windows, stop DSH Web before replacing a local development link with the npm package so the running Node process does not hold the Junction:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.4
+.\start\dsh-plugin-reinstall.bat 3.0.4-alpha
 ```
 
 ## 🤝 Recommended plugins
