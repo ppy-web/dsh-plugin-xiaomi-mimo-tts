@@ -17,7 +17,7 @@ function clamp(value: number, min: number, max: number): number {
   return Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : max
 }
 
-const DOT_COUNT = 48
+const DOT_COUNT = 24
 const DOT_POSITIONS = Array.from({ length: DOT_COUNT }, (_, index) => {
   // Stable pseudo-random positions keep rerenders from making the particles jump.
   const randomAt = (offset: number): number => {

@@ -143,15 +143,15 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
   color: var(--dsw-alias-label-primary, #1f2328);
-  font-size: 13px
+  font-size: 13px;
 }
 
 .xmimo-tts-sound-pack-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  gap: 8px
+  gap: 5px
 }
 
 .xmimo-tts-sound-pack-option {
@@ -326,16 +326,16 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
   color: var(--dsw-alias-label-primary, #1f2328);
-  font-size: 13px
+  font-size: 13px;
 }
 
 .xmimo-tts-sound-previews {
   display: grid;
   min-width: 0;
   grid-template-columns: repeat(5, minmax(72px, 1fr));
-  gap: 7px;
+  gap: 5px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding: 2px 1px 4px

@@ -3,6 +3,7 @@ import { TTS_PREVIEW_WHALE_ASSET_ROUTE } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import type { PreviewError, PreviewSource, PreviewStatus } from '../playback/preview-player.js'
 import { hostRoute } from '../host-route.js'
+import { ModuleShell } from './module-shell.js'
 
 export interface PreviewModuleProps {
   t: Translate
@@ -42,9 +43,8 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
             ? 'settings.previewCompletedMimo'
             : 'settings.previewHint'
 
-  return <section className="xmimo-tts-settings-module xmimo-tts-preview xmimo-ui-module xmimo-ui-module-padded">
-    <strong className="xmimo-tts-preview-title xmimo-ui-module-heading">{t('settings.previewTitle')}</strong>
-    <div className="xmimo-tts-preview-input">
+  return <ModuleShell className="xmimo-tts-settings-module xmimo-tts-preview xmimo-ui-module-padded" title={t('settings.previewTitle')} headingClassName="xmimo-tts-preview-title">
+    <div className="xmimo-tts-preview-input xmimo-ui-module-content">
       <span className={status === 'error' ? 'xmimo-tts-character-bubble xmimo-tts-preview-status xmimo-tts-failed' : 'xmimo-tts-character-bubble xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</span>
       <button
         type="button"
@@ -63,5 +63,5 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
         onChange={(event) => { onTextChange(event.target.value) }}
       />
     </div>
-  </section>
+  </ModuleShell>
 }

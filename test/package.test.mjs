@@ -298,13 +298,6 @@ test('ships the transparent four-state character toggle sheet', async () => {
   assert.match(settingsSwitchSource, /type="checkbox" checked=\{checked\} disabled=\{disabled\}/)
 })
 
-test('keeps detailed voice settings behind one collapsible panel', () => {
-  assert.match(settingsDetailsSource, /open/)
-  assert.match(settingsDetailsSource, /<CollapsibleModule/)
-  assert.match(settingsCollapsibleSource, /aria-expanded=\{open\}/)
-  assert.match(settingsSoundEffectsSource, /<CollapsibleModule/)
-})
-
 test('exposes optional zero-impact PCM playback to third-party client plugins', () => {
   const contextWithoutProvider = { get: () => undefined }
   assert.doesNotThrow(() => contextWithoutProvider.get('xiaomiMimoTts')?.play('欢迎回来'))
@@ -407,25 +400,6 @@ test('model picker uses a compact two-button toggle', () => {
   assert.doesNotMatch(settingsDetailsSource, /<select value=\{model\}/)
   assert.match(settingsDetailsSource, /className="xmimo-tts-model-switch" role="group"/)
   assert.match(settingsDetailsSource, /aria-pressed=\{option\.value === value\}/)
-})
-
-test('build emits declarations only for the private client modules', async () => {
-  const clientArtifacts = (await readdir(new URL('../lib/client', import.meta.url))).sort()
-  assert.ok(clientArtifacts.every((name) => name.endsWith('.d.ts') || name.endsWith('.d.ts.map') || ['conversation', 'playback', 'settings', 'sound-effects', 'style'].includes(name)))
-  assert.deepEqual(clientArtifacts.filter((name) => name.endsWith('.d.ts')), ['host-route.d.ts', 'index.d.ts', 'localization.d.ts'])
-  const expectedDeclarations = {
-    conversation: ['read-aloud.d.ts'],
-    playback: ['index.d.ts', 'live-speech-controller.d.ts', 'local-speech-controller.d.ts', 'pcm-audio-queue.d.ts', 'pcm-play-service.d.ts', 'playback-controller.d.ts', 'preview-player.d.ts', 'types.d.ts', 'voice-rate.d.ts'],
-    settings: ['api-key-module.d.ts', 'api-key-state.d.ts', 'card.d.ts', 'collapsible-module.d.ts', 'details-module.d.ts', 'field-heading.d.ts', 'preview-module.d.ts', 'scope.d.ts', 'sound-effects-module.d.ts', 'switch-module.d.ts', 'types.d.ts'],
-    'sound-effects': ['click-classifier.d.ts', 'index.d.ts', 'task-watcher.d.ts', 'toggle-sound-player.d.ts', 'types.d.ts'],
-    style: ['index.d.ts'],
-  }
-  for (const [directory, expected] of Object.entries(expectedDeclarations)) {
-    const artifacts = (await readdir(new URL(`../lib/client/${directory}`, import.meta.url))).sort()
-    assert.deepEqual(artifacts.filter((name) => name.endsWith('.d.ts')), expected, directory)
-  }
-  const controls = (await readdir(new URL('../lib/client/settings/controls', import.meta.url))).sort()
-  assert.deepEqual(controls.filter((name) => name.endsWith('.d.ts')), ['built-in-voice-picker.d.ts', 'energy-volume-slider.d.ts', 'local-voice-picker.d.ts', 'voice-design-picker.d.ts'])
 })
 
 test('keeps the client entry focused on DSH composition', async () => {

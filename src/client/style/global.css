@@ -8,10 +8,10 @@
 /* ---------- Design tokens ---------- */
 .xmimo-ui-scope {
   --xmimo-ui-space-1: 4px;
-  --xmimo-ui-space-2: 8px;
-  --xmimo-ui-space-3: 12px;
-  --xmimo-ui-space-4: 14px;
-  --xmimo-ui-space-5: 16px;
+  --xmimo-ui-space-2: 6px;
+  --xmimo-ui-space-3: 8px;
+  --xmimo-ui-space-4: 10px;
+  --xmimo-ui-space-5: 12px;
 
   --xmimo-ui-module-gap: var(--xmimo-ui-space-3);
   --xmimo-ui-module-padding: var(--xmimo-ui-space-4);
@@ -74,6 +74,25 @@
 .xmimo-ui-module-padded {
   padding: var(--xmimo-ui-module-padding) !important;
 }
+
+.xmimo-ui-module-header {
+  position: relative;
+  min-width: 0;
+}
+
+.xmimo-ui-module-decoration {
+  position: static;
+}
+
+.xmimo-ui-module-toggle-static {
+  padding: 0 !important;
+  cursor: default;
+}
+
+.xmimo-ui-module-toggle-static:hover {
+  background: transparent !important;
+}
+
 
 .xmimo-ui-module-heading,
 .xmimo-ui-module-heading > strong,
@@ -187,8 +206,8 @@
   height: var(--xmimo-ui-mascot-size);
 }
 
-.xmimo-ui-module > .xmimo-tts-mixer-decoration,
-.xmimo-ui-module > .xmimo-tts-sound-whale-button {
+.xmimo-ui-module .xmimo-tts-mixer-decoration,
+.xmimo-ui-module .xmimo-tts-sound-whale-button {
   top: -12px;
   right: 20px;
 }

@@ -40,7 +40,7 @@
 }
 
 @media (max-width: 1080px) {
-  .xmimo-ui-module>.xmimo-tts-mixer-decoration {
+  .xmimo-ui-module .xmimo-tts-mixer-decoration {
     top: -9px;
     right: 6px;
     gap: 4px;

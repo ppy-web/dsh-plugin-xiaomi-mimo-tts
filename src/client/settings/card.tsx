@@ -356,7 +356,6 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
           value={apiKey}
           message={apiKeyMessage}
           invalid={apiKeyInvalid}
-          overridden={fieldOverridden('apiKey')}
           clearable={apiKeyClearable}
           writable={snapshot.writable}
           onChange={(next) => { setApiKey(next); markChange('apiKey') }}

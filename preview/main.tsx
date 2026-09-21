@@ -8,6 +8,7 @@ import type { LocaleKey, Translate } from '../src/client/localization.js'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
 import { PreviewBackground } from './background-icons.js'
 import { UserManual } from './user-manual.js'
+import { TTS_VERSION } from '../src/shared.js'
 import './preview.css'
 
 type PreviewLocale = 'zh' | 'en'
@@ -62,6 +63,12 @@ const TOOLBAR_COPY: Record<PreviewLocale, {
     dark: 'Dark',
   },
 }
+
+const PREVIEW_PLUGIN_META = {
+  title: 'xiaomi-tts',
+  packageName: 'dsh-xiaomi-tts',
+  description: '为 DeepSeek Harness Web 助手消息提供 Xiaomi MiMo 语音朗读控制',
+} as const
 
 const scope = new PreviewSettingsScope()
 const restorePreviewFetch = installPreviewFetch(scope)
@@ -308,14 +315,22 @@ function PreviewApp() {
           onFocusToggle={() => { manualToggleRef.current?.focus() }}
         />
         <section className="preview-settings-pane" aria-label={locale === 'zh' ? '设置页预览' : 'Settings preview'}>
+          <header className="preview-plugin-header">
+            <div className="preview-plugin-title-row">
+              <h1>{PREVIEW_PLUGIN_META.title}</h1>
+              <span className="preview-plugin-version">v{TTS_VERSION}</span>
+            </div>
+            <code className="preview-plugin-name">{PREVIEW_PLUGIN_META.packageName}</code>
+            <p>{PREVIEW_PLUGIN_META.description}</p>
+          </header>
+          <ul className="preview-settings-list" ref={listRef} key={instance}>
+             <SettingsCard view="page" scope={scope} t={t} controller={soundEffects} />
+          </ul>
           <div className="preview-note" role="note">
             {locale === 'zh'
               ? <>这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。远程语音和保存均为本地模拟。</>
               : <>This is the real plugin settings card. Changes in <code>src/client</code> hot-reload here; remote speech and save are mocked locally.</>}
           </div>
-          <ul className="preview-settings-list" ref={listRef} key={instance}>
-             <SettingsCard view="page" scope={scope} t={t} controller={soundEffects} />
-          </ul>
         </section>
       </div>
     </main>

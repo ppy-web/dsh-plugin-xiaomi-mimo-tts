@@ -46,8 +46,6 @@
 
 .xmimo-tts-character-portrait {
   display: block !important;
-  width: 153px;
-  height: 140px;
   max-width: 100%;
   flex: none;
   background-repeat: no-repeat;
