@@ -133,7 +133,9 @@ async function readJsonBody(req: IncomingMessage, limit: number): Promise<unknow
 }
 
 function normalizeBaseURL(value: string): string {
-  return value.replace(/\/+$/, '')
+  let end = value.length
+  while (end > 0 && value[end - 1] === '/') end -= 1
+  return value.slice(0, end)
 }
 
 function apiErrorMessage(status: number, parsed: XiaomiAudioResponse | undefined): string {
