@@ -4,9 +4,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
+import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type {} from '@deepseek-ai/dsh-client-connection/client'
 import { TTS_SETTINGS_NAMESPACE, resolveTtsSettings } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 import { ReadAloudAction, SessionPlaybackObserver } from './conversation/read-aloud.js'
@@ -24,7 +23,6 @@ import { CLIENT_STYLES } from './style/index.js'
 export const inject = [
   'slots',
   'locale',
-  'connection',
   'remote',
   'settingsScope',
   'sessions',
@@ -36,7 +34,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: Context,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'settings.plugin.item',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -142,10 +140,10 @@ export function apply(ctx: Context): void {
     inject: (_sessionId: string) => ({ playback, live, local, settings: scope, t }),
   }, ReadAloudAction))
 
-  registerSlotContribution(ctx, 'settings.plugin.item', () => ctx.slots.register({
-    name: 'settings.plugin.item',
-    key: TTS_SETTINGS_NAMESPACE,
+  registerSlotContribution(ctx, 'plugins.bundle.config', () => ctx.slots.register({
+    name: 'plugins.bundle.config',
+    key: 'dsh-xiaomi-tts',
     locale: NS,
-    inject: () => ({ scope, t, connection: ctx.connection, controller: soundEffects }),
+    inject: () => ({ scope, t, controller: soundEffects }),
   }, SettingsCard))
 }

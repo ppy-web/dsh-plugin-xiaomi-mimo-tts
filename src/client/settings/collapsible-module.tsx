@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
+import { ModuleShell } from './module-shell.js'
 
 export interface CollapsibleModuleProps {
   className: string
@@ -19,22 +20,20 @@ export function CollapsibleModule({ className, toggleClassName, headingClassName
   const inertProps: Record<string, string> = open ? {} : { inert: '' }
   const collapseClass = open ? `${collapseClassName} ${collapseOpenClassName}` : collapseClassName
 
-  return <section className={className}>
-    <button
-      type="button"
-      className={`${toggleClassName} xmimo-ui-module-toggle`}
-      aria-expanded={open}
-      aria-label={ariaLabel}
-      onClick={onToggle}
-    >
-      <span className={`${headingClassName} xmimo-ui-module-head`}>
-        <strong>{title}</strong>
-        {summary}
-      </span>
-    </button>
-    {action}
+  return <ModuleShell
+    className={className}
+    title={title}
+    summary={summary}
+    action={action}
+    collapsible
+    open={open}
+    onToggle={onToggle}
+    toggleClassName={toggleClassName}
+    headingClassName={headingClassName}
+    ariaLabel={ariaLabel}
+  >
     <div className={collapseClass} aria-hidden={!open} {...inertProps}>
       {children}
     </div>
-  </section>
+  </ModuleShell>
 }

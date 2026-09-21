@@ -3,9 +3,9 @@ import type { ReactElement, ReactNode } from 'react'
 export interface SettingFieldHeadingProps {
   label: ReactNode
   suffix?: ReactElement
-  overriddenLabel: string
+  overriddenLabel?: string
   resetLabel?: string
-  overridden: boolean
+  overridden?: boolean
   resettable: boolean
   disabled: boolean
   onReset?: () => void
@@ -18,7 +18,7 @@ export function SettingFieldHeading({ label, suffix, overriddenLabel, resetLabel
         <span>{label}</span>
         {suffix}
       </span>
-      {overridden ? <span className="xmimo-tts-field-badges">
+      {overridden && overriddenLabel !== undefined ? <span className="xmimo-tts-field-badges">
         <small className="xmimo-tts-overridden">{overriddenLabel}</small>
         {resettable && onReset !== undefined && resetLabel !== undefined ? <button type="button" className="xmimo-tts-reset" disabled={disabled} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onReset() }}>{resetLabel}</button> : null}
       </span> : null}

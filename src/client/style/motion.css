@@ -12,16 +12,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .xmimo-tts-details-collapse,
-  .xmimo-tts-mixer-whale,
   .xmimo-tts-preview-whale-button {
     transition: none !important
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .xmimo-tts-mixer-whale-button>.xmimo-tts-mixer-whale-thinking {
-    /* Keep the model-selected resting frame; only drop the blink animation. */
-    animation: none
   }
 }
 

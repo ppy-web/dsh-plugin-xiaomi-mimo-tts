@@ -1,22 +1,16 @@
 import type { ReactElement } from 'react'
 import { useEffect, useState } from 'react'
-import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
-import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   TTS_API_KEY_STATUS_ROUTE,
   TTS_MIMO_LOGO_ASSET_ROUTE,
-  TTS_UNINSTALL_ROUTE,
   TTS_UPDATE_ROUTE,
-  TTS_VOICE_DESIGN_AI_STATUS_ROUTE,
   getSoundEffectsModeFlags,
   isSupportedTtsApiKey,
   nextSoundEffectsMode,
   resolveSoundEffectsMode,
   resolveTtsSettings,
-  VOICE_DESIGN_AI_RPC_CHANNEL,
-  VOICE_DESIGN_AI_RPC_ENDPOINT,
 } from '../../shared.js'
-import type { TtsSettings, VoiceDesignAiGeneratePayload, VoiceDesignAiGenerateResult } from '../../shared.js'
+import type { TtsSettings } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PreviewPlayer } from '../playback/preview-player.js'
@@ -27,12 +21,7 @@ import type { SoundEffectsController } from '../sound-effects/types.js'
 import { ApiKeyModule } from './api-key-module.js'
 import { resolveApiKeyViewState } from './api-key-state.js'
 import type { ApiKeyStatus } from './api-key-state.js'
-import {
-  isUnmountedChannelFailure,
-  resolveVoiceDesignAiAvailability,
-} from './voice-design-ai-state.js'
-import type { VoiceDesignAiAvailability } from './voice-design-ai-state.js'
-import { DetailsModule, VOICE_DESIGN_AI_COPY_KEYS } from './details-module.js'
+import { DetailsModule } from './details-module.js'
 import { PreviewModule } from './preview-module.js'
 import { SoundEffectsPanel } from './sound-effects-module.js'
 import { SwitchModule } from './switch-module.js'
@@ -40,9 +29,9 @@ import { hostRoute } from '../host-route.js'
 import type { DraftChange, DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 
 interface SettingsCardProps {
+  view: 'summary' | 'page'
   scope: SettingsScope<TtsSettings>
   t: Translate
-  connection: { rpc: ClientConnectionRpc }
   controller: SoundEffectsController
 }
 
@@ -59,7 +48,12 @@ function hasLayerField(value: unknown, field: string): boolean {
   return isRecord(value) && Object.hasOwn(value, field)
 }
 
-export function SettingsCard({ scope, t, connection, controller }: SettingsCardProps): ReactElement | null {
+export function SettingsCard(props: SettingsCardProps): ReactElement | null {
+  if (props.view === 'summary') return <>{props.t('settings.description')}</>
+  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} />
+}
+
+function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
   const initial = resolveTtsSettings(value)
@@ -80,12 +74,8 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   const [soundPack, setSoundPack] = useState(initial.soundPack)
   const [taskSounds, setTaskSounds] = useState(initial.taskSounds)
   const [clickSounds, setClickSounds] = useState(initial.clickSounds)
-  const [voiceDesignAiState, setVoiceDesignAiState] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle')
-  const [voiceDesignAiCopyIndex, setVoiceDesignAiCopyIndex] = useState(() => Math.floor(Math.random() * VOICE_DESIGN_AI_COPY_KEYS.length))
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
-  const [uninstallState, setUninstallState] = useState<'idle' | 'confirming' | 'uninstalling' | 'uninstalled' | 'failed'>('idle')
-  const [open, setOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [soundEffectsOpen, setSoundEffectsOpen] = useState(false)
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
@@ -93,7 +83,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView))
   const [toggleSoundPlayer] = useState(() => new ToggleSoundPlayer())
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>('loading')
-  const [voiceDesignAiAvailability, setVoiceDesignAiAvailability] = useState<VoiceDesignAiAvailability>('checking')
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
 
   const accepted = resolveTtsSettings(value)
@@ -159,7 +148,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   }, [snapshot.status, value])
 
   useEffect(() => {
-    if (!open) return
     let active = true
     void fetch(hostRoute(TTS_UPDATE_ROUTE), { cache: 'no-store', headers: { accept: 'application/json' } })
       .then(async (response) => {
@@ -172,25 +160,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       })
       .catch(() => { if (active) setLatestVersion(null) })
     return () => { active = false }
-  }, [open])
-
-  // DSH 0.1.5+ cannot mount a third-party `connection.rpc.handle()` channel: the
-  // route is resolved through the connection plugin's own context, which stopped
-  // injecting `webServer`. The plugin still loads, so the failure is invisible
-  // until the button answers 405 — ask the Host whether the channel mounted and
-  // hide the assistant when it did not.
-  useEffect(() => {
-    if (!open) return
-    let active = true
-    void fetch(hostRoute(TTS_VOICE_DESIGN_AI_STATUS_ROUTE), { cache: 'no-store', headers: { accept: 'application/json' } })
-      .then(async (response) => {
-        if (!response.ok) throw new Error('voice-design-ai-status-failed')
-        return await response.json() as unknown
-      })
-      .then((status) => { if (active) setVoiceDesignAiAvailability(resolveVoiceDesignAiAvailability(status)) })
-      .catch(() => { if (active) setVoiceDesignAiAvailability('unavailable') })
-    return () => { active = false }
-  }, [open])
+  }, [])
 
   useEffect(() => {
     if (dirty) return
@@ -211,7 +181,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     setSoundPack(next.soundPack)
     setTaskSounds(next.taskSounds)
     setClickSounds(next.clickSounds)
-    setVoiceDesignAiState('idle')
     setChanges({})
   }, [dirty, value])
 
@@ -229,32 +198,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     setState('idle')
   }
 
-  const generateVoiceDesign = async (): Promise<void> => {
-    if (voiceDesignAiState === 'loading' || !snapshot.writable) return
-    setVoiceDesignAiState('loading')
-    try {
-      const payload: VoiceDesignAiGeneratePayload = { input: voiceDesignPrompt }
-      const raw = await connection.rpc.call(VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT, payload)
-      const result = raw as unknown as { ok: true; value: VoiceDesignAiGenerateResult } | { ok: false; error?: { message?: unknown } }
-      if (!result.ok) throw new Error(typeof result.error?.message === 'string' ? result.error.message : 'voice-design-ai-failed')
-      const generated = result.value?.text
-      if (typeof generated !== 'string' || generated.trim().length === 0) throw new Error('voice-design-ai-empty-output')
-      setVoiceDesignPrompt(generated)
-      setVoiceDesignCustomPrompt(generated)
-      setChanges((current) => ({ ...current, voiceDesignPrompt: { kind: 'set' }, voiceDesignCustomPrompt: { kind: 'set' } }))
-      setState('idle')
-      setVoiceDesignAiState('success')
-    } catch (error) {
-      // A 405 here means the Host never mounted the channel; stop offering it.
-      if (isUnmountedChannelFailure(error instanceof Error ? error.message : error)) setVoiceDesignAiAvailability('unavailable')
-      setVoiceDesignAiState('failed')
-    }
-  }
-
-  const chooseVoiceDesignAiCopy = (): void => {
-    setVoiceDesignAiCopyIndex((current) => (current + 1 + Math.floor(Math.random() * (VOICE_DESIGN_AI_COPY_KEYS.length - 1))) % VOICE_DESIGN_AI_COPY_KEYS.length)
-  }
-
   const resetField = (field: EditableSettingField): void => {
     markChange(field, 'clear')
     if (field === 'enabled') setEnabled(base.enabled)
@@ -266,8 +209,8 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     if (field === 'localSpeechMode') setLocalSpeechMode(base.localSpeechMode)
     if (field === 'localVoiceURI') setLocalVoiceURI(base.localVoiceURI)
     if (field === 'voice') setVoice(base.voice)
-    if (field === 'voiceDesignPrompt') { setVoiceDesignPrompt(base.voiceDesignPrompt); setVoiceDesignAiState('idle') }
-    if (field === 'voiceDesignCustomPrompt') { setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt); setVoiceDesignAiState('idle') }
+    if (field === 'voiceDesignPrompt') setVoiceDesignPrompt(base.voiceDesignPrompt)
+    if (field === 'voiceDesignCustomPrompt') setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt)
     if (field === 'soundEnabled') setSoundEnabled(base.soundEnabled)
     if (field === 'soundVolume') setSoundVolume(base.soundVolume)
     if (field === 'soundPack') setSoundPack(base.soundPack)
@@ -298,7 +241,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
     setSoundPack(next.soundPack)
     setTaskSounds(next.taskSounds)
     setClickSounds(next.clickSounds)
-    setVoiceDesignAiState('idle')
     setApiKey('')
     setChanges({})
     setState('idle')
@@ -329,22 +271,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
       setState('saved')
     } catch {
       setState('failed')
-    }
-  }
-
-  const uninstall = async (): Promise<void> => {
-    setUninstallState('uninstalling')
-    try {
-      const response = await fetch(hostRoute(TTS_UNINSTALL_ROUTE), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: '{}',
-      })
-      const result = await response.json() as { ok?: unknown }
-      if (!response.ok || result.ok !== true) throw new Error('plugin-uninstall-failed')
-      setUninstallState('uninstalled')
-    } catch {
-      setUninstallState('failed')
     }
   }
 
@@ -413,22 +339,8 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
   }
 
   return (
-    <li className={open ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope' : 'xmimo-tts-card xmimo-ui-scope'}>
-      <button
-        type="button"
-        className="xmimo-tts-card-header"
-        aria-expanded={open}
-        aria-label={`${t(open ? 'settings.collapse' : 'settings.expand')}: ${t('settings.title')}`}
-        onClick={() => { setOpen((current) => !current) }}
-      >
-        <span className="xmimo-tts-card-head-text">
-          <span className="xmimo-tts-card-title">{t('settings.title')}</span>
-          <span className="xmimo-tts-card-description">{t('settings.description')}</span>
-        </span>
-        {dirty ? <span className="xmimo-tts-pending" role="status">{t('settings.unsaved')}</span> : null}
-        <IconChevronDownOutline14 className={open ? 'xmimo-tts-chevron xmimo-tts-chevron-open' : 'xmimo-tts-chevron'} />
-      </button>
-      {open ? <div className="xmimo-tts-card-body xmimo-ui-stack">
+    <div className="xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope">
+      <div className="xmimo-tts-card-body xmimo-ui-stack">
         <SwitchModule
           t={t}
           enabled={enabled}
@@ -444,7 +356,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           value={apiKey}
           message={apiKeyMessage}
           invalid={apiKeyInvalid}
-          overridden={fieldOverridden('apiKey')}
           clearable={apiKeyClearable}
           writable={snapshot.writable}
           onChange={(next) => { setApiKey(next); markChange('apiKey') }}
@@ -452,10 +363,8 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
         />
         {enabled ? <DetailsModule
           t={t}
-          connection={connection}
           open={detailsOpen}
           writable={snapshot.writable}
-          voiceDesignAiAvailable={voiceDesignAiAvailability === 'available'}
           autoPlay={autoPlay}
           voiceVolume={voiceVolume}
           voiceRate={voiceRate}
@@ -466,8 +375,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           voice={voice}
           voiceDesignPrompt={voiceDesignPrompt}
           voiceDesignCustomPrompt={voiceDesignCustomPrompt}
-          voiceDesignAiState={voiceDesignAiState}
-          voiceDesignAiCopy={t(VOICE_DESIGN_AI_COPY_KEYS[voiceDesignAiCopyIndex]!)}
           fieldOverridden={fieldOverridden}
           resetField={resetField}
           onToggle={() => { setDetailsOpen((current) => !current) }}
@@ -476,19 +383,16 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           onVoiceRateChange={(next) => { setVoiceRate(next); markChange('voiceRate') }}
           onVoiceRateInteractionEnd={(next) => { controller.play('success', { playbackRate: next }) }}
           onReadScopeChange={(next) => { setReadScope(next); markChange('readScope') }}
-          onModelChange={(nextModel) => { setModel(nextModel); setVoiceDesignAiState('idle'); markChange('model'); if (nextModel === 'mimo-v2.5-tts-voicedesign') chooseVoiceDesignAiCopy() }}
+          onModelChange={(nextModel) => { setModel(nextModel); markChange('model') }}
           onVoiceDesignPromptChange={(next) => {
             setVoiceDesignPrompt(next)
             setVoiceDesignCustomPrompt(next)
             setChanges((current) => ({ ...current, voiceDesignPrompt: { kind: 'set' }, voiceDesignCustomPrompt: { kind: 'set' } }))
             setState('idle')
-            setVoiceDesignAiState('idle')
           }}
           onVoiceChange={(next) => { setVoice(next); markChange('voice') }}
           onLocalVoiceURIChange={(next) => { setLocalVoiceURI(next); markChange('localVoiceURI') }}
           onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
-          onVoiceDesignAiCopyChange={chooseVoiceDesignAiCopy}
-          onGenerateVoiceDesign={() => { void generateVoiceDesign() }}
         /> : null}
         {enabled ? <PreviewModule
           t={t}
@@ -516,29 +420,9 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
           onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
         />
         <div className="xmimo-tts-card-actions">
-          {uninstallState === 'idle' && latestVersion !== null
+          {latestVersion !== null
             ? <a className="xmimo-tts-update" href={RELEASES_URL} target="_blank" rel="noopener noreferrer">{t('settings.updateAvailable')}</a>
             : null}
-          {uninstallState === 'confirming'
-            ? (
-              <span className="xmimo-tts-uninstall-confirmation">
-                <span>{t('settings.uninstallQuestion')}</span>
-                <span className="xmimo-tts-uninstall-choice">
-                  <button type="button" onClick={() => { void uninstall() }}>{t('settings.uninstallConfirm')}</button>
-                  <button type="button" onClick={() => { setUninstallState('idle') }}>{t('settings.uninstallCancel')}</button>
-                </span>
-              </span>
-              )
-            : (
-              <button
-                type="button"
-                className="xmimo-tts-uninstall"
-                disabled={uninstallState === 'uninstalling' || uninstallState === 'uninstalled'}
-                onClick={() => { setUninstallState('confirming') }}
-              >
-                {uninstallState === 'uninstalling' ? t('settings.uninstalling') : t('settings.uninstall')}
-              </button>
-              )}
           <a
             className="xmimo-tts-star"
             href="https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts"
@@ -548,8 +432,6 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
             {t('settings.source')}
           </a>
           {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
-          {uninstallState === 'uninstalled' ? <span role="status">{t('settings.uninstalled')}</span> : null}
-          {uninstallState === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.uninstallFailed')}</span> : null}
           {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
           {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}
           <button type="button" className="xmimo-tts-discard" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={discard}>
@@ -559,7 +441,7 @@ export function SettingsCard({ scope, t, connection, controller }: SettingsCardP
             {state === 'saving' ? t('settings.saving') : t('settings.save')}
           </button>
         </div>
-      </div> : null}
-    </li>
+      </div>
+    </div>
   )
 }

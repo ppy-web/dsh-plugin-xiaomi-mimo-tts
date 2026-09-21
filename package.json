@@ -1,7 +1,7 @@
 {
   "name": "dsh-xiaomi-tts",
-  "version": "3.0.3",
-  "description": "Xiaomi MiMo text-to-speech controls for DeepSeek Harness Web assistant messages",
+  "version": "3.0.4",
+  "description": "为 DeepSeek Harness Web 助手消息提供 Xiaomi MiMo 语音朗读控制",
   "license": "MIT",
   "type": "module",
   "keywords": [
@@ -53,7 +53,7 @@
       "inject": [
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-ui-settings-plugins",
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-chat",
         "@deepseek-ai/dsh-client-ui-renderer",
@@ -82,21 +82,18 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-api-session-controller": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-locale": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-conversation": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-chat": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-session": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-settings": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-settings-plugins": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-connection": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-agent-default-model": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-llm": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-settings": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-host-webserver": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-api-session-controller": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-locale": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-chat": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-session": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-plugin-manager": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-settings": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-host-webserver": "0.1.6-alpha.2",
     "@deepseek-ai/schemastery": "^3.18.2",
     "react": "^18.2.0"
   },
@@ -131,16 +128,7 @@
     "@deepseek-ai/dsh-client-ui-settings": {
       "optional": true
     },
-    "@deepseek-ai/dsh-client-ui-settings-plugins": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-client-connection": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-agent-default-model": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-llm": {
+    "@deepseek-ai/dsh-client-ui-plugin-manager": {
       "optional": true
     },
     "@deepseek-ai/dsh-settings": {
@@ -158,21 +146,18 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-api-session-controller": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-locale": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-conversation": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-chat": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-session": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-settings": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-settings-plugins": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-connection": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-agent-default-model": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-llm": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-host-webserver": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-settings": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-api-session-controller": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-locale": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-chat": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-session": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-client-ui-plugin-manager": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-host-webserver": "0.1.6-alpha.2",
+    "@deepseek-ai/dsh-settings": "0.1.6-alpha.2",
     "@deepseek-ai/schemastery": "^3.18.2",
     "@shikijs/langs": "^4.3.1",
     "anser": "^2.3.5",
@@ -195,6 +180,7 @@
     "micromark-util-types": "^2.0.2",
     "react": "^18.2.0",
     "react-dom": "18.2.0",
+    "simple-icons": "16.31.0",
     "shiki": "^4.3.1",
     "tsdown": "^0.15.0",
     "typescript": "^5.8.0",

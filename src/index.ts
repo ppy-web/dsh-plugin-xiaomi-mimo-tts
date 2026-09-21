@@ -1,27 +1,18 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection'
-import { spawn } from 'node:child_process'
-import { existsSync, lstatSync, readFileSync, rmSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type {} from '@deepseek-ai/dsh-agent-default-model'
-import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { debugConsole } from './debug-console.js'
-import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_READ_SCOPES, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UNINSTALL_ROUTE, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_AI_STATUS_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES, VOICE_DESIGN_AI_RPC_CHANNEL, VOICE_DESIGN_AI_RPC_ENDPOINT } from './shared.js'
-import type { VoiceDesignAiGenerateResult, VoiceDesignAiStatus } from './shared.js'
+import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_READ_SCOPES, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
   ? `dsh-xiaomi-tts/${packageJson.version}`
   : 'dsh-xiaomi-tts'
-const PACKAGE_NAME = 'dsh-xiaomi-tts'
-const WEB_PROFILE_NAME = 'web'
 const NPM_LATEST_URL = 'https://registry.npmjs.org/dsh-xiaomi-tts/latest'
 const STREAM_HOST_LOG = '[MiMoTTS Host]'
 let nextHostStreamRequestId = 1
@@ -30,7 +21,7 @@ let nextHostStreamRequestId = 1
 export const name = 'xiaomi-mimo-tts'
 
 /** Host services required by this plugin. */
-export const inject = ['webServer', 'connection', 'llm', 'agentDefaultModel', 'settings']
+export const inject = ['webServer', 'settings']
 
 /** Settings namespace registered with the DSH Host. */
 export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = TTS_SETTINGS_NAMESPACE
@@ -223,47 +214,6 @@ function decodeCompleteAudio(value: string, format: CompleteAudioFormat, limit: 
   return audio
 }
 
-interface CommandResult {
-  ok: boolean
-  output: string
-  error?: string
-}
-
-interface ProfileManifest {
-  dependencies?: Record<string, string>
-  dsh?: { profile?: { bundles?: string[] } }
-}
-
-function webProfileDirectory(): string {
-  const dshHome = process.env.DSH_HOME?.trim() || join(homedir(), '.dsh')
-  return join(dshHome, 'profiles', WEB_PROFILE_NAME)
-}
-
-function readWebProfileManifest(): ProfileManifest | undefined {
-  const path = join(webProfileDirectory(), 'package.json')
-  if (!existsSync(path)) return undefined
-  try {
-    return JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/u, '')) as ProfileManifest
-  } catch {
-    return undefined
-  }
-}
-
-function resolveDshCommand(): { command: string; args: string[] } | undefined {
-  const entry = process.argv[1]
-  if (typeof entry === 'string' && /[\\/]node_modules[\\/]@deepseek-ai[\\/]dsh[\\/]lib[\\/]bin\.js$/iu.test(entry)) {
-    return { command: process.execPath, args: [entry] }
-  }
-
-  const executable = process.execPath.split(/[\\/]/u).at(-1) ?? ''
-  if (/^dsh(?:\.exe)?$/iu.test(executable)) return { command: process.execPath, args: [] }
-
-  // A global pnpm/npm wrapper can hide the real JS entry from argv on POSIX.
-  // In that case the same PATH that launched DSH is the most reliable fallback.
-  if (process.platform !== 'win32') return { command: 'dsh', args: [] }
-  return undefined
-}
-
 async function latestTtsVersion(): Promise<string | null> {
   try {
     const response = await fetch(NPM_LATEST_URL, {
@@ -278,223 +228,9 @@ async function latestTtsVersion(): Promise<string | null> {
   }
 }
 
-function scheduleProfileLinkCleanup(profileRoot: string): Promise<void> {
-  const cleanupScript = String.raw`
-const { lstatSync, rmSync } = require('node:fs')
-const { join } = require('node:path')
-const [parentPidSource, profileRoot, packageName] = process.argv.slice(1)
-const parentPid = Number(parentPidSource)
-const linkPath = join(profileRoot, 'node_modules', packageName)
-let cleanupAttempts = 0
-
-function cleanupLink() {
-  cleanupAttempts += 1
-  try {
-    const item = lstatSync(linkPath)
-    if (!item.isSymbolicLink()) process.exit(2)
-    rmSync(linkPath, { force: true })
-    process.exit(0)
-  } catch (error) {
-    if (error && error.code === 'ENOENT') process.exit(0)
-    if (cleanupAttempts >= 40) process.exit(1)
-    setTimeout(cleanupLink, 500)
-  }
-}
-
-function waitForParentExit() {
-  try {
-    process.kill(parentPid, 0)
-    setTimeout(waitForParentExit, 1000)
-  } catch {
-    cleanupLink()
-  }
-}
-
-waitForParentExit()
-`
-
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['-e', cleanupScript, String(process.pid), profileRoot, PACKAGE_NAME], {
-      cwd: profileRoot,
-      env: { ...process.env, CI: 'true' },
-      windowsHide: true,
-      detached: true,
-      stdio: 'ignore',
-    })
-    child.once('error', reject)
-    child.once('spawn', () => {
-      child.unref()
-      resolve()
-    })
-  })
-}
-
-function removeStaleProfileLink(profileRoot: string): void {
-  const linkPath = join(profileRoot, 'node_modules', PACKAGE_NAME)
-  try {
-    const item = lstatSync(linkPath)
-    if (!item.isSymbolicLink()) throw new Error(`Refusing to remove non-link plugin path: ${linkPath}`)
-    rmSync(linkPath, { force: true })
-  } catch (error) {
-    if (error !== null && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') return
-    throw error
-  }
-}
-
-async function uninstallFromWebProfile(): Promise<CommandResult> {
-  const manifest = readWebProfileManifest()
-  if (manifest === undefined) {
-    return { ok: false, output: '', error: 'DSH Web profile manifest was not found or could not be read.' }
-  }
-  const installed = Object.hasOwn(manifest.dependencies ?? {}, PACKAGE_NAME)
-    || manifest.dsh?.profile?.bundles?.includes(PACKAGE_NAME) === true
-  if (!installed) {
-    try {
-      if (process.platform === 'win32') {
-        await scheduleProfileLinkCleanup(webProfileDirectory())
-        return { ok: true, output: 'The plugin was already removed from the Web profile; link cleanup is scheduled after this process exits.' }
-      }
-      removeStaleProfileLink(webProfileDirectory())
-      return { ok: true, output: 'The plugin was already removed from the Web profile and its stale link has been cleaned up.' }
-    } catch (error) {
-      return { ok: false, output: '', error: error instanceof Error ? error.message : String(error) }
-    }
-  }
-
-  const dsh = resolveDshCommand()
-  if (dsh === undefined) {
-    return { ok: false, output: '', error: 'Could not resolve the running DSH executable.' }
-  }
-
-  const deferPackageCleanup = process.platform === 'win32'
-  const result = await new Promise<CommandResult>((resolve) => {
-    const args = [
-      ...dsh.args,
-      'plugin',
-      '--profile',
-      WEB_PROFILE_NAME,
-      'remove',
-      PACKAGE_NAME,
-      ...(deferPackageCleanup ? ['--lockfile-only'] : []),
-    ]
-    const child = spawn(dsh.command, args, {
-      cwd: webProfileDirectory(),
-      env: { ...process.env, CI: 'true' },
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    let output = ''
-    child.stdout?.setEncoding('utf8')
-    child.stderr?.setEncoding('utf8')
-    child.stdout?.on('data', (chunk: string) => { output += chunk })
-    child.stderr?.on('data', (chunk: string) => { output += chunk })
-    child.once('error', (error) => {
-      resolve({ ok: false, output: output.trim(), error: error.message })
-    })
-    child.once('close', (code) => {
-      resolve({
-        ok: code === 0,
-        output: output.trim(),
-        ...(code === 0 ? {} : { error: `DSH plugin removal exited with code ${String(code)}.` }),
-      })
-    })
-  })
-
-  if (!result.ok) return result
-  const updatedManifest = readWebProfileManifest()
-  if (updatedManifest === undefined
-    || Object.hasOwn(updatedManifest.dependencies ?? {}, PACKAGE_NAME)
-    || updatedManifest.dsh?.profile?.bundles?.includes(PACKAGE_NAME) === true) {
-    return { ok: false, output: result.output, error: 'DSH did not remove the plugin from the Web profile.' }
-  }
-
-  if (!deferPackageCleanup) {
-    try {
-      removeStaleProfileLink(webProfileDirectory())
-      return { ok: true, output: result.output }
-    } catch (error) {
-      return { ok: false, output: result.output, error: error instanceof Error ? error.message : String(error) }
-    }
-  }
-
-  try {
-    await scheduleProfileLinkCleanup(webProfileDirectory())
-    return { ok: true, output: result.output }
-  } catch (error) {
-    return { ok: false, output: result.output, error: error instanceof Error ? error.message : String(error) }
-  }
-}
-
-const VOICE_DESIGN_AI_SYSTEM_PROMPT = [
-  '你是专业的 MiMo TTS 音色设计助手。',
-  '根据用户输入生成一段可直接用于 Xiaomi MiMo Voice Design 的中文音色设计。',
-  '内容应描述声音本身：年龄段与性别、语言和口音、音色与质感、音高、语速与节奏、咬字清晰度、基础情绪。',
-  '不要描述场景、动作、台词或背景音乐。',
-  '只返回一段纯文本，不要 Markdown、JSON、标题、引号、代码围栏或解释。',
-].join('\n')
-const MAX_VOICE_DESIGN_AI_INPUT_LENGTH = 2_000
-const MAX_VOICE_DESIGN_AI_OUTPUT_LENGTH = 1_000
-
-function voiceDesignAiFailure(code: string, message: string): ConnectionRpcResult<never> {
-  return { ok: false, error: { code, message, details: {} } }
-}
-
-function voiceDesignAiInput(payload: unknown): string {
-  if (payload === null || typeof payload !== 'object' || !('input' in payload)) {
-    throw new Error('invalid-payload')
-  }
-  const input = (payload as { input?: unknown }).input
-  if (typeof input !== 'string') throw new Error('invalid-input')
-  const normalized = input.trim()
-  if (normalized.length > MAX_VOICE_DESIGN_AI_INPUT_LENGTH) throw new Error('input-too-long')
-  return normalized
-}
-
-function normalizeVoiceDesignAiOutput(chunks: string): string {
-  const text = chunks.replace(/\r\n?/gu, '\n').trim()
-  if (text.length === 0) throw new Error('empty-output')
-  if (text.length > MAX_VOICE_DESIGN_AI_OUTPUT_LENGTH) throw new Error('output-too-long')
-  if (text.includes('```') || (/^\s*[\[{]/u.test(text) && /[\]}]\s*$/u.test(text))) {
-    throw new Error('non-plain-text-output')
-  }
-  return text
-}
-
-async function generateVoiceDesignAiText(ctx: Context, input: string, signal: AbortSignal): Promise<VoiceDesignAiGenerateResult> {
-  const selection = ctx.agentDefaultModel.currentSelection()
-  if (selection.provider.trim().length === 0 || selection.model.trim().length === 0) {
-    throw new Error('no-default-model')
-  }
-  const userInput = input.length > 0 ? input : '请设计一个自然、清晰、耐听，适合日常对话的中文女声音色。'
-  let text = ''
-  for await (const chunk of ctx.llm.stream({
-    provider: selection.provider,
-    model: selection.model,
-    system: VOICE_DESIGN_AI_SYSTEM_PROMPT,
-    messages: [createUserMessage({ content: [{ type: 'text', text: userInput }], source: { kind: 'user' } })],
-    temperature: 0.4,
-    maxTokens: 300,
-    signal,
-  })) {
-    if (chunk.type === 'text-delta') text += chunk.text
-    if (chunk.type === 'finish' && (chunk.reason.kind === 'error' || chunk.reason.kind === 'aborted')) {
-      throw new Error(chunk.reason.failure.message)
-    }
-  }
-  return { text: normalizeVoiceDesignAiOutput(text) }
-}
-
-function registerVoiceDesignAiRpc(
-  ctx: Context,
-  handler: Parameters<typeof ctx.connection.rpc.handle>[1],
-): ReturnType<typeof ctx.connection.rpc.handle> {
-  return ctx.connection.rpc.handle(VOICE_DESIGN_AI_RPC_CHANNEL, handler)
-}
-
 /** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
   let current = () => config
-  let uninstalling: Promise<CommandResult> | undefined
 
   const voicePresetAssets = new Map(TTS_VOICE_DESIGN_PRESETS.map((preset) => {
     const path = `${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`
@@ -536,59 +272,6 @@ export function apply(ctx: Context, config: Config): void {
         throw new Error('format must be pcm, mp3, or wav')
       }
     },
-  })
-
-  /**
-   * Whether the Voice Design AI RPC channel actually mounted.
-   *
-   * DSH 0.1.5+ resolves the channel route through the connection plugin's own
-   * context, which stopped declaring `webServer`; the resulting throw is swallowed
-   * by the inject fiber, so the plugin loads normally and the channel silently
-   * answers 405. Record the real outcome here and let the Web half hide the
-   * assistant instead of offering a button that cannot work.
-   */
-  let voiceDesignAiRpcAvailable = false
-
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: TTS_VOICE_DESIGN_AI_STATUS_ROUTE,
-    handler(req, res) {
-      if (req.method !== 'GET' && req.method !== 'HEAD') {
-        res.statusCode = 405
-        res.setHeader('allow', 'GET, HEAD')
-        res.end()
-        return
-      }
-      const status: VoiceDesignAiStatus = { available: voiceDesignAiRpcAvailable }
-      json(res, 200, status)
-    },
-  }), 'xiaomi-mimo-tts: voice design AI status route')
-
-  ctx.inject(['connection', 'webServer'], (rpcCtx) => {
-    try {
-      registerVoiceDesignAiRpc(rpcCtx, async (endpoint, payload, signal) => {
-        if (endpoint !== VOICE_DESIGN_AI_RPC_ENDPOINT) return voiceDesignAiFailure('unknown-endpoint', `unknown endpoint "${endpoint}"`)
-        try {
-          return { ok: true, value: await generateVoiceDesignAiText(ctx, voiceDesignAiInput(payload), signal) }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
-          const code = signal.aborted
-            ? 'aborted'
-            : message === 'invalid-payload' || message === 'invalid-input' || message === 'input-too-long'
-              ? message
-              : message === 'no-default-model'
-                ? 'no-default-model'
-                : message === 'empty-output' || message === 'output-too-long' || message === 'non-plain-text-output'
-                  ? message
-                  : 'llm-failed'
-          return voiceDesignAiFailure(code, message)
-        }
-      })
-      voiceDesignAiRpcAvailable = true
-    } catch (error) {
-      voiceDesignAiRpcAvailable = false
-      debugConsole?.warn('[MiMoTTS Host] Voice Design AI RPC 通道未注册，已隐藏该功能', error)
-    }
   })
 
   ctx.effect(() => ctx.webServer.register({
@@ -641,45 +324,6 @@ export function apply(ctx: Context, config: Config): void {
       })
     },
   }), 'xiaomi-mimo-tts: API key status route')
-
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: TTS_UNINSTALL_ROUTE,
-    async handler(req, res) {
-      if (req.method !== 'POST') {
-        res.setHeader('allow', 'POST')
-        json(res, 405, { ok: false, error: 'method-not-allowed' })
-        return
-      }
-
-      const fetchSite = req.headers['sec-fetch-site']
-      if (fetchSite !== undefined && fetchSite !== 'same-origin') {
-        json(res, 403, { ok: false, error: 'same-origin-required' })
-        return
-      }
-      const contentType = req.headers['content-type'] ?? ''
-      if (!contentType.toLowerCase().startsWith('application/json')) {
-        json(res, 415, { ok: false, error: 'application-json-required' })
-        return
-      }
-
-      try {
-        await readJsonBody(req, 1024)
-      } catch {
-        json(res, 400, { ok: false, error: 'invalid-json' })
-        return
-      }
-
-      uninstalling ??= uninstallFromWebProfile()
-      const result = await uninstalling
-      if (!result.ok) uninstalling = undefined
-      json(res, result.ok ? 200 : 500, {
-        ok: result.ok,
-        requiresRestart: result.ok,
-        ...(result.error === undefined ? {} : { error: result.error }),
-      })
-    },
-  }), 'xiaomi-mimo-tts: self-uninstall route')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',

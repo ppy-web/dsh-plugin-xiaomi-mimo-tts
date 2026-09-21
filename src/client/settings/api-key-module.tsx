@@ -4,6 +4,7 @@ import { TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE } from '../../
 import type { Translate } from '../localization.js'
 import { SettingFieldHeading } from './field-heading.js'
 import { hostRoute } from '../host-route.js'
+import { ModuleShell } from './module-shell.js'
 
 const API_KEY_IDLE_COPY_KEYS = [
   'settings.apiKeyIdleCopy1',
@@ -33,35 +34,33 @@ export interface ApiKeyModuleProps {
   value: string
   message: string
   invalid: boolean
-  overridden: boolean
   clearable: boolean
   writable: boolean
   onChange: (value: string) => void
   onClear: () => void
 }
 
-export function ApiKeyModule({ t, value, message, invalid, overridden, clearable, writable, onChange, onClear }: ApiKeyModuleProps): ReactElement {
+export function ApiKeyModule({ t, value, message, invalid, clearable, writable, onChange, onClear }: ApiKeyModuleProps): ReactElement {
   const [bubbleKey, setBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const inputId = useId()
   const messageId = useId()
 
-  return <section className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-ui-module xmimo-ui-module-padded">
-    <SettingFieldHeading
+  return <ModuleShell className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-ui-module-padded" title={<SettingFieldHeading
       label={<span
         className="xmimo-tts-api-key-logo"
         role="img"
         aria-label={t('settings.apiKey')}
         style={{ '--xmimo-tts-api-key-logo-image': `url(${hostRoute(TTS_MIMO_LOGO_ASSET_ROUTE)})` } as CSSProperties}
       />}
-      suffix={<a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>}
-      overriddenLabel={t('settings.apiKeyConfigured')}
-      resetLabel={t('settings.apiKeyClear')}
-      overridden={overridden}
-      resettable={clearable}
+      suffix={<>
+        <a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>
+        {clearable ? <button type="button" className="xmimo-tts-reset" disabled={!writable} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClear() }}>{t('settings.apiKeyClear')}</button> : null}
+      </>}
       disabled={!writable}
-      onReset={onClear}
-    />
-    <div className="xmimo-tts-api-key-input">
+      resettable={false}
+    />} action={<span className="xmimo-tts-api-key-decoration" aria-hidden="true" />}>
+    <div className="xmimo-tts-api-key-content">
+      <div className="xmimo-tts-api-key-input">
       <span className="xmimo-tts-character-bubble xmimo-tts-api-key-bubble" aria-hidden="true">{t(bubbleKey)}</span>
       <span
         className="xmimo-tts-api-key-whale"
@@ -89,9 +88,10 @@ export function ApiKeyModule({ t, value, message, invalid, overridden, clearable
         onBlur={() => { setBubbleKey((current) => randomCopyKey(API_KEY_IDLE_COPY_KEYS, current)) }}
         onChange={(event) => { onChange(event.target.value) }}
       />
+      </div>
+      <small id={messageId} className={invalid ? 'xmimo-tts-api-key-warning' : undefined} role={invalid ? 'alert' : 'status'}>
+        {message}
+      </small>
     </div>
-    <small id={messageId} className={invalid ? 'xmimo-tts-api-key-warning' : undefined} role={invalid ? 'alert' : 'status'}>
-      {message}
-    </small>
-  </section>
+  </ModuleShell>
 }

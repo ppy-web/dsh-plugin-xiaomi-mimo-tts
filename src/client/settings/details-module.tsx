@@ -1,6 +1,5 @@
 import type { ReactElement } from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import {
   TTS_LOCAL_SPEECH_MODES,
   TTS_MIXER_WHALE_ASSET_ROUTE,
@@ -21,7 +20,7 @@ import {
 import { CollapsibleModule } from './collapsible-module.js'
 import { SettingFieldHeading } from './field-heading.js'
 import { hostRoute } from '../host-route.js'
-import type { EditableSettingField, SettingField, VoiceDesignAiState } from './types.js'
+import type { EditableSettingField, SettingField } from './types.js'
 
 interface ModelPickerProps {
   value: TtsModel
@@ -36,13 +35,6 @@ const MODEL_PICKER_OPTIONS = [
   { value: TTS_MODELS[0], labelKey: 'preset' as const },
   { value: TTS_MODELS[1], labelKey: 'voiceDesign' as const },
 ]
-
-export const VOICE_DESIGN_AI_COPY_KEYS = [
-  'settings.voiceDesignAiCopy1',
-  'settings.voiceDesignAiCopy2',
-  'settings.voiceDesignAiCopy3',
-  'settings.voiceDesignAiCopy4',
-] as const
 
 function readScopeLabel(scope: TtsReadScope): Parameters<Translate>[0] {
   return scope === 'smart'
@@ -77,11 +69,8 @@ function ModelPicker({ value, disabled, label, presetLabel, voiceDesignLabel, on
 
 export interface DetailsModuleProps {
   t: Translate
-  connection: { rpc: ClientConnectionRpc }
   open: boolean
   writable: boolean
-  /** False when the Host reports its Voice Design AI RPC channel never mounted. */
-  voiceDesignAiAvailable: boolean
   autoPlay: boolean
   voiceVolume: number
   voiceRate: number
@@ -92,8 +81,6 @@ export interface DetailsModuleProps {
   voice: string
   voiceDesignPrompt: string
   voiceDesignCustomPrompt: string
-  voiceDesignAiState: VoiceDesignAiState
-  voiceDesignAiCopy: string
   fieldOverridden: (field: SettingField) => boolean
   resetField: (field: EditableSettingField) => void
   onToggle: () => void
@@ -107,11 +94,9 @@ export interface DetailsModuleProps {
   onVoiceChange: (value: string) => void
   onLocalVoiceURIChange: (value: string) => void
   onLocalSpeechModeChange: (value: TtsLocalSpeechMode) => void
-  onVoiceDesignAiCopyChange: () => void
-  onGenerateVoiceDesign: () => void
 }
 
-export function DetailsModule({ t, connection, open, writable, voiceDesignAiAvailable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, voiceDesignAiState, voiceDesignAiCopy, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalSpeechModeChange, onVoiceDesignAiCopyChange, onGenerateVoiceDesign }: DetailsModuleProps): ReactElement {
+export function DetailsModule({ t, open, writable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalSpeechModeChange }: DetailsModuleProps): ReactElement {
   const [localVoicesAvailable, setLocalVoicesAvailable] = useState<boolean | null>(null)
   const onLocalVoicesAvailabilityChange = useCallback((available: boolean): void => { setLocalVoicesAvailable(available) }, [])
   useEffect(() => {
@@ -126,37 +111,19 @@ export function DetailsModule({ t, connection, open, writable, voiceDesignAiAvai
   const summaryStrategy = t(localSpeechMode === 'auto' ? 'settings.localSpeechAutoSummary' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled')
   const summaryVoiceVolume = `${Math.round(voiceVolume * 100)}%`
   const summaryVoiceRate = `${voiceRate.toFixed(1)}×`
-
-  // The whale is decorative and always shown; only the AI assistant part of the
-  // control depends on the Host actually mounting the RPC channel. When the
-  // channel never mounted the button falls back to the same static, non-
-  // interactive whale the preset model already uses — it must not disappear.
-  const voiceDesignAiInteractive = voiceDesignAiAvailable && model === 'mimo-v2.5-tts-voicedesign'
-
-  // The packaged sheet is a two-frame sprite: the left frame is the resting
-  // mascot and the right frame (closed eyes, music notes) is the Voice Design
-  // one. The selected model decides which frame the control rests on, so the
-  // sprite follows the model toggle independently of AI availability.
   const mixerFrameClass = model === 'mimo-v2.5-tts-voicedesign'
-    ? 'xmimo-tts-mixer-whale-button-voicedesign'
-    : 'xmimo-tts-mixer-whale-button-preset'
-
-  const mixerAction = <button
-    type="button"
-    className={`xmimo-tts-mixer-whale-button ${mixerFrameClass}${voiceDesignAiInteractive ? '' : ' xmimo-tts-mixer-whale-button-static'}`}
-    disabled={!voiceDesignAiInteractive || !writable || voiceDesignAiState === 'loading'}
-    aria-label={t('settings.voiceDesignGenerate')}
-    aria-busy={voiceDesignAiState === 'loading'}
-    onPointerDown={(event) => { event.stopPropagation() }}
-    onClick={(event) => { event.stopPropagation(); if (!voiceDesignAiInteractive) return; onVoiceDesignAiCopyChange(); onGenerateVoiceDesign() }}
-  >
-    {voiceDesignAiInteractive ? <span className="xmimo-tts-ai-copy">{voiceDesignAiState === 'loading' ? t('settings.voiceDesignGenerating') : voiceDesignAiState === 'success' ? t('settings.voiceDesignAiSuccess') : voiceDesignAiState === 'failed' ? t('settings.voiceDesignGenerateFailed') : voiceDesignAiCopy}</span> : null}
+    ? 'xmimo-tts-mixer-whale-voicedesign'
+    : 'xmimo-tts-mixer-whale-preset'
+  const mixerCopy = model === 'mimo-v2.5-tts-voicedesign'
+    ? 'settings.mixerVoiceDesignCopy'
+    : 'settings.mixerPresetCopy'
+  const mixerDecoration = <span className="xmimo-tts-mixer-decoration" aria-hidden="true">
+    <span className="xmimo-tts-mixer-bubble">{t(mixerCopy)}</span>
     <span
-      className={voiceDesignAiState === 'loading' ? 'xmimo-tts-mixer-whale xmimo-tts-mixer-whale-thinking' : 'xmimo-tts-mixer-whale'}
+      className={`xmimo-tts-mixer-whale ${mixerFrameClass}`}
       style={{ backgroundImage: `url(${hostRoute(TTS_MIXER_WHALE_ASSET_ROUTE)})` }}
-      aria-hidden="true"
     />
-  </button>
+  </span>
 
   return <CollapsibleModule
     className="xmimo-tts-settings-module xmimo-tts-details xmimo-ui-module"
@@ -170,7 +137,7 @@ export function DetailsModule({ t, connection, open, writable, voiceDesignAiAvai
     </span>}
     open={open}
     onToggle={onToggle}
-    action={mixerAction}
+    action={mixerDecoration}
   >
     <div className="xmimo-tts-grid xmimo-ui-grid xmimo-tts-details-body xmimo-ui-module-body">
       <div className="xmimo-tts-volume">
@@ -186,7 +153,7 @@ export function DetailsModule({ t, connection, open, writable, voiceDesignAiAvai
         <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('model')} resettable disabled={!writable} onReset={() => { resetField('model') }} />
         <ModelPicker
           value={model}
-          disabled={!writable || voiceDesignAiState === 'loading'}
+          disabled={!writable}
           label={t('settings.model')}
           presetLabel={t('settings.presetModelShort')}
           voiceDesignLabel={t('settings.voiceDesignModelShort')}
@@ -219,7 +186,6 @@ export function DetailsModule({ t, connection, open, writable, voiceDesignAiAvai
           placeholder={t('settings.voiceDesignPromptHint')}
           onChange={(event) => { onVoiceDesignPromptChange(event.target.value) }}
         />
-        {voiceDesignAiState === 'failed' ? <small className="xmimo-tts-ai-generate-error" role="status">{t('settings.voiceDesignGenerateFailed')}</small> : null}
         <small>{t('settings.voiceDesignPromptHint')}</small>
       </div> : null}
       {model === 'mimo-v2.5-tts' ? <>

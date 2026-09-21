@@ -37,7 +37,7 @@
 
 ## 📋 环境要求
 
-- `@deepseek-ai/dsh` `0.1.5-rc.1`（当前仅验证此版本）
+- `@deepseek-ai/dsh` `0.1.6-alpha.2`（当前兼容目标版本）
 - Node.js 22+
 - 使用 MiMo 语音时需要 Xiaomi MiMo API Key
 - [官方 TTS API 文档](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -70,7 +70,7 @@ Release 压缩包已包含构建产物，无需执行 `pnpm approve-builds`。
 
 安装完成后，重启正在运行的 DSH Web `web` profile，然后打开：
 
-**设置 → 插件 → 插件配置 → 语音朗读 (Xiaomi MiMo)**
+**侧边栏 → 插件 → dsh-xiaomi-tts → 语音朗读 (Xiaomi MiMo)**
 
 ## 🐋 首次使用
 
@@ -94,7 +94,7 @@ Release 压缩包已包含构建产物，无需执行 `pnpm approve-builds`。
 ### 更换或清除 API Key
 
 - 输入新 Key 并保存，会替换当前个人设置层的密钥。
-- 点击 **清除个人密钥** 并保存，会移除当前用户层覆盖。
+- 点击 **清除** 并保存，会移除当前用户层覆盖。
 - 如果 DSH 基础配置仍提供密钥，清除个人覆盖后会恢复继承该密钥；因此该操作不等同于撤销 Xiaomi 平台上的密钥。
 - 如需彻底失效，请同时前往 Xiaomi MiMo 控制台撤销对应 Key。
 
@@ -117,7 +117,7 @@ Release 压缩包已包含构建产物，无需执行 `pnpm approve-builds`。
 青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。
 ```
 
-“AI 生成”功能使用 DSH 当前配置的默认 LLM 来改写音色描述；生成结果仍需保存。
+音色描述支持预设模板，也可以直接手动编辑；修改后需要保存设置。
 
 ### 浏览器本地语音
 
@@ -158,7 +158,6 @@ tts?.play('欢迎回来')
 
 - API Key 由 DSH Host 保存，浏览器只读取“是否已配置/格式是否识别”的状态，不读取密钥正文。
 - 生成 MiMo 语音时，待朗读正文和相关音色指令会发送至 Xiaomi MiMo 服务。
-- 使用“AI 生成音色描述”时，输入内容会发送给 DSH 当前默认 LLM 的服务提供方。
 - 浏览器本地语音由 Web Speech API 提供；标记为在线的音色可能把文本交给浏览器、操作系统或其网络语音服务。
 - 展开设置卡片时，DSH Host 会访问 npm Registry 检查是否存在新版本。
 - 音频在浏览器内存中通过 Web Audio 或临时 Blob URL 播放，插件不会主动持久化音频文件。
@@ -177,7 +176,6 @@ flowchart LR
     CLIENT -->|"完整音频 / PCM 流"| HOST["Host 插件<br/>设置与 API 代理"]
     HOST --> MIMO["Xiaomi MiMo API"]
     CLIENT -->|"Web Speech API"| SPEECH["浏览器 / 系统语音服务"]
-    CLIENT -->|"音色描述生成"| LLM["DSH 默认 LLM"]
     SHARED["共享层<br/>配置、文本处理、SSE"] -.-> CLIENT
     SHARED -.-> HOST
 ```
@@ -189,7 +187,7 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` 会启动本地 UI Lab，直接渲染 `src/client/settings/card.tsx`。设置保存、远程语音、版本检查和卸载均使用本地 mock，不会调用真实 MiMo 服务或卸载插件。
+`pnpm dev` 会启动本地 UI Lab，直接渲染 `src/client/settings/card.tsx`。设置保存、远程语音和版本检查使用本地 mock，不会调用真实 MiMo 服务。
 
 常用检查：
 
@@ -207,7 +205,7 @@ pnpm pack:check
 Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避免运行中的 Node 进程占用 Junction：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.3
+.\start\dsh-plugin-reinstall.bat 3.0.4
 ```
 
 ## 🤝 推荐插件

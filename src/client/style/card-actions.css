@@ -1,5 +1,5 @@
 /*
- * Settings card action bar: install/update, star, uninstall confirmation.
+ * Settings card action bar: update, star, discard, and save.
  */
 
 .xmimo-tts-card-actions {
@@ -60,54 +60,6 @@
 
 .xmimo-tts-card-actions .xmimo-tts-star:hover {
   text-decoration: underline
-}
-
-.xmimo-tts-card-actions .xmimo-tts-uninstall {
-  border-color: #F56C6C;
-  color: #F56C6C;
-  background: transparent
-}
-
-.xmimo-tts-card-actions .xmimo-tts-uninstall:hover:not(:disabled) {
-  background: color-mix(in srgb, #F56C6C 10%, transparent)
-}
-
-.xmimo-tts-card-actions .xmimo-tts-uninstall:disabled {
-  border-color: #F56C6C;
-  color: #F56C6C;
-  background: transparent;
-  opacity: .55
-}
-
-.xmimo-tts-uninstall-confirmation {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #F56C6C
-}
-
-.xmimo-tts-uninstall-choice {
-  display: inline-flex;
-  overflow: hidden;
-  border: 1px solid #F56C6C;
-  border-radius: 8px
-}
-
-.xmimo-tts-card-actions .xmimo-tts-uninstall-choice button {
-  border: 0;
-  border-radius: 0;
-  padding: 5px 12px;
-  color: #F56C6C;
-  background: transparent
-}
-
-.xmimo-tts-card-actions .xmimo-tts-uninstall-choice button+button {
-  border-left: 1px solid #F56C6C
-}
-
-.xmimo-tts-card-actions .xmimo-tts-uninstall-choice button:hover {
-  filter: none;
-  background: color-mix(in srgb, #F56C6C 10%, transparent)
 }
 
 .xmimo-tts-card-actions .xmimo-tts-discard {

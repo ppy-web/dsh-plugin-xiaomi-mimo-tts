@@ -4,7 +4,6 @@ import {
   TTS_API_KEY_STATUS_ROUTE,
   TTS_ROUTE,
   TTS_STREAM_ROUTE,
-  TTS_UNINSTALL_ROUTE,
   TTS_UPDATE_ROUTE,
 } from '../src/shared.js'
 import type { TtsSettings } from '../src/shared.js'
@@ -104,7 +103,6 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
 
     if (pathname === TTS_API_KEY_STATUS_ROUTE) return jsonResponse(scope.apiKeyStatus())
     if (pathname === TTS_UPDATE_ROUTE) return jsonResponse({ latestVersion: null, updateAvailable: false })
-    if (pathname === TTS_UNINSTALL_ROUTE) return jsonResponse({ ok: true, preview: true })
     if (pathname === TTS_ROUTE || pathname === TTS_STREAM_ROUTE) {
       return jsonResponse({ error: 'The preview shell does not call the MiMo API.' }, 503)
     }

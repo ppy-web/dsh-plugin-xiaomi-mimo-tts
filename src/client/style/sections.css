@@ -20,11 +20,11 @@
 }
 
 .xmimo-tts-switch-module .xmimo-tts-character-portrait {
-  width: 118px;
-  height: 108px
+  width: 88px;
+  height: 80px
 }
 
-.xmimo-tts-api-key>.xmimo-tts-field-heading {
+.xmimo-tts-api-key .xmimo-tts-field-heading {
   padding-right: 70px;
   align-items: flex-start
 }
