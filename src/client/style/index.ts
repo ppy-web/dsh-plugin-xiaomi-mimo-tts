@@ -32,6 +32,7 @@ import volume from './volume.css?raw'
 import responsive from './responsive.css?raw'
 import motion from './motion.css?raw'
 import global from './global.css?raw'
+import minimal from './minimal.css?raw'
 
 export const CLIENT_STYLES = [
   action,
@@ -51,4 +52,5 @@ export const CLIENT_STYLES = [
   responsive,
   motion,
   global,
+  minimal,
 ].join('\n')

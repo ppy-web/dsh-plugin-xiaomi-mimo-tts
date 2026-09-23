@@ -1,11 +1,12 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 
 export interface LocalVoicePickerProps {
   value: string
   disabled?: boolean
   label: string
+  minimal?: boolean
   unavailableLabel: string
   loadingLabel: string
   offlineLabel: string
@@ -37,7 +38,7 @@ function pickVoice(voices: readonly SpeechSynthesisVoice[], value: string): Spee
     ?? voices[0]
 }
 
-export function LocalVoicePicker({ value, disabled = false, label, unavailableLabel, loadingLabel, offlineLabel, onlineLabel, onChange, onAvailabilityChange }: LocalVoicePickerProps): ReactElement {
+export function LocalVoicePicker({ value, disabled = false, label, minimal = false, unavailableLabel, loadingLabel, offlineLabel, onlineLabel, onChange, onAvailabilityChange }: LocalVoicePickerProps): ReactElement {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [voicesReady, setVoicesReady] = useState(false)
   const [open, setOpen] = useState(false)
@@ -109,17 +110,19 @@ export function LocalVoicePicker({ value, disabled = false, label, unavailableLa
   return (
     <div className="xmimo-tts-builtin-voice-picker" ref={rootRef}>
       <button ref={triggerRef} type="button" className="xmimo-tts-builtin-voice-trigger" disabled={disabled || voices.length === 0} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listboxId : undefined} aria-label={label} onClick={() => setOpen((current) => !current)} onKeyDown={handleTriggerKeyDown}>
-        <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-local-voice-avatar" aria-hidden="true">🔊</span>
+        {minimal ? null : <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-local-voice-avatar" aria-hidden="true">🔊</span>}
         <span className="xmimo-tts-builtin-voice-copy">
           <strong>{triggerText}</strong>
           <small>{selected === undefined ? (!voicesReady ? loadingLabel : unavailableLabel) : voiceSummary(selected)}</small>
         </span>
-        <IconChevronDownOutline14 className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} />
+        {minimal
+          ? <span className="xmimo-tts-voice-picker-text-caret" aria-hidden="true">⌄</span>
+          : <IconChevronDownOutlineMedium className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} size={14} />}
       </button>
       {open ? <div id={listboxId} className="xmimo-tts-builtin-voice-menu" role="listbox" aria-label={label}>
         {voices.map((voice, index) => <button ref={(node) => { optionRefs.current[index] = node }} type="button" role="option" aria-selected={voice.voiceURI === selectedValue} key={voice.voiceURI} className={voice.voiceURI === selectedValue ? 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-selected' : 'xmimo-tts-builtin-voice-option'} onClick={() => choose(voice)} onKeyDown={(event) => handleOptionKeyDown(event, index)}>
-          {voice.voiceURI === selectedValue ? <svg className="xmimo-tts-builtin-voice-check" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" /><path d="m4.8 8.1 2 2 4.4-4.5" /></svg> : null}
-          <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-local-voice-avatar" aria-hidden="true">🔊</span>
+          {!minimal && voice.voiceURI === selectedValue ? <svg className="xmimo-tts-builtin-voice-check" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" /><path d="m4.8 8.1 2 2 4.4-4.5" /></svg> : null}
+          {minimal ? null : <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-local-voice-avatar" aria-hidden="true">🔊</span>}
           <span className="xmimo-tts-voice-option-copy"><strong>{voice.name}</strong><small>{voiceSummary(voice)}</small></span>
         </button>)}
       </div> : null}

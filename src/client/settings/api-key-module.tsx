@@ -2,8 +2,8 @@ import type { CSSProperties, ReactElement } from 'react'
 import { useId, useState } from 'react'
 import { TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE } from '../../shared.js'
 import type { Translate } from '../localization.js'
-import { SettingFieldHeading } from './field-heading.js'
 import { hostRoute } from '../host-route.js'
+import { SettingFieldHeading } from './field-heading.js'
 import { ModuleShell } from './module-shell.js'
 
 const API_KEY_IDLE_COPY_KEYS = [
@@ -36,17 +36,18 @@ export interface ApiKeyModuleProps {
   invalid: boolean
   clearable: boolean
   writable: boolean
+  minimal: boolean
   onChange: (value: string) => void
   onClear: () => void
 }
 
-export function ApiKeyModule({ t, value, message, invalid, clearable, writable, onChange, onClear }: ApiKeyModuleProps): ReactElement {
+export function ApiKeyModule({ t, value, message, invalid, clearable, writable, minimal, onChange, onClear }: ApiKeyModuleProps): ReactElement {
   const [bubbleKey, setBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const inputId = useId()
   const messageId = useId()
 
-  return <ModuleShell className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-ui-module-padded" title={<SettingFieldHeading
-      label={<span
+  return <ModuleShell className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-ui-module-padded" title={minimal ? t('settings.apiKey') : <SettingFieldHeading
+      label={minimal ? t('settings.apiKey') : <span
         className="xmimo-tts-api-key-logo"
         role="img"
         aria-label={t('settings.apiKey')}
@@ -58,15 +59,15 @@ export function ApiKeyModule({ t, value, message, invalid, clearable, writable, 
       </>}
       disabled={!writable}
       resettable={false}
-    />} action={<span className="xmimo-tts-api-key-decoration" aria-hidden="true" />}>
+    />} action={minimal ? undefined : <span className="xmimo-tts-api-key-decoration" aria-hidden="true" />}>
     <div className="xmimo-tts-api-key-content">
       <div className="xmimo-tts-api-key-input">
-      <span className="xmimo-tts-character-bubble xmimo-tts-api-key-bubble" aria-hidden="true">{t(bubbleKey)}</span>
-      <span
+      {!minimal ? <span className="xmimo-tts-character-bubble xmimo-tts-api-key-bubble" aria-hidden="true">{t(bubbleKey)}</span> : null}
+      {!minimal ? <span
         className="xmimo-tts-api-key-whale"
         style={{ backgroundImage: `url(${hostRoute(TTS_API_KEY_WHALE_ASSET_ROUTE)})` }}
         aria-hidden="true"
-      />
+      /> : null}
       <input
         id={inputId}
         type="password"
@@ -88,8 +89,16 @@ export function ApiKeyModule({ t, value, message, invalid, clearable, writable, 
         onBlur={() => { setBubbleKey((current) => randomCopyKey(API_KEY_IDLE_COPY_KEYS, current)) }}
         onChange={(event) => { onChange(event.target.value) }}
       />
+      {minimal ? <span className="xmimo-tts-api-key-inline-actions">
+        <a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>
+        {clearable ? <button type="button" className="xmimo-tts-reset" disabled={!writable} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClear() }}>{t('settings.apiKeyClear')}</button> : null}
+      </span> : null}
       </div>
-      <small id={messageId} className={invalid ? 'xmimo-tts-api-key-warning' : undefined} role={invalid ? 'alert' : 'status'}>
+      <small
+        id={messageId}
+        className={`xmimo-tts-api-key-message${invalid ? ' xmimo-tts-api-key-warning' : ''}${minimal ? ' xmimo-tts-visually-hidden' : ''}`}
+        role={invalid ? 'alert' : 'status'}
+      >
         {message}
       </small>
     </div>

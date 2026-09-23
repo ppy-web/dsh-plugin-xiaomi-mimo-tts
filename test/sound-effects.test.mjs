@@ -11,6 +11,7 @@ const soundRuntimeTypes = await readFile(new URL('../src/client/sound-effects/ru
 const soundSettings = await readFile(new URL('../src/client/settings/sound-effects-module.tsx', import.meta.url), 'utf8')
 const soundState = await readFile(new URL('../src/shared.ts', import.meta.url), 'utf8')
 const soundStyles = await readFile(new URL('../src/client/style/sound.css', import.meta.url), 'utf8')
+const minimalStyles = await readFile(new URL('../src/client/style/minimal.css', import.meta.url), 'utf8')
 const soundRuntime = await import('../src/client/sound-effects/runtime.js')
 const localization = await readFile(new URL('../src/client/localization.ts', import.meta.url), 'utf8')
 const clientEntry = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
@@ -19,6 +20,7 @@ const playback = await readFile(new URL('../src/client/playback/playback-control
 const previewPlayer = await readFile(new URL('../src/client/playback/preview-player.ts', import.meta.url), 'utf8')
 const localSpeech = await readFile(new URL('../src/client/playback/local-speech-controller.ts', import.meta.url), 'utf8')
 const settingsCard = await readFile(new URL('../src/client/settings/card.tsx', import.meta.url), 'utf8')
+const toggleSoundPlayer = await readFile(new URL('../src/client/sound-effects/toggle-sound-player.ts', import.meta.url), 'utf8')
 const settingsDetails = await readFile(new URL('../src/client/settings/details-module.tsx', import.meta.url), 'utf8')
 const energySlider = await readFile(new URL('../src/client/settings/controls/energy-volume-slider.tsx', import.meta.url), 'utf8')
 const toggleSound = await readFile(new URL('../src/client/sound-effects/toggle-sound-player.ts', import.meta.url), 'utf8')
@@ -100,7 +102,7 @@ test('sound settings preview locally and save only through the settings card', (
   assert.match(soundSettings, /onPackChange\(nextPack\)/)
   assert.match(soundSettings, /controller\.update\(\{ enabled, volume, pack: nextPack, taskSounds, clickSounds \}\)/)
   assert.match(settingsCard, /'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds'/)
-  assert.match(settingsCard, /await scope\.set\(field, draft\[field\]\)/)
+  assert.match(settingsCard, /requireAccepted\(scope\.set\(field, draft\[field\]\)\)/)
   assert.match(settingsCard, /<SoundEffectsPanel[\s\S]*onCycle=/)
   assert.match(settingsCard, /setSoundEffectsOpen\(false\)/)
   assert.match(settingsCard, /open=\{soundEffectsOpen\}/)
@@ -135,10 +137,25 @@ test('cycles the sound library through all, off, click-only, and task-only state
 
 test('sound-library toggles use UISFX cues without generic click duplication', () => {
   assert.match(settingsCard, /controller\.play\('toggle-on'\)/)
-  assert.doesNotMatch(settingsCard, /controller\.play\('toggle-off'\)/)
+  assert.match(settingsCard, /minimalMode && mode === 'off'[\s\S]*?controller\.play\('toggle-off'\)/)
   assert.match(settingsCard, /applySoundEffectsMode\(next \? 'all' : 'off'\)/)
   assert.match(clickClassifier, /data-xmimo-sound-toggle/)
   assert.doesNotMatch(settingsCard, /changeSoundEnabled[\s\S]*?toggleSoundPlayer\.schedule/)
+})
+
+test('minimal mode stops bundled switch sounds and routes switch feedback through UISFX', () => {
+  assert.match(settingsCard, /toggleSoundPlayer\.setEnabled\(!minimalMode\)/)
+  assert.match(settingsCard, /if \(minimalMode && soundEnabled && clickSounds\) controller\.play\(next \? 'toggle-on' : 'toggle-off'\)/)
+  assert.match(toggleSoundPlayer, /setEnabled\(enabled: boolean\)[\s\S]*if \(!enabled\)[\s\S]*releaseAudio\(\)[\s\S]*releaseVolumePreviewAudio\(\)/)
+  assert.match(toggleSoundPlayer, /if \(!this\.enabled \|\| typeof window === 'undefined'\) return/)
+})
+
+test('minimal mode hides detail and sound-library helper labels', () => {
+  assert.match(minimalStyles, /\.xmimo-tts-details-body > :not\(\.xmimo-tts-volume\) > \.xmimo-tts-field-heading/)
+  assert.match(soundSettings, /id="xmimo-tts-sound-pack-label" className=\{minimal \? 'xmimo-tts-visually-hidden'/)
+  assert.match(soundSettings, /id="xmimo-tts-sound-preview-label" className=\{minimal \? 'xmimo-tts-visually-hidden'/)
+  assert.match(soundSettings, /\{!minimal \? <small className="xmimo-tts-sound-description"/)
+  assert.match(soundSettings, /\{!minimal \? <small className="xmimo-tts-sound-supported"/)
 })
 
 test('format and speech strategy radio cards classify changes as selection sounds', () => {

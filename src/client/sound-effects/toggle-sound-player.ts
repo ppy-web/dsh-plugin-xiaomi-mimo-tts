@@ -13,13 +13,14 @@ export class ToggleSoundPlayer {
   private audio: HTMLAudioElement | null = null
   private volumePreviewAudio: HTMLAudioElement | null = null
   private volume = 1
+  private enabled = true
   private volumePreviewIndex: number | null = null
   private readonly lastIndex = new Map<TtsToggleSoundKind, number>()
 
   schedule(kind: TtsToggleSoundKind): void {
     this.clearTimer()
     this.releaseAudio()
-    if (typeof window === 'undefined') return
+    if (!this.enabled || typeof window === 'undefined') return
     this.timer = window.setTimeout(() => {
       this.timer = null
       this.play(kind)
@@ -37,6 +38,15 @@ export class ToggleSoundPlayer {
     if (this.audio !== null) this.audio.volume = this.volume
   }
 
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled
+    if (!enabled) {
+      this.clearTimer()
+      this.releaseAudio()
+      this.releaseVolumePreviewAudio()
+    }
+  }
+
   setPreviewVolume(value: number): void {
     const volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
     if (this.volumePreviewAudio !== null) this.volumePreviewAudio.volume = volume
@@ -45,7 +55,7 @@ export class ToggleSoundPlayer {
   previewVolume(value: number): void {
     const volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
     this.setPreviewVolume(volume)
-    if (this.volumePreviewAudio !== null || typeof window === 'undefined') return
+    if (!this.enabled || this.volumePreviewAudio !== null || typeof window === 'undefined') return
 
     let index = Math.floor(Math.random() * TTS_VOLUME_PREVIEW_FILES.length)
     if (TTS_VOLUME_PREVIEW_FILES.length > 1 && index === this.volumePreviewIndex) index = (index + 1) % TTS_VOLUME_PREVIEW_FILES.length

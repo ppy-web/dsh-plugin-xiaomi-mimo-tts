@@ -16,7 +16,6 @@ import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
 import { SettingsCard } from './settings/card.js'
 import { createSoundEffectsController, installClickSounds } from './sound-effects/index.js'
 import { installTaskSoundWatcher } from './sound-effects/task-watcher.js'
-import { decodeSettings } from './settings/scope.js'
 import { CLIENT_STYLES } from './style/index.js'
 
 /** Client services required by this plugin. */
@@ -24,7 +23,7 @@ export const inject = [
   'slots',
   'locale',
   'remote',
-  'settingsScope',
+  'configForms',
   'sessions',
 ]
 
@@ -63,10 +62,7 @@ export function apply(ctx: Context): void {
   const t = locale.bind(NS)
   ctx.effect(() => locale.register(NS, { zh, en }), 'xiaomi-mimo-tts: dictionaries')
 
-  const scope = ctx.settingsScope.bind<TtsSettings>({
-    namespace: TTS_SETTINGS_NAMESPACE,
-    decode: decodeSettings,
-  })
+  const scope = ctx.configForms.get<TtsSettings>(TTS_SETTINGS_NAMESPACE)
   const soundEffects = createSoundEffectsController()
   const getSoundSettings = () => {
     const resolved = resolveTtsSettings(scope.getSnapshot().value)
