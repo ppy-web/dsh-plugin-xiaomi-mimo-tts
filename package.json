@@ -1,7 +1,7 @@
 {
   "name": "dsh-xiaomi-tts",
   "version": "3.0.5-alpha",
-  "description": "为 DeepSeek Harness Web 助手消息提供 Xiaomi MiMo 语音朗读控制",
+  "description": "为 DSH Web 添加 Xiaomi MiMo TTS 语音朗读、浏览器本地语音兜底和可选 UI 音效。",
   "icon": "./assets/plugin-icons/avatar.png",
   "license": "MIT",
   "type": "module",
@@ -32,11 +32,13 @@
       "types": "./lib/client-api.d.ts",
       "default": "./lib/client-api.js"
     },
+    "./locale/*.json": "./locale/*.json",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
+    "locale",
     "scripts/prepare-package.mjs",
     "cordis.patch.yml",
     "README.md",
@@ -46,6 +48,7 @@
     "NOTICE"
   ],
   "dsh": {
+    "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
     },
@@ -65,6 +68,9 @@
         "@deepseek-ai/dsh-client-ui-primitives"
       ]
     }
+  },
+  "engines": {
+    "dsh": "0.1.7-alpha.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
@@ -178,5 +184,20 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "dev": "vite --config preview/vite.config.ts",
+    "dev:build": "tsc -p preview/tsconfig.json && vite build --config preview/vite.config.ts",
+    "build": "tsdown -c tsdown.prepare.config.ts && tsc --emitDeclarationOnly",
+    "build:debug": "tsdown -c tsdown.debug.config.ts && tsc --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm run build && node --test test/*.test.mjs",
+    "text": "node test/filter-test-server.mjs",
+    "profile:check": "node scripts/dsh-profile-verify.mjs",
+    "release:check": "pnpm run test",
+    "prepare": "node scripts/prepare-package.mjs",
+    "prepack": "pnpm run build && node scripts/pack-package.mjs",
+    "postpack": "node scripts/restore-package-scripts.mjs",
+    "pack:check": "pnpm pack --dry-run"
   }
 }

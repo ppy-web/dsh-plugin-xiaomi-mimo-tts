@@ -7,9 +7,9 @@ import {
   TTS_UPDATE_ROUTE,
 } from '../src/shared.js'
 import type { TtsSettings } from '../src/shared.js'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 
-export class PreviewSettingsScope implements SettingsScope<TtsSettings> {
+export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
   private readonly listeners = new Set<() => void>()
   private readonly base: TtsSettings = { ...DEFAULT_TTS_SETTINGS, apiKey: '' }
   private user: TtsSettings = {}
@@ -17,7 +17,7 @@ export class PreviewSettingsScope implements SettingsScope<TtsSettings> {
   private revision = 1
   private snapshot = this.createSnapshot()
 
-  getSnapshot(): SettingsScopeSnapshot<TtsSettings> {
+  getSnapshot(): ConfigFormSnapshot<TtsSettings> {
     return this.snapshot
   }
 
@@ -26,27 +26,34 @@ export class PreviewSettingsScope implements SettingsScope<TtsSettings> {
     return () => { this.listeners.delete(listener) }
   }
 
-  async set(field: string, value: unknown): Promise<void> {
+  async set(field: string, value: unknown): Promise<boolean> {
     if (!this.writable) throw new Error('Preview settings are read-only')
     this.user = { ...this.user, [field]: value }
     this.publish()
+    return true
   }
 
-  async mutate(ops: Parameters<SettingsScope<TtsSettings>['mutate']>[0]): Promise<void> {
+  async mutate(ops: Parameters<ConfigForm<TtsSettings>['mutate']>[0]): Promise<boolean> {
+    if (!this.writable) throw new Error('Preview settings are read-only')
+    const next = { ...this.user } as Record<string, unknown>
     for (const op of ops) {
       const field = op.path[0]
       if (field === undefined || op.path.length !== 1) continue
-      if (op.op === 'set') await this.set(field, op.value)
-      else await this.unset(field)
+      if (op.op === 'set') next[field] = op.value
+      else delete next[field]
     }
+    this.user = next as TtsSettings
+    this.publish()
+    return true
   }
 
-  async unset(field: string): Promise<void> {
+  async unset(field: string): Promise<boolean> {
     if (!this.writable) throw new Error('Preview settings are read-only')
     const next = { ...this.user } as Record<string, unknown>
     delete next[field]
     this.user = next as TtsSettings
     this.publish()
+    return true
   }
 
   setWritable(writable: boolean): void {
@@ -69,7 +76,7 @@ export class PreviewSettingsScope implements SettingsScope<TtsSettings> {
     }
   }
 
-  private createSnapshot(): SettingsScopeSnapshot<TtsSettings> {
+  private createSnapshot(): ConfigFormSnapshot<TtsSettings> {
     return {
       status: 'ready',
       value: { ...this.base, ...this.user },
