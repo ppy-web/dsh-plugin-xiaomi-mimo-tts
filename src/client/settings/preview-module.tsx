@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { TTS_PREVIEW_WHALE_ASSET_ROUTE } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import type { PreviewError, PreviewSource, PreviewStatus } from '../playback/preview-player.js'
@@ -47,14 +48,22 @@ export function PreviewModule({ t, enabled, minimal, status, source, error, text
   return <ModuleShell className="xmimo-tts-settings-module xmimo-tts-preview xmimo-ui-module-padded" title={t('settings.previewTitle')} headingClassName="xmimo-tts-preview-title">
     <div className="xmimo-tts-preview-input xmimo-ui-module-content">
       <span className={`${status === 'error' ? 'xmimo-tts-character-bubble xmimo-tts-preview-status xmimo-tts-failed' : 'xmimo-tts-character-bubble xmimo-tts-preview-status'}${minimal ? ' xmimo-tts-visually-hidden' : ''}`} aria-live="polite">{t(messageKey)}</span>
-      <button
+      {minimal ? <Button
         type="button"
-        className={minimal ? 'xmimo-tts-preview-simple-button' : busy ? 'xmimo-tts-preview-whale-button xmimo-tts-preview-whale-button-active' : 'xmimo-tts-preview-whale-button'}
+        variant="outline"
+        size="sm"
+        className="xmimo-tts-preview-simple-button"
+        aria-label={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
+        disabled={!enabled || text.trim().length === 0}
+        onClick={onToggle}
+      >{t(busy ? 'settings.previewStopShort' : 'settings.previewPlayShort')}</Button> : <button
+        type="button"
+        className={busy ? 'xmimo-tts-preview-whale-button xmimo-tts-preview-whale-button-active' : 'xmimo-tts-preview-whale-button'}
         style={!minimal ? { backgroundImage: `url(${hostRoute(TTS_PREVIEW_WHALE_ASSET_ROUTE)})` } : undefined}
         aria-label={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
         disabled={!enabled || text.trim().length === 0}
         onClick={onToggle}
-      >{minimal ? t(busy ? 'settings.previewStopShort' : 'settings.previewPlayShort') : null}</button>
+      />}
       <textarea
         value={text}
         rows={1}

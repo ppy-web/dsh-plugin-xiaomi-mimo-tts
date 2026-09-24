@@ -14,25 +14,8 @@
 }
 
 .xmimo-tts-card-actions button {
-  border: 1px solid var(--xmimo-ui-brand);
-  border-radius: var(--xmimo-ui-control-radius);
-  padding: 5px 14px;
-  color: var(--xmimo-ui-surface);
-  background: var(--xmimo-ui-brand);
   cursor: pointer;
   font: inherit
-}
-
-.xmimo-tts-card-actions button:hover:not(:disabled) {
-  filter: brightness(1.08)
-}
-
-.xmimo-tts-card-actions button:disabled {
-  cursor: not-allowed;
-  color: var(--dsw-alias-label-dimmed, #9ca3af);
-  background: var(--xmimo-ui-control-surface);
-  border-color: var(--xmimo-ui-border-soft);
-  opacity: 1
 }
 
 .xmimo-tts-card-actions .xmimo-tts-update {
@@ -60,15 +43,4 @@
 
 .xmimo-tts-card-actions .xmimo-tts-star:hover {
   text-decoration: underline
-}
-
-.xmimo-tts-card-actions .xmimo-tts-discard {
-  border-color: var(--dsw-alias-border-l2, #e5e7eb);
-  color: var(--dsw-alias-label-secondary, #5f6875);
-  background: transparent
-}
-
-.xmimo-tts-card-actions .xmimo-tts-discard:hover:not(:disabled) {
-  color: var(--dsw-alias-label-primary, #1f2328);
-  border-color: var(--dsw-alias-label-dimmed, #c8ccd4)
 }

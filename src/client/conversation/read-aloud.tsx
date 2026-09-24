@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
+  Button,
   IconLoadingOutlineMedium,
   IconPauseOutlineMedium,
   IconPlayOutlineMedium,
@@ -351,8 +352,10 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   return (
     <>
       <Tooltip label={label} side="bottom">
-        <button
+        <Button
           type="button"
+          variant="toolbar"
+          size="sm"
           className="xmimo-tts-action"
           aria-label={label}
           aria-pressed={status === 'playing' || liveActive}
@@ -381,7 +384,7 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
             : status === 'playing'
               ? <IconPauseOutlineMedium size={16} />
               : <IconPlayOutlineMedium size={16} />}
-        </button>
+        </Button>
       </Tooltip>
       {source === 'system' && (status === 'loading' || status === 'playing' || status === 'paused') ? <span className="xmimo-tts-local-fallback-status" role="status">{t('action.localFallback')}</span> : null}
       {errorText === null ? null : <span className="xmimo-tts-inline-error" role="status">{errorText}</span>}

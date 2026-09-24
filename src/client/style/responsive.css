@@ -91,14 +91,6 @@
     padding-left: 12px;
     font-size: 10px
   }
-  .xmimo-tts-format-options {
-    gap: 4px
-  }
-  .xmimo-tts-format-option {
-    padding-right: 6px;
-    padding-left: 6px;
-    font-size: 11px
-  }
   .xmimo-tts-sound-previews {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;

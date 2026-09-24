@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { useEffect, useState } from 'react'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   TTS_API_KEY_STATUS_ROUTE,
   TTS_MIMO_LOGO_ASSET_ROUTE,
@@ -355,6 +356,8 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
   const toggleMinimalMode = (): void => {
     const next = !minimalMode
     setMinimalMode(next)
+    setDetailsOpen(next)
+    if (!next) setSoundEffectsOpen(false)
     writeMinimalMode(next)
     toggleSoundPlayer.setEnabled(!next)
     if (next) previewPlayer.stop()
@@ -463,21 +466,23 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
           {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
           {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
           {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}
-          <button
+          <Button
             type="button"
+            variant="toolbar"
+            size="sm"
             className="xmimo-tts-mode-toggle"
             aria-pressed={minimalMode}
             aria-label={`${t('settings.minimalMode')}: ${t(minimalMode ? 'settings.minimalModeOn' : 'settings.minimalModeOff')}`}
             onClick={toggleMinimalMode}
           >
             {t(minimalMode ? 'settings.defaultModeShort' : 'settings.minimalModeShort')}
-          </button>
-          <button type="button" className="xmimo-tts-discard" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={discard}>
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="xmimo-tts-discard" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={discard}>
             {t('settings.discard')}
-          </button>
-          <button type="button" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={() => { void save() }}>
+          </Button>
+          <Button type="button" variant="primary" size="sm" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={() => { void save() }}>
             {state === 'saving' ? t('settings.saving') : t('settings.save')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

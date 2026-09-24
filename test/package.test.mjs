@@ -71,6 +71,9 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
     if (name.startsWith(SUPPORTED_DSH_PACKAGE_PREFIX)) assert.ok(range, `${name} should declare a peer range`)
     assert.equal(packageJson.peerDependenciesMeta[name]?.optional, true, `${name} must be optional`)
   }
+  for (const [name, range] of Object.entries(packageJson.devDependencies)) {
+    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, SUPPORTED_DSH_VERSION, name)
+  }
   assert.equal(TTS_UPDATE_ROUTE, '/plugins/xiaomi-mimo-tts/update')
   assert.ok(packageJson.exports['./client']?.default)
   assert.ok(packageJson.exports['./client-api']?.types)

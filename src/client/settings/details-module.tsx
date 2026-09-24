@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { useCallback, useEffect, useState } from 'react'
+import { Button, SegmentedControl } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   TTS_LOCAL_SPEECH_MODES,
   TTS_MIXER_WHALE_ASSET_ROUTE,
@@ -53,17 +54,20 @@ function readScopeHint(scope: TtsReadScope): Parameters<Translate>[0] {
 }
 
 function ModelPicker({ value, disabled, label, presetLabel, voiceDesignLabel, onChange }: ModelPickerProps): ReactElement {
-  return <div className="xmimo-tts-model-switch" role="group" aria-label={label}>
-    {MODEL_PICKER_OPTIONS.map((option) => <button
-      key={option.value}
-      type="button"
-      aria-pressed={option.value === value}
-      className={option.value === value ? 'xmimo-tts-model-switch-option xmimo-tts-model-switch-option-selected' : 'xmimo-tts-model-switch-option'}
+  const options = MODEL_PICKER_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.labelKey === 'preset' ? presetLabel : voiceDesignLabel,
+  }))
+  return <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
+    <SegmentedControl
+      id="xmimo-tts-model"
+      value={value}
+      options={options}
+      label={label}
       disabled={disabled}
-      onClick={() => { onChange(option.value) }}
-    >
-      <span>{option.labelKey === 'preset' ? presetLabel : voiceDesignLabel}</span>
-    </button>)}
+      onChange={onChange}
+      className="xmimo-tts-settings-segmented"
+    />
   </div>
 }
 
@@ -127,12 +131,14 @@ export function DetailsModule({ t, open, minimal, previewing, writable, autoPlay
       style={{ backgroundImage: `url(${hostRoute(TTS_MIXER_WHALE_ASSET_ROUTE)})` }}
     />
   </span>
-  const mixerPreviewAction = minimal ? <button
+  const mixerPreviewAction = minimal ? <Button
     type="button"
+    variant="outline"
+    size="sm"
     className="xmimo-tts-mixer-preview-button"
     aria-label={t(previewing ? 'settings.previewStop' : 'settings.previewPlay')}
     onClick={onPreview}
-  >{t(previewing ? 'settings.previewStopShort' : 'settings.previewPlayShort')}</button> : mixerDecoration
+  >{t(previewing ? 'settings.previewStopShort' : 'settings.previewPlayShort')}</Button> : mixerDecoration
 
   return <CollapsibleModule
     className="xmimo-tts-settings-module xmimo-tts-details xmimo-ui-module"
@@ -151,12 +157,12 @@ export function DetailsModule({ t, open, minimal, previewing, writable, autoPlay
     <div className="xmimo-tts-grid xmimo-ui-grid xmimo-tts-details-body xmimo-ui-module-body">
       <div className="xmimo-tts-volume">
         <SettingFieldHeading label={`${t('settings.voiceVolume')} ${summaryVoiceVolume}`} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceVolume')} resettable disabled={!writable} onReset={() => { resetField('voiceVolume') }} />
-        <EnergyVolumeSlider value={voiceVolume} label={t('settings.voiceVolume')} disabled={!writable} onChange={onVoiceVolumeChange} onInteractionEnd={onVoiceVolumeInteractionEnd} />
+        <EnergyVolumeSlider value={voiceVolume} label={t('settings.voiceVolume')} minimal={minimal} disabled={!writable} onChange={onVoiceVolumeChange} onInteractionEnd={onVoiceVolumeInteractionEnd} />
       </div>
       <div className="xmimo-tts-volume">
         <SettingFieldHeading label={`${t('settings.voiceRate')} ${voiceRate.toFixed(1)}×`} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceRate')} resettable disabled={!writable} onReset={() => { resetField('voiceRate') }} />
-        <EnergyVolumeSlider value={voiceRate} min={0.5} max={2} step={0.1} formatValue={(value) => `${value.toFixed(1)}×`} label={t('settings.voiceRate')} disabled={!writable} onChange={onVoiceRateChange} onInteractionEnd={onVoiceRateInteractionEnd} />
-        <small>{t('settings.voiceRatePcmHint')}</small>
+        <EnergyVolumeSlider value={voiceRate} min={0.5} max={2} step={0.1} formatValue={(value) => `${value.toFixed(1)}×`} label={t('settings.voiceRate')} minimal={minimal} disabled={!writable} onChange={onVoiceRateChange} onInteractionEnd={onVoiceRateInteractionEnd} />
+        {minimal ? null : <small>{t('settings.voiceRatePcmHint')}</small>}
       </div>
       <div className="xmimo-tts-model">
         <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('model')} resettable disabled={!writable} onReset={() => { resetField('model') }} />
@@ -168,7 +174,7 @@ export function DetailsModule({ t, open, minimal, previewing, writable, autoPlay
           voiceDesignLabel={t('settings.voiceDesignModelShort')}
           onChange={onModelChange}
         />
-        {autoPlay ? <small>{t(model === 'mimo-v2.5-tts' ? 'settings.modelAutoPlayHintPreset' : 'settings.modelAutoPlayHintVoiceDesign')}</small> : null}
+        {autoPlay && !minimal ? <small>{t(model === 'mimo-v2.5-tts' ? 'settings.modelAutoPlayHintPreset' : 'settings.modelAutoPlayHintVoiceDesign')}</small> : null}
       </div>
       {model === 'mimo-v2.5-tts-voicedesign' ? <div className="xmimo-tts-voice-design-prompt">
         <SettingFieldHeading
@@ -191,12 +197,12 @@ export function DetailsModule({ t, open, minimal, previewing, writable, autoPlay
         />
         <textarea
           value={voiceDesignPrompt}
-          rows={4}
+          rows={3}
           disabled={!writable}
           placeholder={t('settings.voiceDesignPromptHint')}
           onChange={(event) => { onVoiceDesignPromptChange(event.target.value) }}
         />
-        <small>{t('settings.voiceDesignPromptHint')}</small>
+        {!minimal ? <small>{t('settings.voiceDesignPromptHint')}</small> : null}
       </div> : null}
       {model === 'mimo-v2.5-tts' ? <>
         <div className="xmimo-tts-voice">
@@ -210,21 +216,35 @@ export function DetailsModule({ t, open, minimal, previewing, writable, autoPlay
       </div> : null}
       <div className="xmimo-tts-format">
         <SettingFieldHeading label={t('settings.readScope')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('readScope')} resettable disabled={!writable} onReset={() => { resetField('readScope') }} />
-        <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.readScope')}>
-          {TTS_READ_SCOPES.map((item) => <label key={item} data-xmimo-select-option="true" className={readScope === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
-            <input type="radio" name="xmimo-tts-read-scope" value={item} checked={readScope === item} disabled={!writable} onChange={() => { onReadScopeChange(item) }} />
-            <span>{t(readScopeLabel(item))}</span>
-          </label>)}
+        <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
+          <SegmentedControl
+            id="xmimo-tts-read-scope"
+            value={readScope}
+            options={TTS_READ_SCOPES.map((item) => ({ value: item, label: t(readScopeLabel(item)) }))}
+            label={t('settings.readScope')}
+            disabled={!writable}
+            onChange={onReadScopeChange}
+            className="xmimo-tts-settings-segmented"
+          />
         </div>
-        <small>{t(readScopeHint(readScope))}</small>
+        {minimal? null : <small>{t(readScopeHint(readScope))}</small>}
       </div>
       {!minimal ? <div className="xmimo-tts-format">
         <SettingFieldHeading label={t('settings.localSpeechMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localSpeechMode')} resettable disabled={!writable} onReset={() => { resetField('localSpeechMode') }} />
-        <div className="xmimo-tts-format-options" role="radiogroup" aria-label={t('settings.localSpeechMode')}>
-          {TTS_LOCAL_SPEECH_MODES.map((item) => <label key={item} data-xmimo-select-option="true" className={localSpeechMode === item ? 'xmimo-tts-format-option xmimo-tts-format-option-selected' : 'xmimo-tts-format-option'}>
-            <input type="radio" name="xmimo-tts-local-speech-mode" value={item} checked={localSpeechMode === item} disabled={!writable || (localVoicesAvailable === false && item !== 'auto')} onChange={() => { onLocalSpeechModeChange(item) }} />
-            <span>{t(item === 'auto' ? 'settings.localSpeechAuto' : item === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled')}</span>
-          </label>)}
+        <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
+          <SegmentedControl
+            id="xmimo-tts-local-speech-mode"
+            value={localSpeechMode}
+            options={TTS_LOCAL_SPEECH_MODES.map((item) => ({
+              value: item,
+              label: t(item === 'auto' ? 'settings.localSpeechAuto' : item === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled'),
+              disabled: localVoicesAvailable === false && item !== 'auto',
+            }))}
+            label={t('settings.localSpeechMode')}
+            disabled={!writable}
+            onChange={onLocalSpeechModeChange}
+            className="xmimo-tts-settings-segmented"
+          />
         </div>
         <small>{t(localVoicesAvailable === false ? 'settings.localSpeechUnavailableHint' : localSpeechMode === 'auto' ? 'settings.localSpeechAutoHint' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirstHint' : 'settings.localSpeechDisabledHint')}</small>
       </div> : null}

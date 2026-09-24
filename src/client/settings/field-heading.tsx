@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 
 export interface SettingFieldHeadingProps {
   label: ReactNode
@@ -20,7 +21,7 @@ export function SettingFieldHeading({ label, suffix, overriddenLabel, resetLabel
       </span>
       {overridden && overriddenLabel !== undefined ? <span className="xmimo-tts-field-badges">
         <small className="xmimo-tts-overridden">{overriddenLabel}</small>
-        {resettable && onReset !== undefined && resetLabel !== undefined ? <button type="button" className="xmimo-tts-reset" disabled={disabled} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onReset() }}>{resetLabel}</button> : null}
+        {resettable && onReset !== undefined && resetLabel !== undefined ? <Button type="button" variant="ghost" size="sm" className="xmimo-tts-reset" disabled={disabled} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onReset() }}>{resetLabel}</Button> : null}
       </span> : null}
     </span>
   )

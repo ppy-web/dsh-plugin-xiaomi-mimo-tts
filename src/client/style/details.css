@@ -46,3 +46,13 @@
 .xmimo-tts-details-body>* {
   border-top: 0
 }
+
+.xmimo-tts-settings-segmented-wrap {
+  min-width: 0;
+}
+
+.xmimo-tts-settings-segmented {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+}
