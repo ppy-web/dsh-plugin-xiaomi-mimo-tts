@@ -35,7 +35,8 @@ export function installTaskSoundWatcher(ctx: Context, controller: SoundEffectsCo
     lastPending = pending
   }
   const watchCurrent = (): void => {
-    const id = sessions.list.getSnapshot().current
+    const list = sessions.list.getSnapshot()
+    const id = Object.values(list.byId).find(({ retainedBy }) => (retainedBy.mainView ?? 0) > 0)?.id
     if (id === watchedId) return
     watchedId = id
     unbind()

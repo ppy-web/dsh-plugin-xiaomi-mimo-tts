@@ -1,6 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
-import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import { TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from '../../../shared.js'
 import { hostRoute } from '../../host-route.js'
 
@@ -12,7 +12,8 @@ export function isPresetVoiceDesignPrompt(value: string): boolean {
 
 type VoiceDesignPreset = typeof TTS_VOICE_DESIGN_PRESETS[number]
 
-function VoicePresetAvatar({ preset }: { preset: VoiceDesignPreset }): ReactElement {
+function VoicePresetAvatar({ preset, minimal }: { preset: VoiceDesignPreset, minimal: boolean }): ReactElement | null {
+  if (minimal) return null
   return <img
     className="xmimo-tts-builtin-voice-avatar"
     src={hostRoute(`${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`)}
@@ -42,10 +43,11 @@ interface VoiceDesignPresetPickerProps {
   label: string
   customLabel: string
   customSummary: string
+  minimal?: boolean
   onChange: (value: string) => void
 }
 
-export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, customSummary, onChange }: VoiceDesignPresetPickerProps): ReactElement {
+export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, customSummary, minimal = false, onChange }: VoiceDesignPresetPickerProps): ReactElement {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -136,12 +138,14 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
       onClick={() => { setOpen((current) => !current) }}
       onKeyDown={handleTriggerKeyDown}
     >
-      {selectedPreset === undefined ? <CustomVoiceAvatar /> : <VoicePresetAvatar preset={selectedPreset} />}
+      {minimal ? null : selectedPreset === undefined ? <CustomVoiceAvatar /> : <VoicePresetAvatar preset={selectedPreset} minimal={minimal} />}
       <span className="xmimo-tts-voice-option-copy">
         <strong>{selectedPreset?.label ?? customLabel}</strong>
         <small>{selectedPreset?.summary ?? customSummary}</small>
       </span>
-      <IconChevronDownOutline14 className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} />
+      {minimal
+        ? <span className="xmimo-tts-voice-picker-text-caret" aria-hidden="true">⌄</span>
+        : <IconChevronDownOutlineMedium className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} size={14} />}
     </button>
     {open ? <div id={listboxId} className="xmimo-tts-voice-picker-menu xmimo-tts-builtin-voice-menu" role="listbox" aria-label={label}>
       <button
@@ -153,9 +157,9 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
         onClick={() => { choose(CUSTOM_VOICE_DESIGN_OPTION) }}
         onKeyDown={(event) => { handleOptionKeyDown(event, 0) }}
       >
-        <CustomVoiceAvatar />
+        {minimal ? null : <CustomVoiceAvatar />}
         <span className="xmimo-tts-voice-option-copy"><strong>{customLabel}</strong><small>{customSummary}</small></span>
-        {selectedPreset === undefined ? <VoicePresetCheck /> : null}
+        {!minimal && selectedPreset === undefined ? <VoicePresetCheck /> : null}
       </button>
       {TTS_VOICE_DESIGN_PRESETS.map((preset, index) => <button
         key={preset.id}
@@ -167,9 +171,9 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
         onClick={() => { choose(preset.prompt) }}
         onKeyDown={(event) => { handleOptionKeyDown(event, index + 1) }}
       >
-        <VoicePresetAvatar preset={preset} />
+        <VoicePresetAvatar preset={preset} minimal={minimal} />
         <span className="xmimo-tts-voice-option-copy"><strong>{preset.label}</strong><small>{preset.summary}</small></span>
-        {selectedPreset?.id === preset.id ? <VoicePresetCheck /> : null}
+        {!minimal && selectedPreset?.id === preset.id ? <VoicePresetCheck /> : null}
       </button>)}
     </div> : null}
   </div>

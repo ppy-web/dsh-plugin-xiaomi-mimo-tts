@@ -8,6 +8,7 @@ import { ModuleShell } from './module-shell.js'
 export interface PreviewModuleProps {
   t: Translate
   enabled: boolean
+  minimal: boolean
   status: PreviewStatus
   source: PreviewSource
   error: PreviewError | null
@@ -16,7 +17,7 @@ export interface PreviewModuleProps {
   onTextChange: (value: string) => void
 }
 
-export function PreviewModule({ t, enabled, status, source, error, text, onToggle, onTextChange }: PreviewModuleProps): ReactElement {
+export function PreviewModule({ t, enabled, minimal, status, source, error, text, onToggle, onTextChange }: PreviewModuleProps): ReactElement {
   const busy = status === 'loading' || status === 'playing'
   const errorKey = error === 'api-key-not-configured'
     ? 'settings.previewErrorApiKeyMissing'
@@ -45,15 +46,15 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
 
   return <ModuleShell className="xmimo-tts-settings-module xmimo-tts-preview xmimo-ui-module-padded" title={t('settings.previewTitle')} headingClassName="xmimo-tts-preview-title">
     <div className="xmimo-tts-preview-input xmimo-ui-module-content">
-      <span className={status === 'error' ? 'xmimo-tts-character-bubble xmimo-tts-preview-status xmimo-tts-failed' : 'xmimo-tts-character-bubble xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</span>
+      <span className={`${status === 'error' ? 'xmimo-tts-character-bubble xmimo-tts-preview-status xmimo-tts-failed' : 'xmimo-tts-character-bubble xmimo-tts-preview-status'}${minimal ? ' xmimo-tts-visually-hidden' : ''}`} aria-live="polite">{t(messageKey)}</span>
       <button
         type="button"
-        className={busy ? 'xmimo-tts-preview-whale-button xmimo-tts-preview-whale-button-active' : 'xmimo-tts-preview-whale-button'}
-        style={{ backgroundImage: `url(${hostRoute(TTS_PREVIEW_WHALE_ASSET_ROUTE)})` }}
-        disabled={!enabled || text.trim().length === 0}
+        className={minimal ? 'xmimo-tts-preview-simple-button' : busy ? 'xmimo-tts-preview-whale-button xmimo-tts-preview-whale-button-active' : 'xmimo-tts-preview-whale-button'}
+        style={!minimal ? { backgroundImage: `url(${hostRoute(TTS_PREVIEW_WHALE_ASSET_ROUTE)})` } : undefined}
         aria-label={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
+        disabled={!enabled || text.trim().length === 0}
         onClick={onToggle}
-      />
+      >{minimal ? t(busy ? 'settings.previewStopShort' : 'settings.previewPlayShort') : null}</button>
       <textarea
         value={text}
         rows={1}

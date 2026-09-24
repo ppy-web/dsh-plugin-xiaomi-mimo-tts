@@ -1,0 +1,345 @@
+.xmimo-tts-card-actions .xmimo-tts-mode-toggle {
+  box-sizing: border-box;
+  min-height: 24px;
+  border: 0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--xmimo-ui-text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-card-actions .xmimo-tts-mode-toggle {
+  min-height: 0;
+  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+  border-radius: var(--xmimo-ui-control-radius);
+  padding: 5px 14px;
+  color: var(--xmimo-ui-text-muted);
+  background: var(--xmimo-ui-control-surface);
+  font-size: 12px;
+}
+
+.xmimo-tts-preview-simple-button {
+  min-height: 30px;
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: 7px;
+  padding: 4px 10px;
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-control-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.xmimo-tts-card-actions .xmimo-tts-mode-toggle:hover:not(:disabled),
+.xmimo-tts-preview-simple-button:hover:not(:disabled) {
+  border-color: var(--xmimo-ui-brand);
+}
+
+.xmimo-tts-card-actions .xmimo-tts-mode-toggle:focus-visible,
+.xmimo-tts-preview-simple-button:focus-visible {
+  outline: var(--xmimo-ui-focus);
+  outline-offset: 1px;
+}
+
+.xmimo-tts-card-minimal {
+  --xmimo-ui-module-gap: 5px;
+  --xmimo-ui-module-padding: 8px;
+  --xmimo-ui-control-height: 30px;
+  --xmimo-ui-mascot-size: 0px;
+}
+
+.xmimo-tts-card-minimal .xmimo-ui-module-heading > strong {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-api-key-input {
+  align-items: center;
+  gap: 8px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-api-key-inline-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-api-key-inline-actions .xmimo-tts-reset {
+  font-size: 11px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-character-control {
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row;
+  border-radius: 8px;
+  padding: 6px 9px;
+  background: var(--xmimo-ui-surface);
+  box-shadow: none;
+  text-align: left;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-character-copy {
+  align-items: flex-start;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-character-state {
+  position: static;
+  flex: none;
+  box-shadow: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-voice-picker-text-caret {
+  flex: none;
+  color: var(--xmimo-ui-text-muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-details-body {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-details-body > :nth-child(n + 3) {
+  grid-column: 1 / -1;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-model-switch-option {
+  min-height: 37px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-details-body > :not(.xmimo-tts-volume) > .xmimo-tts-field-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-details .xmimo-ui-module-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 5px 8px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-details .xmimo-tts-details-toggle {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 0;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-details .xmimo-ui-module-decoration {
+  flex: none;
+}
+
+.xmimo-tts-mixer-preview-button {
+  min-height: 28px;
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-control-surface);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.xmimo-tts-mixer-preview-button:hover {
+  border-color: var(--xmimo-ui-brand);
+}
+
+.xmimo-tts-mixer-preview-button:focus-visible {
+  outline: var(--xmimo-ui-focus);
+  outline-offset: 1px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-menu,
+.xmimo-tts-card-minimal .xmimo-tts-voice-picker-menu {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-option {
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-copy,
+.xmimo-tts-card-minimal .xmimo-tts-voice-option-copy {
+  align-items: baseline;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-copy > strong,
+.xmimo-tts-card-minimal .xmimo-tts-voice-option-copy > strong {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-copy > small,
+.xmimo-tts-card-minimal .xmimo-tts-voice-option-copy > small {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-option-custom {
+  grid-column: auto;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-character-toggle:hover > input:not(:disabled) + .xmimo-tts-character-control {
+  transform: none;
+  box-shadow: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-preview-title {
+  padding-right: 0;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-api-key-input:focus-within + .xmimo-tts-api-key-message {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-preview-simple-button {
+  position: static;
+  flex: none;
+  width: auto;
+  height: auto;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-preview-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-preview-input > textarea {
+  order: 1;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-preview-simple-button {
+  order: 2;
+  padding-inline: 8px;
+  font-size: 11px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-preview-simple-button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-whale-button {
+  min-height: 28px;
+  position: static;
+  width: auto;
+  height: auto;
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: 7px;
+  padding: 4px 8px;
+  background: var(--xmimo-ui-control-surface);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-effects .xmimo-ui-module-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 5px 8px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-effects .xmimo-tts-sound-toggle {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 0;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-effects .xmimo-ui-module-decoration {
+  flex: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-mode-label {
+  display: block;
+  position: static;
+  color: var(--xmimo-ui-text-muted);
+  font-size: 11px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-toggle {
+  min-height: 0;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-heading > small {
+  padding-right: 0;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-body {
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-pack-grid {
+  gap: 4px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-previews button {
+  min-height: 28px;
+  padding: 5px;
+}
+
+.xmimo-tts-card-minimal .xmimo-ui-module-padded {
+  padding: 8px !important;
+}
+
+.xmimo-tts-card-minimal .xmimo-ui-summary {
+  min-height: 28px;
+  gap: 4px;
+  padding-block: 3px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-grid > * {
+  padding-block: 4px;
+}
+
+@media (max-width: 520px) {
+  .xmimo-tts-card-minimal .xmimo-tts-switch-row {
+    gap: 5px;
+  }
+
+  .xmimo-tts-card-minimal .xmimo-tts-character-copy strong {
+    font-size: 12px;
+  }
+}

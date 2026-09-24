@@ -5,6 +5,7 @@ import { createSoundEffectsController } from '../src/client/sound-effects/index.
 import { CLIENT_STYLES } from '../src/client/style/index.js'
 import { en, zh } from '../src/client/localization.js'
 import type { LocaleKey, Translate } from '../src/client/localization.js'
+import pluginIcon from '../assets/plugin-icons/avatar.png'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
 import { PreviewBackground } from './background-icons.js'
 import { UserManual } from './user-manual.js'
@@ -316,12 +317,15 @@ function PreviewApp() {
         />
         <section className="preview-settings-pane" aria-label={locale === 'zh' ? '设置页预览' : 'Settings preview'}>
           <header className="preview-plugin-header">
-            <div className="preview-plugin-title-row">
-              <h1>{PREVIEW_PLUGIN_META.title}</h1>
-              <span className="preview-plugin-version">v{TTS_VERSION}</span>
+            <img className="preview-plugin-icon" src={pluginIcon} alt="" aria-hidden="true" />
+            <div className="preview-plugin-copy">
+              <div className="preview-plugin-title-row">
+                <h1>{PREVIEW_PLUGIN_META.title}</h1>
+                <span className="preview-plugin-version">v{TTS_VERSION}</span>
+              </div>
+              <code className="preview-plugin-name">{PREVIEW_PLUGIN_META.packageName}</code>
+              <p>{PREVIEW_PLUGIN_META.description}</p>
             </div>
-            <code className="preview-plugin-name">{PREVIEW_PLUGIN_META.packageName}</code>
-            <p>{PREVIEW_PLUGIN_META.description}</p>
           </header>
           <ul className="preview-settings-list" ref={listRef} key={instance}>
              <SettingsCard view="page" scope={scope} t={t} controller={soundEffects} />

@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
-  IconLoadingOutline16,
-  IconPauseOutline16,
-  IconPlayOutline16,
+  IconLoadingOutlineMedium,
+  IconPauseOutlineMedium,
+  IconPlayOutlineMedium,
   Tooltip,
   extractMarkdownPlainText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -12,7 +12,7 @@ import type { TtsReadScope } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import type { ChatSnapshot, AssistantBlock } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { Translate } from '../localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from '../playback/index.js'
 import type { LiveMessageIdentity } from '../playback/index.js'
@@ -111,7 +111,7 @@ interface SessionPlaybackObserverProps {
   playback: PlaybackController
   live: LiveSpeechController
   local: LocalSpeechController
-  settings: SettingsScope<TtsSettings>
+  settings: ConfigForm<TtsSettings>
 }
 
 function scopedLiveText(value: string, scope: TtsReadScope, limiter: TtsFirstSegmentLimiter, final = false): string {
@@ -243,7 +243,7 @@ interface ReadAloudActionProps {
   playback: PlaybackController
   live: LiveSpeechController
   local: LocalSpeechController
-  settings: SettingsScope<TtsSettings>
+  settings: ConfigForm<TtsSettings>
   t: Translate
 }
 
@@ -377,10 +377,10 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
           }}
         >
           {status === 'loading'
-            ? <IconLoadingOutline16 className="xmimo-tts-spin" />
+            ? <IconLoadingOutlineMedium className="xmimo-tts-spin" size={16} />
             : status === 'playing'
-              ? <IconPauseOutline16 />
-              : <IconPlayOutline16 />}
+              ? <IconPauseOutlineMedium size={16} />
+              : <IconPlayOutlineMedium size={16} />}
         </button>
       </Tooltip>
       {source === 'system' && (status === 'loading' || status === 'playing' || status === 'paused') ? <span className="xmimo-tts-local-fallback-status" role="status">{t('action.localFallback')}</span> : null}

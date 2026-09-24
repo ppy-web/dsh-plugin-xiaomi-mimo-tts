@@ -17,6 +17,7 @@ interface SoundEffectsPanelProps {
   taskSounds: boolean
   clickSounds: boolean
   writable: boolean
+  minimal: boolean
   open: boolean
   onToggle: () => void
   onCycle: () => void
@@ -50,7 +51,7 @@ const SOUND_PACK_TONES: Record<SoundPack, SoundPackTone> = {
 }
 
 /** A settings module rendered directly below the Broadcast Studio preview. */
-export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, open, onToggle, onCycle, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
+export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, minimal, open, onToggle, onCycle, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
   const [previewingCue, setPreviewingCue] = useState<SoundCue | null>(null)
   const packOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const mode: SoundEffectsMode = resolveSoundEffectsMode(enabled, taskSounds, clickSounds)
@@ -121,12 +122,12 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     disabled={!writable}
     onClick={onCycle}
   >
-    <span
+    {!minimal ? <span
       className={`xmimo-tts-sound-whale xmimo-tts-sound-whale-${mode}`}
       style={{ backgroundImage: `url(${hostRoute(TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE)})` }}
       aria-hidden="true"
-    />
-    <span className="xmimo-tts-sound-bubble" aria-live="polite">
+    /> : null}
+    <span className={minimal ? 'xmimo-tts-sound-mode-label' : 'xmimo-tts-sound-bubble'} aria-live="polite">
       {bubbleLabel}
     </span>
   </button>
@@ -160,7 +161,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
         />
       </label>
       <div className="xmimo-tts-sound-pack">
-        <span id="xmimo-tts-sound-pack-label">{t('settings.soundEffectsPack')}</span>
+        <span id="xmimo-tts-sound-pack-label" className={minimal ? 'xmimo-tts-visually-hidden' : undefined}>{t('settings.soundEffectsPack')}</span>
         <div className="xmimo-tts-sound-pack-grid" role="radiogroup" aria-labelledby="xmimo-tts-sound-pack-label">
           {SOUND_PACKS.map((option, index) => <button
             key={option}
@@ -185,7 +186,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
         </div>
       </div>
       <div className="xmimo-tts-sound-preview-section">
-        <span id="xmimo-tts-sound-preview-label">{t('settings.soundEffectsPreviewLabel')}</span>
+        <span id="xmimo-tts-sound-preview-label" className={minimal ? 'xmimo-tts-visually-hidden' : undefined}>{t('settings.soundEffectsPreviewLabel')}</span>
         <div className="xmimo-tts-sound-previews" role="group" aria-labelledby="xmimo-tts-sound-preview-label">
           {PREVIEW_CUES.map(({ cue, position }) => <button
             key={cue}
@@ -195,18 +196,18 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
             aria-label={previewLabel(cue)}
             onClick={() => { previewCue(cue) }}
           >
-            <span
+            {!minimal ? <span
               className={previewingCue === cue ? 'xmimo-tts-sound-preview-character xmimo-tts-sound-preview-character-bounce' : 'xmimo-tts-sound-preview-character'}
               style={{ backgroundImage: `url(${hostRoute(TTS_SOUND_EFFECT_CUES_ASSET_ROUTE)})`, backgroundPosition: `${position} center` }}
               onAnimationEnd={() => { setPreviewingCue((current) => current === cue ? null : current) }}
               aria-hidden="true"
-            />
+            /> : null}
             <span>{previewLabel(cue)}</span>
           </button>)}
         </div>
       </div>
-      <small className="xmimo-tts-sound-description">{t('settings.soundEffectsDescription')}</small>
-      <small className="xmimo-tts-sound-supported">{t('settings.soundEffectsSupported')}</small>
+      {!minimal ? <small className="xmimo-tts-sound-description">{t('settings.soundEffectsDescription')}</small> : null}
+      {!minimal ? <small className="xmimo-tts-sound-supported">{t('settings.soundEffectsSupported')}</small> : null}
       {!writable ? <small>{t('settings.readOnly')}</small> : null}
     </div> : null}
   </CollapsibleModule>

@@ -3,9 +3,8 @@
 # dsh-xiaomi-tts
 
 [![npm version](https://img.shields.io/npm/v/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
-[![GitHub stars](https://img.shields.io/github/stars/ppy-web/dsh-plugin-xiaomi-mimo-tts.svg)](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts)
 [![npm downloads](https://img.shields.io/npm/dm/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
-[![dsh](https://img.shields.io/badge/dsh-0.1.5--rc.1-2563eb)](https://github.com/deepseek-ai)
+![dsh version](https://img.shields.io/badge/dsh-v0.1.7alpha2-blue?link=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2Fdeepseek-harness%2Freleases)
 ![Xiaomi MiMo](https://img.shields.io/badge/Xiaomi-MiMo-ff6900?logo=xiaomi&logoColor=white)
 
 为 DSH Web 添加 Xiaomi MiMo TTS 语音朗读、浏览器本地语音兜底和可选 UI 音效。
@@ -37,7 +36,7 @@
 
 ## 📋 环境要求
 
-- `@deepseek-ai/dsh` `0.1.6-alpha.2`（当前兼容目标版本）
+- `@deepseek-ai/dsh` `0.1.7-alpha.2`（当前兼容目标版本）
 - Node.js 22+
 - 使用 MiMo 语音时需要 Xiaomi MiMo API Key
 - [官方 TTS API 文档](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -205,7 +204,7 @@ pnpm pack:check
 Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避免运行中的 Node 进程占用 Junction：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.4-alpha
+.\start\dsh-plugin-reinstall.bat 3.0.5-alpha
 ```
 
 ## 🤝 推荐插件

@@ -12,7 +12,7 @@ import {
 } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import type { Translate } from '../localization.js'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PreviewPlayer } from '../playback/preview-player.js'
 import type { PreviewView } from '../playback/preview-player.js'
 import { isRecord, useSettingsSnapshot } from './scope.js'
@@ -25,12 +25,13 @@ import { DetailsModule } from './details-module.js'
 import { PreviewModule } from './preview-module.js'
 import { SoundEffectsPanel } from './sound-effects-module.js'
 import { SwitchModule } from './switch-module.js'
+import { readMinimalMode, writeMinimalMode } from './minimal-mode.js'
 import { hostRoute } from '../host-route.js'
 import type { DraftChange, DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 
 interface SettingsCardProps {
   view: 'summary' | 'page'
-  scope: SettingsScope<TtsSettings>
+  scope: ConfigForm<TtsSettings>
   t: Translate
   controller: SoundEffectsController
 }
@@ -84,6 +85,7 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
   const [toggleSoundPlayer] = useState(() => new ToggleSoundPlayer())
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>('loading')
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
+  const [minimalMode, setMinimalMode] = useState(readMinimalMode)
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
@@ -189,6 +191,8 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
     void previewPlayer.dispose()
   }, [previewPlayer, toggleSoundPlayer])
 
+  useEffect(() => { toggleSoundPlayer.setEnabled(!minimalMode) }, [minimalMode, toggleSoundPlayer])
+
   useEffect(() => { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setVolume(voiceVolume) }, [previewPlayer, toggleSoundPlayer, voiceVolume])
 
   if (snapshot.status === 'unavailable') return null
@@ -251,20 +255,23 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
     setSoundEffectsOpen(false)
     setState('saving')
     try {
+      const requireAccepted = async (write: Promise<boolean>): Promise<void> => {
+        if (!await write) throw new Error('Host rejected a settings update')
+      }
       for (const field of EDITABLE_SETTING_FIELDS) {
         const change = changes[field]
         if (change === undefined) continue
         if (change.kind === 'clear') {
-          if (hasOverride(field)) await scope.unset(field)
+          if (hasOverride(field)) await requireAccepted(scope.unset(field))
         } else if (!Object.is(draft[field], acceptedValue(field))) {
-          await scope.set(field, draft[field])
+          await requireAccepted(scope.set(field, draft[field]))
         }
       }
       const apiKeyChange = changes.apiKey
       if (apiKeyChange?.kind === 'clear') {
-        if (hasOverride('apiKey')) await scope.unset('apiKey')
+        if (hasOverride('apiKey')) await requireAccepted(scope.unset('apiKey'))
       } else if (apiKeyChange?.kind === 'set' && apiKey.trim().length > 0) {
-        await scope.set('apiKey', apiKey.trim())
+        await requireAccepted(scope.set('apiKey', apiKey.trim()))
       }
       setApiKey('')
       setChanges({})
@@ -276,12 +283,12 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
 
   const previewBusy = previewView.status === 'loading' || previewView.status === 'playing'
 
-  const togglePreview = (): void => {
+  const togglePreview = (text: string): void => {
     if (previewBusy) {
       previewPlayer.stop()
       return
     }
-    void previewPlayer.play(previewText, {
+    void previewPlayer.play(text, {
       model,
       localSpeechMode,
       localVoiceURI,
@@ -292,8 +299,12 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
     })
   }
 
+  const toggleSettingsPreview = (): void => { togglePreview(previewText) }
+  const toggleMixerPreview = (): void => { togglePreview(t('settings.previewDefaultText')) }
+
   const changeEnabled = (next: boolean): void => {
-    toggleSoundPlayer.schedule(next ? 'on' : 'off')
+    if (minimalMode && soundEnabled && clickSounds) controller.play(next ? 'toggle-on' : 'toggle-off')
+    else toggleSoundPlayer.schedule(next ? 'on' : 'off')
     setEnabled(next)
     if (!next) {
       previewPlayer.stop()
@@ -306,7 +317,8 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
   }
 
   const changeAutoPlay = (next: boolean): void => {
-    toggleSoundPlayer.schedule(next ? 'auto-on' : 'auto-off')
+    if (minimalMode && soundEnabled && clickSounds) controller.play(next ? 'toggle-on' : 'toggle-off')
+    else toggleSoundPlayer.schedule(next ? 'auto-on' : 'auto-off')
     setAutoPlay(next)
     if (next) {
       setEnabled(true)
@@ -320,8 +332,10 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
   const applySoundEffectsMode = (mode: ReturnType<typeof resolveSoundEffectsMode>): void => {
     const previousMode = resolveSoundEffectsMode(soundEnabled, taskSounds, clickSounds)
     const flags = getSoundEffectsModeFlags(mode)
+    if (minimalMode && mode === 'off' && previousMode !== 'off' && soundEnabled && clickSounds) controller.play('toggle-off')
     controller.update({ ...flags, volume: soundVolume, pack: soundPack })
-    if (previousMode === 'off' && mode !== 'off') controller.play('toggle-on')
+    if (minimalMode && previousMode !== mode && mode !== 'off' && flags.clickSounds) controller.play(previousMode === 'off' ? 'toggle-on' : 'select')
+    else if (!minimalMode && previousMode === 'off' && mode !== 'off') controller.play('toggle-on')
     setSoundEnabled(flags.enabled)
     setTaskSounds(flags.taskSounds)
     setClickSounds(flags.clickSounds)
@@ -338,14 +352,23 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
     applySoundEffectsMode(nextSoundEffectsMode(currentMode))
   }
 
+  const toggleMinimalMode = (): void => {
+    const next = !minimalMode
+    setMinimalMode(next)
+    writeMinimalMode(next)
+    toggleSoundPlayer.setEnabled(!next)
+    if (next) previewPlayer.stop()
+  }
+
   return (
-    <div className="xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope">
+    <div className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
       <div className="xmimo-tts-card-body xmimo-ui-stack">
         <SwitchModule
           t={t}
           enabled={enabled}
           autoPlay={autoPlay}
           soundEnabled={soundEnabled}
+          minimal={minimalMode}
           writable={snapshot.writable}
           onEnabledChange={changeEnabled}
           onAutoPlayChange={changeAutoPlay}
@@ -358,12 +381,15 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
           invalid={apiKeyInvalid}
           clearable={apiKeyClearable}
           writable={snapshot.writable}
+          minimal={minimalMode}
           onChange={(next) => { setApiKey(next); markChange('apiKey') }}
           onClear={clearApiKey}
         />
         {enabled ? <DetailsModule
           t={t}
           open={detailsOpen}
+          minimal={minimalMode}
+          previewing={previewBusy}
           writable={snapshot.writable}
           autoPlay={autoPlay}
           voiceVolume={voiceVolume}
@@ -378,8 +404,9 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
           fieldOverridden={fieldOverridden}
           resetField={resetField}
           onToggle={() => { setDetailsOpen((current) => !current) }}
+          onPreview={toggleMixerPreview}
           onVoiceVolumeChange={(next) => { previewPlayer.setVolume(next); toggleSoundPlayer.setPreviewVolume(next); setVoiceVolume(next); markChange('voiceVolume') }}
-          onVoiceVolumeInteractionEnd={(next) => { toggleSoundPlayer.previewVolume(next) }}
+          onVoiceVolumeInteractionEnd={(next) => { if (minimalMode) controller.previewVolume(); else toggleSoundPlayer.previewVolume(next) }}
           onVoiceRateChange={(next) => { setVoiceRate(next); markChange('voiceRate') }}
           onVoiceRateInteractionEnd={(next) => { controller.play('success', { playbackRate: next }) }}
           onReadScopeChange={(next) => { setReadScope(next); markChange('readScope') }}
@@ -394,14 +421,15 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
           onLocalVoiceURIChange={(next) => { setLocalVoiceURI(next); markChange('localVoiceURI') }}
           onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
         /> : null}
-        {enabled ? <PreviewModule
+        {enabled && !minimalMode ? <PreviewModule
           t={t}
           enabled={enabled}
+          minimal={minimalMode}
           status={previewView.status}
           source={previewView.source}
           error={previewView.error}
           text={previewText}
-          onToggle={togglePreview}
+          onToggle={toggleSettingsPreview}
           onTextChange={setPreviewText}
         /> : null}
         <SoundEffectsPanel
@@ -413,6 +441,7 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
           taskSounds={taskSounds}
           clickSounds={clickSounds}
           writable={snapshot.writable}
+          minimal={minimalMode}
           open={soundEffectsOpen}
           onToggle={() => { setSoundEffectsOpen((current) => !current) }}
           onCycle={cycleSoundEffectsMode}
@@ -434,6 +463,15 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
           {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
           {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
           {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}
+          <button
+            type="button"
+            className="xmimo-tts-mode-toggle"
+            aria-pressed={minimalMode}
+            aria-label={`${t('settings.minimalMode')}: ${t(minimalMode ? 'settings.minimalModeOn' : 'settings.minimalModeOff')}`}
+            onClick={toggleMinimalMode}
+          >
+            {t(minimalMode ? 'settings.defaultModeShort' : 'settings.minimalModeShort')}
+          </button>
           <button type="button" className="xmimo-tts-discard" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={discard}>
             {t('settings.discard')}
           </button>

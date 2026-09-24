@@ -1,4 +1,4 @@
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context, Volatile } from '@deepseek-ai/cordis'
 import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
@@ -21,43 +21,48 @@ let nextHostStreamRequestId = 1
 export const name = 'xiaomi-mimo-tts'
 
 /** Host services required by this plugin. */
-export const inject = ['webServer', 'settings']
+export const inject = ['webServer']
 
 /** Settings namespace registered with the DSH Host. */
 export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = TTS_SETTINGS_NAMESPACE
 
 /** Validated Host settings schema. */
 export const Config = z.object({
-  enabled: z.boolean().default(DEFAULT_TTS_SETTINGS.enabled),
-  apiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.apiKey),
-  baseURL: z.string().default(DEFAULT_TTS_SETTINGS.baseURL),
-  model: z.union(TTS_MODELS).default(DEFAULT_TTS_SETTINGS.model),
-  localSpeechMode: z.union(TTS_LOCAL_SPEECH_MODES).default(DEFAULT_TTS_SETTINGS.localSpeechMode),
-  localVoiceURI: z.string().default(DEFAULT_TTS_SETTINGS.localVoiceURI),
-  voice: z.string().default(DEFAULT_TTS_SETTINGS.voice),
-  voiceDesignPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignPrompt),
-  voiceDesignCustomPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt),
-  presetStylePrompt: z.string().default(DEFAULT_TTS_SETTINGS.presetStylePrompt),
-  format: z.union(TTS_FORMATS).default(DEFAULT_TTS_SETTINGS.format),
-  voiceDesignPlaybackMode: z.union(TTS_VOICE_DESIGN_PLAYBACK_MODES).default(DEFAULT_TTS_SETTINGS.voiceDesignPlaybackMode),
-  readScope: z.union(TTS_READ_SCOPES).default(DEFAULT_TTS_SETTINGS.readScope),
-  autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay),
-  instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction),
-  maxTextLength: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxTextLength),
-  requestTimeoutMs: z.number().step(1).min(1000).default(DEFAULT_TTS_SETTINGS.requestTimeoutMs),
-  maxMp3AudioBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxMp3AudioBytes),
-  maxWavAudioBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxWavAudioBytes),
-  maxPausedPcmBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxPausedPcmBytes),
-  voiceVolume: z.number().min(0).max(1).default(DEFAULT_TTS_SETTINGS.voiceVolume),
-  voiceRate: z.number().step(0.1).min(0.5).max(2).default(DEFAULT_TTS_SETTINGS.voiceRate),
-  soundEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.soundEnabled),
-  soundVolume: z.number().min(0).max(1).default(DEFAULT_TTS_SETTINGS.soundVolume),
-  soundPack: z.union(SOUND_PACKS).default(DEFAULT_TTS_SETTINGS.soundPack),
-  taskSounds: z.boolean().default(DEFAULT_TTS_SETTINGS.taskSounds),
-  clickSounds: z.boolean().default(DEFAULT_TTS_SETTINGS.clickSounds),
+  enabled: z.boolean().default(DEFAULT_TTS_SETTINGS.enabled).volatile(),
+  apiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.apiKey).volatile(),
+  baseURL: z.string().pattern(/^https?:\/\/\S+$/iu).default(DEFAULT_TTS_SETTINGS.baseURL).volatile(),
+  model: z.union(TTS_MODELS).default(DEFAULT_TTS_SETTINGS.model).volatile(),
+  localSpeechMode: z.union(TTS_LOCAL_SPEECH_MODES).default(DEFAULT_TTS_SETTINGS.localSpeechMode).volatile(),
+  localVoiceURI: z.string().default(DEFAULT_TTS_SETTINGS.localVoiceURI).volatile(),
+  voice: z.string().default(DEFAULT_TTS_SETTINGS.voice).volatile(),
+  voiceDesignPrompt: z.string().min(1).default(DEFAULT_TTS_SETTINGS.voiceDesignPrompt).volatile(),
+  voiceDesignCustomPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt).volatile(),
+  presetStylePrompt: z.string().default(DEFAULT_TTS_SETTINGS.presetStylePrompt).volatile(),
+  format: z.union(TTS_FORMATS).default(DEFAULT_TTS_SETTINGS.format).volatile(),
+  voiceDesignPlaybackMode: z.union(TTS_VOICE_DESIGN_PLAYBACK_MODES).default(DEFAULT_TTS_SETTINGS.voiceDesignPlaybackMode).volatile(),
+  readScope: z.union(TTS_READ_SCOPES).default(DEFAULT_TTS_SETTINGS.readScope).volatile(),
+  autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay).volatile(),
+  instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction).volatile(),
+  maxTextLength: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxTextLength).volatile(),
+  requestTimeoutMs: z.number().step(1).min(1000).default(DEFAULT_TTS_SETTINGS.requestTimeoutMs).volatile(),
+  maxMp3AudioBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxMp3AudioBytes).volatile(),
+  maxWavAudioBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxWavAudioBytes).volatile(),
+  maxPausedPcmBytes: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxPausedPcmBytes).volatile(),
+  voiceVolume: z.number().min(0).max(1).default(DEFAULT_TTS_SETTINGS.voiceVolume).volatile(),
+  voiceRate: z.number().step(0.1).min(0.5).max(2).default(DEFAULT_TTS_SETTINGS.voiceRate).volatile(),
+  soundEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.soundEnabled).volatile(),
+  soundVolume: z.number().min(0).max(1).default(DEFAULT_TTS_SETTINGS.soundVolume).volatile(),
+  soundPack: z.union(SOUND_PACKS).default(DEFAULT_TTS_SETTINGS.soundPack).volatile(),
+  taskSounds: z.boolean().default(DEFAULT_TTS_SETTINGS.taskSounds).volatile(),
+  clickSounds: z.boolean().default(DEFAULT_TTS_SETTINGS.clickSounds).volatile(),
 })
 
 export type Config = ReturnType<typeof Config>
+type ConfigValues = { [Key in keyof Config]: Config[Key] extends Volatile<infer Value> ? Value : Config[Key] }
+
+function readConfig(config: Config): ConfigValues {
+  return Object.fromEntries(Object.entries(config).map(([key, value]) => [key, (value as Volatile<unknown>).get()])) as ConfigValues
+}
 
 interface SynthesizeBody {
   text?: unknown
@@ -81,7 +86,7 @@ interface XiaomiAudioResponse {
   message?: string
 }
 
-function requestMessages(options: Config, text: string): Array<{ role: 'user' | 'assistant'; content: string }> {
+function requestMessages(options: ConfigValues, text: string): Array<{ role: 'user' | 'assistant'; content: string }> {
   const context = options.model === 'mimo-v2.5-tts-voicedesign'
     ? options.voiceDesignPrompt.trim()
     : [options.presetStylePrompt.trim(), options.instruction.trim()].filter((item) => item.length > 0).join('\n')
@@ -91,11 +96,11 @@ function requestMessages(options: Config, text: string): Array<{ role: 'user' | 
   return messages
 }
 
-function upstreamModel(options: Config): 'mimo-v2.5-tts' | 'mimo-v2.5-tts-voicedesign' {
+function upstreamModel(options: ConfigValues): 'mimo-v2.5-tts' | 'mimo-v2.5-tts-voicedesign' {
   return options.model === 'mimo-v2.5-tts-voicedesign' ? options.model : 'mimo-v2.5-tts'
 }
 
-function synthesisOptions(options: Config, body: SynthesizeBody): Config {
+function synthesisOptions(options: ConfigValues, body: SynthesizeBody): ConfigValues {
   const model = TTS_MODELS.includes(body.model as typeof TTS_MODELS[number])
     ? body.model as typeof TTS_MODELS[number]
     : options.model
@@ -138,6 +143,12 @@ function normalizeBaseURL(value: string): string {
   return value.slice(0, end)
 }
 
+function chatCompletionsEndpoint(options: ConfigValues): string {
+  const endpoint = `${normalizeBaseURL(resolveTtsBaseURL(options.apiKey, options.baseURL))}/chat/completions`
+  if (!URL.canParse(endpoint)) throw new Error('baseURL must be a valid absolute URL')
+  return endpoint
+}
+
 function apiErrorMessage(status: number, parsed: XiaomiAudioResponse | undefined): string {
   const detail = typeof parsed?.error === 'string'
     ? parsed.error
@@ -157,11 +168,11 @@ class CompleteAudioResponseError extends Error {
 
 type CompleteAudioFormat = 'mp3' | 'wav'
 
-function completeAudioFormat(options: Config): CompleteAudioFormat {
+function completeAudioFormat(options: ConfigValues): CompleteAudioFormat {
   return options.format === 'wav' ? 'wav' : 'mp3'
 }
 
-function completeAudioLimit(options: Config, format: CompleteAudioFormat): number {
+function completeAudioLimit(options: ConfigValues, format: CompleteAudioFormat): number {
   return format === 'mp3' ? options.maxMp3AudioBytes : options.maxWavAudioBytes
 }
 
@@ -232,7 +243,7 @@ async function latestTtsVersion(): Promise<string | null> {
 
 /** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
-  let current = () => config
+  const current = () => readConfig(config)
 
   const voicePresetAssets = new Map(TTS_VOICE_DESIGN_PRESETS.map((preset) => {
     const path = `${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`
@@ -258,22 +269,8 @@ export function apply(ctx: Context, config: Config): void {
     return [path, data] as const
   }))
 
-  ctx.settings.installSection(ctx, XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE, Config, config, {
-    setSource(source) {
-      current = source
-    },
-    onChange() {},
-    validate(value) {
-      const base = normalizeBaseURL(value.baseURL)
-      const endpoint = `${base}/chat/completions`
-      if (!URL.canParse(endpoint)) throw new Error('baseURL must be a valid absolute URL')
-      if (value.model === 'mimo-v2.5-tts-voicedesign' && value.voiceDesignPrompt.trim().length === 0) {
-        throw new Error('voiceDesignPrompt is required when using mimo-v2.5-tts-voicedesign')
-      }
-      if (!TTS_FORMATS.includes(value.format)) {
-        throw new Error('format must be pcm, mp3, or wav')
-      }
-    },
+  ctx.inject(['settings'], (child) => {
+    child.effect(() => child.settings.configure({ auto: false }, ctx.fiber), 'xiaomi-mimo-tts: custom settings page')
   })
 
   ctx.effect(() => ctx.webServer.register({
@@ -613,7 +610,7 @@ export function apply(ctx: Context, config: Config): void {
           return
         }
         const format = body.format === 'mp3' || body.format === 'wav' ? body.format : completeAudioFormat(options)
-        const endpoint = `${normalizeBaseURL(resolveTtsBaseURL(options.apiKey, options.baseURL))}/chat/completions`
+        const endpoint = chatCompletionsEndpoint(options)
         const response = await fetch(endpoint, {
           method: 'POST',
           redirect: 'error',
@@ -744,7 +741,7 @@ export function apply(ctx: Context, config: Config): void {
 
       try {
         debugConsole?.info(STREAM_HOST_LOG, `[请求 ${requestId}] 正在请求小米 MiMo 上游`)
-        const response = await fetch(`${normalizeBaseURL(resolveTtsBaseURL(options.apiKey, options.baseURL))}/chat/completions`, {
+        const response = await fetch(chatCompletionsEndpoint(options), {
           method: 'POST',
           redirect: 'error',
           headers: {

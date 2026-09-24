@@ -1,12 +1,13 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
-import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import { TTS_VOICE_ASSET_ROUTE, TTS_VOICE_PRESETS } from '../../../shared.js'
 import { hostRoute } from '../../host-route.js'
 
 type BuiltInVoicePreset = typeof TTS_VOICE_PRESETS[number]
 
-function VoiceAvatar({ preset }: { preset: BuiltInVoicePreset }): ReactElement {
+function VoiceAvatar({ preset, minimal }: { preset: BuiltInVoicePreset, minimal: boolean }): ReactElement | null {
+  if (minimal) return null
   return <img
     className="xmimo-tts-builtin-voice-avatar"
     src={hostRoute(`${TTS_VOICE_ASSET_ROUTE}/${preset.id}.webp`)}
@@ -29,10 +30,11 @@ interface BuiltInVoicePickerProps {
   value: string
   disabled: boolean
   label: string
+  minimal?: boolean
   onChange: (value: string) => void
 }
 
-export function BuiltInVoicePicker({ value, disabled, label, onChange }: BuiltInVoicePickerProps): ReactElement {
+export function BuiltInVoicePicker({ value, disabled, label, minimal = false, onChange }: BuiltInVoicePickerProps): ReactElement {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -116,9 +118,11 @@ export function BuiltInVoicePicker({ value, disabled, label, onChange }: BuiltIn
       onClick={() => { setOpen((current) => !current) }}
       onKeyDown={handleTriggerKeyDown}
     >
-      <VoiceAvatar preset={selected} />
+      <VoiceAvatar preset={selected} minimal={minimal} />
       <span className="xmimo-tts-builtin-voice-copy"><strong>{selected.value}</strong><small>{selected.summary}</small></span>
-      <IconChevronDownOutline14 className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} />
+      {minimal
+        ? <span className="xmimo-tts-voice-picker-text-caret" aria-hidden="true">⌄</span>
+        : <IconChevronDownOutlineMedium className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} size={14} />}
     </button>
     {open ? <div id={listboxId} className="xmimo-tts-builtin-voice-menu" role="listbox" aria-label={label}>
       {TTS_VOICE_PRESETS.map((preset, index) => <button
@@ -131,8 +135,8 @@ export function BuiltInVoicePicker({ value, disabled, label, onChange }: BuiltIn
         onClick={() => { choose(preset.value) }}
         onKeyDown={(event) => { handleOptionKeyDown(event, index) }}
       >
-        {preset.value === value ? <SelectedCheck /> : null}
-        <VoiceAvatar preset={preset} />
+        {!minimal && preset.value === value ? <SelectedCheck /> : null}
+        <VoiceAvatar preset={preset} minimal={minimal} />
         <span className="xmimo-tts-builtin-voice-copy"><strong>{preset.value}</strong><small>{preset.summary}</small></span>
       </button>)}
     </div> : null}

@@ -29,6 +29,7 @@ const clientSource = (await Promise.all(clientSourceFiles.map((name) => readFile
 const settingsCardSource = await readFile(new URL('../src/client/settings/card.tsx', import.meta.url), 'utf8')
 const settingsSwitchSource = await readFile(new URL('../src/client/settings/switch-module.tsx', import.meta.url), 'utf8')
 const settingsApiKeySource = await readFile(new URL('../src/client/settings/api-key-module.tsx', import.meta.url), 'utf8')
+const minimalStyleSource = await readFile(new URL('../src/client/style/minimal.css', import.meta.url), 'utf8')
 const settingsDetailsSource = await readFile(new URL('../src/client/settings/details-module.tsx', import.meta.url), 'utf8')
 const settingsPreviewSource = await readFile(new URL('../src/client/settings/preview-module.tsx', import.meta.url), 'utf8')
 const settingsSoundEffectsSource = await readFile(new URL('../src/client/settings/sound-effects-module.tsx', import.meta.url), 'utf8')
@@ -39,7 +40,7 @@ const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, setti
 const sharedModule = await import('../lib/shared.js')
 const { appendTtsSmartTruncationOutro, applyTtsPlaybackScope, applyTtsReadScope, batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TTS_READ_SCOPES, TTS_SMART_TRUNCATION_OUTROS, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, TtsFirstSegmentLimiter } = sharedModule
 
-const SUPPORTED_DSH_VERSION = '0.1.6-alpha.2'
+const SUPPORTED_DSH_VERSION = '0.1.7-alpha.2'
 
 async function assertLocalReadmeTargets(source, label) {
   const targets = [...source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)|(?:src|href)="([^"]+)"/g)]
@@ -54,7 +55,7 @@ async function assertLocalReadmeTargets(source, label) {
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
-  assert.equal(packageJson.version, '3.0.4-alpha')
+  assert.equal(packageJson.version, '3.0.5-alpha')
   assert.equal(TTS_VERSION, packageJson.version)
   assert.equal(packageJson.scripts.prepare, 'node scripts/prepare-package.mjs')
   assert.equal(packageJson.scripts.prepack, 'pnpm run build && node scripts/pack-package.mjs')
@@ -67,6 +68,9 @@ test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.scripts['profile:check'], 'node scripts/dsh-profile-verify.mjs')
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
+  assert.equal(packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-settings'), true)
+  assert.match(client, /configForms\.get/)
+  assert.doesNotMatch(client, /settingsScope/)
   assert.equal(packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-chat'), true)
   assert.equal(packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-runtime'), false)
   assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
@@ -74,6 +78,9 @@ test('package declares DSH bundle and Web client entries', () => {
   for (const [name, range] of Object.entries(packageJson.peerDependencies)) {
     if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, SUPPORTED_DSH_VERSION, name)
     assert.equal(packageJson.peerDependenciesMeta[name]?.optional, true, `${name} must be supplied by the DSH runtime`)
+  }
+  for (const [name, range] of Object.entries(packageJson.devDependencies)) {
+    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, SUPPORTED_DSH_VERSION, name)
   }
   assert.equal(TTS_UPDATE_ROUTE, '/plugins/xiaomi-mimo-tts/update')
   assert.equal(packageJson.exports['./client'].default, './lib/client.js')
@@ -136,7 +143,7 @@ test('profile lifecycle scripts pin the daily web profile and reject mixed link 
   assert.match(profileVerifySource, /process\.env\.DSH_HOME/u)
   assert.match(profileVerifySource, /profileManifest\.dependencies/u)
   assert.match(profileVerifySource, /profileManifest\.dsh\?\.profile\?\.bundles/u)
-  assert.match(profileVerifySource, /installedManifest\.version !== ['"]3\.0\.4-alpha['"]/u)
+  assert.match(profileVerifySource, /installedManifest\.version !== ['"]3\.0\.5-alpha['"]/u)
   assert.match(profileVerifySource, /installed link target mismatch/u)
   assert.match(profileVerifySource, /DSH_PROFILE_EXPECT_CHECKOUT/u)
   assert.match(reinstallScript, /IsNullOrWhiteSpace\(\$env:DSH_HOME\)/u)
@@ -214,7 +221,8 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.equal(TOKEN_PLAN_TTS_BASE_URL, 'https://token-plan-cn.xiaomimimo.com/v1')
   assert.match(host, /TTS_ROUTE/)
   assert.match(host, /prepareTtsText/)
-  assert.match(host, /ctx\.settings\.installSection/)
+  assert.match(host, /const inject = \["webServer"\]/)
+  assert.match(host, /ctx\.inject\(\["settings"\][\s\S]*child\.settings\.configure\(\{ auto: false \}, ctx\.fiber\)/)
   assert.doesNotMatch(host, /settings-compat|compatibleSettingsApi/)
   assert.match(host, /role\(['"]secret['"]\)/)
   assert.match(host, /mimo-v2\.5-tts/)
@@ -224,7 +232,8 @@ test('host and shared artifacts contain protected TTS route and secret settings 
   assert.match(host, /completeAudioFormat\(options\)/)
   assert.match(host, /options\.format === ["']wav["'] \? ["']wav["'] : ["']mp3["']/)
   assert.match(host, /chat\/completions/)
-  assert.match(host, /resolveTtsBaseURL\(options\.apiKey, options\.baseURL\)/)
+  assert.match(host, /chatCompletionsEndpoint\(options\)/)
+  assert.match(host, /URL\.canParse\(endpoint\)/)
   assert.match(host, /TTS_API_KEY_STATUS_ROUTE/)
   assert.doesNotMatch(host, /dsh-xiaomi-tts\/1\.1\.1/)
   assert.match(host, /createRequire/)
@@ -347,11 +356,13 @@ test('ships the API-key whale asset used by the settings card', async () => {
   assert.match(settingsApiKeySource, /onBlur=\{\(\) => \{ setBubbleKey/)
   assert.match(settingsApiKeySource, /aria-describedby=\{messageId\}/)
   assert.match(settingsApiKeySource, /aria-invalid=\{invalid\}/)
+  assert.match(settingsApiKeySource, /minimal \? ' xmimo-tts-visually-hidden' : ''/)
+  assert.match(minimalStyleSource, /\.xmimo-tts-api-key-input:focus-within \+ \.xmimo-tts-api-key-message/)
   assert.match(settingsApiKeySource, /settings\.getApiKey[\s\S]*settings\.apiKeyClear/)
   assert.match(settingsApiKeySource, /className="xmimo-tts-reset"/)
   assert.match(settingsCardSource, /onClear=\{clearApiKey\}/)
   assert.match(settingsCardSource, /apiKeyChange\?\.kind === 'clear'/)
-  assert.match(settingsCardSource, /await scope\.unset\('apiKey'\)/)
+  assert.match(settingsCardSource, /requireAccepted\(scope\.unset\('apiKey'\)\)/)
 })
 
 test('keeps the mixer whale asset for Preview decorations', async () => {
@@ -367,13 +378,16 @@ test('keeps the mixer whale asset for Preview decorations', async () => {
   assert.match(settingsDetailsSource, /xmimo-tts-mixer-whale-voicedesign/u)
   assert.match(settingsDetailsSource, /xmimo-tts-mixer-whale-preset/u)
   assert.match(settingsDetailsSource, /xmimo-tts-mixer-bubble/u)
-  assert.match(settingsDetailsSource, /action=\{mixerDecoration\}/u)
+  assert.match(settingsDetailsSource, /action=\{mixerPreviewAction\}/u)
+  assert.match(settingsDetailsSource, /className="xmimo-tts-mixer-preview-button"/u)
+  assert.match(settingsDetailsSource, /settings\.previewPlayShort/u)
+  assert.match(settingsCardSource, /toggleMixerPreview = \(\): void => \{ togglePreview\(t\('settings\.previewDefaultText'\)\) \}/u)
 })
 
 test('announces preview playback status accessibly', () => {
   assert.match(settingsPreviewSource, /aria-live="polite">\{t\(messageKey\)\}/)
   assert.match(settingsPreviewSource, /xmimo-tts-character-bubble xmimo-tts-preview-status/)
-  assert.match(settingsCardSource, /\{enabled \? <PreviewModule/)
+  assert.match(settingsCardSource, /\{enabled && !minimalMode \? <PreviewModule/)
   assert.match(settingsCardSource, /if \(!next\) \{\s+previewPlayer\.stop\(\)/)
 })
 
@@ -754,6 +768,7 @@ test('both MiMo models share persistent bidirectional browser-speech fallback', 
   assert.doesNotMatch(clientSource, /<option value="browser-local-fallback">/)
   assert.equal((settingsDetailsSource.match(/<LocalVoicePicker /g) ?? []).length, 1)
   assert.match(settingsCardSource, /<div className="xmimo-tts-card-body xmimo-ui-stack">\s*<SwitchModule[\s\S]*<ApiKeyModule/)
+  assert.match(settingsCardSource, /className="xmimo-tts-mode-toggle"[\s\S]*<button type="button" className="xmimo-tts-discard"/)
   assert.doesNotMatch(settingsCardSource, /xmimo-tts-grid xmimo-tts-sections xmimo-ui-grid/)
   assert.match(settingsCardSource, /\{enabled \? <DetailsModule[\s\S]*\/> : null\}/)
   assert.match(clientSource, /useApiKeySupported\(resolvedSettings\.localSpeechMode !== 'disabled'\)/)
