@@ -36,7 +36,7 @@
 
 ## 📋 环境要求
 
-- `@deepseek-ai/dsh` `0.1.7-alpha.2`（当前兼容目标版本）
+- `@deepseek-ai/dsh` `0.1.7-rc.1`（当前兼容目标版本）
 - Node.js 22+
 - 使用 MiMo 语音时需要 Xiaomi MiMo API Key
 - [官方 TTS API 文档](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -204,7 +204,7 @@ pnpm pack:check
 Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避免运行中的 Node 进程占用 Junction：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.5-alpha
+.\start\dsh-plugin-reinstall.bat 3.0.5
 ```
 
 ## 🤝 推荐插件

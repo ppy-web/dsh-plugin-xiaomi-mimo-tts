@@ -40,7 +40,7 @@ const settingsModulesSource = [settingsSwitchSource, settingsApiKeySource, setti
 const sharedModule = await import('../lib/shared.js')
 const { appendTtsSmartTruncationOutro, applyTtsPlaybackScope, applyTtsReadScope, batchTtsStreamText, countTtsSpeechCharacters, DEFAULT_TTS_SEGMENT_CHARACTERS, firstTtsSegment, isNewerTtsVersion, MAX_TTS_SEGMENT_CHARACTERS, MIN_TTS_SEGMENT_CHARACTERS, MIN_TTS_STREAM_CHARACTERS, prepareTtsText, resolveTtsBaseURL, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TTS_READ_SCOPES, TTS_SMART_TRUNCATION_OUTROS, TOKEN_PLAN_TTS_BASE_URL, TTS_UPDATE_ROUTE, TTS_VERSION, TtsFirstSegmentLimiter } = sharedModule
 
-const SUPPORTED_DSH_VERSION = '0.1.7-alpha.2'
+const SUPPORTED_DSH_VERSION = '0.1.7-rc.1'
 
 async function assertLocalReadmeTargets(source, label) {
   const targets = [...source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)|(?:src|href)="([^"]+)"/g)]
@@ -55,7 +55,7 @@ async function assertLocalReadmeTargets(source, label) {
 
 test('package declares DSH bundle and Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
-  assert.equal(packageJson.version, '3.0.5-alpha')
+  assert.equal(packageJson.version, '3.0.5')
   assert.equal(TTS_VERSION, packageJson.version)
   assert.equal(packageJson.scripts.prepare, 'node scripts/prepare-package.mjs')
   assert.equal(packageJson.scripts.prepack, 'pnpm run build && node scripts/pack-package.mjs')
@@ -143,7 +143,7 @@ test('profile lifecycle scripts pin the daily web profile and reject mixed link 
   assert.match(profileVerifySource, /process\.env\.DSH_HOME/u)
   assert.match(profileVerifySource, /profileManifest\.dependencies/u)
   assert.match(profileVerifySource, /profileManifest\.dsh\?\.profile\?\.bundles/u)
-  assert.match(profileVerifySource, /installedManifest\.version !== ['"]3\.0\.5-alpha['"]/u)
+  assert.match(profileVerifySource, /installedManifest\.version !== ['"]3\.0\.5['"]/u)
   assert.match(profileVerifySource, /installed link target mismatch/u)
   assert.match(profileVerifySource, /DSH_PROFILE_EXPECT_CHECKOUT/u)
   assert.match(reinstallScript, /IsNullOrWhiteSpace\(\$env:DSH_HOME\)/u)
