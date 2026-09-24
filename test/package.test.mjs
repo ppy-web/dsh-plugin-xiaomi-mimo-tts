@@ -32,6 +32,7 @@ const {
 } = sharedModule
 
 const SUPPORTED_DSH_PACKAGE_PREFIX = '@deepseek-ai/dsh-'
+const SUPPORTED_DSH_VERSION = packageJson.engines.dsh
 
 async function assertLocalReadmeTargets(source, label) {
   const targets = [...source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)|(?:src|href)="([^"]+)"/g)]
