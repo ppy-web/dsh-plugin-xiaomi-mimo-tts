@@ -36,7 +36,7 @@
 
 ## 📋 环境要求
 
-- `@deepseek-ai/dsh` `0.1.7-alpha.2`（当前兼容目标版本）
+- `@deepseek-ai/dsh` `0.1.7-rc.1`（当前兼容目标版本）
 - Node.js 22+
 - 使用 MiMo 语音时需要 Xiaomi MiMo API Key
 - [官方 TTS API 文档](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -49,9 +49,13 @@
 dsh plugin --profile web add dsh-xiaomi-tts@latest
 ```
 
+### 从DSH插件管理面板安装
+
+当前插件已发布到npm，可在dsh web的侧边栏进入插件面板，点击添加插件，输入包名 `dsh-xiaomi-tts` 搜索并安装。
+
 ### 从插件市场安装
 
-当前 DSH 插件市场已收录本插件，可在 **设置 → 插件市场** 中搜索 `xiaomi-mimo-tts`。
+[插件市场](https://awesome-dsh-plugin.com) 已收录本插件，如你已安装社区的插件市场，可在 **设置 → 插件市场** 中搜索 `xiaomi-mimo-tts`安装。
 
 ### 从 GitHub 安装
 
@@ -64,9 +68,6 @@ dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
 ```powershell
 dsh plugin --profile web add "<下载路径>\dsh-xiaomi-tts-<版本>.tgz"
 ```
-
-Release 压缩包已包含构建产物，无需执行 `pnpm approve-builds`。
-
 安装完成后，重启正在运行的 DSH Web `web` profile，然后打开：
 
 **侧边栏 → 插件 → dsh-xiaomi-tts → 语音朗读 (Xiaomi MiMo)**
@@ -90,13 +91,6 @@ Release 压缩包已包含构建产物，无需执行 `pnpm approve-builds`。
 
 > 新输入的 API Key 只有保存到 DSH Host 后才会用于 MiMo 试听。界面中的 `sk-` / `tp-` 检查只是格式识别，不代表服务端已经验证密钥有效。
 
-### 更换或清除 API Key
-
-- 输入新 Key 并保存，会替换当前个人设置层的密钥。
-- 点击 **清除** 并保存，会移除当前用户层覆盖。
-- 如果 DSH 基础配置仍提供密钥，清除个人覆盖后会恢复继承该密钥；因此该操作不等同于撤销 Xiaomi 平台上的密钥。
-- 如需彻底失效，请同时前往 Xiaomi MiMo 控制台撤销对应 Key。
-
 ## ⚙️ 配置说明
 
 ### 官方内置音色
@@ -111,12 +105,6 @@ Release 压缩包已包含构建产物，无需执行 `pnpm approve-builds`。
 ### 自定义音色
 
 `mimo-v2.5-tts-voicedesign` 支持从音色描述生成声音。设置面板包含预设模板，也可以手动编辑：
-
-```text
-青年女性，声线清亮、亲切自然，吐字清楚，语速适中，情绪温柔克制。
-```
-
-音色描述支持预设模板，也可以直接手动编辑；修改后需要保存设置。
 
 ### 浏览器本地语音
 
@@ -156,9 +144,7 @@ tts?.play('欢迎回来')
 ## 🔒 隐私与网络访问
 
 - API Key 由 DSH Host 保存，浏览器只读取“是否已配置/格式是否识别”的状态，不读取密钥正文。
-- 生成 MiMo 语音时，待朗读正文和相关音色指令会发送至 Xiaomi MiMo 服务。
 - 浏览器本地语音由 Web Speech API 提供；标记为在线的音色可能把文本交给浏览器、操作系统或其网络语音服务。
-- 展开设置卡片时，DSH Host 会访问 npm Registry 检查是否存在新版本。
 - 音频在浏览器内存中通过 Web Audio 或临时 Blob URL 播放，插件不会主动持久化音频文件。
 - 音效核心移植自 [uisfx 0.4.0](https://github.com/romainsimon/uisfx)，遵循 MIT License，详见 `NOTICE`。
 
@@ -204,12 +190,13 @@ pnpm pack:check
 Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避免运行中的 Node 进程占用 Junction：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.5-alpha
+.\start\dsh-plugin-reinstall.bat 3.0.5
 ```
 
 ## 🤝 推荐插件
 
-> 本插件的鲸鱼娘形象参考 `dsh-deep-whale` `dsh-whale-musume`由GPT生成。本插件的uisfx音效参考 `dsh-plugin-uisfx`实现
+> 本插件的鲸鱼娘形象参考 `dsh-deep-whale` `dsh-whale-musume`由GPT生成
+本插件的uisfx音效参考 `dsh-plugin-uisfx`实现
 
 - [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme)：鲸鱼娘主题皮肤系列。
 - [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme)：元气鲸鱼娘桌宠。

@@ -118,8 +118,8 @@ button, input, select, textarea { font: inherit; }
 .preview-toolbar-compact .preview-volume input { width: 58px; }
 
 .preview-stage { position: relative; z-index: 1; width: min(1440px, calc(100% - 48px)); margin: 0 auto; padding: 32px 0 64px; }
-.preview-plugin-header { display: flex; align-items: center; gap: 12px; margin: 0 0 22px; padding: 0 0 2px; }
-.preview-plugin-icon { flex: 0 0 56px; width: 56px; height: 56px; object-fit: contain; }
+.preview-plugin-header { margin: 0 0 22px; padding: 0 0 2px; }
+.preview-plugin-icon { display: block; width: 56px; height: 56px; margin: 0 0 12px; object-fit: contain; }
 .preview-plugin-copy { min-width: 0; }
 .preview-plugin-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .preview-plugin-title-row h1 { margin: 0; color: var(--dsw-alias-label-primary, #1f2328); font-size: clamp(20px, 2.2vw, 24px); font-weight: 700; letter-spacing: -.025em; line-height: 1.15; }

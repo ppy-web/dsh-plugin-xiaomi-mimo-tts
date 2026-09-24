@@ -10,6 +10,8 @@ import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
 import { PreviewBackground } from './background-icons.js'
 import { UserManual } from './user-manual.js'
 import { TTS_VERSION } from '../src/shared.js'
+import enPluginLocale from '../locale/en.json'
+import zhPluginLocale from '../locale/zh.json'
 import './preview.css'
 
 type PreviewLocale = 'zh' | 'en'
@@ -66,9 +68,11 @@ const TOOLBAR_COPY: Record<PreviewLocale, {
 }
 
 const PREVIEW_PLUGIN_META = {
-  title: 'xiaomi-tts',
   packageName: 'dsh-xiaomi-tts',
-  description: '为 DeepSeek Harness Web 助手消息提供 Xiaomi MiMo 语音朗读控制',
+  locales: {
+    zh: zhPluginLocale.meta,
+    en: enPluginLocale.meta,
+  },
 } as const
 
 const scope = new PreviewSettingsScope()
@@ -100,6 +104,7 @@ function PreviewApp() {
   const listRef = useRef<HTMLUListElement | null>(null)
   const t = useMemo(() => translator(locale), [locale])
   const toolbar = TOOLBAR_COPY[locale]
+  const pluginMeta = PREVIEW_PLUGIN_META.locales[locale]
 
   useEffect(() => {
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en'
@@ -320,11 +325,11 @@ function PreviewApp() {
             <img className="preview-plugin-icon" src={pluginIcon} alt="" aria-hidden="true" />
             <div className="preview-plugin-copy">
               <div className="preview-plugin-title-row">
-                <h1>{PREVIEW_PLUGIN_META.title}</h1>
+                <h1>{pluginMeta.title}</h1>
                 <span className="preview-plugin-version">v{TTS_VERSION}</span>
               </div>
               <code className="preview-plugin-name">{PREVIEW_PLUGIN_META.packageName}</code>
-              <p>{PREVIEW_PLUGIN_META.description}</p>
+              <p>{pluginMeta.description}</p>
             </div>
           </header>
           <ul className="preview-settings-list" ref={listRef} key={instance}>
