@@ -11,6 +11,7 @@ export function isPresetVoiceDesignPrompt(value: string): boolean {
 }
 
 type VoiceDesignPreset = typeof TTS_VOICE_DESIGN_PRESETS[number]
+const MINIMAL_VOICE_DESIGN_PRESET_IDS = new Set(['energetic-girl', 'liang-wenfeng', 'young-man', 'gentle-girlfriend'])
 
 function VoicePresetAvatar({ preset, minimal }: { preset: VoiceDesignPreset, minimal: boolean }): ReactElement | null {
   if (minimal) return null
@@ -53,23 +54,26 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const listboxId = useId()
-  const selectedPresetIndex = TTS_VOICE_DESIGN_PRESETS.findIndex((item) => item.prompt === value)
-  const selectedPreset = selectedPresetIndex < 0 ? undefined : TTS_VOICE_DESIGN_PRESETS[selectedPresetIndex]
-  const selectedOptionIndex = selectedPresetIndex + 1
-  const optionCount = TTS_VOICE_DESIGN_PRESETS.length + 1
+  const visiblePresets = minimal
+    ? TTS_VOICE_DESIGN_PRESETS.filter((preset) => MINIMAL_VOICE_DESIGN_PRESET_IDS.has(preset.id))
+    : TTS_VOICE_DESIGN_PRESETS
+  const selectedPresetIndex = visiblePresets.findIndex((item) => item.prompt === value)
+  const selectedPreset = selectedPresetIndex < 0 ? undefined : visiblePresets[selectedPresetIndex]
+  const selectedOptionIndex = selectedPresetIndex + (minimal ? 0 : 1)
+  const optionCount = visiblePresets.length + (minimal ? 0 : 1)
 
   useEffect(() => {
-    if (!open) return
+    if (minimal || !open) return
     const closeOnOutsidePointer = (event: PointerEvent): void => {
       if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false)
     }
     document.addEventListener('pointerdown', closeOnOutsidePointer)
     return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
-  }, [open])
+  }, [minimal, open])
 
   useEffect(() => {
-    if (disabled) setOpen(false)
-  }, [disabled])
+    if (!minimal && disabled) setOpen(false)
+  }, [disabled, minimal])
 
   const focusOption = (index: number): void => {
     const normalized = (index + optionCount) % optionCount
@@ -83,6 +87,7 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
 
   const choose = (next: string): void => {
     onChange(next)
+    if (minimal) return
     setOpen(false)
     requestAnimationFrame(() => triggerRef.current?.focus())
   }
@@ -126,7 +131,7 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
   }
 
   return <div className="xmimo-tts-voice-picker xmimo-tts-builtin-voice-picker" ref={rootRef}>
-    <button
+    {!minimal ? <button
       ref={triggerRef}
       type="button"
       className="xmimo-tts-voice-picker-trigger"
@@ -146,34 +151,36 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
       {minimal
         ? <span className="xmimo-tts-voice-picker-text-caret" aria-hidden="true">⌄</span>
         : <IconChevronDownOutlineMedium className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} size={14} />}
-    </button>
-    {open ? <div id={listboxId} className="xmimo-tts-voice-picker-menu xmimo-tts-builtin-voice-menu" role="listbox" aria-label={label}>
-      <button
+    </button> : null}
+    {(minimal || open) ? <div id={listboxId} className="xmimo-tts-voice-picker-menu xmimo-tts-builtin-voice-menu" role="listbox" aria-label={label}>
+      {!minimal ? <button
         ref={(node) => { optionRefs.current[0] = node }}
         type="button"
         role="option"
         aria-selected={selectedPreset === undefined}
+        disabled={disabled}
         className={selectedPreset === undefined ? 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-selected xmimo-tts-builtin-voice-option-custom' : 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-custom'}
         onClick={() => { choose(CUSTOM_VOICE_DESIGN_OPTION) }}
         onKeyDown={(event) => { handleOptionKeyDown(event, 0) }}
       >
-        {minimal ? null : <CustomVoiceAvatar />}
+        <CustomVoiceAvatar />
         <span className="xmimo-tts-voice-option-copy"><strong>{customLabel}</strong><small>{customSummary}</small></span>
-        {!minimal && selectedPreset === undefined ? <VoicePresetCheck /> : null}
-      </button>
-      {TTS_VOICE_DESIGN_PRESETS.map((preset, index) => <button
+        {selectedPreset === undefined ? <VoicePresetCheck /> : null}
+      </button> : null}
+      {visiblePresets.map((preset, index) => <button
         key={preset.id}
-        ref={(node) => { optionRefs.current[index + 1] = node }}
+        ref={(node) => { optionRefs.current[index + (minimal ? 0 : 1)] = node }}
         type="button"
         role="option"
         aria-selected={selectedPreset?.id === preset.id}
+        disabled={disabled}
         className={selectedPreset?.id === preset.id ? 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-selected' : 'xmimo-tts-builtin-voice-option'}
         onClick={() => { choose(preset.prompt) }}
-        onKeyDown={(event) => { handleOptionKeyDown(event, index + 1) }}
+        onKeyDown={(event) => { handleOptionKeyDown(event, index + (minimal ? 0 : 1)) }}
       >
         <VoicePresetAvatar preset={preset} minimal={minimal} />
         <span className="xmimo-tts-voice-option-copy"><strong>{preset.label}</strong><small>{preset.summary}</small></span>
-        {!minimal && selectedPreset?.id === preset.id ? <VoicePresetCheck /> : null}
+        {selectedPreset?.id === preset.id ? <VoicePresetCheck /> : null}
       </button>)}
     </div> : null}
   </div>

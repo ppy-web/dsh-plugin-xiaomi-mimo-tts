@@ -1,25 +1,3 @@
-.xmimo-tts-card-actions .xmimo-tts-mode-toggle {
-  box-sizing: border-box;
-  min-height: 24px;
-  border: 0;
-  border-radius: 4px;
-  padding: 2px 6px;
-  color: var(--xmimo-ui-text-muted);
-  background: transparent;
-  font: inherit;
-  font-size: 11px;
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-card-actions .xmimo-tts-mode-toggle {
-  min-height: 0;
-  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-  border-radius: var(--xmimo-ui-control-radius);
-  padding: 5px 14px;
-  color: var(--xmimo-ui-text-muted);
-  background: var(--xmimo-ui-control-surface);
-  font-size: 12px;
-}
-
 .xmimo-tts-preview-simple-button {
   min-height: 30px;
   border: 1px solid var(--xmimo-ui-border);
@@ -31,12 +9,10 @@
   cursor: pointer;
 }
 
-.xmimo-tts-card-actions .xmimo-tts-mode-toggle:hover:not(:disabled),
 .xmimo-tts-preview-simple-button:hover:not(:disabled) {
   border-color: var(--xmimo-ui-brand);
 }
 
-.xmimo-tts-card-actions .xmimo-tts-mode-toggle:focus-visible,
 .xmimo-tts-preview-simple-button:focus-visible {
   outline: var(--xmimo-ui-focus);
   outline-offset: 1px;
@@ -47,6 +23,132 @@
   --xmimo-ui-module-padding: 8px;
   --xmimo-ui-control-height: 30px;
   --xmimo-ui-mascot-size: 0px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.xmimo-tts-card-minimal .xmimo-ui-module {
+  border-color: transparent;
+  background: transparent;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-api-key .xmimo-ui-module-header {
+  display: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-switch-row {
+  gap: 6px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal {
+  height: 24px;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  --energy-color: var(--xmimo-ui-text);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal::before,
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal::after {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  content: '';
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal::before {
+  right: 0;
+  background: var(--xmimo-ui-border);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal::after {
+  width: var(--volume);
+  background: var(--xmimo-ui-text);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal .xmimo-tts-energy-fill,
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal .xmimo-tts-energy-dots {
+  display: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input[type=range] {
+  z-index: 1;
+  height: 32px;
+  top: -4px;
+  padding: 0;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input::-webkit-slider-runnable-track,
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input::-moz-range-track {
+  height: 24px;
+  background: transparent;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  background: transparent;
+  animation: none;
+  box-shadow: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  background: transparent;
+  animation: none;
+  box-shadow: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xmimo-ui-brand) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.xmimo-tts-minimal-toggle {
+  display: flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-control-surface);
+  cursor: pointer;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-minimal-toggle:hover {
+  border-color: var(--xmimo-ui-brand);
+}
+
+.xmimo-tts-minimal-toggle-label {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-minimal-toggle:has([aria-checked='true']) {
+  border-color: color-mix(in srgb, var(--xmimo-ui-brand) 58%, var(--xmimo-ui-border));
+  background: color-mix(in srgb, var(--xmimo-ui-brand) 8%, var(--xmimo-ui-control-surface));
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-minimal-toggle:has([disabled]) {
+  cursor: not-allowed;
+  opacity: .5;
 }
 
 .xmimo-tts-card-minimal .xmimo-ui-module-heading > strong {
@@ -59,9 +161,32 @@
   white-space: nowrap;
 }
 
+.xmimo-tts-card-minimal .xmimo-tts-field-badges {
+  display: none !important;
+}
+
 .xmimo-tts-card-minimal .xmimo-tts-api-key-input {
   align-items: center;
   gap: 8px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-api-key-input > input {
+  border: 0;
+  border-bottom: 1px solid var(--xmimo-ui-border);
+  border-radius: 0;
+  padding-right: 0;
+  padding-left: 0;
+  background: transparent;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-api-key-input > input:hover:not(:disabled) {
+  border-bottom-color: var(--xmimo-ui-text-subtle);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-api-key-input > input:focus-visible {
+  border-bottom-color: var(--xmimo-ui-brand);
+  outline: none;
+  box-shadow: 0 1px 0 var(--xmimo-ui-brand);
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-api-key-inline-actions {
@@ -76,26 +201,17 @@
   font-size: 11px;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-character-control {
-  min-height: 38px;
+.xmimo-tts-card-minimal .xmimo-tts-api-key-inline-actions .xmimo-tts-api-key-link,
+.xmimo-tts-card-minimal .xmimo-tts-mixer-preview-button,
+.xmimo-tts-card-minimal .xmimo-tts-sound-whale-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  width: 88px;
+  min-width: 88px;
+  flex: 0 0 88px;
   align-items: center;
-  justify-content: space-between;
-  flex-direction: row;
-  border-radius: 8px;
-  padding: 6px 9px;
-  background: var(--xmimo-ui-surface);
-  box-shadow: none;
-  text-align: left;
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-character-copy {
-  align-items: flex-start;
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-character-state {
-  position: static;
-  flex: none;
-  box-shadow: none;
+  justify-content: center;
+  text-align: center;
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-voice-picker-text-caret {
@@ -112,10 +228,6 @@
 
 .xmimo-tts-card-minimal .xmimo-tts-details-body > :nth-child(n + 3) {
   grid-column: 1 / -1;
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-model-switch-option {
-  min-height: 37px;
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-details-body > :not(.xmimo-tts-volume) > .xmimo-tts-field-heading {
@@ -203,11 +315,6 @@
   grid-column: auto;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-character-toggle:hover > input:not(:disabled) + .xmimo-tts-character-control {
-  transform: none;
-  box-shadow: none;
-}
-
 .xmimo-tts-card-minimal .xmimo-tts-preview-title {
   padding-right: 0;
 }
@@ -223,6 +330,16 @@
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-api-key-input:focus-within + .xmimo-tts-api-key-message {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-api-key-message.xmimo-tts-api-key-warning {
   position: static;
   width: auto;
   height: auto;
@@ -265,17 +382,23 @@
 .xmimo-tts-card-minimal .xmimo-tts-sound-whale-button {
   min-height: 28px;
   position: static;
-  width: auto;
+  display: inline-flex;
+  width: 88px;
+  min-width: 88px;
+  flex: 0 0 88px;
   height: auto;
   border: 1px solid var(--xmimo-ui-border);
   border-radius: 7px;
   padding: 4px 8px;
   background: var(--xmimo-ui-control-surface);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-sound-effects .xmimo-ui-module-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 6px;
   padding: 5px 8px;
 }
@@ -312,7 +435,43 @@
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-sound-pack-grid {
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   gap: 4px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-pack-option {
+  min-height: 28px;
+  border-radius: 7px;
+  padding: 4px 20px 4px 8px;
+  font-size: 11px;
+  line-height: 16px;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-pack-option::before {
+  inset: 5px auto 5px 0;
+  width: 2px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-pack-option::after {
+  right: 5px;
+  width: 13px;
+  height: 13px;
+  font-size: 9px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-pack-option:hover:not(:disabled),
+.xmimo-tts-card-minimal .xmimo-tts-sound-pack-option:active:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-pack-option-selected {
+  box-shadow: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-pack-wave {
+  display: none;
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-sound-previews button {
@@ -332,6 +491,19 @@
 
 .xmimo-tts-card-minimal .xmimo-tts-grid > * {
   padding-block: 4px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-card-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-card-actions button,
+.xmimo-tts-card-minimal .xmimo-tts-card-actions .xmimo-tts-mode-toggle {
+  min-height: 30px;
+  border-radius: 8px;
+  padding: 5px 10px;
 }
 
 @media (max-width: 520px) {

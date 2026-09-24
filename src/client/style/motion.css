@@ -25,10 +25,6 @@
   .xmimo-tts-sound-pack-option::after,
   .xmimo-tts-sound-pack-wave,
   .xmimo-tts-sound-pack-wave i,
-  .xmimo-tts-format-option,
-  .xmimo-tts-format-option::after {
-    transition: none !important
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

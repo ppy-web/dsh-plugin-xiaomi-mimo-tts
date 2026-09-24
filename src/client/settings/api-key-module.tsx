@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactElement } from 'react'
 import { useId, useState } from 'react'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
@@ -55,7 +56,7 @@ export function ApiKeyModule({ t, value, message, invalid, clearable, writable, 
       />}
       suffix={<>
         <a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>
-        {clearable ? <button type="button" className="xmimo-tts-reset" disabled={!writable} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClear() }}>{t('settings.apiKeyClear')}</button> : null}
+        {clearable ? <Button type="button" variant="ghost" size="sm" className="xmimo-tts-reset" disabled={!writable} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClear() }}>{t('settings.apiKeyClear')}</Button> : null}
       </>}
       disabled={!writable}
       resettable={false}
@@ -91,12 +92,12 @@ export function ApiKeyModule({ t, value, message, invalid, clearable, writable, 
       />
       {minimal ? <span className="xmimo-tts-api-key-inline-actions">
         <a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>
-        {clearable ? <button type="button" className="xmimo-tts-reset" disabled={!writable} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClear() }}>{t('settings.apiKeyClear')}</button> : null}
+        {clearable ? <Button type="button" variant="ghost" size="sm" className="xmimo-tts-reset" disabled={!writable} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClear() }}>{t('settings.apiKeyClear')}</Button> : null}
       </span> : null}
       </div>
       <small
         id={messageId}
-        className={`xmimo-tts-api-key-message${invalid ? ' xmimo-tts-api-key-warning' : ''}${minimal ? ' xmimo-tts-visually-hidden' : ''}`}
+        className={`xmimo-tts-api-key-message${invalid ? ' xmimo-tts-api-key-warning' : ''}${minimal && !invalid ? ' xmimo-tts-visually-hidden' : ''}`}
         role={invalid ? 'alert' : 'status'}
       >
         {message}

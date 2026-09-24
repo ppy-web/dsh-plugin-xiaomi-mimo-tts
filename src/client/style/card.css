@@ -7,7 +7,7 @@
   border: 1px solid var(--xmimo-ui-border-soft);
   border-radius: 12px;
   color: var(--xmimo-ui-text);
-  background: var(--dsw-alias-bg-layer-3, #fff);
+  /* background: var(--dsw-alias-bg-layer-3, #fff); */
   overflow: hidden;
   transition: border-color 160ms ease, background 160ms ease
 }
@@ -17,7 +17,7 @@
 }
 
 .xmimo-tts-card-open {
-  background: var(--dsw-alias-bg-layer-2, #f7f8fa);
+  /* background: var(--dsw-alias-bg-layer-2, #f7f8fa); */
   border-color: var(--dsw-alias-label-dimmed, #c8ccd4)
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 export interface EnergyVolumeSliderProps {
   value: number
   label: string
+  minimal?: boolean
   disabled?: boolean
   min?: number
   max?: number
@@ -38,7 +39,7 @@ const DOT_POSITIONS = Array.from({ length: DOT_COUNT }, (_, index) => {
 })
 
 /** A controlled, accessible energy slider with transient pointer feedback. */
-export function EnergyVolumeSlider({ value, label, disabled = false, min = 0, max = 1, step = 0.01, formatValue, onChange, onInteractionEnd }: EnergyVolumeSliderProps): ReactElement {
+export function EnergyVolumeSlider({ value, label, minimal = false, disabled = false, min = 0, max = 1, step = 0.01, formatValue, onChange, onInteractionEnd }: EnergyVolumeSliderProps): ReactElement {
   const lower = Number.isFinite(min) ? min : 0
   const upper = Number.isFinite(max) && max > lower ? max : lower + 1
   const increment = Number.isFinite(step) && step > 0 ? step : (upper - lower) / 100
@@ -66,7 +67,7 @@ export function EnergyVolumeSlider({ value, label, disabled = false, min = 0, ma
     onInteractionEnd?.(latestValueRef.current)
   }
 
-  return <span className="xmimo-tts-energy" data-dragging={dragging} data-high={normalized > .85} data-disabled={disabled} style={{ '--volume': `${percent}%` } as CSSProperties}>
+  return <span className={minimal ? 'xmimo-tts-energy xmimo-tts-energy-minimal' : 'xmimo-tts-energy'} data-dragging={dragging} data-high={normalized > .85} data-disabled={disabled} style={{ '--volume': `${percent}%` } as CSSProperties}>
     <span className="xmimo-tts-energy-fill" aria-hidden="true" />
     <span key={pulse} className={pulse ? 'xmimo-tts-energy-dots xmimo-tts-energy-pulse' : 'xmimo-tts-energy-dots'} aria-hidden="true">
       {DOT_POSITIONS.map(({ x, y, size, driftX, driftY, duration, delay }, index) => <i key={index} style={{ '--dot': index, '--dot-x': `${x}%`, '--dot-y': `${y}%`, '--dot-size': `${size}px`, '--drift-x': driftX, '--drift-y': driftY, '--drift-duration': duration, '--drift-delay': delay, opacity: index / DOT_COUNT < normalized ? .7 : .15 } as CSSProperties} />)}

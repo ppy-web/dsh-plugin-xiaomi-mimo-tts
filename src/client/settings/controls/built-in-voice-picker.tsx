@@ -44,17 +44,17 @@ export function BuiltInVoicePicker({ value, disabled, label, minimal = false, on
   const selected = TTS_VOICE_PRESETS[selectedIndex < 0 ? 0 : selectedIndex]!
 
   useEffect(() => {
-    if (!open) return
+    if (minimal || !open) return
     const closeOnOutsidePointer = (event: PointerEvent): void => {
       if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false)
     }
     document.addEventListener('pointerdown', closeOnOutsidePointer)
     return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
-  }, [open])
+  }, [minimal, open])
 
   useEffect(() => {
-    if (disabled) setOpen(false)
-  }, [disabled])
+    if (!minimal && disabled) setOpen(false)
+  }, [disabled, minimal])
 
   const focusOption = (index: number): void => {
     const normalized = (index + TTS_VOICE_PRESETS.length) % TTS_VOICE_PRESETS.length
@@ -63,6 +63,7 @@ export function BuiltInVoicePicker({ value, disabled, label, minimal = false, on
 
   const choose = (next: string): void => {
     onChange(next)
+    if (minimal) return
     setOpen(false)
     requestAnimationFrame(() => triggerRef.current?.focus())
   }
@@ -106,7 +107,7 @@ export function BuiltInVoicePicker({ value, disabled, label, minimal = false, on
   }
 
   return <div className="xmimo-tts-builtin-voice-picker" ref={rootRef}>
-    <button
+    {!minimal ? <button
       ref={triggerRef}
       type="button"
       className="xmimo-tts-builtin-voice-trigger"
@@ -123,14 +124,15 @@ export function BuiltInVoicePicker({ value, disabled, label, minimal = false, on
       {minimal
         ? <span className="xmimo-tts-voice-picker-text-caret" aria-hidden="true">⌄</span>
         : <IconChevronDownOutlineMedium className={open ? 'xmimo-tts-voice-picker-chevron xmimo-tts-voice-picker-chevron-open' : 'xmimo-tts-voice-picker-chevron'} size={14} />}
-    </button>
-    {open ? <div id={listboxId} className="xmimo-tts-builtin-voice-menu" role="listbox" aria-label={label}>
+    </button> : null}
+    {(minimal || open) ? <div id={listboxId} className="xmimo-tts-builtin-voice-menu" role="listbox" aria-label={label}>
       {TTS_VOICE_PRESETS.map((preset, index) => <button
         key={preset.id}
         ref={(node) => { optionRefs.current[index] = node }}
         type="button"
         role="option"
         aria-selected={preset.value === value}
+        disabled={disabled}
         className={preset.value === value ? 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-selected' : 'xmimo-tts-builtin-voice-option'}
         onClick={() => { choose(preset.value) }}
         onKeyDown={(event) => { handleOptionKeyDown(event, index) }}
