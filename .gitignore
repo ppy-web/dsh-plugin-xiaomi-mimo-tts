@@ -4,6 +4,7 @@ node_modules/
 coverage/
 .preview-dist/
 .playwright-cli/
+.vscode/
 output/
 lib/
 .agents/

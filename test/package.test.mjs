@@ -318,6 +318,12 @@ test('normalizes Chinese parentheses and keeps ASCII colons', () => {
   assert.equal(prepareTtsText('现在是08:31，请准时开始。'), '现在是08:31,请准时开始.')
 })
 
+test('preserves pauses signaled by em and en dashes', () => {
+  assert.equal(prepareTtsText('前一句——后一句'), '前一句,后一句')
+  assert.equal(prepareTtsText('前一句 —— 后一句'), '前一句, 后一句')
+  assert.equal(prepareTtsText('前一句–后一句－再一句'), '前一句,后一句,再一句')
+})
+
 test('turns physical line breaks into sentence-ending periods', () => {
   assert.equal(prepareTtsText('第一行\n第二行'), '第一行.第二行')
 })
