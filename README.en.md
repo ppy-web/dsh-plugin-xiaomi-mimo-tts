@@ -4,7 +4,7 @@
 
 [![npm version](https://img.shields.io/npm/v/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
 [![npm downloads](https://img.shields.io/npm/dm/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
-![dsh version](https://img.shields.io/badge/dsh-v0.1.7alpha2-blue?link=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2Fdeepseek-harness%2Freleases)
+![dsh version](https://img.shields.io/badge/dsh-v0.1.7rc2-blue?link=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2Fdeepseek-harness%2Freleases)
 ![Xiaomi MiMo](https://img.shields.io/badge/Xiaomi-MiMo-ff6900?logo=xiaomi&logoColor=white)
 
 Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI sounds to DSH Web.
@@ -36,7 +36,7 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 
 ## 📋 Requirements
 
-- `@deepseek-ai/dsh` `0.1.7-rc.1` (the current compatibility target)
+- `@deepseek-ai/dsh` `0.1.7-rc.2` (the current target; compatible with all `0.1.7-*` releases)
 - Node.js 22+
 - A Xiaomi MiMo API key for MiMo speech
 - [Official TTS API documentation](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -204,7 +204,7 @@ pnpm pack:check
 On Windows, stop DSH Web before replacing a local development link with the npm package so the running Node process does not hold the Junction:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.5
+.\start\dsh-plugin-reinstall.bat 3.0.6
 ```
 
 ## 🤝 Recommended plugins

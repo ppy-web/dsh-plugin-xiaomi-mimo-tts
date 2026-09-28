@@ -356,7 +356,6 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
   const toggleMinimalMode = (): void => {
     const next = !minimalMode
     setMinimalMode(next)
-    setDetailsOpen(next)
     if (!next) setSoundEffectsOpen(false)
     writeMinimalMode(next)
     toggleSoundPlayer.setEnabled(!next)

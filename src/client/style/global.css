@@ -112,7 +112,7 @@
   align-items: flex-start;
   border: 0;
   border-radius: calc(var(--xmimo-ui-module-radius) - 1px);
-  padding: var(--xmimo-ui-space-3) var(--xmimo-ui-module-padding);
+  padding: var(--xmimo-ui-module-padding);
   color: var(--xmimo-ui-text);
   background: transparent;
   font: inherit;

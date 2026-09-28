@@ -32,7 +32,7 @@ const {
 } = sharedModule
 
 const SUPPORTED_DSH_PACKAGE_PREFIX = '@deepseek-ai/dsh-'
-const SUPPORTED_DSH_VERSION = packageJson.engines.dsh
+const SUPPORTED_DSH_VERSION = packageJson.devDependencies['@deepseek-ai/dsh-api-session-controller']
 
 async function assertLocalReadmeTargets(source, label) {
   const targets = [...source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)|(?:src|href)="([^"]+)"/g)]
@@ -58,6 +58,7 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
   assert.equal(packageJson.scripts.postpack, 'node scripts/restore-package-scripts.mjs')
   assert.equal(packageJson.scripts['release:check'], 'pnpm run test')
   assert.equal(packageJson.scripts['profile:check'], 'node scripts/dsh-profile-verify.mjs')
+  assert.equal(packageJson.engines.dsh, '>=0.1.7-0 <0.1.8-0')
   assert.ok(packageJson.files.includes('scripts/prepare-package.mjs'))
   assert.ok(packageJson.files.includes('NOTICE'))
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
@@ -69,7 +70,7 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
   assert.equal(packageJson.devDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
 
   for (const [name, range] of Object.entries(packageJson.peerDependencies)) {
-    if (name.startsWith(SUPPORTED_DSH_PACKAGE_PREFIX)) assert.ok(range, `${name} should declare a peer range`)
+    if (name.startsWith(SUPPORTED_DSH_PACKAGE_PREFIX)) assert.equal(range, packageJson.engines.dsh, `${name} should follow the supported DSH range`)
     assert.equal(packageJson.peerDependenciesMeta[name]?.optional, true, `${name} must be optional`)
   }
   for (const [name, range] of Object.entries(packageJson.devDependencies)) {

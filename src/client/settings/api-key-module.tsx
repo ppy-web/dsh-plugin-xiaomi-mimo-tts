@@ -70,25 +70,26 @@ export function ApiKeyModule({ t, value, message, invalid, clearable, writable, 
         aria-hidden="true"
       /> : null}
       <input
-        id={inputId}
-        type="password"
-        value={value}
-        name="xmimo-tts-api-key"
-        autoComplete="new-password"
-        autoCorrect="off"
-        spellCheck={false}
-        aria-label={t('settings.apiKey')}
-        aria-autocomplete="none"
-        aria-describedby={messageId}
-        aria-invalid={invalid}
-        data-1p-ignore="true"
-        data-bwignore="true"
-        data-lpignore="true"
-        placeholder={t('settings.secretPlaceholder')}
-        disabled={!writable}
-        onFocus={() => { setBubbleKey((current) => randomCopyKey(API_KEY_FOCUS_COPY_KEYS, current)) }}
-        onBlur={() => { setBubbleKey((current) => randomCopyKey(API_KEY_IDLE_COPY_KEYS, current)) }}
-        onChange={(event) => { onChange(event.target.value) }}
+          id={inputId}
+          type="password"
+          value={value}
+          name="xmimo-tts-api-key"
+          autoComplete="new-password"
+          autoCorrect="off"
+          spellCheck={false}
+          aria-label={t('settings.apiKey')}
+          aria-autocomplete="none"
+          aria-describedby={messageId}
+          aria-invalid={invalid}
+          data-1p-ignore="true"
+          data-bwignore="true"
+          data-lpignore="true"
+          placeholder={t('settings.secretPlaceholder')}
+          disabled={!writable}
+          onFocus={() => { setBubbleKey((current) => randomCopyKey(API_KEY_FOCUS_COPY_KEYS, current)) }}
+          onBlur={() => { setBubbleKey((current) => randomCopyKey(API_KEY_IDLE_COPY_KEYS, current)) }}
+          onChange={(event) => { onChange(event.target.value) }}
+          style={{ padding: '0 var(--xmimo-ui-space-4)' }}
       />
       {minimal ? <span className="xmimo-tts-api-key-inline-actions">
         <a className="xmimo-tts-api-key-link" href="https://platform.xiaomimimo.com/console/api-keys" target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>
