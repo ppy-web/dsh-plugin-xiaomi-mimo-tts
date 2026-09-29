@@ -1,11 +1,19 @@
+param(
+  [string]$ProfileName = $(if ([string]::IsNullOrWhiteSpace($env:DSH_PROFILE)) { 'web' } else { $env:DSH_PROFILE })
+)
+
 $ErrorActionPreference = 'Stop'
+
+if ([string]::IsNullOrWhiteSpace($ProfileName) -or $ProfileName -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') {
+  throw "Invalid DSH profile name: $ProfileName"
+}
 
 $dshRoot = if ([string]::IsNullOrWhiteSpace($env:DSH_HOME)) {
   Join-Path $env:USERPROFILE '.dsh'
 } else {
   [IO.Path]::GetFullPath($env:DSH_HOME)
 }
-$profileRoot = [IO.Path]::GetFullPath((Join-Path $dshRoot 'profiles\web')).TrimEnd('\')
+$profileRoot = [IO.Path]::GetFullPath((Join-Path $dshRoot (Join-Path 'profiles' $ProfileName))).TrimEnd('\')
 $manifestPath = Join-Path $profileRoot 'package.json'
 $packageNames = @('dsh-xiaomi-tts', 'dsh-plugin-xiaomi-mimo-tts')
 

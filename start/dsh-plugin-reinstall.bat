@@ -41,7 +41,7 @@ if errorlevel 1 echo [INFO] %PACKAGE% was not removed by the CLI; verifying the 
 call dsh.cmd plugin --profile web remove "dsh-plugin-xiaomi-mimo-tts"
 if errorlevel 1 echo [INFO] dsh-plugin-xiaomi-mimo-tts was not removed by the CLI; verifying the manifest before continuing.
 
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0dsh-profile-cleanup.ps1"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0dsh-profile-cleanup.ps1" -ProfileName web
 if errorlevel 1 (
   echo [ERROR] Failed to remove the old plugin package or stale link.
   goto :failed

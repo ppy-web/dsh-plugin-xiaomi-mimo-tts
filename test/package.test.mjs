@@ -5,6 +5,8 @@ import test from 'node:test'
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const readmeZh = await readFile(new URL('../README.md', import.meta.url), 'utf8')
 const readmeEn = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
+const profileCleanupScript = await readFile(new URL('../start/dsh-profile-cleanup.ps1', import.meta.url), 'utf8')
+const unlinkScript = await readFile(new URL('../start/dsh-plugin-uninstall-local-link.bat', import.meta.url), 'utf8')
 const sharedModule = await import('../lib/shared.js')
 const {
   appendTtsSmartTruncationOutro,
@@ -84,6 +86,16 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
   assert.ok(packageJson.exports['./client']?.default)
   assert.ok(packageJson.exports['./client-api']?.types)
   assert.ok(packageJson.exports['./client-api']?.default)
+})
+
+test('Windows profile cleanup supports desktop and removes only profile-local links', () => {
+  assert.match(profileCleanupScript, /\[string\]\$ProfileName/u)
+  assert.match(profileCleanupScript, /profiles.*\$ProfileName/u)
+  assert.match(profileCleanupScript, /LinkType -in @\('Junction', 'SymbolicLink'\)/u)
+  assert.ok(profileCleanupScript.includes("StartsWith($profileRoot + '\\'"))
+  assert.match(unlinkScript, /set "PROFILE=desktop"/u)
+  assert.match(unlinkScript, /-ProfileName "%PROFILE%"/u)
+  assert.match(unlinkScript, /plugin --profile "%PROFILE%" remove/u)
 })
 
 test('README files keep required structure and local targets valid', async () => {

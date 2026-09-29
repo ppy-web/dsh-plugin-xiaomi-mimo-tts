@@ -185,6 +185,12 @@ On Windows, stop DSH Web before replacing a local development link with the npm 
 .\start\dsh-plugin-reinstall.bat 3.0.7
 ```
 
+For a DSH Desktop profile, close Desktop and remove a stale local link with:
+
+```powershell
+.\start\dsh-plugin-uninstall-local-link.bat desktop
+```
+
 ## 🤝 Recommended
 
 > The Whale Maid artwork is inspired by community projects and generated with GPT.

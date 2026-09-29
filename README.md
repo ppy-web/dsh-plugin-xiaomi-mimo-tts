@@ -187,6 +187,12 @@ Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避�
 .\start\dsh-plugin-reinstall.bat 3.0.7
 ```
 
+如果是 DSH Desktop profile，只需要卸载残留的本地链接，可在退出 Desktop 后运行：
+
+```powershell
+.\start\dsh-plugin-uninstall-local-link.bat desktop
+```
+
 ## 🤝 推荐
 
 > 鲸鱼娘形象参考社区由GPT生成
