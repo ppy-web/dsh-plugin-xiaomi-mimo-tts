@@ -28,7 +28,7 @@
   --xmimo-ui-control-height: 30px;
   --xmimo-ui-mascot-size: 0px;
   border-color: transparent;
-  background: var(--dsw-alias-bg-layer-2, #fff);
+  background: var(--xmimo-ui-surface, #fff);
 }
 
 .xmimo-tts-card-minimal .xmimo-ui-module {
@@ -401,6 +401,7 @@
   opacity: 0.5;
 }
 
+
 .xmimo-tts-card-minimal .xmimo-tts-sound-whale-button {
   min-height: 28px;
   position: static;
@@ -410,12 +411,24 @@
   flex: 0 0 88px;
   height: auto;
   border: 1px solid var(--xmimo-ui-border);
-  border-radius: 7px;
+  border-radius: 6px;
   padding: 4px 8px;
   background: var(--xmimo-ui-control-surface);
   align-items: center;
   justify-content: center;
   text-align: center;
+  color: var(--xmimo-ui-text);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.xmimo-tts-card-minimal .xmimo-tts-sound-whale-button:hover {
+  border-color: var(--xmimo-ui-brand);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-sound-whale-button:focus-visible {
+  outline: var(--xmimo-ui-focus);
+  outline-offset: 1px;
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-sound-effects .xmimo-ui-module-header {
@@ -439,7 +452,7 @@
 .xmimo-tts-card-minimal .xmimo-tts-sound-mode-label {
   display: block;
   position: static;
-  color: var(--xmimo-ui-text-muted);
+  color: var(--xmimo-ui-text);
   font-size: 11px;
 }
 
@@ -523,7 +536,7 @@
 .xmimo-tts-card-minimal .xmimo-tts-card-actions {
   flex-wrap: wrap;
   gap: 6px;
-  padding-top: 8px;
+  padding: 0 var(--xmimo-ui-space-3) var(--xmimo-ui-space-3);
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-card-actions button,

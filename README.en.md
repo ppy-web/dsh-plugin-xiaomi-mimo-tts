@@ -4,7 +4,7 @@
 
 [![npm version](https://img.shields.io/npm/v/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
 [![npm downloads](https://img.shields.io/npm/dm/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
-![dsh version](https://img.shields.io/badge/dsh-v0.1.7rc2-blue?link=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2Fdeepseek-harness%2Freleases)
+![dsh version](https://img.shields.io/badge/dsh-v0.2.0rc1-blue?link=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2Fdeepseek-harness%2Freleases)
 ![Xiaomi MiMo](https://img.shields.io/badge/Xiaomi-MiMo-ff6900?logo=xiaomi&logoColor=white)
 
 Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI sounds to DSH Web.
@@ -15,7 +15,7 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 
 ## 🎨 Preview
 
-- [Open the interactive Preview Pages](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
+- [Open the settings page preview](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 
 | Settings | Message action |
 |:---:|:---:|
@@ -30,46 +30,39 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 - Smart, full, and first-segment read-aloud ranges.
 - 0.5×–2.0× playback speed, voice volume, pause, resume, and stop controls.
 - Text preparation that removes URLs, paths, code blocks, emoji, and control characters before synthesis.
-- Broadcast Studio previews that identify MiMo versus browser-local playback and explain common failures.
 - Optional task and semantic click sounds, disabled by default.
 - An optional PCM playback service for other DSH Web plugins.
 
 ## 📋 Requirements
 
-- `@deepseek-ai/dsh` `0.1.7-rc.2` (the current target; compatible with all `0.1.7-*` releases)
+- `@deepseek-ai/dsh` `0.2.0-rc.1` (the current target; compatible with `0.1.7-rc.1` through `0.2.x` releases)
 - Node.js 22+
 - A Xiaomi MiMo API key for MiMo speech
 - [Official TTS API documentation](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
 
 ## 🚀 Installation
 
-### Install from npm (recommended)
+### Official installation (desktop/web) (recommended)
+
+Open the desktop or web client, go to the Plugin Manager, and search for `dsh-xiaomi-tts`.
+
+![Installation example](assets/install.png)
+
+### Install from npm (web)
 
 ```bash
 dsh plugin --profile web add dsh-xiaomi-tts@latest
 ```
 
+### Install from the DSH Plugin Manager
+
+The plugin is published to npm. In DSH Web's sidebar, open the Plugin Manager, choose **Add plugin**, then search for `dsh-xiaomi-tts`.
+
 ### Install from the plugin marketplace
 
-If the plugin is available in the current DSH marketplace catalog, search for `xiaomi-mimo-tts` under **Settings → Plugin marketplace**.
+![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg) The [plugin marketplace](https://awesome-dsh-plugin.com) includes this plugin. If you have the community marketplace installed, search for `xiaomi-mimo-tts` under **Settings → Plugin marketplace**.
 
-### Install from GitHub
-
-```bash
-dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
-```
-
-You can also download a `.tgz` from GitHub Releases:
-
-```powershell
-dsh plugin --profile web add "<download-path>\dsh-xiaomi-tts-<version>.tgz"
-```
-
-Release tarballs include the build output and do not require `pnpm approve-builds`.
-
-After installation, restart the running DSH Web `web` profile, then open:
-
-**Sidebar → Plugins → dsh-xiaomi-tts → Text To Speech (Xiaomi MiMo)**
+**Sidebar → Plugins → dsh-xiaomi-tts → Text To Speech (MiMo TTS)**
 
 ## 🐋 First use
 
@@ -85,17 +78,8 @@ Recommended setup order:
 1. [Create a Xiaomi MiMo API key](https://platform.xiaomimimo.com/console/api-keys).
 2. Enter it in the plugin settings and click **Save**.
 3. Open Mixing Console and choose a model and voice.
-4. Test it in Broadcast Studio; the status bubble identifies MiMo or browser-local speech.
+4. Test it in Broadcast Studio.
 5. Enable automatic playback and UI sounds only if wanted, then save again.
-
-> A newly entered API key is used by MiMo only after it is saved to the DSH Host. Recognizing an `sk-` or `tp-` prefix is a format check, not server-side validation.
-
-### Replace or clear an API key
-
-- Entering and saving a new key replaces the key in the personal settings layer.
-- **Clear** removes that personal override after Save.
-- If a DSH base configuration still provides a key, clearing the personal override restores the inherited key. It does not revoke a key on Xiaomi's platform.
-- Revoke the key in the Xiaomi MiMo console when it must be made unusable everywhere.
 
 ## ⚙️ Configuration
 
@@ -111,12 +95,6 @@ Recommended setup order:
 ### Custom voices
 
 `mimo-v2.5-tts-voicedesign` generates a voice from a description. The settings panel includes presets and an editable custom description:
-
-```text
-Young adult woman with a bright, approachable voice, clear articulation, moderate pace, and a gentle, restrained emotional tone.
-```
-
-Voice descriptions support preset templates and direct manual editing; save the settings after changing one.
 
 ### Browser-local speech
 
@@ -135,6 +113,8 @@ Browser voices come from the Web Speech API. Offline availability, language cove
 The settings panel supports keyboard navigation: use `Tab` to move focus, arrow keys to adjust sliders and options, and `Space` to activate buttons and switches.
 
 ## 🔌 Third-party plugin integration
+
+![whale-girls](assets/whale-girls.webp)
 
 The plugin exposes an optional PCM streaming service to Web plugins:
 
@@ -156,9 +136,7 @@ tts?.play('Welcome back')
 ## 🔒 Privacy and network access
 
 - The DSH Host stores the API key. The browser reads only whether a key is configured and whether its prefix is recognized, not the secret itself.
-- MiMo synthesis sends the spoken text and relevant voice instructions to Xiaomi MiMo.
 - Browser-local speech uses the Web Speech API. Voices marked online may send text to browser, operating-system, or network speech services.
-- Opening the settings card makes the DSH Host query the npm Registry for a newer plugin version.
 - Audio plays from browser memory through Web Audio or temporary Blob URLs; the plugin does not intentionally persist generated audio.
 - The sound core is migrated from [uisfx 0.4.0](https://github.com/romainsimon/uisfx) under the MIT License; see `NOTICE`.
 
@@ -204,14 +182,16 @@ pnpm pack:check
 On Windows, stop DSH Web before replacing a local development link with the npm package so the running Node process does not hold the Junction:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.6
+.\start\dsh-plugin-reinstall.bat 3.0.7
 ```
 
-## 🤝 Recommended plugins
+## 🤝 Recommended
 
-![whale-girls](assets/whale-girls.webp)
+> The Whale Maid artwork is inspired by community projects and generated with GPT.
+> The UI sound effects reference the implementation in `dsh-plugin-uisfx`.
 
 - [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme): Whale Maid theme and skin series.
 - [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme): energetic Whale Maid desktop companion.
 - [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme): semantic UI sound effects.
 - [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme): native skins, wallpapers, accent colors, and theme packs.
+- [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI): a plugin for the dsh-TUI ecosystem.

@@ -4,21 +4,19 @@
 
 .xmimo-tts-card {
   list-style: none;
-  border: 1px solid var(--xmimo-ui-border-soft);
   border-radius: 12px;
   color: var(--xmimo-ui-text);
-  /* background: var(--dsw-alias-bg-layer-3, #fff); */
   overflow: hidden;
   transition: border-color 160ms ease, background 160ms ease
 }
 
 .xmimo-tts-card:hover {
-  border-color: var(--dsw-alias-label-dimmed, #c8ccd4)
+  /* border-color: var(--dsw-alias-label-dimmed, #c8ccd4) */
 }
 
 .xmimo-tts-card-open {
   /* background: var(--dsw-alias-bg-layer-2, #f7f8fa); */
-  border-color: var(--dsw-alias-label-dimmed, #c8ccd4)
+  /* border-color: var(--dsw-alias-label-dimmed, #c8ccd4) */
 }
 
 .xmimo-tts-card-header {
@@ -95,5 +93,5 @@
 }
 
 .xmimo-tts-card-body {
-  margin: 8px;
+  margin: var(--xmimo-ui-space-1) 0;
 }

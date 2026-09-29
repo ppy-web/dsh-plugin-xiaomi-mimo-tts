@@ -4,7 +4,7 @@
 
 [![npm version](https://img.shields.io/npm/v/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
 [![npm downloads](https://img.shields.io/npm/dm/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
-![dsh version](https://img.shields.io/badge/dsh-v0.1.7rc2-blue?link=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2Fdeepseek-harness%2Freleases)
+![dsh version](https://img.shields.io/badge/dsh-v0.2.0rc1-blue?link=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2Fdeepseek-harness%2Freleases)
 ![Xiaomi MiMo](https://img.shields.io/badge/Xiaomi-MiMo-ff6900?logo=xiaomi&logoColor=white)
 
 为 DSH Web 添加 Xiaomi MiMo TTS 语音朗读、浏览器本地语音兜底和可选 UI 音效。
@@ -15,7 +15,7 @@
 
 ## 🎨 预览
 
-- [在线打开 Preview Pages](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
+- [在线预览设置页面](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 
 | 设置界面 | 对话朗读入口 |
 |:---:|:---:|
@@ -30,47 +30,41 @@
 - 朗读范围：支持智能、全文和首段模式。
 - 播放控制：支持 0.5×–2.0× 语速、语音音量、暂停、继续和停止。
 - 文本清洗：朗读前移除网址、路径、代码块、表情符号和控制字符等不适合播报的内容。
-- 演播厅：试听时明确显示正在使用 MiMo 还是浏览器本地语音，并区分常见失败原因。
 - 可选音效：提供任务状态和语义化点击音效，默认关闭。
 - 插件联动：向其他 DSH Web 插件暴露可选的 PCM 播放服务。
 
 ## 📋 环境要求
 
-- `@deepseek-ai/dsh` `0.1.7-rc.2`（当前目标版本；兼容所有 `0.1.7-*` 版本）
+- `@deepseek-ai/dsh` `0.2.0-rc.1`（当前目标版本；兼容 `0.1.7-rc.1` 至 `0.2.x` 版本）
 - Node.js 22+
 - 使用 MiMo 语音时需要 Xiaomi MiMo API Key
 - [官方 TTS API 文档](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
 
 ## 🚀 安装
 
-### 从 npm 安装（推荐）
+### 官方安装（desktop/web）（推荐）
+
+打开桌面/web端，进入插件管理面板，搜索 `dsh-xiaomi-tts` 即可安装
+
+![安装示例](assets/install.png)
+
+### 从 npm 安装（web）
 
 ```bash
 dsh plugin --profile web add dsh-xiaomi-tts@latest
 ```
 
-### 从DSH插件管理面板安装
-
-当前插件已发布到npm，可在dsh web的侧边栏进入插件面板，点击添加插件，输入包名 `dsh-xiaomi-tts` 搜索并安装。
-
 ### 从插件市场安装
 
-[插件市场](https://awesome-dsh-plugin.com) 已收录本插件，如你已安装社区的插件市场，可在 **设置 → 插件市场** 中搜索 `xiaomi-mimo-tts`安装。
+ ![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg) [插件市场](https://awesome-dsh-plugin.com) 已收录本插件，如你已安装社区的插件市场，可在 **设置 → 插件市场** 中搜索 `xiaomi-mimo-tts`安装。
 
-### 从 GitHub 安装
+**侧边栏 → 插件 → dsh-xiaomi-tts → 语音朗读 (MiMo TTS)**
+
+### 卸载（web）
 
 ```bash
-dsh plugin --profile web add github:ppy-web/dsh-plugin-xiaomi-mimo-tts
+dsh plugin --profile web remove dsh-xiaomi-tts
 ```
-
-也可以下载 GitHub Release 中的 `.tgz`：
-
-```powershell
-dsh plugin --profile web add "<下载路径>\dsh-xiaomi-tts-<版本>.tgz"
-```
-安装完成后，重启正在运行的 DSH Web `web` profile，然后打开：
-
-**侧边栏 → 插件 → dsh-xiaomi-tts → 语音朗读 (Xiaomi MiMo)**
 
 ## 🐋 首次使用
 
@@ -86,10 +80,8 @@ dsh plugin --profile web add "<下载路径>\dsh-xiaomi-tts-<版本>.tgz"
 1. [获取 Xiaomi MiMo API Key](https://platform.xiaomimimo.com/console/api-keys)。
 2. 在插件设置中输入 Key，并点击底部 **保存**。
 3. 打开“调音台”，选择模型和音色。
-4. 在“演播厅”试听；状态气泡会显示实际使用的是 MiMo 还是浏览器本地语音。
+4. 在“演播厅”试听。
 5. 按需开启自动播报和 UI 音效，再次保存。
-
-> 新输入的 API Key 只有保存到 DSH Host 后才会用于 MiMo 试听。界面中的 `sk-` / `tp-` 检查只是格式识别，不代表服务端已经验证密钥有效。
 
 ## ⚙️ 配置说明
 
@@ -123,6 +115,8 @@ dsh plugin --profile web add "<下载路径>\dsh-xiaomi-tts-<版本>.tgz"
 设置面板支持键盘操作：使用 `Tab` 移动焦点，方向键调整滑块或选项，空格键确认按钮和开关。
 
 ## 🔌 三方插件联动
+
+![whale-girls](assets/whale-girls.webp)
 
 本插件向 Web 插件提供可选 PCM 流式播放能力：
 
@@ -190,13 +184,14 @@ pnpm pack:check
 Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避免运行中的 Node 进程占用 Junction：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.6
+.\start\dsh-plugin-reinstall.bat 3.0.7
 ```
 
-## 🤝 推荐插件
+## 🤝 推荐
 
-> 本插件的鲸鱼娘形象参考 `dsh-deep-whale` `dsh-whale-musume`由GPT生成
-本插件的uisfx音效参考 `dsh-plugin-uisfx`实现
+> 鲸鱼娘形象参考社区由GPT生成
+> uisfx音效参考 `dsh-plugin-uisfx`实现
+
 - [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme) · 鲸鱼娘主题皮肤系列。
 - [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) · 元气鲸鱼娘桌宠。
 - [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme) · 语义化 UI 音效。
