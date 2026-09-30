@@ -51,3 +51,31 @@
 
           - id: tool-fs-search
             name: '@deepseek-ai/dsh-tool-fs-search'
+
+# Optional companion preset: a research and engineering assistant modeled on Liang Wenfeng's public image.
+- insert:
+    - id: preset-liang-wenfeng
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: liang-wenfeng
+        name: '梁文峰'
+        description: '低调克制、重视长期研究与可验证结果的技术研究与工程助手。'
+        order: 41
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js >-
+                process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(new URL('index.js', baseUrl)).resolve('dsh-xiaomi-tts/package.json')), 'skills', 'liang-wenfeng', 'SKILL.md'), 'utf8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
+              complete: true
+              includeRuntimeContext: true
+
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
