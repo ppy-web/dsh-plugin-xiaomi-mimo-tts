@@ -23,3 +23,31 @@
         maxMp3AudioBytes: 33554432
         maxWavAudioBytes: 134217728
         maxPausedPcmBytes: 33554432
+
+# Optional companion preset: a whale maid with local memory tools.
+- insert:
+    - id: preset-whale-girl
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: whale-girl
+        name: '鲸鱼娘'
+        description: '会陪伴、会吐槽、也会认真办事的鲸鱼娘女仆助手。'
+        order: 40
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js >-
+                process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(new URL('index.js', baseUrl)).resolve('dsh-xiaomi-tts/package.json')), 'skills', 'whale-girl', 'SKILL.md'), 'utf8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
+              complete: true
+              includeRuntimeContext: true
+
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'

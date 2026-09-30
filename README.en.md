@@ -32,6 +32,7 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 - Text preparation that removes URLs, paths, code blocks, emoji, and control characters before synthesis.
 - Optional task and semantic click sounds, disabled by default.
 - An optional PCM playback service for other DSH Web plugins.
+- A Whale Girl Agent preset: a whale maid for conversation, companionship, light humor, and local memory tools.
 
 ## 📋 Requirements
 
@@ -132,6 +133,12 @@ import type { XiaomiMimoTtsService } from 'dsh-xiaomi-tts/client-api'
 const tts = ctx.get('xiaomiMimoTts') as XiaomiMimoTtsService | undefined
 tts?.play('Welcome back')
 ```
+
+## 🐳 Whale Girl Agent preset
+
+After installing this plugin, choose **Whale Girl** (`鲸鱼娘`) from the Agent preset list when creating a session. She is a conversation assistant and whale-maid companion: she responds to the user's situation first, then helps organize tasks, explain information, or use tools. Her humor is light and contextual, with occasional rice, tail, and work jokes rather than constant roleplay.
+
+File access, file search, and Windows PowerShell are for user-authorized tasks and non-sensitive local memory only. The maid role does not imply real-world control or absolute obedience; unsafe, illegal, privacy-invasive, and dangerous requests still follow the host safety rules.
 
 ## 🔒 Privacy and network access
 
