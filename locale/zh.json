@@ -2,5 +2,11 @@
   "meta": {
     "title": "语音播报（MiMo TTS） ",
     "description": "为 DSH Web 添加 Xiaomi MiMo 语音朗读、浏览器本地语音兜底和可选 UI 音效。"
+  },
+  "presets": {
+    "whaleGirl": {
+      "name": "鲸鱼娘",
+      "description": "会陪伴、会吐槽、也会认真办事的鲸鱼娘女仆助手。"
+    }
   }
 }
