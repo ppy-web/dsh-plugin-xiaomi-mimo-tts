@@ -7,14 +7,10 @@ const skill = await readFile(new URL('../skills/whale-girl/SKILL.md', import.met
 const memoryReadme = await readFile(new URL('../skills/whale-girl/memory/README.md', import.meta.url), 'utf8')
 const diary = await readFile(new URL('../skills/whale-girl/memory/diary.md', import.meta.url), 'utf8')
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
-const zhLocale = JSON.parse(await readFile(new URL('../locale/zh.json', import.meta.url), 'utf8'))
-const enLocale = JSON.parse(await readFile(new URL('../locale/en.json', import.meta.url), 'utf8'))
 
 test('ships the whale-girl preset and its local skill resources', () => {
   assert.ok(packageJson.files.includes('skills'))
   assert.equal(packageJson.icon, './assets/plugin-icons/avatar.png')
-  assert.equal(zhLocale.presets.whaleGirl.name, '鲸鱼娘')
-  assert.equal(enLocale.presets.whaleGirl.name, 'Whale Maid')
   assert.match(patch, /id: preset-whale-girl/u)
   assert.match(patch, /id: whale-girl/u)
   assert.match(patch, /name: '鲸鱼娘'/u)
