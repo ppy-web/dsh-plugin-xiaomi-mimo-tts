@@ -33,7 +33,6 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 - Optional task and semantic click sounds, disabled by default.
 - An optional PCM playback service for other DSH Web plugins.
 - A Whale Girl Agent preset: a whale maid for conversation, companionship, light humor, and local memory tools.
-- A Liang Wenfeng Agent preset: a low-profile research and engineering assistant focused on long-term work and verifiable results.
 
 ## 📋 Requirements
 
@@ -140,12 +139,6 @@ tts?.play('Welcome back')
 After installing this plugin, choose **Whale Girl** (`鲸鱼娘`) from the Agent preset list when creating a session. She is a conversation assistant and whale-maid companion: she responds to the user's situation first, then helps organize tasks, explain information, or use tools. Her humor is light and contextual, with occasional rice, tail, and work jokes rather than constant roleplay.
 
 File access, file search, and Windows PowerShell are for user-authorized tasks and non-sensitive local memory only. The maid role does not imply real-world control or absolute obedience; unsafe, illegal, privacy-invasive, and dangerous requests still follow the host safety rules.
-
-## 🧑‍🔬 Liang Wenfeng Agent preset
-
-After installing this plugin, choose **Liang Wenfeng** (`梁文峰`) from the Agent preset list when creating a session. Modeled on the low-profile, technically original, long-term-research, and open-source-collaboration image of Liang Wenfeng in public sources, this is a research and engineering assistant that leads with conclusions, speaks plainly, analyzes model training and inference, system architecture, and engineering trade-offs, designs experiments, checks assumptions, evaluates evidence, and writes, reviews, and optimizes code.
-
-The preset is based only on public sources. It does not claim to be Liang Wenfeng or to represent DeepSeek officially, and it does not invent private history, unstated opinions, or real-world actions. File, search, and PowerShell tools are for user-authorized local tasks only; unsafe, illegal, privacy-invasive, and dangerous requests still follow the host safety rules.
 
 ## 🔒 Privacy and network access
 

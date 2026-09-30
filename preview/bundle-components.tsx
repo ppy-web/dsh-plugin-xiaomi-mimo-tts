@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import pluginIcon from '../assets/plugin-icons/avatar.png'
 import whaleGirlIcon from '../assets/voice-presets/energetic-girl.webp'
-import liangWenfengIcon from '../assets/voice-presets/liang-wenfeng.webp'
 
 type PreviewLocale = 'zh' | 'en'
 
@@ -16,8 +15,6 @@ const COPY = {
     ttsDescription: '为 DSH Web 添加 Xiaomi MiMo 语音朗读、浏览器本地语音兜底和可选 UI 音效。',
     agentTitle: '鲸鱼娘 Agent 预设',
     agentDescription: '会聊天、陪伴和认真办事的鲸鱼娘女仆助手。',
-    liangTitle: '梁文峰 Agent 预设',
-    liangDescription: '低调克制、重视长期研究与可验证结果的技术研究与工程助手。',
     note: '此处模拟宿主的组件列表；开关仅影响预览显示，不修改实际插件配置。',
   },
   en: {
@@ -30,8 +27,6 @@ const COPY = {
     ttsDescription: 'MiMo read-aloud, browser-local speech fallback, and optional UI sounds for DSH Web.',
     agentTitle: 'Whale Girl Agent preset',
     agentDescription: 'A witty whale-maid assistant for conversation, companionship, and practical help.',
-    liangTitle: 'Liang Wenfeng Agent preset',
-    liangDescription: 'A low-profile research and engineering assistant focused on long-term work and verifiable results.',
     note: 'This is a simulation of the host component list. Switches change only this preview.',
   },
 } as const
@@ -40,11 +35,9 @@ export function BundleComponents({ locale }: { locale: PreviewLocale }) {
   const copy = COPY[locale]
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [agentEnabled, setAgentEnabled] = useState(true)
-  const [liangEnabled, setLiangEnabled] = useState(true)
   const components = [
     { id: 'xiaomi-mimo-tts', icon: pluginIcon, title: copy.ttsTitle, description: copy.ttsDescription, module: 'dsh-xiaomi-tts', enabled: ttsEnabled, setEnabled: setTtsEnabled },
     { id: 'preset-whale-girl', icon: whaleGirlIcon, title: copy.agentTitle, description: copy.agentDescription, module: '@deepseek-ai/dsh-agent-preset', enabled: agentEnabled, setEnabled: setAgentEnabled },
-    { id: 'preset-liang-wenfeng', icon: liangWenfengIcon, title: copy.liangTitle, description: copy.liangDescription, module: '@deepseek-ai/dsh-agent-preset', enabled: liangEnabled, setEnabled: setLiangEnabled },
   ]
 
   return <section className="preview-bundle" aria-label={copy.heading}>

@@ -34,7 +34,8 @@ const {
 } = sharedModule
 
 const SUPPORTED_DSH_PACKAGE_PREFIX = '@deepseek-ai/dsh-'
-const SUPPORTED_DSH_VERSION = packageJson.devDependencies['@deepseek-ai/dsh-api-session-controller']
+const SUPPORTED_DSH_VERSION = packageJson.engines.dsh
+const DEVELOPMENT_DSH_VERSION = packageJson.devDependencies['@deepseek-ai/dsh-api-session-controller']
 
 async function assertLocalReadmeTargets(source, label) {
   const targets = [...source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)|(?:src|href)="([^"]+)"/g)]
@@ -64,7 +65,7 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
   assert.equal(packageJson.scripts.typecheck, 'tsc --noEmit')
   assert.equal(packageJson.scripts.test, 'pnpm run build && node --test test/*.test.mjs')
   assert.equal(packageJson.scripts['pack:check'], 'node scripts/pack-check.mjs')
-  assert.equal(packageJson.engines.dsh, '>=0.1.7-rc1 <0.3.0-0')
+  assert.equal(packageJson.engines.dsh, '>=0.1.7-0 <0.3.0-0')
   assert.ok(packageJson.files.includes('scripts/prepare-package.mjs'))
   assert.ok(packageJson.files.includes('NOTICE'))
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
@@ -80,7 +81,7 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
     assert.equal(packageJson.peerDependenciesMeta[name]?.optional, true, `${name} must be optional`)
   }
   for (const [name, range] of Object.entries(packageJson.devDependencies)) {
-    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, SUPPORTED_DSH_VERSION, name)
+    if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, DEVELOPMENT_DSH_VERSION, name)
   }
   assert.equal(TTS_UPDATE_ROUTE, '/plugins/xiaomi-mimo-tts/update')
   assert.ok(packageJson.exports['./client']?.default)
