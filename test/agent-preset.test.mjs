@@ -5,6 +5,7 @@ import test from 'node:test'
 const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
 const skill = await readFile(new URL('../skills/whale-girl/SKILL.md', import.meta.url), 'utf8')
 const memoryReadme = await readFile(new URL('../skills/whale-girl/memory/README.md', import.meta.url), 'utf8')
+const diary = await readFile(new URL('../skills/whale-girl/memory/diary.md', import.meta.url), 'utf8')
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const zhLocale = JSON.parse(await readFile(new URL('../locale/zh.json', import.meta.url), 'utf8'))
 const enLocale = JSON.parse(await readFile(new URL('../locale/en.json', import.meta.url), 'utf8'))
@@ -22,15 +23,19 @@ test('ships the whale-girl preset and its local skill resources', () => {
   assert.equal((patch.match(/sampleOverCapGlobResults: false/gu) ?? []).length, 1)
   assert.match(patch, /dsh-tool-fs/u)
   assert.match(patch, /dsh-tool-pwsh/u)
+  assert.equal(packageJson.dependencies?.['dsh-meme'], undefined)
+  assert.equal(patch.includes('dsh-meme'), false)
   assert.match(patch, /process\.platform !== 'win32'/u)
 })
 
 test('whale-girl skill defines language-aware companionship without former occupational persona', () => {
-  for (const marker of ['陪伴', '女仆', '幽默', '安全边界', '明确说“记住这个”']) assert.ok(skill.includes(marker), marker)
+  for (const marker of ['陪伴', '女仆', '幽默', '表情包', 'storage.supabase.co', '![表情描述](URL)', '结束语义', 'diary.md', '晚安', '安全边界', '明确说“记住这个”']) assert.ok(skill.includes(marker), marker)
   for (const forbidden of ['陈列师', 'FILA', '株洲', '上海市', '中南民族大学']) {
     assert.equal(skill.includes(forbidden), false, forbidden)
     assert.equal(patch.includes(forbidden), false, forbidden)
   }
   assert.ok(memoryReadme.includes('明确要求记住'))
   assert.ok(memoryReadme.includes('密码'))
+  assert.ok(memoryReadme.includes('每次对话最多追加一条'))
+  assert.match(diary, /会话日记/u)
 })

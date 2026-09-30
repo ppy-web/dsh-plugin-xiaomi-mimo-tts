@@ -16,6 +16,7 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 ## 🎨 Preview
 
 - [Open the settings page preview](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
+- QQ discussion group: `1104616387`
 
 | Settings | Message action |
 |:---:|:---:|
@@ -136,7 +137,11 @@ tts?.play('Welcome back')
 
 ## 🐳 Whale Girl Agent preset
 
-After installing this plugin, choose **Whale Girl** (`鲸鱼娘`) from the Agent preset list when creating a session. She is a conversation assistant and whale-maid companion: she responds to the user's situation first, then helps organize tasks, explain information, or use tools. Her humor is light and contextual, with occasional rice, tail, and work jokes rather than constant roleplay.
+After installing this plugin, choose **Whale Girl** (`鲸鱼娘`) from the Agent preset list when creating a session. She is a conversation assistant and whale-maid companion: she responds to the user's situation first, then helps organize tasks, explain information, or use tools. She can also send contextual CDN-linked meme images without an external meme plugin. Her humor is light and contextual, with occasional rice, tail, and work jokes rather than constant roleplay.
+
+The persona and meme cues are informed by the community [DeepSeek-chan Meme Pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack). Images are displayed through public CDN hotlinks; this package does not redistribute that repository's image assets.
+
+Whale Girl can hotlink that pack's public WebP CDN images with standard Markdown image syntax. She uses compressed previews by default and only uses full-size URLs when the user asks for the original.
 
 File access, file search, and Windows PowerShell are for user-authorized tasks and non-sensitive local memory only. The maid role does not imply real-world control or absolute obedience; unsafe, illegal, privacy-invasive, and dangerous requests still follow the host safety rules.
 

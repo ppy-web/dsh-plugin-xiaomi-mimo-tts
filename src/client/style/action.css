@@ -3,36 +3,35 @@
  */
 
 .xmimo-tts-action {
-  width: 28px;
-  height: 28px;
+  width: calc(28px + var(--dsh-content-font-delta, 0px));
+  height: calc(28px + var(--dsh-content-font-delta, 0px));
+  border-radius: var(--dsw-radius-sm);
   color: var(--dsw-alias-label-tertiary);
   cursor: pointer;
   background: transparent;
   border: none;
-  border-radius: 28px;
   justify-content: center;
   align-items: center;
   padding: 6px;
-  display: inline-flex
+  display: inline-flex;
 }
 
-.xmimo-tts-action:hover,
-.xmimo-tts-action[aria-pressed=true] {
-  background: var(--dsw-alias-interactive-bg-hover, #f3f4f6);
-  color: var(--dsw-alias-label-secondary, #5f6875)
+.xmimo-tts-action:hover {
+  background: var(--dsw-alias-interactive-bg-hover) !important;
+  color: var(--dsw-alias-label-secondary);
 }
 
 .xmimo-tts-action:disabled {
   cursor: default;
-  opacity: .45
+  opacity: 0.45;
 }
 
 .xmimo-tts-spin {
-  animation: xmimo-spin 1s linear infinite
+  animation: xmimo-spin 1s linear infinite;
 }
 
 @keyframes xmimo-spin {
   to {
-    transform: rotate(360deg)
+    transform: rotate(360deg);
   }
 }

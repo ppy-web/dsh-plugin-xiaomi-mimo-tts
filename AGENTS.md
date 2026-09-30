@@ -1,11 +1,43 @@
-# Agent instructions
+# Repository Guidelines
 
-## Test writing rules
+## Project Structure & Module Organization
 
-- Test observable behavior and repository contracts, not the exact prose of a README, translation, changelog, or UI copy.
-- Documentation tests may check that required sections, local assets, links, commands, file paths, and other explicit contracts exist. They must not require incidental wording such as a particular English phrase, sentence order, or punctuation.
-- If two language versions communicate the same behavior, assert the behavior with language-aware patterns or shared structure. Do not require one language to contain a phrase copied from the other.
-- Do not make a test fail merely because an optional explanatory paragraph was removed or rewritten. Add a check only when the text represents a user-facing guarantee or a maintained link/path/command.
-- Prefer exported functions, parsed data, DOM semantics, and runtime effects over regular expressions against generated bundles or prose. If source-text inspection is unavoidable, match the smallest stable contract and explain why in the test.
-- Keep each assertion tied to the test name. When a product or documentation change intentionally removes a contract, update the test and this rule together instead of preserving stale expectations.
-- Run the focused test while iterating, then run `pnpm test` before committing. Do not weaken a failing test just to make CI green; replace brittle expectations with a meaningful invariant.
+This repository publishes `dsh-xiaomi-tts`, a DSH Web speech plugin.
+
+- `src/index.ts` implements host routes and configuration; `src/shared.ts` holds shared settings and text preparation.
+- `src/client/` contains React settings, conversation actions, playback controllers, sound effects, and CSS. `src/client-api.ts` exposes client contracts.
+- `preview/` provides the standalone Vite UI preview; `assets/` contains images and audio.
+- `locale/` contains English and Chinese translations; `skills/` contains bundled agent presets.
+- `test/` contains regression tests and fixtures; `scripts/` handles packaging and profile verification.
+- `cordis.patch.yml` defines the DSH bundle. `lib/` and `.preview-dist/` are generated outputs; edit their sources.
+
+## Build, Test, and Development Commands
+
+Use Node.js 22+ and pnpm; CI uses Node.js 24 and pnpm 11.22.0.
+
+- `pnpm install --frozen-lockfile`: install locked dependencies.
+- `pnpm dev`: launch the standalone settings preview.
+- `pnpm dev:build`: typecheck and build the preview.
+- `pnpm build`: bundle the plugin and emit TypeScript declarations.
+- `pnpm typecheck`: check source types without emitting files.
+- `pnpm test`: build, then run `test/*.test.mjs`.
+- `pnpm profile:check`: verify an installed DSH profile; set `DSH_HOME`, `DSH_PROFILE`, and `DSH_WEB_PORT`.
+- `pnpm pack --dry-run`: inspect publishable package contents.
+
+## Coding Style & Naming Conventions
+
+Follow existing two-space indentation, single quotes, and omitted semicolons. Use strict TypeScript, explicit type imports, and `.js` extensions for relative module imports. Use kebab-case filenames, PascalCase React components and types, camelCase functions, and uppercase constants. No formatter or lint script is configured.
+
+Keep registrations scoped to the Cordis context, declare required services through `inject`, and validate configuration with Schemastery. Update both locale files for new UI strings.
+
+## Testing Guidelines
+
+Tests use `node:test` and `node:assert/strict`; name files `<feature>.test.mjs`. No numeric coverage threshold is configured. Cover changed behavior, including cancellation, fallback, and cleanup when relevant. Run focused tests after building, then `pnpm test` before committing.
+
+Assert observable behavior and stable contracts, not exact README prose, translation wording, or incidental generated code. Documentation checks should validate maintained links, paths, commands, or guarantees. Replace brittle expectations with meaningful invariants; never weaken tests merely to pass CI.
+
+## Commit & Pull Request Guidelines
+
+History uses prefixes such as `feat:`, `fix:`, `chore(deps-dev):`, and `release:`; keep subjects concise.
+
+PRs should explain the changed behavior, link relevant issues, and report validation. Include screenshots for settings or preview changes. Keep `README.md` and `README.en.md` aligned, and verify preview builds and package contents when affected. Never commit API keys or local profile credentials.
