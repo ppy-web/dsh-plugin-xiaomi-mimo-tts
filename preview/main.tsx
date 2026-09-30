@@ -9,6 +9,7 @@ import pluginIcon from '../assets/plugin-icons/avatar.png'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
 import { PreviewBackground } from './background-icons.js'
 import { UserManual } from './user-manual.js'
+import { BundleComponents } from './bundle-components.js'
 import { TTS_VERSION } from '../src/shared.js'
 import enPluginLocale from '../locale/en.json'
 import zhPluginLocale from '../locale/zh.json'
@@ -335,6 +336,7 @@ function PreviewApp() {
           <ul className="preview-settings-list" ref={listRef} key={instance}>
              <SettingsCard view="page" scope={scope} t={t} controller={soundEffects} />
           </ul>
+          <BundleComponents locale={locale} />
           <div className="preview-note" role="note">
             {locale === 'zh'
               ? <>这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。远程语音和保存均为本地模拟。</>
