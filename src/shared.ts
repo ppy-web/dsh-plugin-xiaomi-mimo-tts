@@ -51,7 +51,7 @@ export const TTS_STREAM_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-stream'
 export const TTS_UPDATE_ROUTE = '/plugins/xiaomi-mimo-tts/update'
 
 /** Keep the UI version visible without making the browser bundle load package.json. */
-export const TTS_VERSION = '3.0.7'
+export const TTS_VERSION = '3.0.8'
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/
 
@@ -159,9 +159,9 @@ export const TTS_LOCAL_SPEECH_MODES = ['auto', 'local-first', 'disabled'] as con
 
 export type TtsLocalSpeechMode = typeof TTS_LOCAL_SPEECH_MODES[number]
 
-/** Voice-design descriptions adapted from the reference voice-definition page. */
+/** Voice-design descriptions; Whale-chan's delivery is inspired by DeepSeek Whale-chan. */
 export const TTS_VOICE_DESIGN_PRESETS = [
-  { id: 'energetic-girl', label: '鲸鱼娘', summary: '爱吃白米饭', prompt: '年轻女性16-22岁，标准普通话，清透甜美的中高音，音色明亮而不尖锐，带一点轻盈柔软的空气感；吐字清楚、节奏灵动，语速中等偏快，语调自然上扬，情绪开朗亲切又略带俏皮，整体听感温柔、有陪伴感。' },
+  { id: 'energetic-girl', label: '鲸鱼娘', summary: '清甜机灵 · 嘴硬心软', prompt: '清透柔软的女性中高音，标准普通话，音色明亮圆润、清甜不尖细，带少量自然气息；吐字清楚，语速适中，短句轻快，长句停顿清晰。日常亲切灵动，带一点慵懒的笑意和轻微傲娇；吐槽或讲歪理时语调平稳、一本正经，在转折前短暂停顿，句尾轻落，透出小小的得意，不用夸张喊叫。表达关心时放慢一点，温柔真诚而不黏腻；认真解释时收起撒娇，声音专注清晰。保持同一声线，让俏皮、嘴硬与心软通过轻微语气变化自然呈现，避免刻意幼态、过度气声和全程上扬。忠实朗读给定文本，不自行添加台词、口头禅或笑声。' },
   { id: 'liang-wenfeng', label: '梁文峰', summary: '理性克制', prompt: '成年男性 35–40 岁，普通话，温和克制的中低音，声线清晰自然，声音偏亮不沉闷，略带书卷气和理工感，语速中等偏慢，停顿审慎，表达理性简洁，情绪稳定，不夸张。' },
   { id: 'asmr-whisper', label: '沈听澜', summary: 'ASMR低语', prompt: '女性18-20岁，轻柔耳语带微弱气息，普通话，声线细腻清晰，私密温柔感，安静平和带轻柔低语，语速缓慢音量很轻，私密低语场景。' },
   { id: 'young-man', label: '江予辰', summary: '阳光少年', prompt: '男性青年16-22岁，清亮干净的中高音带少年感，普通话标准无口音，轻快明亮的活力声线，气息轻盈吐字利索，语速偏快语调自然上扬，情绪积极阳光带朝气，广告旁白或轻松解说场景。' },

@@ -31,7 +31,7 @@
       config:
         id: whale-girl
         name: '鲸鱼娘'
-        description: '会陪伴、会吐槽、也会认真办事的鲸鱼娘女仆助手。'
+        description: '白饭续航、机灵嘴硬，会一本正经接梗，也会温柔陪伴和可靠办事的鲸鱼娘女仆助手。'
         order: 40
         plugins:
           - id: persona

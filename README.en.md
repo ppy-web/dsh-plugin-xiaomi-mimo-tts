@@ -37,7 +37,7 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 
 ## 📋 Requirements
 
-- `@deepseek-ai/dsh` `0.2.0-rc.1` (the current target; compatible with `0.1.7-rc.1` through `0.2.x` releases)
+- `@deepseek-ai/dsh` `0.2.0-rc.2` (the current target; compatible with `0.1.7-rc.1` through `0.2.x` releases)
 - Node.js 22+
 - A Xiaomi MiMo API key for MiMo speech
 - [Official TTS API documentation](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -97,6 +97,16 @@ Recommended setup order:
 ### Custom voices
 
 `mimo-v2.5-tts-voicedesign` generates a voice from a description. The settings panel includes presets and an editable custom description:
+
+Choose “鲸鱼娘” (Whale-chan) for a clear, sweet female voice with playful confidence and a soft heart. Everyday delivery is light; deadpan jokes use a brief pause before the turn; caring lines slow down gently; practical explanations stay focused and clear. Voice selection controls delivery, while the Agent preset controls conversation personality.
+
+### Whale-chan persona
+
+Select “鲸鱼娘” in Agent presets for a rice-powered, slightly tsundere whale maid who is relaxed but reliable. Her deadpan wordplay follows the conversation, with sincere companionship and practical help, CDN memes, and local memory tools. Character inspiration comes from the [DeepSeek Whale-chan Project](https://github.com/Neko3000/deepseek-whalechan); see the [persona instructions](skills/whale-girl/SKILL.md).
+
+To use both, select the Agent preset separately, then choose `mimo-v2.5-tts-voicedesign` → “鲸鱼娘” in Mixing Console, save, and listen in Broadcast Studio. Try: “本鲸正在降低待机功耗。你要的清单整理好了，先看这三项。”
+
+Saved voice descriptions are retained after an upgrade. Reselect “鲸鱼娘” and save to apply the updated description, or keep using your custom description.
 
 ### Browser-local speech
 
@@ -194,7 +204,7 @@ pnpm pack:check
 On Windows, stop DSH Web before replacing a local development link with the npm package so the running Node process does not hold the Junction:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.7
+.\start\dsh-plugin-reinstall.bat 3.0.8
 ```
 
 For a DSH Desktop profile, close Desktop and remove a stale local link with:

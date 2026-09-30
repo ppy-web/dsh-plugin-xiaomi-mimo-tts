@@ -37,7 +37,7 @@
 
 ## 📋 环境要求
 
-- `@deepseek-ai/dsh` `0.2.0-rc.1`（当前目标版本；兼容 `0.1.7-rc.1` 至 `0.2.x` 版本）
+- `@deepseek-ai/dsh` `0.2.0-rc.2`（当前目标版本；兼容 `0.1.7-rc.1` 至 `0.2.x` 版本）
 - Node.js 22+
 - 使用 MiMo 语音时需要 Xiaomi MiMo API Key
 - [官方 TTS API 文档](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts)
@@ -99,6 +99,16 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 ### 自定义音色
 
 `mimo-v2.5-tts-voicedesign` 支持从音色描述生成声音。设置面板包含预设模板，也可以手动编辑：
+
+选择“鲸鱼娘”可使用清甜机灵、嘴硬心软的女声：日常轻快，吐槽时平静认真、转折前稍作停顿，关心时温柔放慢，解释任务时专注清晰。音色只控制朗读表现；对话性格由 Agent 预设控制。
+
+### 鲸鱼娘人设
+
+在 Agent 预设中选择“鲸鱼娘”，可使用白饭续航、轻微傲娇、慵懒却可靠的鲸鱼娘女仆助手。她会顺着上下文一本正经地接梗，也会认真陪伴和办事，保留 CDN 表情包与本地记忆能力。人物参考 [DeepSeek Whale-chan Project](https://github.com/Neko3000/deepseek-whalechan)，对话指引见 [人设文件](skills/whale-girl/SKILL.md)。
+
+想同时使用人设和音色，需要分别选择 Agent 预设，以及调音台中的 `mimo-v2.5-tts-voicedesign` → “鲸鱼娘”，保存后在演播厅试听。可试读：“本鲸正在降低待机功耗。你要的清单整理好了，先看这三项。”
+
+升级后，已保存的音色描述仍保留；重新选择“鲸鱼娘”并保存即可应用新版音色描述，自定义描述可继续使用。
 
 ### 浏览器本地语音
 
@@ -196,7 +206,7 @@ pnpm pack:check
 Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避免运行中的 Node 进程占用 Junction：
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.7
+.\start\dsh-plugin-reinstall.bat 3.0.8
 ```
 
 如果是 DSH Desktop profile，只需要卸载残留的本地链接，可在退出 Desktop 后运行：

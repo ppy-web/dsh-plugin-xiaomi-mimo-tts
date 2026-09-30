@@ -3,3 +3,13 @@ This project includes code derived from uisfx 0.4.0.
 uisfx: https://github.com/romainsimon/uisfx
 Copyright (c) Yuki Capital
 Licensed under the MIT License.
+
+Whale-chan character inspiration: DeepSeek Whale-chan Project
+https://github.com/Neko3000/deepseek-whalechan
+Reference revision: 4f59071b75429076c39b37504948efc304f08150
+The upstream project credits the community, Bilibili ZipZipPipe, and 上善无形
+for its character designs. Its specification documents and skill templates
+are licensed under CC-BY-NC-SA 4.0; see the upstream README for attribution
+and character usage terms. This package's dialogue and voice instructions
+are independently written; no upstream images or template files are bundled
+by this preset update.
