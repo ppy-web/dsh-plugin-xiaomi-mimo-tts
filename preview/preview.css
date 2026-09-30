@@ -126,6 +126,8 @@ button, input, select, textarea { font: inherit; }
 .preview-plugin-version { display: inline-flex; align-items: center; min-height: 22px; border-radius: 999px; padding: 2px 8px; color: var(--dsw-alias-label-secondary, #5f6875); background: var(--dsw-alias-bg-module-platform, #eef0f3); font-size: 11px; font-weight: 700; line-height: 1; }
 .preview-plugin-name { display: block; margin-top: 9px; color: var(--dsw-alias-label-tertiary, #66707d); font-size: 12px; line-height: 1.4; }
 .preview-plugin-header p { max-width: 760px; margin: 7px 0 0; color: var(--dsw-alias-label-secondary, #5f6875); font-size: 14px; line-height: 1.55; }
+.preview-plugin-header .preview-community { margin-top: 9px; color: var(--dsw-alias-label-tertiary, #66707d); font-size: 12px; }
+.preview-community strong { color: var(--dsw-alias-brand-primary, #4f6ef7); font-variant-numeric: tabular-nums; }
 .preview-workspace { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(560px, 760px); align-items: start; justify-content: center; gap: clamp(24px, 4vw, 64px); }
 .preview-manual-drawer { min-width: 0; }
 .preview-manual-drawer-backdrop, .preview-manual-close-row { display: none; }

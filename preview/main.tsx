@@ -331,6 +331,10 @@ function PreviewApp() {
               </div>
               <code className="preview-plugin-name">{PREVIEW_PLUGIN_META.packageName}</code>
               <p>{pluginMeta.description}</p>
+              <p className="preview-community">
+                {locale === 'zh' ? 'QQ 交流群：' : 'QQ discussion group: '}
+                <strong>1104616387</strong>
+              </p>
             </div>
           </header>
           <ul className="preview-settings-list" ref={listRef} key={instance}>

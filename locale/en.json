@@ -1,12 +1,6 @@
 {
   "meta": {
     "title": "Xiaomi MiMo TTS",
-    "description": "Add Xiaomi MiMo text-to-speech, browser speech fallback, and optional UI sound effects to DSH Web."
-  },
-  "presets": {
-    "whaleGirl": {
-      "name": "Whale Maid",
-      "description": "A companion whale maid who keeps you company, teases lightly, and gets real work done."
-    }
+    "description": "Add Xiaomi MiMo text-to-speech, browser speech fallback, and optional UI sound effects to DSH."
   }
 }

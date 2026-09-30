@@ -1,7 +1,7 @@
 {
   "name": "dsh-xiaomi-tts",
   "version": "3.0.7",
-  "description": "为 DSH Web 添加 Xiaomi MiMo TTS 语音朗读、浏览器本地语音兜底和可选 UI 音效。",
+  "description": "为 DSH 添加 Xiaomi MiMo TTS 语音朗读、浏览器本地语音兜底和可选 UI 音效。",
   "icon": "./assets/plugin-icons/avatar.png",
   "license": "MIT",
   "type": "module",
@@ -71,7 +71,7 @@
     }
   },
   "engines": {
-    "node": ">=22",
+    "node": ">=22.13.0",
     "dsh": ">=0.1.7-0 <0.3.0-0"
   },
   "peerDependencies": {

@@ -7,7 +7,7 @@
 ![dsh version](https://img.shields.io/badge/dsh-v0.2.0rc1-blue?link=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2Fdeepseek-harness%2Freleases)
 ![Xiaomi MiMo](https://img.shields.io/badge/Xiaomi-MiMo-ff6900?logo=xiaomi&logoColor=white)
 
-为 DSH Web 添加 Xiaomi MiMo TTS 语音朗读、浏览器本地语音兜底和可选 UI 音效。
+为 DSH 添加 Xiaomi MiMo TTS 语音朗读、浏览器本地语音兜底和可选 UI 音效。
 
 > MiMo TTS 当前可能处于限时免费或调整计费阶段，请以 Xiaomi MiMo 官方平台的最新政策为准。
 
@@ -16,6 +16,7 @@
 ## 🎨 预览
 
 - [在线预览设置页面](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
+- QQ 交流群：`1104616387` 欢迎加入
 
 | 设置界面 | 对话朗读入口 |
 |:---:|:---:|
@@ -31,8 +32,8 @@
 - 播放控制：支持 0.5×–2.0× 语速、语音音量、暂停、继续和停止。
 - 文本清洗：朗读前移除网址、路径、代码块、表情符号和控制字符等不适合播报的内容。
 - 可选音效：提供任务状态和语义化点击音效，默认关闭。
-- 插件联动：向其他 DSH Web 插件暴露可选的 PCM 播放服务。
-- 鲸鱼娘 Agent 预设：安装后可在 Agent 预设中选择鲸鱼娘女仆助手，提供对话、陪伴、轻量幽默和本地记忆工具。
+- 插件联动：向其他 DSH 插件暴露可选的 PCM 播放服务。
+- 鲸鱼娘 Agent 预设：安装后可在 Agent 预设中选择鲸鱼娘女仆助手，提供对话、陪伴、轻量幽默、CDN 表情包反应和本地记忆工具，不依赖外部表情包插件。
 
 ## 📋 环境要求
 
@@ -119,7 +120,7 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 
 ![whale-girls](assets/whale-girls.webp)
 
-本插件向 Web 插件提供可选 PCM 流式播放能力：
+本插件向其他dsh插件提供可选 PCM 流式播放能力：
 
 ```ts
 ctx.get('xiaomiMimoTts')?.play('欢迎回来')
@@ -138,9 +139,13 @@ tts?.play('欢迎回来')
 
 ## 🐳 鲸鱼娘 Agent 预设
 
-安装本插件后，新建会话时可以在 Agent 预设列表选择“鲸鱼娘”。她是对话助手和女仆型陪伴角色：会先接住情绪，再帮你整理任务、解释信息或使用工具；默认带一点傲娇、米饭、尾巴和摸鱼梗，但不会每句话强行卖萌。
+安装本插件后，新建会话时可以在 Agent 预设列表选择“鲸鱼娘”。她是对话助手和女仆型陪伴角色：会先接住情绪，再帮你整理任务、解释信息或使用工具；默认带一点傲娇、米饭、尾巴和摸鱼梗，也会在合适时用 CDN 直链发送表情包，但不会每句话强行卖萌。
 
 文件读写、文件搜索和 Windows PowerShell 只用于用户授权的任务与本地非敏感记忆。女仆设定不代表现实控制或绝对服从，危险、违法、隐私和不安全请求仍遵循宿主安全规则。
+
+鲸鱼娘的人设和表情包关键词参考了社区维护的 [DeepSeek-chan Meme Pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack)；图片通过公开 CDN 直链显示，本插件不复制该仓库的图片素材。
+
+鲸鱼娘支持该素材库的 CDN 热链：使用 `![表情描述](https://...)` 格式即可直接在对话中显示公开 WebP 预览图。默认使用压缩预览地址，只有用户明确要求原图时才使用原图地址。
 
 ## 🔒 隐私与网络访问
 
