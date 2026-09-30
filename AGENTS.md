@@ -36,6 +36,8 @@ Tests use `node:test` and `node:assert/strict`; name files `<feature>.test.mjs`.
 
 Assert observable behavior and stable contracts, not exact README prose, translation wording, or incidental generated code. Documentation checks should validate maintained links, paths, commands, or guarantees. Replace brittle expectations with meaningful invariants; never weaken tests merely to pass CI.
 
+Do not write “傻逼断言”: never assert optional metadata, removed features, exact copy, or internal implementation details merely because they are easy to match. If a test fails after an intentional product change, delete or rewrite the stale assertion around the behavior that still matters instead of restoring dead compatibility just to satisfy the test.
+
 ## Commit & Pull Request Guidelines
 
 History uses prefixes such as `feat:`, `fix:`, `chore(deps-dev):`, and `release:`; keep subjects concise.
