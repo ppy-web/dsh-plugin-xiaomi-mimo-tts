@@ -34,7 +34,7 @@
 .xmimo-tts-history-warning { flex: none; margin: 0 0 8px; color: var(--xmimo-ui-text); background: var(--xmimo-ui-control-surface); border-inline-start: 3px solid var(--xmimo-ui-brand); padding: 6px 8px; font-size: 12px; }
 .xmimo-tts-history-results { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .xmimo-tts-history-list { list-style: none; margin: 0; padding: 0; }
-.xmimo-tts-history-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 8px; border-top: 1px solid var(--xmimo-ui-border-soft); padding: 5px; }
+.xmimo-tts-history-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 8px; border-top: 1px solid var(--xmimo-ui-border-soft); padding: 5px; }
 .xmimo-tts-history-row-selected { background: var(--xmimo-ui-control-surface); border-inline-start: 2px solid var(--xmimo-ui-brand); padding-inline-start: 2px; }
 .xmimo-tts-history-copy { min-width: 0; }
 .xmimo-tts-history-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; width: 100%; border: 0; padding: 0; overflow: hidden; overflow-wrap: anywhere; text-align: start; color: var(--xmimo-ui-text); background: transparent; font: inherit; font-size: 14px; line-height: 1.5; cursor: pointer; }
