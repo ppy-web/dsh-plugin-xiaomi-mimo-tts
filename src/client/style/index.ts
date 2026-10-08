@@ -50,9 +50,9 @@ export const CLIENT_STYLES = [
   sections,
   sound,
   volume,
+  history,
   responsive,
   motion,
   global,
   minimal,
-  history,
 ].join('\n')

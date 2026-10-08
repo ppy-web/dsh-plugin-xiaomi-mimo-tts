@@ -26,6 +26,7 @@ const assetFiles = new Map([
   ['api-key-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'api-key-whale.webp')],
   ['mixer-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'mixer-whale.webp')],
   ['preview-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'preview-whale.webp')],
+  ['history-empty-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'history-empty-whale.webp')],
   ['sound-effects-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'sound-effects-whale.webp')],
   ['sound-effect-cues.webp', path.join(repositoryRoot, 'assets', 'ui', 'sound-effect-cues.webp')],
 ])

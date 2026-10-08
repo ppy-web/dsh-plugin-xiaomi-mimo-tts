@@ -203,7 +203,7 @@ test('ships one valid WebP avatar for every built-in voice', async () => {
 
 test('ships the UI image and audio assets referenced by shared contracts', async () => {
   assertWebp(await readFile(new URL('../assets/ui/toggle-characters.webp', import.meta.url)), 'toggle characters')
-  for (const file of ['api-key-whale.webp', 'mixer-whale.webp', 'preview-whale.webp', 'sound-effects-whale.webp', 'sound-effect-cues.webp']) {
+  for (const file of ['api-key-whale.webp', 'mixer-whale.webp', 'preview-whale.webp', 'history-empty-whale.webp', 'sound-effects-whale.webp', 'sound-effect-cues.webp']) {
     assertWebp(await readFile(new URL(`../assets/ui/${file}`, import.meta.url)), file)
   }
   const audioFiles = (await readdir(new URL('../assets/audio/', import.meta.url))).sort()

@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react'
-import { useEffect, useState } from 'react'
+import type { ReactElement, RefObject } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   TTS_API_KEY_STATUS_ROUTE,
@@ -30,7 +30,7 @@ import { readMinimalMode, writeMinimalMode } from './minimal-mode.js'
 import { hostRoute } from '../host-route.js'
 import type { DraftChange, DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 import type { AudioHistory } from '../history/audio-history.js'
-import { AudioHistoryModule } from './audio-history-module.js'
+import { AudioHistoryPage } from '../history/audio-history-page.js'
 
 interface SettingsCardProps {
   view: 'summary' | 'page'
@@ -52,6 +52,13 @@ function layerSettings(value: unknown): TtsSettings | undefined {
 
 function hasLayerField(value: unknown, field: string): boolean {
   return isRecord(value) && Object.hasOwn(value, field)
+}
+
+function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement | null> }): ReactElement {
+  const view = useSyncExternalStore(history.subscribe, history.getSnapshot)
+  return <Button ref={buttonRef} type="button" className="xmimo-tts-history-link" variant="toolbar" size="sm" onClick={onOpen}>
+    {t('history.title')} · {view.entries.length}
+  </Button>
 }
 
 export function SettingsCard(props: SettingsCardProps): ReactElement | null {
@@ -91,6 +98,9 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback }: 
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>('loading')
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
   const [minimalMode, setMinimalMode] = useState(readMinimalMode)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const historyLinkRef = useRef<HTMLButtonElement>(null)
+  const historyWasOpen = useRef(false)
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
@@ -199,6 +209,11 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback }: 
   useEffect(() => { toggleSoundPlayer.setEnabled(!minimalMode) }, [minimalMode, toggleSoundPlayer])
 
   useEffect(() => { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setVolume(voiceVolume) }, [previewPlayer, toggleSoundPlayer, voiceVolume])
+
+  useEffect(() => {
+    if (!historyOpen && historyWasOpen.current) historyLinkRef.current?.focus({ preventScroll: true })
+    historyWasOpen.current = historyOpen
+  }, [historyOpen])
 
   if (snapshot.status === 'unavailable') return null
 
@@ -366,14 +381,16 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback }: 
     if (next) previewPlayer.stop()
   }
 
+  if (historyOpen && history) return <AudioHistoryPage history={history} t={t} volume={voiceVolume} voiceRate={voiceRate} minimalMode={minimalMode}
+    beforePlayback={() => {
+      previewPlayer.stop()
+      toggleSoundPlayer.dispose()
+      beforeHistoryPlayback?.()
+    }} onBack={() => { setHistoryOpen(false) }} />
+
   return (
     <div className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
       <div className="xmimo-tts-card-body xmimo-ui-stack">
-        {history ? <AudioHistoryModule history={history} t={t} volume={voiceVolume} voiceRate={voiceRate} beforePlayback={() => {
-          previewPlayer.stop()
-          toggleSoundPlayer.dispose()
-          beforeHistoryPlayback?.()
-        }} /> : null}
         <SwitchModule
           t={t}
           enabled={enabled}
@@ -471,6 +488,11 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback }: 
           >
             {t('settings.source')}
           </a>
+          {history ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
+            previewPlayer.stop()
+            toggleSoundPlayer.dispose()
+            setHistoryOpen(true)
+          }} /> : null}
           {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
           {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
           {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}

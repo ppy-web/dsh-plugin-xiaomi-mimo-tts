@@ -206,11 +206,16 @@
   height: var(--xmimo-ui-mascot-size);
 }
 
-.xmimo-ui-module .xmimo-tts-mixer-decoration,
-.xmimo-ui-module .xmimo-tts-sound-whale-button {
+.xmimo-ui-module .xmimo-tts-mixer-decoration {
   top: -12px;
-  right: 20px;
+  right: 16px;
 }
+
+.xmimo-ui-module .xmimo-tts-sound-whale-button {
+  top: -19px;
+  right: 16px;
+}
+
 
 .xmimo-ui-module .xmimo-tts-details-heading,
 .xmimo-ui-module .xmimo-tts-sound-heading {

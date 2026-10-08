@@ -109,6 +109,9 @@ export const TTS_MIXER_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/mixer-whale
 /** Same-origin route used by the Web client to load the preview play/pause whale mascot sheet. */
 export const TTS_PREVIEW_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/preview-whale.webp'
 
+/** Same-origin illustration for an empty audio history. */
+export const TTS_HISTORY_EMPTY_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/history-empty-whale.webp'
+
 /** Same-origin route used by the Web client to load the sound-effects header mascot. */
 export const TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/sound-effects-whale.webp'
 
