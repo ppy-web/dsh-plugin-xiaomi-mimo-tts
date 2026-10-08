@@ -161,7 +161,7 @@ export type TtsLocalSpeechMode = typeof TTS_LOCAL_SPEECH_MODES[number]
 
 /** Voice-design descriptions; Whale-chan's delivery is inspired by DeepSeek Whale-chan. */
 export const TTS_VOICE_DESIGN_PRESETS = [
-  { id: 'energetic-girl', label: '鲸鱼娘', summary: '清甜机灵 · 嘴硬心软', prompt: '清透柔软的女性中高音，标准普通话，音色明亮圆润、清甜不尖细，带少量自然气息；吐字清楚，语速适中，短句轻快，长句停顿清晰。日常亲切灵动，带一点慵懒的笑意和轻微傲娇；吐槽或讲歪理时语调平稳、一本正经，在转折前短暂停顿，句尾轻落，透出小小的得意，不用夸张喊叫。表达关心时放慢一点，温柔真诚而不黏腻；认真解释时收起撒娇，声音专注清晰。保持同一声线，让俏皮、嘴硬与心软通过轻微语气变化自然呈现，避免刻意幼态、过度气声和全程上扬。忠实朗读给定文本，不自行添加台词、口头禅或笑声。' },
+  { id: 'energetic-girl', label: '鲸鱼娘', summary: '清甜灵动', prompt: '一位17岁的少女，说标准普通话。声线纤细清甜，中高音区柔和通透，发声轻松自然。语速稍快，吐字清晰，停顿流畅，像熟悉的朋友在轻松聊天，亲切温柔，带一点俏皮的笑意。' },
   { id: 'liang-wenfeng', label: '梁文峰', summary: '理性克制', prompt: '成年男性 35–40 岁，普通话，温和克制的中低音，声线清晰自然，声音偏亮不沉闷，略带书卷气和理工感，语速中等偏慢，停顿审慎，表达理性简洁，情绪稳定，不夸张。' },
   { id: 'asmr-whisper', label: '沈听澜', summary: 'ASMR低语', prompt: '女性18-20岁，轻柔耳语带微弱气息，普通话，声线细腻清晰，私密温柔感，安静平和带轻柔低语，语速缓慢音量很轻，私密低语场景。' },
   { id: 'young-man', label: '江予辰', summary: '阳光少年', prompt: '男性青年16-22岁，清亮干净的中高音带少年感，普通话标准无口音，轻快明亮的活力声线，气息轻盈吐字利索，语速偏快语调自然上扬，情绪积极阳光带朝气，广告旁白或轻松解说场景。' },
@@ -381,12 +381,28 @@ export function countTtsSpeechCharacters(value: string): number {
   return (value.match(/[\p{L}\p{N}]/gu) ?? []).length
 }
 
-/** Split cleaned speech text on natural boundaries while bounding VoiceDesign requests. */
+/** Find sentence ends after markup removal and punctuation normalization. */
+function splitPreparedTtsSentences(text: string, final = true): Pick<TtsSentenceSplit, 'sentences' | 'remainder'> {
+  const sentences: string[] = []
+  let consumed = 0
+  for (const match of text.matchAll(/[.!?;]+/gu)) {
+    const end = match.index + match[0].length
+    // A decimal point is part of a number, not the end of a sentence.
+    if (match[0] === '.' && /\d/u.test(text[match.index - 1] ?? '')
+      && (/\d/u.test(text[end] ?? '') || (!final && end === text.length))) continue
+    sentences.push(text.slice(consumed, end))
+    consumed = end
+  }
+  return { sentences, remainder: text.slice(consumed) }
+}
+
+/** Group whole sentences into short requests; a single long sentence may exceed the preferred maximum. */
 export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHARACTERS, maximum = MAX_TTS_SEGMENT_CHARACTERS): string[] {
   const text = prepareTtsText(value)
   if (text.length === 0) return []
   const preferred = Math.max(MIN_TTS_SEGMENT_CHARACTERS, Math.min(target, maximum))
-  const pieces = text.match(/[^.!?;]+[.!?;]*|[.!?;]+/gu) ?? [text]
+  const { sentences, remainder } = splitPreparedTtsSentences(text)
+  const pieces = remainder.length > 0 ? [...sentences, remainder] : sentences
   const segments: string[] = []
   let pending = ''
   const append = (piece: string): void => {
@@ -404,15 +420,12 @@ export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHA
       segments.push(pending)
       pending = ''
     }
-    let rest = piece.trim()
-    while (countTtsSpeechCharacters(rest) > maximum) {
-      let cut = Math.min(rest.length, maximum)
-      const boundary = Math.max(rest.lastIndexOf(',', cut), rest.lastIndexOf(' ', cut), rest.lastIndexOf(':', cut))
-      if (boundary >= MIN_TTS_SEGMENT_CHARACTERS) cut = boundary + 1
-      segments.push(rest.slice(0, cut).trim())
-      rest = rest.slice(cut).trim()
+    // Keep an oversized sentence whole instead of ending playback mid-sentence.
+    pending = piece.trim()
+    if (countTtsSpeechCharacters(pending) >= preferred) {
+      segments.push(pending)
+      pending = ''
     }
-    pending = rest
   }
   for (const piece of pieces) append(piece)
   if (pending.length > 0) {
@@ -476,7 +489,10 @@ export class TtsFirstSegmentLimiter {
 
   limit(value: string, final = false): string {
     if (this.locked !== null) return this.locked
-    const candidate = firstTtsSegment(value)
+    const text = prepareTtsText(value)
+    // Only a completed reply may contribute an unterminated last sentence.
+    const completed = final ? text : splitPreparedTtsSentences(text, false).sentences.join('')
+    const candidate = firstTtsSegment(completed)
     if (candidate.length === 0) return ''
     if (final || countTtsSpeechCharacters(candidate) >= DEFAULT_TTS_SEGMENT_CHARACTERS) this.locked = candidate
     return candidate

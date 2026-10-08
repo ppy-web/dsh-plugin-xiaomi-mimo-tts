@@ -129,11 +129,14 @@ test('Voice Design remains manual and has no AI-only dependency contract', () =>
   assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-llm'], undefined)
   assert.ok(sharedModule.TTS_MODELS.includes('mimo-v2.5-tts-voicedesign'))
   assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.length > 0)
-  const whale = sharedModule.TTS_VOICE_DESIGN_PRESETS.find((item) => item.label === '鲸鱼娘')
+  const whale = sharedModule.TTS_VOICE_DESIGN_PRESETS.find((item) => item.id === 'energetic-girl')
   assert.ok(whale)
-  assert.match(whale.summary, /嘴硬心软/u)
-  assert.match(whale.prompt, /短暂停顿/u)
-  assert.match(whale.prompt, /忠实朗读给定文本/u)
+  for (const preset of sharedModule.TTS_VOICE_DESIGN_PRESETS) {
+    assert.ok(preset.prompt.trim().length > 0, `${preset.id} needs a synthesis description`)
+    const settings = resolveTtsSettings({ model: 'mimo-v2.5-tts-voicedesign', voiceDesignPrompt: preset.prompt })
+    assert.equal(settings.voiceDesignPrompt, preset.prompt)
+    assert.equal(settings.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt)
+  }
 })
 
 test('shared route and settings contracts are internally consistent', () => {
