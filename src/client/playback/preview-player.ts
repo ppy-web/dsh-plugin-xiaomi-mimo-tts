@@ -8,6 +8,8 @@ import {
 import type { TtsLocalSpeechMode, TtsModel } from '../../shared.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 import { applyMediaVoiceRate, applySpeechVoiceRate } from './voice-rate.js'
+import type { AudioHistory } from '../history/audio-history.js'
+import { PcmRecording } from '../history/pcm-recording.js'
 
 export type PreviewStatus = 'idle' | 'loading' | 'playing' | 'error'
 export type PreviewSource = 'mimo' | 'local' | null
@@ -116,7 +118,7 @@ export class PreviewPlayer {
   private volume = 1
   private voiceRate = 1
 
-  constructor(private readonly onViewChange: (view: PreviewView) => void) {}
+  constructor(private readonly onViewChange: (view: PreviewView) => void, private readonly history?: AudioHistory) {}
 
   getView(): PreviewView { return { status: this.status, source: this.source, error: this.error } }
 
@@ -128,6 +130,7 @@ export class PreviewPlayer {
   }
 
   async play(text: string, settings: PreviewSettings): Promise<void> {
+    this.history?.stopReplay()
     this.stop()
     this.setVolume(settings.voiceVolume)
     this.voiceRate = normalizeVoiceRate(settings.voiceRate)
@@ -238,6 +241,7 @@ export class PreviewPlayer {
     if (!response.ok) throw await responseError(response)
     const blob = await response.blob()
     if (generation !== this.generation) return
+    void this.history?.add({ blob, text, format, source: 'preview' })
     this.request = null
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
@@ -297,11 +301,14 @@ export class PreviewPlayer {
     const decoder = new TextDecoder()
     let pending = ''
     let received = false
+    const recording = new PcmRecording()
     const consume = async (events: string[]): Promise<void> => {
       for (const event of events) {
         const delta = pcmDelta(event)
         if (delta !== null) {
+          if (generation !== this.generation || controller.signal.aborted) return
           received = true
+          recording.append(delta)
           await this.pcm.enqueue(delta)
         }
       }
@@ -316,7 +323,10 @@ export class PreviewPlayer {
         await consume(parsed.events)
       }
       pending += decoder.decode()
-      if (pending.trim().length > 0) await consume(parseSseRecords(`${pending}\n\n`).events)
+      if (generation === this.generation && !controller.signal.aborted) {
+        if (pending.trim().length > 0) await consume(parseSseRecords(`${pending}\n\n`).events)
+        recording.save(this.history, { text, source: 'preview' })
+      }
     } finally {
       reader.releaseLock()
       if (generation === this.generation) {

@@ -11,6 +11,8 @@ import type { LiveSpeechCursor } from '../../shared.js'
 import { streamPcmAudio } from '../../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
+import type { AudioHistory } from '../history/audio-history.js'
+import { PcmRecording } from '../history/pcm-recording.js'
 
 interface CompletedStreamPlayback {
   sessionId: string
@@ -20,6 +22,7 @@ interface CompletedStreamPlayback {
 }
 
 export class LiveSpeechController {
+  constructor(private readonly history?: AudioHistory) {}
   private readonly audio = new PcmAudioQueue({
     onBusyChange: (busy) => {
       this.audioBusy = busy
@@ -259,10 +262,19 @@ export class LiveSpeechController {
 
   private async stream(sentence: string, signal: AbortSignal, generation: number): Promise<void> {
     if (!this.isCurrentStream(generation, signal)) return
+    const recording = new PcmRecording()
+    const sessionId = this.sessionId
+    const messageId = this.messageId
     try {
       await streamPcmAudio(sentence, signal, async (pcm) => {
         if (!this.isCurrentStream(generation, signal)) return
+        recording.append(pcm)
         await this.audio.enqueue(pcm)
+      })
+      if (this.isCurrentStream(generation, signal)) recording.save(this.history, {
+        text: sentence, source: 'conversation',
+        ...(sessionId === null ? {} : { sessionId }),
+        ...(messageId === null ? {} : { messageId }),
       })
     } catch (error) {
       if (this.isCurrentStream(generation, signal)) throw error

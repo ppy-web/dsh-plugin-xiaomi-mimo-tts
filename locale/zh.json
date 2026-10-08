@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "语音播报 (MiMo TTS)",
-    "description": "为 DSH 添加 Xiaomi MiMo 语音朗读、浏览器本地语音兜底和可选 UI 音效。"
+    "description": "为 DSH 添加 Xiaomi MiMo 语音朗读、音频历史与下载、浏览器本地语音兜底和可选 UI 音效。"
   }
 }

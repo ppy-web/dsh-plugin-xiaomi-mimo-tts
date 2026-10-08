@@ -14,6 +14,7 @@ import { TTS_VERSION } from '../src/shared.js'
 import enPluginLocale from '../locale/en.json'
 import zhPluginLocale from '../locale/zh.json'
 import './preview.css'
+import { AudioHistory } from '../src/client/history/audio-history.js'
 
 type PreviewLocale = 'zh' | 'en'
 type PreviewTheme = 'light' | 'dark'
@@ -79,8 +80,9 @@ const PREVIEW_PLUGIN_META = {
 const scope = new PreviewSettingsScope()
 const restorePreviewFetch = installPreviewFetch(scope)
 const soundEffects = createSoundEffectsController()
+const history = new AudioHistory()
 
-if (import.meta.hot) import.meta.hot.dispose(() => { restorePreviewFetch(); void soundEffects.dispose() })
+if (import.meta.hot) import.meta.hot.dispose(() => { restorePreviewFetch(); void soundEffects.dispose(); void history.dispose() })
 
 function translator(locale: PreviewLocale): Translate {
   const dictionary: Record<LocaleKey, string> = locale === 'zh' ? zh : en
@@ -338,13 +340,13 @@ function PreviewApp() {
             </div>
           </header>
           <ul className="preview-settings-list" ref={listRef} key={instance}>
-             <SettingsCard view="page" scope={scope} t={t} controller={soundEffects} />
+             <SettingsCard view="page" scope={scope} t={t} controller={soundEffects} history={history} />
           </ul>
           <BundleComponents locale={locale} />
           <div className="preview-note" role="note">
             {locale === 'zh'
-              ? <>这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。远程语音和保存均为本地模拟。</>
-              : <>This is the real plugin settings card. Changes in <code>src/client</code> hot-reload here; remote speech and save are mocked locally.</>}
+              ? <>这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。MiMo 试听使用本地提示音，不调用 API；设置保存为本地模拟，音频历史使用真实浏览器存储。</>
+              : <>This is the real plugin settings card. Changes in <code>src/client</code> hot-reload here. MiMo previews use a local tone without API calls; settings saves are mocked, while audio history uses real browser storage.</>}
           </div>
         </section>
       </div>

@@ -29,12 +29,16 @@ import { SwitchModule } from './switch-module.js'
 import { readMinimalMode, writeMinimalMode } from './minimal-mode.js'
 import { hostRoute } from '../host-route.js'
 import type { DraftChange, DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
+import type { AudioHistory } from '../history/audio-history.js'
+import { AudioHistoryModule } from './audio-history-module.js'
 
 interface SettingsCardProps {
   view: 'summary' | 'page'
   scope: ConfigForm<TtsSettings>
   t: Translate
   controller: SoundEffectsController
+  history?: AudioHistory | undefined
+  beforeHistoryPlayback?: (() => void) | undefined
 }
 
 type DraftSettings = SettingsValues
@@ -52,10 +56,10 @@ function hasLayerField(value: unknown, field: string): boolean {
 
 export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   if (props.view === 'summary') return <>{props.t('settings.description')}</>
-  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} />
+  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} history={props.history} beforeHistoryPlayback={props.beforeHistoryPlayback} />
 }
 
-function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const value = snapshot.value
   const initial = resolveTtsSettings(value)
@@ -82,7 +86,7 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
   const [soundEffectsOpen, setSoundEffectsOpen] = useState(false)
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
   const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
-  const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView))
+  const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView, history))
   const [toggleSoundPlayer] = useState(() => new ToggleSoundPlayer())
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>('loading')
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
@@ -365,6 +369,11 @@ function SettingsPage({ scope, t, controller }: Omit<SettingsCardProps, 'view'>)
   return (
     <div className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
       <div className="xmimo-tts-card-body xmimo-ui-stack">
+        {history ? <AudioHistoryModule history={history} t={t} volume={voiceVolume} voiceRate={voiceRate} beforePlayback={() => {
+          previewPlayer.stop()
+          toggleSoundPlayer.dispose()
+          beforeHistoryPlayback?.()
+        }} /> : null}
         <SwitchModule
           t={t}
           enabled={enabled}

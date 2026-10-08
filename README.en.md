@@ -159,7 +159,8 @@ File access, file search, and Windows PowerShell are for user-authorized tasks a
 
 - The DSH Host stores the API key. The browser reads only whether a key is configured and whether its prefix is recognized, not the secret itself.
 - Browser-local speech uses the Web Speech API. Voices marked online may send text to browser, operating-system, or network speech services.
-- Audio plays from browser memory through Web Audio or temporary Blob URLs; the plugin does not intentionally persist generated audio.
+- Generated MiMo audio is saved in this browser's IndexedDB. Settings → Audio history supports replay, download, deletion, and clearing, including after a page refresh. The latest 100 entries / 100 MB are retained, with oldest entries removed when full. Records include audio and up to 500 characters of text, never API keys.
+- Streaming PCM is saved as 24 kHz mono WAV. Streaming batches and generated segments appear separately; only successfully completed generation requests are saved, so cancelled or failed streams are not presented as complete audio. Web Speech API speech has no exportable audio file. Replay and download do not call MiMo again. History belongs to this browser and site address, does not sync across devices, and is removed when site data is cleared. If browser storage is unavailable or full, the list warns that it lasts only for the current visit.
 - The sound core is migrated from [uisfx 0.4.0](https://github.com/romainsimon/uisfx) under the MIT License; see `NOTICE`.
 
 ## 🏗️ Architecture

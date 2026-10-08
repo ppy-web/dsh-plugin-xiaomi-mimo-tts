@@ -1,6 +1,7 @@
 import { normalizeVoiceRate, splitTtsSegments, TTS_ROUTE } from '../../shared.js'
 import type { PlaybackStatus, PlaybackView } from './types.js'
 import { applyMediaVoiceRate } from './voice-rate.js'
+import type { AudioHistory } from '../history/audio-history.js'
 
 interface SynthesizedAudio {
   url: string
@@ -10,6 +11,7 @@ interface SynthesizedAudio {
 }
 
 export class PlaybackController {
+  constructor(private readonly history?: AudioHistory) {}
   readonly autoPlayArmedAt = Date.now()
   private view: PlaybackView = { sessionId: null, messageId: null, source: null, status: 'idle', error: null }
   private readonly listeners = new Set<() => void>()
@@ -164,6 +166,7 @@ export class PlaybackController {
       for (let index = startIndex; index < segments.length; index += 1) {
         const blob = await nextAudio
         if (generation !== this.generation || this.activeSessionId !== sessionId) return
+        void this.history?.add({ blob, text: segments[index]!, format: 'wav', source: 'conversation', sessionId, messageId })
         if (this.segmentedState !== null) this.segmentedState.index = index
         if (index + 1 < segments.length) nextAudio = synthesize(segments[index + 1]!)
         const audio = new Audio(URL.createObjectURL(blob))
@@ -260,6 +263,7 @@ export class PlaybackController {
 
       const blob = await response.blob()
       if (generation !== this.generation || this.activeSessionId !== sessionId) return
+      void this.history?.add({ blob, text, format, source: 'conversation', sessionId, messageId })
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
       audio.volume = this.volume

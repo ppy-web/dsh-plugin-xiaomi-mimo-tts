@@ -3,6 +3,19 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 export const NS = 'xiaomi-mimo-tts'
 
 export const zh = {
+  'history.title': '音频历史',
+  'history.hint': '保存在当前浏览器中，最多保留最近 100 条 / 100 MB，超出后清理最旧记录。流式与分段音频按生成批次列出；本地语音不产生可下载文件。',
+  'history.empty': '还没有生成的音频。MiMo 朗读或试听后会自动保存在这里。',
+  'history.loading': '正在读取音频历史…',
+  'history.memory': '浏览器存储不可用或已满；当前列表仅在本次打开期间保留，建议及时下载。',
+  'history.skipped': '有音频超过 100 MB，未保留到历史列表。',
+  'history.listen': '重听音频',
+  'history.download': '下载',
+  'history.delete': '删除',
+  'history.clear': '清空历史',
+  'history.conversation': '对话朗读',
+  'history.preview': '设置试听',
+  'history.service': '服务播放',
   "action.play": "朗读回复",
   "action.pause": "暂停朗读",
   "action.resume": "继续朗读",
@@ -189,6 +202,19 @@ export const zh = {
 } as const;
 
 export const en: Record<keyof typeof zh, string> = {
+  'history.title': 'Audio history',
+  'history.hint': 'Saved in this browser. Keeps the latest 100 entries / 100 MB and removes oldest entries when full. Streaming and segmented audio are listed per generated batch; browser speech has no downloadable file.',
+  'history.empty': 'No generated audio yet. MiMo read-aloud and previews are saved here automatically.',
+  'history.loading': 'Loading audio history…',
+  'history.memory': 'Browser storage is unavailable or full. This list lasts only for this visit; download audio to keep it.',
+  'history.skipped': 'An audio file exceeded 100 MB and was not kept in history.',
+  'history.listen': 'Listen again',
+  'history.download': 'Download',
+  'history.delete': 'Delete',
+  'history.clear': 'Clear history',
+  'history.conversation': 'Conversation',
+  'history.preview': 'Settings preview',
+  'history.service': 'Service playback',
   "action.play": "Read aloud",
   "action.pause": "Pause speech",
   "action.resume": "Resume speech",
