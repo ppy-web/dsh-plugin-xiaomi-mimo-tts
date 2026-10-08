@@ -45,6 +45,13 @@ type DraftSettings = SettingsValues
 
 const EDITABLE_SETTING_FIELDS: EditableSettingField[] = ['enabled', 'autoPlay', 'voiceVolume', 'voiceRate', 'readScope', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
 const RELEASES_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/releases'
+const PREVIEW_TEXT_KEYS = [
+  'settings.previewDefaultText',
+  'settings.previewDefaultTextPoetry',
+  'settings.previewDefaultTextInspiration',
+  'settings.previewDefaultTextReflection',
+  'settings.previewDefaultTextHumor',
+] as const
 
 function layerSettings(value: unknown): TtsSettings | undefined {
   return isRecord(value) ? value as TtsSettings : undefined
@@ -91,7 +98,8 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback }: 
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [soundEffectsOpen, setSoundEffectsOpen] = useState(false)
-  const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
+  const [previewDefaultText] = useState(() => t(PREVIEW_TEXT_KEYS[Math.floor(Math.random() * PREVIEW_TEXT_KEYS.length)]))
+  const [previewText, setPreviewText] = useState(previewDefaultText)
   const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView, history))
   const [toggleSoundPlayer] = useState(() => new ToggleSoundPlayer())
@@ -320,7 +328,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback }: 
   }
 
   const toggleSettingsPreview = (): void => { togglePreview(previewText) }
-  const toggleMixerPreview = (): void => { togglePreview(t('settings.previewDefaultText')) }
+  const toggleMixerPreview = (): void => { togglePreview(previewDefaultText) }
 
   const changeEnabled = (next: boolean): void => {
     if (minimalMode && soundEnabled && clickSounds) controller.play(next ? 'toggle-on' : 'toggle-off')
