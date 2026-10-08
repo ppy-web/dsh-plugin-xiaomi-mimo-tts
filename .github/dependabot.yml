@@ -4,9 +4,18 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
       time: "03:00"
+      timezone: "Asia/Shanghai"
+    cooldown:
+      default-days: 14
+    groups:
+      routine-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     allow:
       - dependency-type: "direct"
     commit-message:
@@ -23,9 +32,18 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
       time: "03:00"
+      timezone: "Asia/Shanghai"
+    cooldown:
+      default-days: 14
+    groups:
+      routine-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     commit-message:
       prefix: "chore(ci)"
       include: "scope"
