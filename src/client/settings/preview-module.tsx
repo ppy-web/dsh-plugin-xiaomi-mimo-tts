@@ -66,7 +66,7 @@ export function PreviewModule({ t, enabled, minimal, status, source, error, text
       />}
       <textarea
         value={text}
-        rows={1}
+        rows={2}
         maxLength={100}
         aria-label={t('settings.previewText')}
         placeholder={t('settings.previewPlaceholder')}

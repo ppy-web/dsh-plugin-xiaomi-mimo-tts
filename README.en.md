@@ -98,16 +98,6 @@ Recommended setup order:
 
 `mimo-v2.5-tts-voicedesign` generates a voice from a description. The settings panel includes presets and an editable custom description:
 
-Choose “鲸鱼娘” (Whale-chan) for a clear, sweet female voice with playful confidence and a soft heart. Everyday delivery is light; deadpan jokes use a brief pause before the turn; caring lines slow down gently; practical explanations stay focused and clear. Voice selection controls delivery, while the Agent preset controls conversation personality.
-
-### Whale-chan persona
-
-Select “鲸鱼娘” in Agent presets for a rice-powered, slightly tsundere whale maid who is relaxed but reliable. Her deadpan wordplay follows the conversation, with sincere companionship and practical help, CDN memes, and local memory tools. Character inspiration comes from the [DeepSeek Whale-chan Project](https://github.com/Neko3000/deepseek-whalechan); see the [persona instructions](skills/whale-girl/SKILL.md).
-
-To use both, select the Agent preset separately, then choose `mimo-v2.5-tts-voicedesign` → “鲸鱼娘” in Mixing Console, save, and listen in Broadcast Studio. Try: “本鲸正在降低待机功耗。你要的清单整理好了，先看这三项。”
-
-Saved voice descriptions are retained after an upgrade. Reselect “鲸鱼娘” and save to apply the updated description, or keep using your custom description.
-
 ### Browser-local speech
 
 - **MiMo first**: tries browser speech if MiMo fails before audio starts.
@@ -121,6 +111,8 @@ Browser voices come from the Web Speech API. Offline availability, language cove
 - **Smart mode**: automatic playback prefers the opening semantic segment and may add a short closing cue when substantial text remains. Manual playback reads the full reply.
 - **Full mode**: automatic and manual playback both read the full reply.
 - **First-segment mode**: automatic and manual playback both read only the opening segment.
+
+Opening segments and synthesis chunks split between complete sentences; an individual long sentence may exceed the recommended chunk size. Streaming playback waits for a sentence boundary before locking the opening segment, so reaching the character threshold does not cut a sentence short.
 
 The settings panel supports keyboard navigation: use `Tab` to move focus, arrow keys to adjust sliders and options, and `Space` to activate buttons and switches.
 

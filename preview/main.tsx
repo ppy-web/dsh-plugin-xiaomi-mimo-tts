@@ -124,13 +124,6 @@ function PreviewApp() {
   }, [songVolume])
 
   useEffect(() => {
-    const song = songRef.current
-    if (song === null) return
-    song.volume = 0.5
-    void song.play().catch(() => { setIsSongPlaying(false) })
-  }, [])
-
-  useEffect(() => {
     const scrollTarget = document.scrollingElement ?? document.documentElement
     const updateToolbar = (): void => {
       const currentScrollY = scrollTarget.scrollTop
@@ -304,7 +297,6 @@ function PreviewApp() {
         <button type="button" onClick={reset}>{toolbar.reset}</button>
         <audio
           ref={songRef}
-          autoPlay
           preload="auto"
           src={`${import.meta.env.BASE_URL}plugins/xiaomi-mimo-tts/preview-audio/preview-song.mp3`}
           onPlay={() => { setIsSongPlaying(true) }}
