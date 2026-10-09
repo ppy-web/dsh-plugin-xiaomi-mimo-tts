@@ -10,6 +10,7 @@ import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
 import { PreviewBackground } from './background-icons.js'
 import { UserManual } from './user-manual.js'
 import { BundleComponents } from './bundle-components.js'
+import { FilterLab } from './filter-lab.js'
 import { TTS_VERSION } from '../src/shared.js'
 import enPluginLocale from '../locale/en.json'
 import zhPluginLocale from '../locale/zh.json'
@@ -21,6 +22,7 @@ type PreviewTheme = 'light' | 'dark'
 
 const TOOLBAR_COPY: Record<PreviewLocale, {
   subtitle: string
+  page: string
   language: string
   theme: string
   readOnly: string
@@ -34,13 +36,16 @@ const TOOLBAR_COPY: Record<PreviewLocale, {
   closeControls: string
   light: string
   dark: string
+  settingsTab: string
+  filterTab: string
 }> = {
   zh: {
     subtitle: '真实组件 · Vite 热更新 · 本地模拟数据',
+    page: '页面',
     language: '语言',
     theme: '主题',
     readOnly: '只读',
-    reset: '重置状态',
+    reset: '重置',
     playSong: '播放歌曲',
     pauseSong: '暂停歌曲',
     volume: '音量',
@@ -50,13 +55,16 @@ const TOOLBAR_COPY: Record<PreviewLocale, {
     closeControls: '收起控制项',
     light: '浅色',
     dark: '深色',
+    settingsTab: '设置预览',
+    filterTab: '文本过滤测试',
   },
   en: {
     subtitle: 'Real components · Vite HMR · local mock data',
+    page: 'Page',
     language: 'Language',
     theme: 'Theme',
     readOnly: 'Read-only',
-    reset: 'Reset state',
+    reset: 'Reset',
     playSong: 'Play song',
     pauseSong: 'Pause song',
     volume: 'Volume',
@@ -66,6 +74,8 @@ const TOOLBAR_COPY: Record<PreviewLocale, {
     closeControls: 'Close controls',
     light: 'Light',
     dark: 'Dark',
+    settingsTab: 'Settings preview',
+    filterTab: 'Text filter lab',
   },
 }
 
@@ -99,6 +109,7 @@ function PreviewApp() {
   const [isToolbarCompact, setIsToolbarCompact] = useState(false)
   const [isManualOpen, setIsManualOpen] = useState(false)
   const [isControlsOpen, setIsControlsOpen] = useState(false)
+  const [activeView, setActiveView] = useState<'settings' | 'filter'>('settings')
   const songRef = useRef<HTMLAudioElement | null>(null)
   const lastScrollYRef = useRef(0)
   const toolbarRef = useRef<HTMLElement | null>(null)
@@ -278,24 +289,24 @@ function PreviewApp() {
         role="group"
         aria-label={toolbar.controls}
       >
-        <label>
-          <span>{toolbar.language}</span>
-          <select value={locale} onChange={(event) => { changeLocale(event.target.value as PreviewLocale) }}>
+        <div className="preview-control-selects">
+          <select aria-label={toolbar.page} value={activeView} onChange={(event) => { setActiveView(event.target.value as 'settings' | 'filter') }}>
+            <option value="settings">{toolbar.settingsTab}</option>
+            <option value="filter">{toolbar.filterTab}</option>
+          </select>
+          <select aria-label={toolbar.language} value={locale} onChange={(event) => { changeLocale(event.target.value as PreviewLocale) }}>
             <option value="zh">中文</option>
             <option value="en">English</option>
           </select>
-        </label>
-        <label>
-          <span>{toolbar.theme}</span>
-          <select value={theme} onChange={(event) => { setTheme(event.target.value as PreviewTheme) }}>
+          <select aria-label={toolbar.theme} value={theme} onChange={(event) => { setTheme(event.target.value as PreviewTheme) }}>
             <option value="light">{toolbar.light}</option>
             <option value="dark">{toolbar.dark}</option>
           </select>
-        </label>
-        <label className="preview-checkbox">
-          <input type="checkbox" checked={readOnly} onChange={(event) => { toggleReadOnly(event.target.checked) }} />
-          <span>{toolbar.readOnly}</span>
-        </label>
+        </div>
+        <button className="preview-read-only-button" type="button" aria-pressed={readOnly} onClick={() => toggleReadOnly(!readOnly)}>
+          <span className="preview-read-only-track" aria-hidden="true" />
+          {toolbar.readOnly}
+        </button>
         <button type="button" onClick={reset}>{toolbar.reset}</button>
         <audio
           ref={songRef}
@@ -307,7 +318,8 @@ function PreviewApp() {
         />
       </div>
     </header>
-    <main className="preview-stage">
+    <main className={`preview-stage${activeView === 'filter' ? ' preview-stage-filter' : ''}`}>
+      {activeView === 'filter' ? <FilterLab locale={locale} /> :
       <div className="preview-workspace">
         <UserManual
           locale={locale}
@@ -335,13 +347,9 @@ function PreviewApp() {
              <SettingsCard view="page" scope={scope} t={t} controller={soundEffects} history={history} />
           </ul>
           <BundleComponents locale={locale} />
-          <div className="preview-note" role="note">
-            {locale === 'zh'
-              ? <>这里渲染的是插件实际设置卡片；修改 <code>src/client</code> 后页面会直接刷新。MiMo 试听使用本地提示音，不调用 API；设置保存为本地模拟，音频历史使用真实浏览器存储。</>
-              : <>This is the real plugin settings card. Changes in <code>src/client</code> hot-reload here. MiMo previews use a local tone without API calls; settings saves are mocked, while audio history uses real browser storage.</>}
-          </div>
         </section>
       </div>
+      }
     </main>
     <style>{CLIENT_STYLES}</style>
   </div>

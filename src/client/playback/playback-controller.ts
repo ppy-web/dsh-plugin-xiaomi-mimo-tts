@@ -19,6 +19,7 @@ export class PlaybackController {
   private readonly liveSessions = new Set<string>()
   private readonly completedSessions = new Set<string>()
   private readonly completedMessages = new Map<string, string>()
+  private readonly attachedMidRun = new Set<string>()
   private current: SynthesizedAudio | null = null
   private segmentQueue: HTMLAudioElement[] = []
   private segmentedState: { sessionId: string; messageId: string; segments: string[]; index: number; voiceRate: number } | null = null
@@ -61,6 +62,7 @@ export class PlaybackController {
     this.liveSessions.clear()
     this.completedSessions.clear()
     this.completedMessages.clear()
+    this.attachedMidRun.clear()
     this.activeSessionId = sessionId
     this.publish(this.emptyView())
   }
@@ -81,13 +83,16 @@ export class PlaybackController {
     this.liveSessions.clear()
     this.completedSessions.clear()
     this.completedMessages.clear()
+    this.attachedMidRun.clear()
     this.activeSessionId = null
     this.publish(this.emptyView())
   }
 
-  observeSession(sessionId: string, running: boolean, latestMessageId: string | null): void {
+  observeSession(sessionId: string, running: boolean, latestMessageId: string | null, attachedMidRun = false): void {
     if (this.activeSessionId !== sessionId) return
     if (running) {
+      if (attachedMidRun) this.attachedMidRun.add(sessionId)
+      else this.attachedMidRun.delete(sessionId)
       this.liveSessions.add(sessionId)
       this.completedSessions.delete(sessionId)
       this.completedMessages.delete(sessionId)
@@ -106,6 +111,7 @@ export class PlaybackController {
     if (this.activeSessionId !== sessionId) return false
     const key = `${sessionId}:${messageId}`
     if (this.completedMessages.get(sessionId) !== messageId) return false
+    if (this.attachedMidRun.has(sessionId)) return false
     if (this.automaticallyPlayed.has(key)) return false
     this.automaticallyPlayed.add(key)
     this.completedSessions.delete(sessionId)

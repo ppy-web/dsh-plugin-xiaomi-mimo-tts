@@ -180,6 +180,7 @@ pnpm dev
 ```
 
 `pnpm dev` starts the local UI Lab and renders `src/client/settings/card.tsx` directly. Saving, remote speech, and update checks are mocked locally; the preview does not call the real MiMo service.
+Select Text filter lab from the page dropdown in the toolbar to compare sections from `test/fixtures/*.md` with their filtered output, or paste Markdown into the live input. It calls the current `prepareTtsText` source and Vite updates the page when the source or fixture changes.
 
 Common checks:
 

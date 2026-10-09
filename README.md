@@ -183,6 +183,7 @@ pnpm dev
 ```
 
 `pnpm dev` 会启动本地 UI Lab，直接渲染 `src/client/settings/card.tsx`。设置保存、远程语音和版本检查使用本地 mock，不会调用真实 MiMo 服务。
+在顶部页面下拉框选择“文本过滤测试”，可查看 `test/fixtures/*.md` 的分段原文与过滤结果，或在实时输入框粘贴 Markdown。该页直接调用当前的 `prepareTtsText`，修改源码或 fixture 后由 Vite 自动更新。
 
 常用检查：
 

@@ -29,6 +29,7 @@
   --xmimo-ui-mascot-size: 0px;
   border-color: transparent;
   background: var(--xmimo-ui-surface, #fff);
+  padding: 5px;
 }
 
 .xmimo-tts-card-minimal .xmimo-ui-module {
