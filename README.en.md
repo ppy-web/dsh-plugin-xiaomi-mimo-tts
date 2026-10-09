@@ -6,6 +6,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/dsh-xiaomi-tts.svg)](https://www.npmjs.com/package/dsh-xiaomi-tts)
 ![dsh version](https://img.shields.io/badge/dsh-v0.2.0rc1-blue?link=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2Fdeepseek-harness%2Freleases)
 ![Xiaomi MiMo](https://img.shields.io/badge/Xiaomi-MiMo-ff6900?logo=xiaomi&logoColor=white)
+[![deepseek-harness](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
 Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI sounds to DSH Web.
 
@@ -192,7 +193,7 @@ pnpm pack:check
 On Windows, stop DSH Web before replacing a local development link with the npm package so the running Node process does not hold the Junction:
 
 ```powershell
-.\start\dsh-plugin-reinstall.bat 3.0.8
+.\start\dsh-plugin-reinstall.bat 3.0.9
 ```
 
 For a DSH Desktop profile, close Desktop and remove a stale local link with:
