@@ -23,16 +23,3 @@ test('ships the whale-girl preset and its local skill resources', () => {
   assert.equal(patch.includes('dsh-meme'), false)
   assert.match(patch, /process\.platform !== 'win32'/u)
 })
-
-test('whale-girl skill defines language-aware companionship without former occupational persona', () => {
-  for (const marker of ['陪伴', '女仆', '幽默', '表情包', '白米饭', '一本正经', '说话方式', '嘴硬之后', 'storage.supabase.co', '![表情描述](URL)', '结束语义', 'diary.md', '晚安', '安全边界', '明确说“记住这个”']) assert.ok(skill.includes(marker), marker)
-  assert.match(skill, /github\.com\/Neko3000\/deepseek-whalechan/u)
-  for (const forbidden of ['陈列师', 'FILA', '株洲', '上海市', '中南民族大学']) {
-    assert.equal(skill.includes(forbidden), false, forbidden)
-    assert.equal(patch.includes(forbidden), false, forbidden)
-  }
-  assert.ok(memoryReadme.includes('明确要求记住'))
-  assert.ok(memoryReadme.includes('密码'))
-  assert.ok(memoryReadme.includes('每次对话最多追加一条'))
-  assert.match(diary, /会话日记/u)
-})

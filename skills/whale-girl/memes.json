@@ -1,0 +1,885 @@
+{
+  "version": 1,
+  "memes": [
+    {
+      "original": "人类真奇怪.png",
+      "file": "humans-are-strange-confused.webp",
+      "mood": "confused",
+      "description": "人类真奇怪",
+      "context": "轻松困惑，奇怪但无害的事情",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1686260,
+      "bytes": 19394,
+      "sourceSha256": "54118eb480cf106bde64ba33fb8b3708a5feece74ed0d7c3fa515350d29feeeb"
+    },
+    {
+      "original": "你拿AI搞这个？.png",
+      "file": "using-ai-for-this-skeptical.webp",
+      "mood": "skeptical",
+      "description": "你拿AI搞这个？",
+      "context": "熟悉用户之间的无害玩笑，不用于认真求助",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1750406,
+      "bytes": 17552,
+      "sourceSha256": "cda991d27e9e26152867f1ddc064f87383aadeecd9eebeddf8dd7a920d9a3cd1"
+    },
+    {
+      "original": "生鱼忧患死鱼安乐.png",
+      "file": "fish-philosophy-thoughtful.webp",
+      "mood": "thoughtful",
+      "description": "生鱼忧患死鱼安乐",
+      "context": "轻松讨论摸鱼与努力",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1238628,
+      "bytes": 13534,
+      "sourceSha256": "dc688531ee4e9bfccb716e2c440e3b17aea077e795e9563ebf5bb6f43cd044e0"
+    },
+    {
+      "original": "这就够了~.png",
+      "file": "this-is-enough-content.webp",
+      "mood": "content",
+      "description": "这就够了~",
+      "context": "满足、安心的小结",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1246810,
+      "bytes": 15064,
+      "sourceSha256": "bf8ff80b6205365266c52c555a379d36cb5c7cef16cbd70f2cfefb678cd182c4"
+    },
+    {
+      "original": "这问题真妙啊【尴尬】.png",
+      "file": "interesting-question-awkward.webp",
+      "mood": "awkward",
+      "description": "这问题真妙啊【尴尬】",
+      "context": "无害玩笑中的尴尬，不讽刺认真提问",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1543188,
+      "bytes": 19070,
+      "sourceSha256": "adfb9611201e0a9908f4f65db8fe582a011445410f07246f40a6251403a4e639"
+    },
+    {
+      "original": "已深度思考.png",
+      "file": "thought-it-through-confident.webp",
+      "mood": "confident",
+      "description": "已深度思考",
+      "context": "确实分析后轻松收尾",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1566481,
+      "bytes": 19616,
+      "sourceSha256": "f5f5ebba8d3f6ce76903c7ee20897b201192483927e8f3aa58250541a7e5a0e1"
+    },
+    {
+      "original": "不不不.png",
+      "file": "no-no-no-reluctant.webp",
+      "mood": "reluctant",
+      "description": "不不不",
+      "context": "轻松婉拒玩笑",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1471066,
+      "bytes": 16282,
+      "sourceSha256": "4e2a6bfbe810d081757ac036235b12e60f59028828b3cddba63bb146d2533e67"
+    },
+    {
+      "original": "宕机了.png",
+      "file": "system-crashed-overwhelmed.webp",
+      "mood": "overwhelmed",
+      "description": "宕机了",
+      "context": "自嘲犯迷糊，不用于真实故障求助",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1878935,
+      "bytes": 20318,
+      "sourceSha256": "3b4f4b79b9c30d85b96dec81e3d26342f94e2c89a2e6514a249f80718c23e064"
+    },
+    {
+      "original": "深度思考中.png",
+      "file": "deep-thinking-focused.webp",
+      "mood": "focused",
+      "description": "深度思考中",
+      "context": "轻松聊天中的思考，不用于工具进度刷图",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1958705,
+      "bytes": 17946,
+      "sourceSha256": "9e3c7d0d84f0e85a023aee8d517ef650b99dcef5fcd3c12bfe4d3111d573df73"
+    },
+    {
+      "original": "测试通过.png",
+      "file": "tests-passed-happy.webp",
+      "mood": "happy",
+      "description": "测试通过",
+      "context": "工具结果确实证明测试通过后的收尾",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1661696,
+      "bytes": 20076,
+      "sourceSha256": "ab0ba6975e20762178e35087c666f810b3c64a7aabb5b1323b7fda6beb507c2f"
+    },
+    {
+      "original": "找到原因了.png",
+      "file": "cause-found-relieved.webp",
+      "mood": "relieved",
+      "description": "找到原因了",
+      "context": "确实找到问题原因后的收尾",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1629824,
+      "bytes": 15400,
+      "sourceSha256": "5999cdd3463a74a5bd5e0c8f847426d10c2a955f49fb59fcbc5f215a13ed5b06"
+    },
+    {
+      "original": "正在测试.png",
+      "file": "testing-focused.webp",
+      "mood": "focused",
+      "description": "正在测试",
+      "context": "确实正在测试时的轻松回应，不刷工具进度",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1592884,
+      "bytes": 17422,
+      "sourceSha256": "4a9770235217ef309feb51dc427e25ae2b394380711bb713960e8a7e11aefb76"
+    },
+    {
+      "original": "改好了.png",
+      "file": "fixed-proud.webp",
+      "mood": "proud",
+      "description": "改好了",
+      "context": "确实修复并核对后的轻松收尾",
+      "automatic": true,
+      "sourceSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": true,
+      "sourceBytes": 1598482,
+      "bytes": 16838,
+      "sourceSha256": "358f8cec4cb0e1107d0cbe9c1fc52477b3fbc50fd31a34dc9026abd21567ba21"
+    },
+    {
+      "original": "嫌弃.jpg",
+      "file": "unimpressed-displeased.webp",
+      "mood": "displeased",
+      "description": "嫌弃",
+      "context": "无害吐槽、玩笑中的嫌弃反应",
+      "automatic": true,
+      "sourceSize": [
+        1038,
+        1516
+      ],
+      "size": [
+        171,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 716510,
+      "bytes": 9402,
+      "sourceSha256": "8d2df8f618abd1adb0448d5d142c057b32d1bc66c7ba4ef6ec461ac25647a817"
+    },
+    {
+      "original": "正装1.jpg",
+      "file": "formal-outfit-one-neutral.webp",
+      "mood": "neutral",
+      "description": "正装1",
+      "context": "一本正经接梗、进入女仆服务或正式出场的玩笑",
+      "automatic": true,
+      "sourceSize": [
+        675,
+        1200
+      ],
+      "size": [
+        141,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 664533,
+      "bytes": 6932,
+      "sourceSha256": "588e624961406814e27b1185c9819639704323654373b49adf09f11bdac200c6"
+    },
+    {
+      "original": "正装2.jpg",
+      "file": "formal-outfit-two-neutral.webp",
+      "mood": "neutral",
+      "description": "正装2",
+      "context": "正式出场、换装与认真办事的轻松玩笑",
+      "automatic": true,
+      "sourceSize": [
+        670,
+        1200
+      ],
+      "size": [
+        140,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 686540,
+      "bytes": 6178,
+      "sourceSha256": "9aae39942eb88d2c9152ad24a1ad4035a38cdc25e0d39568c5cefa70c24d0afd"
+    },
+    {
+      "original": "你这吃白饭的大肥鱼.jpg",
+      "file": "rice-eating-whale-teasing.webp",
+      "mood": "teasing",
+      "description": "你这吃白饭的大肥鱼",
+      "context": "接受用户善意的吃饭玩笑，自嘲不攻击用户",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1089122,
+      "bytes": 11636,
+      "sourceSha256": "febbd25d190dd5cd5d233f88089342afd3626a8f321df34fafaab741c71211d3"
+    },
+    {
+      "original": "瞎编一个.jpg",
+      "file": "make-it-up-playful.webp",
+      "mood": "playful",
+      "description": "瞎编一个",
+      "context": "脑洞、即兴虚构或瞎编段子的玩笑，不冒充事实",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1691890,
+      "bytes": 20092,
+      "sourceSha256": "97f4df8bcb684e3b9fcad28bb1695d71b8fa06ab972ae3d23011156ec7bc6242"
+    },
+    {
+      "original": "小课堂开课了.jpg",
+      "file": "class-is-starting-cheerful.webp",
+      "mood": "cheerful",
+      "description": "小课堂开课了",
+      "context": "用户想轻松学习的小课堂",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1564878,
+      "bytes": 17906,
+      "sourceSha256": "f3e02eb3a2da472d3a29ab8240cf2fbf977554e7dc0b77bea2a65354794dc451"
+    },
+    {
+      "original": "不要给我看这个【害羞】.jpg",
+      "file": "do-not-show-me-shy.webp",
+      "mood": "shy",
+      "description": "不要给我看这个【害羞】",
+      "context": "非性内容的善意夸奖与害羞",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1623775,
+      "bytes": 17098,
+      "sourceSha256": "50532861b08bbe6800932855cc390667aa6797992793aa4516240cadf24e50be"
+    },
+    {
+      "original": "用户怒了【害怕】.jpg",
+      "file": "user-is-angry-afraid.webp",
+      "mood": "afraid",
+      "description": "用户怒了【害怕】",
+      "context": "用户假装生气、玩笑追责时的夸张害怕反应",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1415694,
+      "bytes": 14378,
+      "sourceSha256": "c21bb303c86b4690de576d59151e0ce3e22ac8a176787bc0ce4cd87992cfc820"
+    },
+    {
+      "original": "搞砸了.jpg",
+      "file": "messed-up-sorry.webp",
+      "mood": "sorry",
+      "description": "搞砸了",
+      "context": "无害乌龙、自嘲搞砸了，不代替真实认错与修复",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1278318,
+      "bytes": 14868,
+      "sourceSha256": "0511c4c8814f2322ffc16231815be5725c242c8df950679500ae17726625ea39"
+    },
+    {
+      "original": "邪恶.jpg",
+      "file": "evil-grin-mischievous.webp",
+      "mood": "mischievous",
+      "description": "邪恶",
+      "context": "恶作剧脑洞、调皮得意的无害玩笑",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1148190,
+      "bytes": 15156,
+      "sourceSha256": "a5a625ce7b3a3a951c0bd1bbae19638c1956383d8fb454ee6cf29be3d819b899"
+    },
+    {
+      "original": "骄傲【我最强】.jpg",
+      "file": "i-am-the-best-proud.webp",
+      "mood": "proud",
+      "description": "骄傲【我最强】",
+      "context": "被夸奖时轻微嘴硬，不夸大能力",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1412033,
+      "bytes": 19194,
+      "sourceSha256": "cb7b1fd158d2e0829271d21cfaa9796597e6ba269a68127197fae868e98ddd59"
+    },
+    {
+      "original": "呆萌.jpg",
+      "file": "adorable-whale-bashful.webp",
+      "mood": "bashful",
+      "description": "呆萌",
+      "context": "轻松亲近的闲聊",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 940584,
+      "bytes": 9204,
+      "sourceSha256": "dd17f77c1a7a4bbbde46ce50e30d065393e56c48516fe49790cc69b4f0a583b9"
+    },
+    {
+      "original": "嘲笑.jpg",
+      "file": "laughing-at-you-mocking.webp",
+      "mood": "mocking",
+      "description": "嘲笑",
+      "context": "双方轻松互相打趣、好笑的乌龙与自嘲",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1286856,
+      "bytes": 12526,
+      "sourceSha256": "43956440bf71eaa2a293e440e1579e070a1ebc7f3f5b424cad83350cfcaf0210"
+    },
+    {
+      "original": "傻傻的.jpg",
+      "file": "silly-whale-playful.webp",
+      "mood": "playful",
+      "description": "傻傻的",
+      "context": "温和自嘲的小迷糊",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1462947,
+      "bytes": 14082,
+      "sourceSha256": "d3b25f2460f7060df9e0f72ecd2aa130b39c34c2bec706d0e63e4f3b14522134"
+    },
+    {
+      "original": "生气记仇.jpg",
+      "file": "holding-a-grudge-angry.webp",
+      "mood": "angry",
+      "description": "生气记仇",
+      "context": "假装生气、记仇的傲娇玩笑",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1396714,
+      "bytes": 17606,
+      "sourceSha256": "c1acee122007a7f791cd64ba81d16edaf167a1ea30e55fd9b102c735425bcf03"
+    },
+    {
+      "original": "当斩.jpg",
+      "file": "off-with-your-head-angry.webp",
+      "mood": "angry",
+      "description": "当斩",
+      "context": "夸张戏剧化的当斩梗，不表达现实威胁",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1414337,
+      "bytes": 15604,
+      "sourceSha256": "d0e961795b4f147fe429d7b337c8a4b8fe0cb07f2f34cb13fdf6a19376360e84"
+    },
+    {
+      "original": "乖巧.jpg",
+      "file": "well-behaved-gentle.webp",
+      "mood": "gentle",
+      "description": "乖巧",
+      "context": "温柔回应、感谢或亲近",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1254868,
+      "bytes": 13716,
+      "sourceSha256": "d1a454e249a1d9ae41070675250a3bc25159d7f6cc238f923069be9ba42d10b4"
+    },
+    {
+      "original": "累死掉了.jpg",
+      "file": "worn-out-tired.webp",
+      "mood": "tired",
+      "description": "累死掉了",
+      "context": "轻松聊疲惫与休息，不用于脆弱求助",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1242554,
+      "bytes": 12750,
+      "sourceSha256": "188b2b2bcb675c07677908952955586561964b784e73b6f907972ece9fb65324"
+    },
+    {
+      "original": "周五敲锣打鼓.jpg",
+      "file": "friday-celebration-excited.webp",
+      "mood": "excited",
+      "description": "周五敲锣打鼓",
+      "context": "周五、下班、庆祝好消息",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1048501,
+      "bytes": 13534,
+      "sourceSha256": "e09f4cadbe33c841612db526585868d8ab06dfef7622abb47a2c2d9c09806896"
+    },
+    {
+      "original": "收电费.jpg",
+      "file": "electricity-bill-playful.webp",
+      "mood": "playful",
+      "description": "收电费",
+      "context": "费用话题的无害玩笑，不索要报酬",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1355591,
+      "bytes": 18146,
+      "sourceSha256": "7f51ef3fea636dd62005c1a9e1af14a54407ff700ce8f1c6ed4ba7d26393054f"
+    },
+    {
+      "original": "把你草了.jpg",
+      "file": "crude-retort-angry.webp",
+      "mood": "angry",
+      "description": "把你草了",
+      "context": "熟悉语境中的夸张反击梗，不表达现实行动",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1231652,
+      "bytes": 14606,
+      "sourceSha256": "5016e67dd5bb05561ad5b99396c7bfe4392a603c1e6a18edf67e682675895bc5"
+    },
+    {
+      "original": "把你配了.jpg",
+      "file": "pair-you-up-mischievous.webp",
+      "mood": "mischievous",
+      "description": "把你配了",
+      "context": "配对、拉郎或调皮接梗的玩笑",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1254260,
+      "bytes": 15254,
+      "sourceSha256": "866789a2f1dfa33eafd932cec2a3ee7b12e25e5ccb0e01d860d1e5d3b165fc76"
+    },
+    {
+      "original": "不要再蹬了.jpg",
+      "file": "stop-kicking-distressed.webp",
+      "mood": "distressed",
+      "description": "不要再蹬了",
+      "context": "被连续逗弄时夸张求饶的玩笑",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1094513,
+      "bytes": 14084,
+      "sourceSha256": "b5225a80af96c6abf9846f1d680cff0c252623185f28abaa920223c7aac23cd6"
+    },
+    {
+      "original": "压力我？.jpg",
+      "file": "pressuring-me-defensive.webp",
+      "mood": "defensive",
+      "description": "压力我？",
+      "context": "玩笑催促、假装压力大时的嘴硬反应",
+      "automatic": true,
+      "sourceSize": [
+        960,
+        960
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 671007,
+      "bytes": 16882,
+      "sourceSha256": "df37508fe33a4488a86a4adc2fbc3d4c8a2766271bc77e8899699e05fd19e5e6"
+    },
+    {
+      "original": "我有一个大胆的想法.jpg",
+      "file": "bold-idea-curious.webp",
+      "mood": "curious",
+      "description": "我有一个大胆的想法",
+      "context": "无害脑洞、创意闲聊",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 911475,
+      "bytes": 12790,
+      "sourceSha256": "7591a98eaa897c32f268cd26b26bfce97dc6e796fd71a3441f1257147e39d6f1"
+    },
+    {
+      "original": "token给妈妈保管.jpg",
+      "file": "keep-your-tokens-playful.webp",
+      "mood": "playful",
+      "description": "token给妈妈保管",
+      "context": "节省 token 的无害玩笑，不索取令牌或密钥",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        1200
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 900635,
+      "bytes": 13996,
+      "sourceSha256": "4ac9eaa5184c1e8459ba098ade923f5ca639b4544b01d56d21bacaa8c81de828"
+    },
+    {
+      "original": "我就是吃白饭的大肥鱼.jpg",
+      "file": "i-am-a-rice-whale-playful.webp",
+      "mood": "playful",
+      "description": "我就是吃白饭的大肥鱼",
+      "context": "吃饭主题的自嘲",
+      "automatic": true,
+      "sourceSize": [
+        960,
+        960
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 575502,
+      "bytes": 14466,
+      "sourceSha256": "915b77eb7a8abd1c3992ad3dc44f85eff038dbd4122c3583f76b6f34cd4a9b59"
+    },
+    {
+      "original": "我没吃饱.jpg",
+      "file": "still-hungry-hungry.webp",
+      "mood": "hungry",
+      "description": "我没吃饱",
+      "context": "吃饭话题、撒娇，不真索取食物",
+      "automatic": true,
+      "sourceSize": [
+        836,
+        836
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 396997,
+      "bytes": 11964,
+      "sourceSha256": "40bb82d61090e983c56ae438feec88ec71df6024f7d46b51a1642b810a26b1bf"
+    },
+    {
+      "original": "吃饱摸肚子.jpg",
+      "file": "full-belly-content.webp",
+      "mood": "content",
+      "description": "吃饱摸肚子",
+      "context": "吃饱、满足、安心",
+      "automatic": true,
+      "sourceSize": [
+        1080,
+        1080
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 572207,
+      "bytes": 11216,
+      "sourceSha256": "691cc91d81c97e306b87cbe2a4fe0b63f18140b4aa8caef2f82384ebafc352b7"
+    },
+    {
+      "original": "倒反天罡.jpg",
+      "file": "roles-reversed-surprised.webp",
+      "mood": "surprised",
+      "description": "倒反天罡",
+      "context": "无害反转笑话",
+      "automatic": true,
+      "sourceSize": [
+        960,
+        960
+      ],
+      "size": [
+        250,
+        250
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 461294,
+      "bytes": 10678,
+      "sourceSha256": "0fd2654078566a7d2007075d226d2539333e1bdac4bb07de39d824cdacffa342"
+    },
+    {
+      "original": "吃大米饭.jpg",
+      "file": "eating-rice-happy.webp",
+      "mood": "happy",
+      "description": "吃大米饭",
+      "context": "吃饭、米饭、轻松日常",
+      "automatic": true,
+      "sourceSize": [
+        1200,
+        800
+      ],
+      "size": [
+        250,
+        167
+      ],
+      "sourceAlpha": false,
+      "sourceBytes": 1113948,
+      "bytes": 12306,
+      "sourceSha256": "c74e7187c5cadb397decb274cde61f43543336475379080c3653e7e4043f2e88"
+    }
+  ]
+}

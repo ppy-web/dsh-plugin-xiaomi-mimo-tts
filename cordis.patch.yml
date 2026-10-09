@@ -38,7 +38,7 @@
             name: '@deepseek-ai/dsh-persona'
             config:
               prefix: !!js >-
-                process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(new URL('index.js', baseUrl)).resolve('dsh-xiaomi-tts/package.json')), 'skills', 'whale-girl', 'SKILL.md'), 'utf8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
+                (() => { const require = process.getBuiltinModule('node:module').createRequire(new URL('index.js', baseUrl)); const path = process.getBuiltinModule('node:path'); const root = path.dirname(require.resolve('dsh-xiaomi-tts/package.json')); return require(path.join(root, 'skills', 'whale-girl', 'persona.cjs'))(root); })()
               complete: true
               includeRuntimeContext: true
 
