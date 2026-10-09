@@ -18,10 +18,6 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 - [Open the settings page preview](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 - QQ discussion group: `1104616387`
 
-| Settings | Message action |
-|:---:|:---:|
-| ![Plugin settings](assets/setting.png) | ![Read-aloud action in a conversation](assets/image.png) |
-
 ## ✨ Features
 
 - One-click read-aloud action on assistant messages.
@@ -47,8 +43,6 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 ### Official installation (desktop/web) (recommended)
 
 Open the desktop or web client, go to the Plugin Manager, and search for `dsh-xiaomi-tts`.
-
-![Installation example](assets/install.png)
 
 ### Install from npm (web)
 
