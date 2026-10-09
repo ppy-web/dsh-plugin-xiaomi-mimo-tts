@@ -27,7 +27,7 @@
   --xmimo-ui-module-padding: 8px;
   --xmimo-ui-control-height: 30px;
   --xmimo-ui-mascot-size: 0px;
-  border-color: transparent;
+  border: 1px solid var(--xmimo-ui-border);
   background: var(--xmimo-ui-surface, #fff);
   padding: 5px;
 }
