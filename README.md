@@ -18,9 +18,9 @@
 - [在线预览设置页面](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 - QQ 交流群：`1104616387` 欢迎加入
 
-| 设置界面 | 对话朗读入口 |
-|:---:|:---:|
-| ![插件设置界面](assets/setting.png) | ![对话中的朗读按钮](assets/image.png) |
+![插件设置界面](assets/setting.png)
+
+![功能简介](assets/image.png)
 
 ## ✨ 功能
 
@@ -47,8 +47,6 @@
 ### 官方安装（desktop/web）（推荐）
 
 打开桌面/web端，进入插件管理面板，搜索 `dsh-xiaomi-tts` 即可安装
-
-![安装示例](assets/install.png)
 
 ### 从 npm 安装（web）
 
@@ -216,7 +214,7 @@ Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避�
 > uisfx音效参考 `dsh-plugin-uisfx`实现
 
 - [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme) · 鲸鱼娘主题皮肤系列。
-- [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) · 元气鲸鱼娘桌宠。
+- [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) · 元气鲸鱼娘桌宠（已支持联动，推荐安装）。
 - [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme) · 语义化 UI 音效。
 - [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme) · 原生换肤、背景壁纸、强调色和主题包。
 - [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) · 一个为 dsh-TUI 生态打造的插件

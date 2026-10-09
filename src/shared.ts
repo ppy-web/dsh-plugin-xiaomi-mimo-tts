@@ -348,6 +348,11 @@ function normalizeTtsPunctuation(value: string): string {
     .replace(/([,;:])\s*([.!?])/g, '$2')
     .replace(new RegExp(TTS_PAUSE_MARKER, 'g'), ',')
     .replace(/\s+([,.;:!?])/g, '$1')
+    // Filtering Markdown, paths, and line breaks can leave sentence-ending
+    // periods next to each other. Keep one separator and never start speech
+    // with a punctuation-only period.
+    .replace(/\.{2,}/gu, '.')
+    .replace(/^\.+/u, '')
 }
 
 /**

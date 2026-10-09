@@ -233,7 +233,7 @@ test('resolved settings enforce safe playback defaults', () => {
 test('prepares speech text by keeping prose and normalizing whitespace and punctuation', () => {
   assert.equal(
     prepareTtsText('  你好，\n\n世界！\\n下一句。  '),
-    '你好..世界! 下一句.',
+    '你好.世界! 下一句.',
   )
 })
 
@@ -321,8 +321,13 @@ test('keeps Markdown link labels while removing links, URLs, paths, and code blo
       '```ts\nconst answer = 42\n```',
       '继续说明。',
     ].join('\n')),
-    '请查看 官方文档..备用地址 和.文件 和...继续说明.',
+    '请查看 官方文档.备用地址 和.文件 和.继续说明.',
   )
+})
+
+test('removes leading periods and collapses adjacent periods after filtering', () => {
+  assert.equal(prepareTtsText('\n。你好\n\n世界。。'), '你好.世界.')
+  assert.equal(prepareTtsText('你好,.\n世界'), '你好.世界')
 })
 
 test('removes emoji, icons, invisible characters, and empty filtered content', () => {
