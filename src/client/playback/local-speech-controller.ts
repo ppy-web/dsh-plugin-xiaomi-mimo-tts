@@ -31,6 +31,8 @@ export class LocalSpeechController {
   private sessionId: string | null = null
   private status: PlaybackStatus = 'idle'
   private blockedTurn: string | null = null
+  private readonly manuallyStoppedTurns = new Set<string>()
+  private checkpointed = false
   private current: SpeechSynthesisUtterance | null = null
   private voiceURI = ''
   private timeoutMs = 120_000
@@ -77,8 +79,12 @@ export class LocalSpeechController {
     if (this.sessionId !== sessionId) return
     const next = { sessionId, turn, step }
     const turnKey = `${sessionId}:${turn}`
-    if (this.blockedTurn === turnKey) return
+    if (this.blockedTurn === turnKey || this.manuallyStoppedTurns.has(turnKey)) return
     if (this.blockedTurn !== null && this.blockedTurn !== turnKey) this.blockedTurn = null
+    if (this.checkpointed && this.active !== null && this.active.sessionId === sessionId && this.active.turn === turn && this.active.step === step && !text.startsWith(this.observed)) {
+      this.prime(sessionId, turn, step, text)
+      return
+    }
     this.beforePlayback?.()
     const transition = classifyLiveSpeechTransition(this.active, next)
     if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(this.observed))) this.reset(next)
@@ -87,9 +93,18 @@ export class LocalSpeechController {
     this.drain(false)
   }
 
+  /** Skip text already present when attaching to a running conversation. */
+  prime(sessionId: string, turn: number, step: number, text: string): void {
+    if (this.sessionId !== sessionId || this.manuallyStoppedTurns.has(`${sessionId}:${turn}`)) return
+    this.reset({ sessionId, turn, step })
+    this.observed = text
+    this.consumed = text.length
+    this.checkpointed = true
+  }
+
   finish(sessionId: string, final: LiveMessageIdentity): void {
     const key = `${sessionId}:${final.turn}:${final.step}`
-    if (this.blockedTurn === `${sessionId}:${final.turn}`) { this.handled.add(key); return }
+    if (this.blockedTurn === `${sessionId}:${final.turn}` || this.manuallyStoppedTurns.has(`${sessionId}:${final.turn}`)) { this.handled.add(key); return }
     if (this.sessionId !== sessionId || this.active === null || `${this.active.sessionId}:${this.active.turn}:${this.active.step}` !== key) return
     if (final.interrupted) { this.cancel(); return }
     if (final.text.startsWith(this.observed)) this.observed = final.text
@@ -130,14 +145,20 @@ export class LocalSpeechController {
 
   stop(sessionId: string): boolean {
     if (this.sessionId !== sessionId || (this.status !== 'loading' && this.status !== 'playing' && this.status !== 'paused')) return false
-    if (this.active !== null) this.blockedTurn = `${sessionId}:${this.active.turn}`
+    if (this.active !== null) this.manuallyStoppedTurns.add(`${sessionId}:${this.active.turn}`)
     this.resetState()
     return true
   }
 
+  blockTurn(sessionId: string, turn: number): void {
+    if (this.sessionId !== sessionId) return
+    this.manuallyStoppedTurns.add(`${sessionId}:${turn}`)
+    if (this.active?.turn === turn) this.resetState()
+  }
+
   hasHandled(sessionId: string, identity: Pick<LiveMessageIdentity, 'turn' | 'step'> | null): boolean {
     if (identity === null) return false
-    return this.blockedTurn === `${sessionId}:${identity.turn}` || this.handled.has(`${sessionId}:${identity.turn}:${identity.step}`)
+    return this.blockedTurn === `${sessionId}:${identity.turn}` || this.manuallyStoppedTurns.has(`${sessionId}:${identity.turn}`) || this.handled.has(`${sessionId}:${identity.turn}:${identity.step}`)
   }
 
   cancel(): void {
@@ -157,6 +178,7 @@ export class LocalSpeechController {
   dispose(): void {
     this.cancel()
     this.handled.clear()
+    this.manuallyStoppedTurns.clear()
     this.onStateChange = null
   }
 
@@ -168,6 +190,7 @@ export class LocalSpeechController {
   }
 
   private advance(next: LiveSpeechCursor): void {
+    this.checkpointed = false
     this.drain(true)
     this.active = next
     this.observed = ''
@@ -176,6 +199,7 @@ export class LocalSpeechController {
   }
 
   private resetState(): void {
+    this.checkpointed = false
     this.generation += 1
     this.queue.cancel()
     if (this.current !== null && typeof window !== 'undefined' && window.speechSynthesis !== undefined) window.speechSynthesis.cancel()

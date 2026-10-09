@@ -1,0 +1,78 @@
+/* History is a standalone compact page, independent of the settings appearance. */
+.xmimo-tts-history-page {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-height: min(80dvh, 760px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: var(--xmimo-ui-module-radius);
+  padding: 12px;
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-surface);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.xmimo-tts-history-header,
+.xmimo-tts-history-toolbar,
+.xmimo-tts-history-storage,
+.xmimo-tts-history-actions,
+.xmimo-tts-history-player-controls { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.xmimo-tts-history-header { flex: none; justify-content: space-between; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--xmimo-ui-border); }
+.xmimo-tts-history-header h2 { margin: 0; font-size: 14px; font-weight: 650; }
+.xmimo-tts-history-count { font-size: 12px; font-weight: 400; color: var(--xmimo-ui-text-muted); }
+.xmimo-tts-history-toolbar { flex: none; flex-wrap: wrap; }
+.xmimo-tts-history-search { flex: 1 1 180px; min-width: 0; }
+.xmimo-tts-history-search input { width: 100%; min-width: 0; }
+.xmimo-tts-history-source { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.xmimo-tts-history-source select { min-width: 0; max-width: 170px; min-height: 32px; border: 1px solid var(--xmimo-ui-border); border-radius: var(--xmimo-ui-control-radius); padding: 4px 8px; color: var(--xmimo-ui-text); background: var(--xmimo-ui-control-surface); font: inherit; }
+.xmimo-tts-history-storage { display: block; flex: none; margin-block: 10px; padding: 8px 12px; border-radius: var(--xmimo-ui-control-radius); background: var(--xmimo-ui-control-surface); color: var(--xmimo-ui-text-muted); font-size: 12px; }
+.xmimo-tts-history-storage > span:first-child { margin-inline-end: 10px; font-weight: 500; }
+.xmimo-tts-history-warning { flex: none; margin: 0 0 8px; color: var(--xmimo-ui-text); background: var(--xmimo-ui-control-surface); border-inline-start: 3px solid var(--xmimo-ui-brand); padding: 6px 8px; font-size: 12px; }
+.xmimo-tts-history-results { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.xmimo-tts-history-list { list-style: none; margin: 0; padding: 0; }
+.xmimo-tts-history-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 8px; border-top: 1px solid var(--xmimo-ui-border-soft); padding: 5px; }
+.xmimo-tts-history-row-selected { background: var(--xmimo-ui-control-surface); border-inline-start: 2px solid var(--xmimo-ui-brand); padding-inline-start: 2px; }
+.xmimo-tts-history-copy { min-width: 0; }
+.xmimo-tts-history-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; width: 100%; border: 0; padding: 0; overflow: hidden; overflow-wrap: anywhere; text-align: start; color: var(--xmimo-ui-text); background: transparent; font: inherit; font-size: 14px; line-height: 1.5; cursor: pointer; }
+.xmimo-tts-history-text-expanded { display: block; }
+.xmimo-tts-history-meta { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--xmimo-ui-text-muted); font-size: 12px; line-height: 1.6; margin: 4px 0 0; }
+.xmimo-tts-history-page .xmimo-tts-history-confirm-delete { color: var(--dsw-alias-state-error-primary, #dc2626); background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #dc2626) 10%, transparent); }
+.xmimo-tts-history-page .xmimo-tts-history-confirm-delete:hover:not(:disabled) { background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #dc2626) 18%, transparent); }
+.xmimo-tts-history-empty { padding: 28px 12px; color: var(--xmimo-ui-text-muted); text-align: center; }
+.xmimo-tts-history-empty-whale { display: block; width: 144px; height: 144px; max-width: 100%; object-fit: contain; margin: 0 auto 12px; }
+.xmimo-tts-history-empty p { margin: 0; }
+.xmimo-tts-history-player { position: relative; flex: none; border-top: 1px solid var(--xmimo-ui-border); padding: 14px 4px 2px; background: var(--xmimo-ui-surface); }
+.xmimo-tts-history-player-layout { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.xmimo-tts-history-page .xmimo-tts-history-player-toggle { display: inline-flex; align-items: center; justify-content: center; flex: none; box-sizing: border-box; width: 40px; height: 40px; min-width: 40px; padding: 0; border: 0; border-radius: 50%; background: var(--xmimo-ui-brand); color: var(--dsw-alias-label-primary-foreground, var(--xmimo-ui-surface)); }
+.xmimo-tts-history-page .xmimo-tts-history-player-toggle:hover:not(:disabled) { background: color-mix(in srgb, var(--xmimo-ui-brand) 88%, var(--xmimo-ui-text)); }
+.xmimo-tts-history-player-content { flex: 1; min-width: 0; }
+.xmimo-tts-history-now { margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; }
+.xmimo-tts-history-player-controls { gap: 12px;}
+.xmimo-tts-history-player-controls input[type='range'] { appearance: none; -webkit-appearance: none; flex: 1 1 auto; min-width: 40px; width: 100%; height: 32px; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.xmimo-tts-history-player-controls input[type='range']::-webkit-slider-runnable-track { height: 3px; border-radius: 8px; background: linear-gradient(to right, var(--xmimo-ui-brand) 0% var(--xmimo-history-progress), var(--xmimo-ui-border) var(--xmimo-history-progress) 100%); }
+.xmimo-tts-history-player-controls input[type='range']::-moz-range-track { height: 3px; border-radius: 8px; background: var(--xmimo-ui-border); }
+.xmimo-tts-history-player-controls input[type='range']::-moz-range-progress { height: 3px; border-radius: 8px; background: var(--xmimo-ui-brand); }
+.xmimo-tts-history-player-controls input[type='range']::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 10px; height: 10px; margin-top: -3.5px; border: 0; border-radius: 50%; background: var(--xmimo-ui-brand); }
+.xmimo-tts-history-player-controls input[type='range']::-moz-range-thumb { width: 10px; height: 10px; border: 0; border-radius: 50%; background: var(--xmimo-ui-brand); }
+.xmimo-tts-history-player-controls input[type='range']:disabled { opacity: 0.5; cursor: default; }
+.xmimo-tts-history-time { flex: none; white-space: nowrap; color: var(--xmimo-ui-text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.xmimo-tts-history-player-error { display: block; margin: 6px 0 0 54px; font-size: 12px; }
+.xmimo-tts-history-player-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.xmimo-tts-history-page button { min-height: 32px; }
+.xmimo-tts-history-page .xmimo-tts-history-play { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; padding-inline: 0; }
+.xmimo-tts-history-page button:focus-visible,
+.xmimo-tts-history-page select:focus-visible,
+.xmimo-tts-history-page input:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
+.xmimo-tts-history-text:hover { color: var(--xmimo-ui-brand); }
+.xmimo-tts-history-link { color: var(--xmimo-ui-text); }
+
+.xmimo-tts-history-page .xmimo-tts-history-search:focus-within,
+.xmimo-tts-history-page .xmimo-tts-history-search input:focus {
+  border-color: var(--dsw-alias-border-l4, var(--xmimo-ui-border));
+  outline: none;
+  box-shadow: none;
+}

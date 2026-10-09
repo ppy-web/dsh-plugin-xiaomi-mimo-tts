@@ -8,7 +8,7 @@ import {
   Tooltip,
   extractMarkdownPlainText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import { appendTtsSmartTruncationOutro, applyTtsPlaybackScope, prepareTtsText, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TtsFirstSegmentLimiter, TTS_API_KEY_STATUS_ROUTE } from '../../shared.js'
+import { applyTtsPlaybackScope, prepareTtsText, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TtsFirstSegmentLimiter, TTS_API_KEY_STATUS_ROUTE } from '../../shared.js'
 import type { TtsReadScope } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import type { ChatSnapshot, AssistantBlock } from '@deepseek-ai/dsh-client-ui-chat/client'
@@ -118,10 +118,7 @@ interface SessionPlaybackObserverProps {
 function scopedLiveText(value: string, scope: TtsReadScope, limiter: TtsFirstSegmentLimiter, final = false): string {
   if (resolveTtsReadScope(scope, true) === 'full') return value
   const plain = extractMarkdownPlainText(prepareTtsText(value)).trim()
-  const scoped = limiter.limit(plain, final)
-  return final && scope === 'smart'
-    ? appendTtsSmartTruncationOutro(plain, scoped)
-    : scoped
+  return limiter.limit(plain, final)
 }
 
 /** Own the active-session boundary and feed its partial assistant output into realtime speech. */
@@ -139,10 +136,13 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
 
   const active = useRef<{ turn: number; step: number; limiter: TtsFirstSegmentLimiter } | null>(null)
   const wasRunning = useRef(runningSnapshot)
-  const runArmed = useRef(!runningSnapshot)
+  const runArmed = useRef(true)
   const latestMessageId = latestAssistantMessageId(legacy)
   const partial = legacy.partial
   const partialText = partial === null ? '' : assistantText(partial.blocks)
+  const attachedMidRun = useRef(runningSnapshot)
+  const resumeCheckpoint = useRef(runningSnapshot ? partial : null)
+  const awaitingOpen = useRef(runningSnapshot && sessionSnapshot.openState !== 'open')
 
   useEffect(() => {
     const localModel = resolvedSettings.model === 'mimo-v2.5-tts'
@@ -159,7 +159,10 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   useEffect(() => {
     active.current = null
     wasRunning.current = runningSnapshot
-    runArmed.current = !runningSnapshot
+    runArmed.current = true
+    attachedMidRun.current = runningSnapshot
+    resumeCheckpoint.current = runningSnapshot ? partial : null
+    awaitingOpen.current = runningSnapshot && sessionSnapshot.openState !== 'open'
     playback.activateSession(sessionId)
     live.activateSession(sessionId)
     local.activateSession(sessionId)
@@ -177,15 +180,18 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
     if (!runningSnapshot) runArmed.current = true
     else if (beganRun) {
       runArmed.current = true
+      attachedMidRun.current = false
+      resumeCheckpoint.current = null
+      awaitingOpen.current = false
       live.cancelSession(sessionId)
       local.cancelSession(sessionId)
       playback.cancelPlayback(sessionId)
       active.current = null
     }
 
-    playback.observeSession(sessionId, runningSnapshot && runArmed.current, latestMessageId)
     const localModel = resolvedSettings.model === 'mimo-v2.5-tts'
     const realtimeSpeechEnabled = localModel
+    playback.observeSession(sessionId, runningSnapshot && runArmed.current, latestMessageId, attachedMidRun.current && realtimeSpeechEnabled)
     if (!resolvedSettings.enabled || !resolvedSettings.autoPlay || !realtimeSpeechEnabled) {
       live.cancelSession(sessionId)
       local.cancel()
@@ -194,6 +200,11 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       return
     }
     if (!runArmed.current) return
+    if (awaitingOpen.current) {
+      if (sessionSnapshot.openState !== 'open') return
+      resumeCheckpoint.current = partial
+      awaitingOpen.current = false
+    }
     if (partial !== null) {
       if (active.current !== null && (active.current.turn !== partial.turn || active.current.step !== partial.step)) {
         const previous = finalLiveMessage(legacy, active.current.turn, active.current.step)
@@ -210,6 +221,13 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
         active.current = { turn: partial.turn, step: partial.step, limiter: new TtsFirstSegmentLimiter() }
       }
       const observedText = scopedLiveText(partialText, resolvedSettings.readScope, active.current.limiter)
+      if (resumeCheckpoint.current !== null) {
+        if (resumeCheckpoint.current.turn === partial.turn && resumeCheckpoint.current.step === partial.step) {
+          live.prime(sessionId, partial.turn, partial.step, observedText)
+          local.prime(sessionId, partial.turn, partial.step, observedText)
+        }
+        resumeCheckpoint.current = null
+      }
       const useLocal = localModel && resolvedSettings.localSpeechMode !== 'disabled'
         && (resolvedSettings.localSpeechMode === 'local-first' || (resolvedSettings.localSpeechMode === 'auto' && apiKeySupported === false))
       if (useLocal) local.observe(sessionId, partial.turn, partial.step, observedText)
@@ -231,7 +249,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       }
       active.current = null
     }
-  }, [apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.readScope, runningSnapshot, sessionId])
+  }, [apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState])
 
   return null
 }
@@ -362,7 +380,15 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
           disabled={status === 'loading' && !liveActive}
           onClick={() => {
             if (mine && (source === 'live' || source === 'system') && (status === 'loading' || status === 'playing' || status === 'paused')) {
-              if (status === 'loading') { if (source === 'system') local.stop(sessionId); else live.stop(sessionId); playback.cancelPlayback(sessionId) }
+              if (status === 'loading') {
+                const stopped = source === 'system' ? local.stop(sessionId) : live.stop(sessionId)
+                const turn = legacy.partial?.turn ?? message.identity?.turn
+                if (stopped && turn !== undefined) {
+                  live.blockTurn(sessionId, turn)
+                  local.blockTurn(sessionId, turn)
+                }
+                playback.cancelPlayback(sessionId)
+              }
               else if (status === 'playing') void (source === 'system' ? local.pause(sessionId) : live.pause(sessionId))
               else if (status === 'paused') void (source === 'system' ? local.resume(sessionId) : live.resume(sessionId))
               return

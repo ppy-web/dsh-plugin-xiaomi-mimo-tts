@@ -195,7 +195,6 @@
     "build:debug": "tsdown -c tsdown.debug.config.ts && tsc --emitDeclarationOnly",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run build && node --test test/*.test.mjs",
-    "text": "node test/filter-test-server.mjs",
     "profile:check": "node scripts/dsh-profile-verify.mjs",
     "release:check": "pnpm run test",
     "prepare": "node scripts/prepare-package.mjs",

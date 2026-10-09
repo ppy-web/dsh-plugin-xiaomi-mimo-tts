@@ -11,6 +11,8 @@ import type { LiveSpeechCursor } from '../../shared.js'
 import { streamPcmAudio } from '../../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
+import type { AudioHistory } from '../history/audio-history.js'
+import { PcmRecording } from '../history/pcm-recording.js'
 
 interface CompletedStreamPlayback {
   sessionId: string
@@ -20,6 +22,7 @@ interface CompletedStreamPlayback {
 }
 
 export class LiveSpeechController {
+  constructor(private readonly history?: AudioHistory) {}
   private readonly audio = new PcmAudioQueue({
     onBusyChange: (busy) => {
       this.audioBusy = busy
@@ -40,6 +43,8 @@ export class LiveSpeechController {
   private requestBusy = false
   private audioBusy = false
   private blockedTurn: string | null = null
+  private readonly manuallyStoppedTurns = new Set<string>()
+  private checkpointed = false
   private completed: CompletedStreamPlayback | null = null
   private audioStarted = false
   private fallbackHandler: ((cursor: LiveSpeechCursor, text: string) => void) | null = null
@@ -98,14 +103,27 @@ export class LiveSpeechController {
     if (this.sessionId !== sessionId) return
     const next = { sessionId, turn, step }
     const turnKey = `${sessionId}:${turn}`
-    if (this.blockedTurn === turnKey) return
+    if (this.blockedTurn === turnKey || this.manuallyStoppedTurns.has(turnKey)) return
     if (this.blockedTurn !== null && this.blockedTurn !== turnKey) this.blockedTurn = null
+    if (this.checkpointed && this.active !== null && this.cursorKey(this.active) === this.cursorKey(next) && !text.startsWith(this.observed)) {
+      this.prime(sessionId, turn, step, text)
+      return
+    }
     this.beforePlayback?.()
     const transition = classifyLiveSpeechTransition(this.active, next)
     if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(this.observed))) this.reset(next)
     else if (transition === 'same-turn') this.advanceSegment(next)
     this.observed = text
     this.drain(false)
+  }
+
+  /** Skip text already present when attaching to a running conversation. */
+  prime(sessionId: string, turn: number, step: number, text: string): void {
+    if (this.sessionId !== sessionId || this.manuallyStoppedTurns.has(`${sessionId}:${turn}`)) return
+    this.reset({ sessionId, turn, step })
+    this.observed = text
+    this.consumed = text.length
+    this.checkpointed = true
   }
 
   /** Stream one already-completed preset-model reply as PCM, falling back only before playback starts. */
@@ -123,7 +141,7 @@ export class LiveSpeechController {
 
   finish(sessionId: string, final: LiveMessageIdentity): void {
     const key = `${sessionId}:${final.turn}:${final.step}`
-    if (this.blockedTurn === `${sessionId}:${final.turn}`) {
+    if (this.blockedTurn === `${sessionId}:${final.turn}` || this.manuallyStoppedTurns.has(`${sessionId}:${final.turn}`)) {
       this.handled.add(key)
       return
     }
@@ -141,14 +159,20 @@ export class LiveSpeechController {
 
   stop(sessionId: string): boolean {
     if (this.sessionId !== sessionId || (this.status !== 'loading' && this.status !== 'playing')) return false
-    if (this.active !== null) this.blockedTurn = `${sessionId}:${this.active.turn}`
+    if (this.active !== null) this.manuallyStoppedTurns.add(`${sessionId}:${this.active.turn}`)
     this.resetState()
     return true
   }
 
+  blockTurn(sessionId: string, turn: number): void {
+    if (this.sessionId !== sessionId) return
+    this.manuallyStoppedTurns.add(`${sessionId}:${turn}`)
+    if (this.active?.turn === turn) this.resetState()
+  }
+
   hasHandled(sessionId: string, identity: Pick<LiveMessageIdentity, 'turn' | 'step'> | null): boolean {
     if (identity === null) return false
-    return this.blockedTurn === `${sessionId}:${identity.turn}` || this.handled.has(`${sessionId}:${identity.turn}:${identity.step}`)
+    return this.blockedTurn === `${sessionId}:${identity.turn}` || this.manuallyStoppedTurns.has(`${sessionId}:${identity.turn}`) || this.handled.has(`${sessionId}:${identity.turn}:${identity.step}`)
   }
 
   cancelSession(sessionId: string): void {
@@ -168,6 +192,7 @@ export class LiveSpeechController {
   async dispose(): Promise<void> {
     this.cancel()
     this.handled.clear()
+    this.manuallyStoppedTurns.clear()
     await this.audio.dispose()
   }
 
@@ -185,6 +210,7 @@ export class LiveSpeechController {
   }
 
   private beginSegment(next: LiveSpeechCursor, preserveMessageId: boolean): void {
+    this.checkpointed = false
     this.completed = null
     if (!preserveMessageId) this.audioStarted = false
     this.active = next
@@ -195,6 +221,7 @@ export class LiveSpeechController {
   }
 
   private resetState(): void {
+    this.checkpointed = false
     this.replaceQueue()
     this.audio.stop()
     this.active = null
@@ -259,10 +286,19 @@ export class LiveSpeechController {
 
   private async stream(sentence: string, signal: AbortSignal, generation: number): Promise<void> {
     if (!this.isCurrentStream(generation, signal)) return
+    const recording = new PcmRecording()
+    const sessionId = this.sessionId
+    const messageId = this.messageId
     try {
       await streamPcmAudio(sentence, signal, async (pcm) => {
         if (!this.isCurrentStream(generation, signal)) return
+        recording.append(pcm)
         await this.audio.enqueue(pcm)
+      })
+      if (this.isCurrentStream(generation, signal)) recording.save(this.history, {
+        text: sentence, source: 'conversation',
+        ...(sessionId === null ? {} : { sessionId }),
+        ...(messageId === null ? {} : { messageId }),
       })
     } catch (error) {
       if (this.isCurrentStream(generation, signal)) throw error

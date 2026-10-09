@@ -18,10 +18,6 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 - [Open the settings page preview](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 - QQ discussion group: `1104616387`
 
-| Settings | Message action |
-|:---:|:---:|
-| ![Plugin settings](assets/setting.png) | ![Read-aloud action in a conversation](assets/image.png) |
-
 ## ✨ Features
 
 - One-click read-aloud action on assistant messages.
@@ -47,8 +43,6 @@ Add Xiaomi MiMo TTS read-aloud, browser-local fallback speech, and optional UI s
 ### Official installation (desktop/web) (recommended)
 
 Open the desktop or web client, go to the Plugin Manager, and search for `dsh-xiaomi-tts`.
-
-![Installation example](assets/install.png)
 
 ### Install from npm (web)
 
@@ -151,7 +145,8 @@ File access, file search, and Windows PowerShell are for user-authorized tasks a
 
 - The DSH Host stores the API key. The browser reads only whether a key is configured and whether its prefix is recognized, not the secret itself.
 - Browser-local speech uses the Web Speech API. Voices marked online may send text to browser, operating-system, or network speech services.
-- Audio plays from browser memory through Web Audio or temporary Blob URLs; the plugin does not intentionally persist generated audio.
+- Generated MiMo audio is saved in this browser's IndexedDB. Settings → Audio history supports replay, download, deletion, and clearing, including after a page refresh. The latest 100 entries / 100 MB are retained, with oldest entries removed when full. Records include audio and up to 500 characters of text, never API keys.
+- Streaming PCM is saved as 24 kHz mono WAV. Streaming batches and generated segments appear separately; only successfully completed generation requests are saved, so cancelled or failed streams are not presented as complete audio. Web Speech API speech has no exportable audio file. Replay and download do not call MiMo again. History belongs to this browser and site address, does not sync across devices, and is removed when site data is cleared. If browser storage is unavailable or full, the list warns that it lasts only for the current visit.
 - The sound core is migrated from [uisfx 0.4.0](https://github.com/romainsimon/uisfx) under the MIT License; see `NOTICE`.
 
 ## 🏗️ Architecture
@@ -179,6 +174,7 @@ pnpm dev
 ```
 
 `pnpm dev` starts the local UI Lab and renders `src/client/settings/card.tsx` directly. Saving, remote speech, and update checks are mocked locally; the preview does not call the real MiMo service.
+Select Text filter lab from the page dropdown in the toolbar to compare sections from `test/fixtures/*.md` with their filtered output, or paste Markdown into the live input. It calls the current `prepareTtsText` source and Vite updates the page when the source or fixture changes.
 
 Common checks:
 

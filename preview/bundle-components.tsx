@@ -15,7 +15,6 @@ const COPY = {
     ttsDescription: '为 DSH 添加 Xiaomi MiMo 语音朗读、浏览器本地语音兜底和可选 UI 音效。',
     agentTitle: '鲸鱼娘 Agent 预设',
     agentDescription: '白饭续航、机灵嘴硬，会一本正经接梗，也会温柔陪伴和可靠办事。',
-    note: '此处模拟宿主的组件列表；开关仅影响预览显示，不修改实际插件配置。',
   },
   en: {
     heading: 'Included components',
@@ -27,7 +26,6 @@ const COPY = {
     ttsDescription: 'MiMo read-aloud, browser-local speech fallback, and optional UI sounds for DSH.',
     agentTitle: 'Whale Girl Agent preset',
     agentDescription: 'A rice-powered whale maid with deadpan wit, a soft heart, and reliable practical help.',
-    note: 'This is a simulation of the host component list. Switches change only this preview.',
   },
 } as const
 
@@ -69,6 +67,5 @@ export function BundleComponents({ locale }: { locale: PreviewLocale }) {
         </label>
       </li>)}
     </ul>
-    <p className="preview-bundle-note">{copy.note}</p>
   </section>
 }

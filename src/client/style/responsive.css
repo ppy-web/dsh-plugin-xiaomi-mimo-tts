@@ -2,6 +2,26 @@
  * Responsive overrides (@media max-width). Intentionally kept last: these rules override the base modules.
  */
 
+@media (max-width: 520px) {
+  .xmimo-tts-history-page { padding: 8px; }
+  .xmimo-tts-history-row { grid-template-columns: 32px minmax(0, 1fr); }
+  .xmimo-tts-history-actions { grid-column: 2; justify-content: flex-end; }
+  .xmimo-tts-history-player-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .xmimo-tts-history-time { justify-self: end; }
+}
+
+@media (pointer: coarse) {
+  .xmimo-tts-history-page button,
+  .xmimo-tts-history-page select,
+  .xmimo-tts-history-page input,
+  .xmimo-tts-history-link { min-height: 44px; }
+  .xmimo-tts-history-row { grid-template-columns: 44px minmax(0, 1fr); }
+  .xmimo-tts-history-actions { grid-column: 2; justify-content: flex-end; }
+  .xmimo-tts-history-page .xmimo-tts-history-play { min-width: 44px; }
+  .xmimo-tts-history-page .xmimo-tts-history-player-toggle { width: 44px; height: 44px; min-width: 44px; }
+  .xmimo-tts-history-player-error { margin-inline-start: 58px; }
+}
+
 @media (max-width: 480px) {
   .xmimo-tts-builtin-voice-menu {
     grid-template-columns: 1fr

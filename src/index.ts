@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { debugConsole } from './debug-console.js'
 import { DEFAULT_TTS_SETTINGS, isNewerTtsVersion, isSupportedTtsApiKey, prepareTtsText, resolveTtsBaseURL, strictBase64DecodedLength, SOUND_PACKS, TTS_API_KEY_STATUS_ROUTE, TTS_API_KEY_WHALE_ASSET_ROUTE, TTS_AUDIO_RESPONSE_JSON_OVERHEAD_BYTES, TTS_FORMATS, TTS_LOCAL_SPEECH_MODES, TTS_MIXER_WHALE_ASSET_ROUTE, TTS_MIMO_LOGO_ASSET_ROUTE, TTS_MODELS, TTS_PREVIEW_WHALE_ASSET_ROUTE, TTS_READ_SCOPES, TTS_ROUTE, TTS_SETTINGS_NAMESPACE, TTS_SOUND_EFFECT_CUES_ASSET_ROUTE, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_SOUND_EFFECTS_WHALE_ASSET_ROUTE, TTS_STREAM_ROUTE, TTS_TOGGLE_AUDIO_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_SOUND_FILES, TTS_UPDATE_ROUTE, TTS_VERSION, TTS_VOICE_ASSET_ROUTE, TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PLAYBACK_MODES, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, TTS_VOICES, TTS_VOLUME_PREVIEW_FILES } from './shared.js'
+import { TTS_HISTORY_EMPTY_ASSET_ROUTE } from './shared.js'
 
 const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
 const USER_AGENT = typeof packageJson.version === 'string'
@@ -261,6 +262,7 @@ export function apply(ctx: Context, config: Config): void {
   const apiKeyWhaleAsset = readFileSync(new URL('../assets/ui/api-key-whale.webp', import.meta.url))
   const mixerWhaleAsset = readFileSync(new URL('../assets/ui/mixer-whale.webp', import.meta.url))
   const previewWhaleAsset = readFileSync(new URL('../assets/ui/preview-whale.webp', import.meta.url))
+  const historyEmptyAsset = readFileSync(new URL('../assets/ui/history-empty-whale.webp', import.meta.url))
   const soundEffectsWhaleAsset = readFileSync(new URL('../assets/ui/sound-effects-whale.webp', import.meta.url))
   const soundEffectCuesAsset = readFileSync(new URL('../assets/ui/sound-effect-cues.webp', import.meta.url))
   const toggleSoundAssets = new Map([...new Set([...Object.values(TTS_TOGGLE_SOUND_FILES).flat(), ...TTS_VOLUME_PREVIEW_FILES])].map((file) => {
@@ -272,6 +274,25 @@ export function apply(ctx: Context, config: Config): void {
   ctx.inject(['settings'], (child) => {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber), 'xiaomi-mimo-tts: custom settings page')
   })
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: TTS_HISTORY_EMPTY_ASSET_ROUTE,
+    handler(req, res) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405
+        res.setHeader('allow', 'GET, HEAD')
+        res.end()
+        return
+      }
+      res.statusCode = 200
+      res.setHeader('content-type', 'image/webp')
+      res.setHeader('content-length', String(historyEmptyAsset.byteLength))
+      res.setHeader('cache-control', 'public, max-age=31536000, immutable')
+      res.setHeader('x-content-type-options', 'nosniff')
+      res.end(req.method === 'HEAD' ? undefined : historyEmptyAsset)
+    },
+  }), 'xiaomi-mimo-tts: history empty illustration')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',

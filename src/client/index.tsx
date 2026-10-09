@@ -17,6 +17,7 @@ import { SettingsCard } from './settings/card.js'
 import { createSoundEffectsController, installClickSounds } from './sound-effects/index.js'
 import { installTaskSoundWatcher } from './sound-effects/task-watcher.js'
 import { CLIENT_STYLES } from './style/index.js'
+import { AudioHistory } from './history/audio-history.js'
 
 /** Client services required by this plugin. */
 export const inject = [
@@ -81,15 +82,17 @@ export function apply(ctx: Context): void {
     const offSettings = scope.subscribe(() => { soundEffects.update(getSoundSettings()) })
     return () => { offClick(); offTask(); offSettings(); void soundEffects.dispose() }
   }, 'xiaomi-mimo-tts: sound effects')
-  const playback = new PlaybackController()
-  const live = new LiveSpeechController()
+  const history = new AudioHistory()
+  ctx.effect(() => () => history.dispose(), 'xiaomi-mimo-tts: audio history')
+  const playback = new PlaybackController(history)
+  const live = new LiveSpeechController(history)
   const local = new LocalSpeechController()
   const pcmService = new XiaomiMimoTtsPcmService(ctx, scope, () => {
     live.interrupt()
     local.interrupt()
     playback.interrupt()
-  })
-  const stopOptionalPcm = () => pcmService.stop()
+  }, history)
+  const stopOptionalPcm = () => { pcmService.stop(); history.stopReplay() }
   live.setBeforePlayback(stopOptionalPcm)
   local.setBeforePlayback(stopOptionalPcm)
   playback.setBeforePlayback(stopOptionalPcm)
@@ -140,6 +143,11 @@ export function apply(ctx: Context): void {
     name: 'plugins.bundle.config',
     key: 'dsh-xiaomi-tts',
     locale: NS,
-    inject: () => ({ scope, t, controller: soundEffects }),
+    inject: () => ({ scope, t, controller: soundEffects, history, beforeHistoryPlayback: () => {
+      pcmService.stop()
+      live.interrupt()
+      local.interrupt()
+      playback.interrupt()
+    } }),
   }, SettingsCard))
 }

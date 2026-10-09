@@ -8,6 +8,7 @@ import {
 } from '../src/shared.js'
 import type { TtsSettings } from '../src/shared.js'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import { PcmRecording } from '../src/client/history/pcm-recording.js'
 
 export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
   private readonly listeners = new Set<() => void>()
@@ -101,6 +102,25 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
+/** A short local tone exercises the real playback/history UI without API credentials. */
+function previewAudioResponse(stream: boolean): Response {
+  const samples = new ArrayBuffer(24000)
+  const view = new DataView(samples)
+  for (let index = 0; index < 12000; index += 1) {
+    const envelope = Math.sin(Math.PI * index / 12000)
+    view.setInt16(index * 2, Math.round(Math.sin(2 * Math.PI * 440 * index / 24000) * envelope * 4000), true)
+  }
+  const pcm = btoa(Array.from(new Uint8Array(samples), (byte) => String.fromCharCode(byte)).join(''))
+  if (stream) {
+    return new Response(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: pcm } } }] })}\n\ndata: [DONE]\n\n`, {
+      headers: { 'content-type': 'text/event-stream' },
+    })
+  }
+  const recording = new PcmRecording()
+  recording.append(pcm)
+  return new Response(recording.toWav(), { headers: { 'content-type': 'audio/wav' } })
+}
+
 /** Keep the preview shell local: host mutations and MiMo requests are simulated. */
 export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
   const originalFetch = globalThis.fetch.bind(globalThis)
@@ -111,7 +131,7 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
     if (pathname === TTS_API_KEY_STATUS_ROUTE) return jsonResponse(scope.apiKeyStatus())
     if (pathname === TTS_UPDATE_ROUTE) return jsonResponse({ latestVersion: null, updateAvailable: false })
     if (pathname === TTS_ROUTE || pathname === TTS_STREAM_ROUTE) {
-      return jsonResponse({ error: 'The preview shell does not call the MiMo API.' }, 503)
+      return previewAudioResponse(pathname === TTS_STREAM_ROUTE)
     }
     return originalFetch(input, init)
   }

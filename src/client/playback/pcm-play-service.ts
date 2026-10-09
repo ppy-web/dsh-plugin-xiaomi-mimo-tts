@@ -6,6 +6,8 @@ import type { TtsSettings } from '../../shared.js'
 import { streamPcmAudio } from '../../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { AudioHistory } from '../history/audio-history.js'
+import { PcmRecording } from '../history/pcm-recording.js'
 
 export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsService {
   private readonly logPrefix = '[MiMoTTS Service]'
@@ -21,6 +23,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
     ctx: Context,
     private readonly settings: ConfigForm<TtsSettings>,
     private readonly interruptConversationPlayback: () => void,
+    private readonly history?: AudioHistory,
   ) {
     super(ctx, 'xiaomiMimoTts')
     debugConsole?.info(this.logPrefix, '[初始化] xiaomiMimoTts 服务已注册')
@@ -53,6 +56,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       const settings = resolveTtsSettings(snapshot.value)
       debugConsole?.info(this.logPrefix, '[准备] 即将停止旧播放并启动新流', { maxPausedPcmBytes: settings.maxPausedPcmBytes })
       this.stop()
+      this.history?.stopReplay()
       this.interruptConversationPlayback()
       debugConsole?.info(this.logPrefix, '[准备] 已请求中断会话朗读')
       this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
@@ -63,14 +67,20 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       const controller = new AbortController()
       this.request = controller
       let chunkCount = 0
+      const recording = new PcmRecording()
       void streamPcmAudio(normalized, controller.signal, async (pcm) => {
         if (this.disposed || controller.signal.aborted || generation !== this.generation) {
           debugConsole?.warn(this.logPrefix, '[流] 已忽略过期 PCM 块', { disposed: this.disposed, aborted: controller.signal.aborted, generation, currentGeneration: this.generation })
           return
         }
         chunkCount += 1
+        recording.append(pcm)
         debugConsole?.info(this.logPrefix, `[流] 向音频队列提交 PCM 块 #${chunkCount}`, { base64Chars: pcm.length })
         await this.audio.enqueue(pcm)
+      }).then(() => {
+        if (!this.disposed && !controller.signal.aborted && generation === this.generation) {
+          recording.save(this.history, { text: normalized, source: 'service' })
+        }
       }).catch((error: unknown) => {
         if (this.disposed || controller.signal.aborted || generation !== this.generation) return
         debugConsole?.error(this.logPrefix, '[失败] 可选流式播放失败', error)

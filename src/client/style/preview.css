@@ -96,11 +96,12 @@
   resize: vertical;
   border: 1px solid var(--xmimo-ui-border);
   border-radius: var(--xmimo-ui-control-radius);
-  padding: 8px;
+  padding: 4px;
   color: var(--xmimo-ui-text);
   background: var(--xmimo-ui-surface);
   font: inherit;
-  line-height: 20px
+  font-size: 14px;
+  line-height: 18px;
 }
 
 .xmimo-tts-preview-input>textarea:focus-visible {

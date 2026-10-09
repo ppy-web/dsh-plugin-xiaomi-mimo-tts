@@ -57,8 +57,8 @@
 
 .xmimo-tts-sound-bubble {
   position: absolute;
-  right: 58px;
-  top: 18px;
+  right: 56px;
+  top: 25px;
   white-space: nowrap;
   border-radius: 8px;
   padding: 4px 8px;
@@ -86,26 +86,26 @@
   height: 56px;
   pointer-events: none;
   background-repeat: no-repeat;
-  background-size: 400% 100%;
+  background-size: 200% 200%;
   filter: drop-shadow(0 3px 5px rgba(15, 23, 42, .14));
   transform-origin: bottom center;
   transition: filter 180ms ease, transform 180ms ease
 }
 
 .xmimo-tts-sound-whale-all {
-  background-position: left center
+  background-position: left top;
 }
 
 .xmimo-tts-sound-whale-off {
-  background-position: 33.333333% center
+  background-position: right top;
 }
 
 .xmimo-tts-sound-whale-click {
-  background-position: 66.666667% center
+  background-position: left bottom;
 }
 
 .xmimo-tts-sound-whale-task {
-  background-position: right center
+  background-position: right bottom;
 }
 
 .xmimo-tts-sound-whale-button:hover:not(:disabled) .xmimo-tts-sound-whale {

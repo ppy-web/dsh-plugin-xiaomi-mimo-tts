@@ -206,7 +206,7 @@ test('ships one valid WebP avatar for every built-in voice', async () => {
 
 test('ships the UI image and audio assets referenced by shared contracts', async () => {
   assertWebp(await readFile(new URL('../assets/ui/toggle-characters.webp', import.meta.url)), 'toggle characters')
-  for (const file of ['api-key-whale.webp', 'mixer-whale.webp', 'preview-whale.webp', 'sound-effects-whale.webp', 'sound-effect-cues.webp']) {
+  for (const file of ['api-key-whale.webp', 'mixer-whale.webp', 'preview-whale.webp', 'history-empty-whale.webp', 'sound-effects-whale.webp', 'sound-effect-cues.webp']) {
     assertWebp(await readFile(new URL(`../assets/ui/${file}`, import.meta.url)), file)
   }
   const audioFiles = (await readdir(new URL('../assets/audio/', import.meta.url))).sort()
@@ -233,7 +233,7 @@ test('resolved settings enforce safe playback defaults', () => {
 test('prepares speech text by keeping prose and normalizing whitespace and punctuation', () => {
   assert.equal(
     prepareTtsText('  你好，\n\n世界！\\n下一句。  '),
-    '你好..世界! 下一句.',
+    '你好.世界! 下一句.',
   )
 })
 
@@ -321,8 +321,13 @@ test('keeps Markdown link labels while removing links, URLs, paths, and code blo
       '```ts\nconst answer = 42\n```',
       '继续说明。',
     ].join('\n')),
-    '请查看 官方文档..备用地址 和.文件 和...继续说明.',
+    '请查看 官方文档.备用地址 和.文件 和.继续说明.',
   )
+})
+
+test('removes leading periods and collapses adjacent periods after filtering', () => {
+  assert.equal(prepareTtsText('\n。你好\n\n世界。。'), '你好.世界.')
+  assert.equal(prepareTtsText('你好,.\n世界'), '你好.世界')
 })
 
 test('removes emoji, icons, invisible characters, and empty filtered content', () => {
@@ -338,9 +343,16 @@ test('removes multi-segment paths but keeps single-segment path-like words', () 
   assert.equal(prepareTtsText('单段 /usr 和 /home 应保留'), '单段 /usr 和 /home 应保留')
 })
 
-test('normalizes Chinese parentheses and keeps ASCII colons', () => {
-  assert.equal(prepareTtsText('【提示】（请注意）“测试”：你好，世界！《完》'), '提示,请注意,测试你好,世界!完')
+test('normalizes Chinese parentheses and colons while keeping ASCII colons', () => {
+  assert.equal(prepareTtsText('【提示】（请注意）“测试”：你好，世界！《完》'), '提示,请注意,测试:你好,世界!完')
   assert.equal(prepareTtsText('现在是08:31，请准时开始。'), '现在是08:31,请准时开始.')
+})
+
+test('preserves the colon before emphasized quoted speech through repeated filtering', () => {
+  const text = prepareTtsText('但有件事得认：**"发我看看"我做不到**。')
+  assert.equal(text, '但有件事得认:发我看看我做不到.')
+  assert.equal(prepareTtsText(text), text)
+  assert.equal(prepareTtsText('提示： 请先打开相册。'), '提示: 请先打开相册.')
 })
 
 test('preserves pauses signaled by em and en dashes', () => {

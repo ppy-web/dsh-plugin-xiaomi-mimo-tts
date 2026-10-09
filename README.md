@@ -18,9 +18,9 @@
 - [在线预览设置页面](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 - QQ 交流群：`1104616387` 欢迎加入
 
-| 设置界面 | 对话朗读入口 |
-|:---:|:---:|
-| ![插件设置界面](assets/setting.png) | ![对话中的朗读按钮](assets/image.png) |
+![插件设置界面](assets/setting.png)
+
+![功能简介](assets/image.png)
 
 ## ✨ 功能
 
@@ -33,7 +33,7 @@
 - 文本清洗：朗读前移除网址、路径、代码块、表情符号和控制字符等不适合播报的内容。
 - 可选音效：提供任务状态和语义化点击音效，默认关闭。
 - 插件联动：向其他 DSH 插件暴露可选的 PCM 播放服务。
-- 鲸鱼娘 Agent 预设：安装后可在 Agent 预设中选择鲸鱼娘女仆助手，提供对话、陪伴、轻量幽默、CDN 表情包反应和本地记忆工具，不依赖外部表情包插件。
+- 鲸鱼娘 Agent 预设：安装后可在 Agent 预设中选择鲸鱼娘女仆助手，提供对话、陪伴、轻量幽默、语境识别、本地优先表情包反应和本地记忆工具，不依赖外部表情包插件。
 
 ## 📋 环境要求
 
@@ -47,8 +47,6 @@
 ### 官方安装（desktop/web）（推荐）
 
 打开桌面/web端，进入插件管理面板，搜索 `dsh-xiaomi-tts` 即可安装
-
-![安装示例](assets/install.png)
 
 ### 从 npm 安装（web）
 
@@ -142,11 +140,11 @@ tts?.play('欢迎回来')
 
 ## 🐳 鲸鱼娘 Agent 预设
 
-安装本插件后，新建会话时可以在 Agent 预设列表选择“鲸鱼娘”。她是对话助手和女仆型陪伴角色：会先接住情绪，再帮你整理任务、解释信息或使用工具；默认带一点傲娇、米饭、尾巴和摸鱼梗，也会在合适时用 CDN 直链发送表情包，但不会每句话强行卖萌。
+安装本插件后，新建会话时可以在 Agent 预设列表选择“鲸鱼娘”。她是对话助手和女仆型陪伴角色：会先接住情绪，再帮你整理任务、解释信息或使用工具；默认带一点傲娇、米饭、尾巴和摸鱼梗，也会结合当前语境低频发送本地表情包，并保留 CDN 直链兼容，但不会每句话强行卖萌。
 
 文件读写、文件搜索和 Windows PowerShell 只用于用户授权的任务与本地非敏感记忆。女仆设定不代表现实控制或绝对服从，危险、违法、隐私和不安全请求仍遵循宿主安全规则。
 
-鲸鱼娘的人设和表情包关键词参考了社区维护的 [DeepSeek-chan Meme Pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack)；图片通过公开 CDN 直链显示，本插件不复制该仓库的图片素材。
+鲸鱼娘的人设和表情包关键词参考了社区维护的 [DeepSeek-chan Meme Pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack)。插件另附 44 张本地表情包，统一使用英文 `表情名-心情.webp` 命名， [素材清单](skills/whale-girl/memes.json) 记录各图的使用语境，全部 44 张均可参与自动发送。
 
 鲸鱼娘支持该素材库的 CDN 热链：使用 `![表情描述](https://...)` 格式即可直接在对话中显示公开 WebP 预览图。默认使用压缩预览地址，只有用户明确要求原图时才使用原图地址。
 
@@ -154,7 +152,8 @@ tts?.play('欢迎回来')
 
 - API Key 由 DSH Host 保存，浏览器只读取“是否已配置/格式是否识别”的状态，不读取密钥正文。
 - 浏览器本地语音由 Web Speech API 提供；标记为在线的音色可能把文本交给浏览器、操作系统或其网络语音服务。
-- 音频在浏览器内存中通过 Web Audio 或临时 Blob URL 播放，插件不会主动持久化音频文件。
+- MiMo 生成的音频自动保存在当前浏览器的 IndexedDB 中。设置底部按钮区的「音频历史」按钮进入独立历史页；最多保留最近 100 条 / 100 MB，超出后清理最旧记录。记录包含音频和最多 500 字的文本摘要。
+- 流式 PCM 保存为 24 kHz 单声道 WAV；流式批次和分段生成分别列出，仅保留成功完成的生成请求，取消或失败的流不会保存为完整音频。Web Speech API 本地语音没有可导出的音频文件。重听或下载不会再次请求 MiMo；历史仅属于当前浏览器与站点地址，不跨设备同步，清除站点数据会删除记录。浏览器存储不可用或已满时，列表会提示仅本次打开有效。
 - 音效核心移植自 [uisfx 0.4.0](https://github.com/romainsimon/uisfx)，遵循 MIT License，详见 `NOTICE`。
 
 ## 🏗️ 架构
@@ -182,6 +181,7 @@ pnpm dev
 ```
 
 `pnpm dev` 会启动本地 UI Lab，直接渲染 `src/client/settings/card.tsx`。设置保存、远程语音和版本检查使用本地 mock，不会调用真实 MiMo 服务。
+在顶部页面下拉框选择“文本过滤测试”，可查看 `test/fixtures/*.md` 的分段原文与过滤结果，或在实时输入框粘贴 Markdown。该页直接调用当前的 `prepareTtsText`，修改源码或 fixture 后由 Vite 自动更新。
 
 常用检查：
 
@@ -214,7 +214,7 @@ Windows 从本地开发链接切换到 npm 包前，请先停止 DSH Web，避�
 > uisfx音效参考 `dsh-plugin-uisfx`实现
 
 - [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme) · 鲸鱼娘主题皮肤系列。
-- [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) · 元气鲸鱼娘桌宠。
+- [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) · 元气鲸鱼娘桌宠（已支持联动，推荐安装）。
 - [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme) · 语义化 UI 音效。
 - [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme) · 原生换肤、背景壁纸、强调色和主题包。
 - [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) · 一个为 dsh-TUI 生态打造的插件
