@@ -32,7 +32,7 @@
 - 文本清洗：朗读前移除网址、路径、代码块、表情符号和控制字符等不适合播报的内容。
 - 可选音效：提供任务状态和语义化点击音效，默认关闭。
 - 插件联动：向其他 DSH 插件暴露可选的 PCM 播放服务。
-- 鲸鱼娘 Agent 预设：安装后可在 Agent 预设中选择鲸鱼娘女仆助手，提供对话、陪伴、轻量幽默、语境识别、发送表情包。
+- 鲸鱼娘 Agent 预设：安装后自动添加鲸鱼娘 Agent 预设。对话、幽默、语境识别、表情包。
 
 ## 📋 环境要求
 
@@ -57,8 +57,6 @@ dsh plugin --profile web add dsh-xiaomi-tts@latest
 
  ![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg) [插件市场](https://awesome-dsh-plugin.com) 已收录本插件，如你已安装社区的插件市场，可在 **设置 → 插件市场** 中搜索 `xiaomi-mimo-tts`安装。
 
-**侧边栏 → 插件 → dsh-xiaomi-tts → 语音朗读 (MiMo TTS)**
-
 ### 卸载（web）
 
 ```bash
@@ -69,18 +67,18 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 
 新安装的默认行为：
 
-- 朗读按钮可用；
+- 朗读按钮安装即用（浏览器本地语音）；
 - **自动播报默认关闭**；
 - **UI 音效默认关闭**；
-- 未保存 API Key 时，“MiMo 优先”策略可能回退到浏览器本地语音。
 
 推荐配置顺序：
 
 1. [获取 Xiaomi MiMo API Key](https://platform.xiaomimimo.com/console/api-keys)。
-2. 在插件设置中输入 Key，并点击底部 **保存**。
+2. 在插件设置中输入 Key。
 3. 打开“调音台”，选择模型和音色。
 4. 在“演播厅”试听。
-5. 按需开启自动播报和 UI 音效，再次保存。
+5. 按需开启自动播报和 UI 音效。
+6. 点击底部 **保存**
 
 ## ⚙️ 配置说明
 
@@ -134,26 +132,27 @@ tts?.play('欢迎回来')
 
 ## 🐳 鲸鱼娘 Agent 预设
 
-安装本插件后，新建会话时可以在 Agent 预设列表选择“鲸鱼娘”。默认带一点傲娇、米饭、尾巴和摸鱼梗，也会结合当前语境低频发送本地表情包，并保留 CDN 直链兼容。
-
-鲸鱼娘的人设和表情包关键词参考了社区维护的 [DeepSeek-chan Meme Pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack)。插件另附 44 张本地表情包，统一使用英文 `表情名-心情.webp` 命名， [素材清单](skills/whale-girl/memes.json) 记录各图的使用语境，全部 44 张均可参与自动发送。
+安装本插件后，新建会话时可以在 Agent 预设列表选择“鲸鱼娘”。
+默认带一点傲娇、米饭、尾巴和摸鱼梗，也会结合当前语境低频发送本地表情包，并保留 CDN 直链兼容。
+人设和表情包关键词参考了社区维护的 [DeepSeek-chan Meme Pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack)。
+插件另附 44 张本地表情包。 [素材清单](skills/whale-girl/memes.json) 记录各图的使用语境。
 
 ## 🔒 隐私与网络访问
 
 - API Key 由 DSH Host 保存，浏览器只读取“是否已配置/格式是否识别”的状态，不读取密钥正文。
 - 浏览器本地语音由 Web Speech API 提供；标记为在线的音色可能把文本交给浏览器、操作系统或其网络语音服务。
-- MiMo 生成的音频自动保存在当前浏览器的 IndexedDB 中。设置底部按钮区的「音频历史」按钮进入独立历史页；最多保留最近 100 条 / 100 MB，
-- 流式 PCM 保存为 24 kHz 单声道 WAV；流式批次和分段生成分别列出，仅保留成功完成的生成请求。Web Speech API 本地语音没有可导出的音频文件。
+- MiMo 生成的音频自动保存在浏览器的 IndexedDB 中。点击设置底部「音频历史」可查看音频历史；最多保留最近 100 条 / 100 MB，支持试听、下载；
+- 流式 PCM 保存为 24 kHz 单声道 WAV；仅保留成功完成的生成请求。Web Speech API 本地语音没有可导出的音频文件。
 - 音效核心移植自 [uisfx 0.4.0](https://github.com/romainsimon/uisfx)，遵循 MIT License，详见 `NOTICE`。
 
 ## 🛠️ 开发
+
+启动本地 UI Lab 直接渲染 `src/client/settings/card.tsx`：
 
 ```bash
 pnpm install
 pnpm dev
 ```
-
-`pnpm dev` 会启动本地 UI Lab，直接渲染 `src/client/settings/card.tsx`。设置保存、远程语音和版本检查使用本地 mock，不会调用真实 MiMo 服务。
 
 常用检查：
 
