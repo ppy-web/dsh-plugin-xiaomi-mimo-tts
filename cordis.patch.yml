@@ -27,7 +27,7 @@
 # Optional companion preset: a whale maid with local memory tools.
 - insert:
     - id: preset-whale-girl
-      name: '@deepseek-ai/dsh-agent-preset'
+      name: 'dsh-xiaomi-tts/whale-girl'
       config:
         id: whale-girl
         name: '鲸鱼娘'

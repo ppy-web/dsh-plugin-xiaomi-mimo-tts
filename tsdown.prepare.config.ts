@@ -6,6 +6,7 @@ export function createBuildConfig(debugLogs = false) {
     name: debugLogs ? 'dsh-xiaomi-tts/debug' : 'dsh-xiaomi-tts',
     entry: {
       index: 'src/index.ts',
+      'whale-girl': 'src/whale-girl.ts',
       'client-api': 'src/client-api.ts',
       'pcm-stream': 'src/pcm-stream.ts',
       shared: 'src/shared.ts',
@@ -13,6 +14,7 @@ export function createBuildConfig(debugLogs = false) {
     outDir: 'lib',
     format: ['esm'],
     platform: 'node',
+    external: ['@deepseek-ai/dsh-agent-preset'],
     target: 'es2024',
     fixedExtension: false,
     dts: false,

@@ -5,7 +5,7 @@ import { createSoundEffectsController } from '../src/client/sound-effects/index.
 import { CLIENT_STYLES } from '../src/client/style/index.js'
 import { en, zh } from '../src/client/localization.js'
 import type { LocaleKey, Translate } from '../src/client/localization.js'
-import pluginIcon from '../assets/plugin-icons/avatar.png'
+import pluginIcon from '../assets/plugin-icons/avatar.webp'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
 import { PreviewBackground } from './background-icons.js'
 import { UserManual } from './user-manual.js'
