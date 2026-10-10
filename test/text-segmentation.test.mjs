@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  applyTtsLivePlaybackScope,
   applyTtsPlaybackScope,
   DEFAULT_TTS_SEGMENT_CHARACTERS,
   firstTtsSegment,
@@ -29,6 +30,20 @@ test('ends Smart playback at the whole sentence before adding a closing cue', ()
   const text = prepareTtsText(first + `${'乙'.repeat(600)}。`)
   const result = applyTtsPlaybackScope(text, 'smart', true, () => 0)
   assert.equal(result, `${prepareTtsText(first)}${TTS_SMART_TRUNCATION_OUTROS[0]}`)
+})
+
+test('adds the Smart closing cue when resumed live playback reaches completion', () => {
+  const limiter = new TtsFirstSegmentLimiter()
+  const first = `${'甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS)}。`
+  const partial = prepareTtsText(first + `${'乙'.repeat(40)}`)
+  const final = prepareTtsText(first + `${'乙'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS)}。`)
+
+  const checkpoint = applyTtsLivePlaybackScope(partial, 'smart', limiter)
+  assert.equal(checkpoint, prepareTtsText(first))
+  assert.equal(
+    applyTtsLivePlaybackScope(final, 'smart', limiter, true, () => 0),
+    `${prepareTtsText(first)}${TTS_SMART_TRUNCATION_OUTROS[0]}`,
+  )
 })
 
 test('ends a chunk before the next sentence when combining them exceeds the preferred maximum', () => {

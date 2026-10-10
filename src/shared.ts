@@ -568,6 +568,22 @@ export class TtsFirstSegmentLimiter {
   }
 }
 
+/** Apply the configured automatic range while a reply grows, adding Smart's cue only on completion. */
+export function applyTtsLivePlaybackScope(
+  value: string,
+  scope: TtsReadScope,
+  limiter: TtsFirstSegmentLimiter,
+  final = false,
+  random: () => number = Math.random,
+): string {
+  if (resolveTtsReadScope(scope, true) === 'full') return value
+  const text = prepareTtsText(value)
+  const scoped = limiter.limit(text, final)
+  return final && scope === 'smart'
+    ? appendTtsSmartTruncationOutro(text, scoped, random)
+    : scoped
+}
+
 /** Return the exact decoded size of canonical padded Base64, or null when invalid. */
 export function strictBase64DecodedLength(value: string): number | null {
   if (value.length === 0 || value.length % 4 !== 0) return null

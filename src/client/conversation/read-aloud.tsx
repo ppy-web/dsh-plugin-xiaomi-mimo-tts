@@ -8,7 +8,7 @@ import {
   Tooltip,
   extractMarkdownPlainText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import { applyTtsPlaybackScope, prepareTtsText, resolveTtsReadScope, resolveTtsSettings, splitTtsSegments, TtsFirstSegmentLimiter, TTS_API_KEY_STATUS_ROUTE } from '../../shared.js'
+import { applyTtsLivePlaybackScope, applyTtsPlaybackScope, prepareTtsText, resolveTtsSettings, splitTtsSegments, TtsFirstSegmentLimiter, TTS_API_KEY_STATUS_ROUTE } from '../../shared.js'
 import type { TtsReadScope } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import type { ChatSnapshot, AssistantBlock } from '@deepseek-ai/dsh-client-ui-chat/client'
@@ -116,9 +116,8 @@ interface SessionPlaybackObserverProps {
 }
 
 function scopedLiveText(value: string, scope: TtsReadScope, limiter: TtsFirstSegmentLimiter, final = false): string {
-  if (resolveTtsReadScope(scope, true) === 'full') return value
   const plain = extractMarkdownPlainText(prepareTtsText(value)).trim()
-  return limiter.limit(plain, final)
+  return applyTtsLivePlaybackScope(plain, scope, limiter, final)
 }
 
 /** Own the active-session boundary and feed its partial assistant output into realtime speech. */
