@@ -1,0 +1,110 @@
+name: Release npm package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify and publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.22.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      # Trusted Publishing requires npm >=11.5.1.
+      - name: Set up npm for Trusted Publishing
+        run: npm install --global npm@11
+
+      - name: Verify tag and release channel
+        id: metadata
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs'
+
+          const { name, version } = JSON.parse(readFileSync('package.json', 'utf8'))
+          if (process.env.RELEASE_TAG !== `v${version}`) {
+            throw new Error(`Tag ${process.env.RELEASE_TAG} must match package version v${version}`)
+          }
+          const npmTag = version.split('+')[0].includes('-') ? 'next' : 'latest'
+          appendFileSync(process.env.GITHUB_OUTPUT, `package_name=${name}\nversion=${version}\nnpm_tag=${npmTag}\n`)
+          console.log(`${name}@${version} -> ${npmTag}`)
+          NODE
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run release checks
+        run: |
+          pnpm run typecheck
+          pnpm run release:check
+          pnpm run dev:build
+
+      - name: Pack release artifact
+        id: pack
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-release"
+          pnpm pack --pack-destination "$RUNNER_TEMP/npm-release"
+          artifact="$(find "$RUNNER_TEMP/npm-release" -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          test -n "$artifact"
+          echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Prevent npm latest from moving backwards
+        if: steps.metadata.outputs.npm_tag == 'latest'
+        env:
+          PACKAGE_NAME: ${{ steps.metadata.outputs.package_name }}
+          PACKAGE_VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          latest="$(npm view "$PACKAGE_NAME" dist-tags.latest 2>/dev/null || true)"
+          if [ -n "$latest" ]; then
+            CURRENT_LATEST="$latest" PACKAGE_VERSION="$PACKAGE_VERSION" node --input-type=module <<'NODE'
+          const parse = (value) => {
+            const match = /^(\d+)\.(\d+)\.(\d+)/u.exec(value)
+            if (!match) throw new Error(`invalid npm latest version: ${value}`)
+            return match.slice(1).map(Number)
+          }
+          const current = parse(process.env.CURRENT_LATEST)
+          const release = parse(process.env.PACKAGE_VERSION)
+          for (let index = 0; index < 3; index += 1) {
+            if (release[index] > current[index]) process.exit(0)
+            if (release[index] < current[index]) throw new Error(`refusing to move npm latest backwards from ${process.env.CURRENT_LATEST} to ${process.env.PACKAGE_VERSION}`)
+          }
+          NODE
+          fi
+
+      # npm Trusted Publishing exchanges this job's OIDC identity for a short-lived
+      # publish credential. No npm access token is stored in GitHub secrets.
+      # npm package settings: ppy-web / dsh-plugin-xiaomi-mimo-tts / release.yml;
+      # leave Environment blank and allow direct publishing with npm publish.
+      - name: Publish to npm
+        env:
+          PACKAGE_NAME: ${{ steps.metadata.outputs.package_name }}
+          PACKAGE_VERSION: ${{ steps.metadata.outputs.version }}
+          NPM_TAG: ${{ steps.metadata.outputs.npm_tag }}
+          ARTIFACT: ${{ steps.pack.outputs.artifact }}
+        run: npm publish "$ARTIFACT" --provenance --access public --tag "$NPM_TAG"
