@@ -349,6 +349,7 @@ test('removes multi-segment paths but keeps single-segment path-like words', () 
 test('normalizes Chinese parentheses and colons while keeping ASCII colons', () => {
   assert.equal(prepareTtsText('【提示】（请注意）“测试”：你好，世界！《完》'), '提示,请注意,测试:你好,世界!完')
   assert.equal(prepareTtsText('现在是08:31，请准时开始。'), '现在是08:31,请准时开始.')
+  assert.equal(prepareTtsText('他说：“你好”，她答：‘好的’。附注(可略)。'), '他说:你好,她答:好的.附注可略.')
 })
 
 test('preserves the colon before emphasized quoted speech through repeated filtering', () => {
@@ -383,6 +384,17 @@ test('splits accumulated assistant text only at completed sentence boundaries', 
   assert.deepEqual({ sentences: r2.sentences, remainder: r2.remainder }, { sentences: ['他说：“好了。”\n', '下一行；'], remainder: '' })
   assert.equal(r2.inCode, false)
   assert.equal(r2.consumed, '他说：“好了。”\n下一行；'.length)
+})
+
+test('keeps closing quotes and brackets with their completed sentence', () => {
+  for (const [opening, closing] of [['“', '”'], ['‘', '’'], ['"', '"'], ["'", "'"]]) {
+    const first = `他说：【${opening}好了。${closing}】\n`
+    const remainder = '下一句尚未结束'
+    const result = sharedModule.splitCompletedTtsSentences(first + remainder)
+    assert.deepEqual(result.sentences, [first])
+    assert.equal(result.remainder, remainder)
+    assert.equal(result.consumed, first.length)
+  }
 })
 
 test('skips complete fenced code blocks and holds unclosed ones', () => {
@@ -420,6 +432,13 @@ test('batches short stream sentences until at least twenty spoken characters or 
     request: '第一句很短。第二句继续补充一些内容，使总字数达到二十个字。',
   })
   assert.deepEqual(batchTtsStreamText('不足二十字。', '', true), { pending: '', request: '不足二十字。' })
+})
+
+test('starts browser speech at twenty text characters without counting punctuation or spaces', () => {
+  const pending = `${'甲'.repeat(19)}， 。 `
+  assert.deepEqual(batchTtsStreamText('', pending, false), { pending, request: null })
+  assert.deepEqual(batchTtsStreamText(pending, '乙。', false), { pending: '', request: `${pending}乙。` })
+  assert.deepEqual(batchTtsStreamText('', '尾句。', false), { pending: '尾句。', request: null })
 })
 
 test('parses PCM SSE records without consuming a partial network record', () => {

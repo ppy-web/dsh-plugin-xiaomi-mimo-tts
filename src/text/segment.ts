@@ -122,7 +122,7 @@ export class TtsFirstSegmentLimiter {
 /** Accumulate short sentences for low-latency browser speech. */
 export function batchTtsStreamText(pending: string, next: string, flush: boolean): { pending: string; request: string | null } {
   const combined = `${pending}${next}`
-  if (countTtsSpeechCharacters(combined) >= MIN_TTS_SEGMENT_CHARACTERS || (flush && combined.trim().length > 0)) {
+  if (countTtsSpeechCharacters(combined) >= MIN_TTS_STREAM_CHARACTERS || (flush && combined.trim().length > 0)) {
     return { pending: '', request: combined }
   }
   return { pending: combined, request: null }

@@ -14,7 +14,7 @@ const TTS_PUNCTUATION: Record<string, string> = {
 }
 
 /** Decorative punctuation can make TTS emit non-speech artifacts, so omit it entirely. */
-const TTS_NON_SPEECH_PUNCTUATION = /["'\[\]【】［］〔〕〖〗{}｛｝「」『』《》〈〉""''"'`<>]/gu
+const TTS_NON_SPEECH_PUNCTUATION = /[()\[\]【】［］〔〕〖〗{}｛｝「」『』《》〈〉“”‘’"'`<>]/gu
 /** Ellipses and wave dashes carry a sentence-level pause, so keep that cue as a period. */
 const TTS_SENTENCE_PAUSE_PUNCTUATION = /[…⋯〜～]+/gu
 const TTS_PAUSE_MARKER = ''
@@ -121,7 +121,7 @@ export interface TtsSentenceSplit {
 export function splitCompletedTtsSentences(value: string): TtsSentenceSplit {
   const { regions, pendingStart } = findFencedCodeRegions(value)
   const limit = pendingStart ?? value.length
-  const boundary = /[。！？!?；;.\n]+(?:[）】》〕\]}]*\s*)/gu
+  const boundary = /[。！？!?；;.\n]+(?:[”’）】》〕\]}'"]*\s*)/gu
   const sentences: string[] = []
   let sentenceStart = 0
   let consumed = 0
