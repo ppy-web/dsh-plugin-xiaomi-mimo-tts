@@ -5,6 +5,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import Loader, { EntryGroup } from '@deepseek-ai/cordis-plugin-loader'
 import Sessions from '@deepseek-ai/dsh-session'
 import Projections from '@deepseek-ai/dsh-session-projection'
+import Agents from '@deepseek-ai/dsh-agent'
 import Presets from '@deepseek-ai/dsh-agent-preset-registry'
 import OfficialPreset from '@deepseek-ai/dsh-agent-preset'
 import { load } from 'js-yaml'
@@ -109,6 +110,7 @@ test('official registry keeps the preset disabled initially, then registers, dis
     await ctx.plugin(Loader)
     await ctx.plugin(Sessions)
     await ctx.plugin(Projections)
+    await ctx.plugin(Agents)
     await ctx.plugin(Presets, { default: 'whale-girl' })
     useChild(ctx)
     await ctx.loader.root.update([{ ...presetRow, config: { ...presetRow.config, plugins: [] } }])
