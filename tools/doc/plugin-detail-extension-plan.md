@@ -68,3 +68,15 @@
 ![中文桌面详情预览](screenshots/plugin-detail-desktop.png)
 ![日语窄屏详情预览](screenshots/plugin-detail-mobile-ja.png)
 ![法语深色窄屏详情预览](screenshots/plugin-detail-mobile-fr-dark.png)
+
+
+## 激活引导弹窗修复
+
+2026-10-28：用户实测发现激活引导排在插件列表底部。核对目标宿主 `PluginManagerPage.tsx` 后确认：`plugins.bundle.activation` 只提供列表末尾的挂载点，插件必须自行提供弹窗。原实现只返回普通 section，遗漏了这一层。
+
+现改用宿主 `Modal`，通过 Portal 挂到 body，沿用宿主遮罩、居中布局、关闭按钮与焦点管理。打开设置前和任意关闭路径均先停止试听。独立预览保留设置列表作为背景，并补上宿主图标 sprite 及弹窗主题变量，避免再次将普通内联布局误认作引导弹窗。
+
+验证：1280×720 下弹窗与视口中心同为 (640, 360)，Portal 挂载和 aria-modal 正确；初始焦点进入设置按钮，Tab 在弹窗内循环。Esc、关闭按钮及点击遮罩均可撤销弹窗。390×844 窄屏下弹窗在视口内完整显示，按钮正常换行。`pnpm typecheck`、`pnpm test`（280/280）、`pnpm dev:build` 均通过；本记录为独立浏览器预览结果，不替代真实宿主回归。
+
+![居中激活引导](screenshots/activation-guide-desktop.png)
+![窄屏激活引导](screenshots/activation-guide-mobile.png)

@@ -7,6 +7,7 @@ import { en, zh, ja, fr } from '../../src/client/localization.js'
 import type { LocaleKey, Translate } from '../../src/client/localization.js'
 import pluginIcon from '../../assets/plugin-icons/avatar.webp'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
+import { installPreviewHostIcons } from './host-icons.js'
 import { PreviewBackground } from './background-icons.js'
 import { UserManual } from './user-manual.js'
 import { BundleComponents } from './bundle-components.js'
@@ -98,11 +99,12 @@ const PREVIEW_PLUGIN_META = {
 
 const scope = new PreviewSettingsScope()
 const restorePreviewFetch = installPreviewFetch(scope)
+const restorePreviewHostIcons = installPreviewHostIcons()
 const unbindApiKeyStatus = bindApiKeyStatus(scope, previewPluginChanges)
 const soundEffects = createSoundEffectsController()
 const history = new AudioHistory()
 
-if (import.meta.hot) import.meta.hot.dispose(() => { unbindApiKeyStatus(); restorePreviewFetch(); void soundEffects.dispose(); void history.dispose() })
+if (import.meta.hot) import.meta.hot.dispose(() => { unbindApiKeyStatus(); restorePreviewFetch(); restorePreviewHostIcons(); void soundEffects.dispose(); void history.dispose() })
 
 function translator(locale: PreviewLocale): Translate {
   const dictionary: Record<LocaleKey, string> = { zh, en, ja, fr }[locale]
@@ -277,7 +279,6 @@ function PreviewApp() {
     <main className={`preview-stage${activeView === 'filter' ? ' preview-stage-filter' : ''}`}>
       {activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} />
         : activeView === 'history' ? <AudioHistoryTab history={history} scope={scope} t={t} beforePlayback={() => {}} />
-        : activeView === 'activation' ? <ActivationGuide packageName="dsh-xiaomi-tts" scope={scope} t={t} audioFocus={unrestrictedAudioFocus} beforePreview={() => history.stopReplay()} onOpenDetails={() => setActiveView('settings')} onDismiss={() => setActiveView('settings')} />
         : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} /> :
       <div className={`preview-workspace${isManualOpen ? '' : ' preview-workspace-manual-closed'}`}>
         <UserManual
@@ -314,6 +315,7 @@ function PreviewApp() {
       </div>
       }
     </main>
+    {activeView === 'activation' ? <ActivationGuide packageName="dsh-xiaomi-tts" scope={scope} t={t} audioFocus={unrestrictedAudioFocus} beforePreview={() => history.stopReplay()} onOpenDetails={() => setActiveView('settings')} onDismiss={() => setActiveView('settings')} /> : null}
     <style>{CLIENT_STYLES}</style>
   </div>
 }

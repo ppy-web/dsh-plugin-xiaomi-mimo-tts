@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { ReactElement } from 'react'
 import type { PluginActivationOwnerProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { resolveTtsSettings } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import type { Translate } from '../localization.js'
@@ -37,15 +37,22 @@ export function ActivationGuide({ t, scope, audioFocus, beforePreview, onOpenDet
     const settings = resolveTtsSettings(scope.getSnapshot().value)
     void player.playBrowserPreview(t('onboarding.sample'), settings)
   }
-  return <section className="xmimo-ui-scope xmimo-tts-activation" aria-label={t('onboarding.title')}>
-    <h2>{t('onboarding.title')}</h2>
-    <p>{t('onboarding.description')}</p>
-    <div className="xmimo-tts-activation-actions">
-      <Button type="button" variant="primary" onClick={openDetails} disabled={changing}>{t('onboarding.configure')}</Button>
+  return <Modal
+    open
+    title={t('onboarding.title')}
+    description={t('onboarding.description')}
+    closeLabel={t('onboarding.dismiss')}
+    onClose={dismiss}
+    className="xmimo-ui-scope xmimo-tts-activation-dialog"
+    footer={<div className="xmimo-tts-activation-actions">
+      <Button type="button" variant="primary" data-modal-autofocus onClick={openDetails} disabled={changing}>{t('onboarding.configure')}</Button>
       <Button type="button" variant="outline" onClick={preview} disabled={changing}>{t(playing ? 'action.stop' : 'onboarding.preview')}</Button>
       <Button type="button" variant="toolbar" onClick={dismiss}>{t('onboarding.dismiss')}</Button>
-    </div>
-    {view.status === 'error' ? <p className="xmimo-tts-failed" role="alert">{t(view.error === 'autoplay-blocked' ? 'settings.previewErrorAutoplay' : 'settings.previewErrorLocalUnavailable')}</p> : null}
-    {changing ? <p role="status">{t('plugin.changing')}</p> : null}
-  </section>
+    </div>}
+  >
+    {view.status === 'error' || changing ? <div className="xmimo-tts-activation-feedback">
+      {view.status === 'error' ? <p className="xmimo-tts-failed" role="alert">{t(view.error === 'autoplay-blocked' ? 'settings.previewErrorAutoplay' : 'settings.previewErrorLocalUnavailable')}</p> : null}
+      {changing ? <p role="status">{t('plugin.changing')}</p> : null}
+    </div> : undefined}
+  </Modal>
 }
