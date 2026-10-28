@@ -23,6 +23,8 @@ import './preview.css'
 import { AudioHistory } from '../../src/client/history/audio-history.js'
 import { ConversationPreview } from './conversation-preview.js'
 import { VoiceReadingPreview } from './voice-reading-preview.js'
+import { bindApiKeyStatus } from '../../src/client/settings/api-key-status-store.js'
+import { PluginDetailPreview, previewPluginChanges } from './plugin-detail-preview.js'
 import { PreviewNotice } from './preview-notice.js'
 
 type PreviewLocale = 'zh' | 'en' | 'ja' | 'fr'
@@ -96,10 +98,11 @@ const PREVIEW_PLUGIN_META = {
 
 const scope = new PreviewSettingsScope()
 const restorePreviewFetch = installPreviewFetch(scope)
+const unbindApiKeyStatus = bindApiKeyStatus(scope, previewPluginChanges)
 const soundEffects = createSoundEffectsController()
 const history = new AudioHistory()
 
-if (import.meta.hot) import.meta.hot.dispose(() => { restorePreviewFetch(); void soundEffects.dispose(); void history.dispose() })
+if (import.meta.hot) import.meta.hot.dispose(() => { unbindApiKeyStatus(); restorePreviewFetch(); void soundEffects.dispose(); void history.dispose() })
 
 function translator(locale: PreviewLocale): Translate {
   const dictionary: Record<LocaleKey, string> = { zh, en, ja, fr }[locale]
@@ -114,7 +117,7 @@ function PreviewApp() {
   const [isToolbarCompact, setIsToolbarCompact] = useState(false)
   const [isManualOpen, setIsManualOpen] = useState(false)
   const [isControlsOpen, setIsControlsOpen] = useState(false)
-  const [activeView, setActiveView] = useState<'settings' | 'filter' | 'history' | 'activation'>('settings')
+  const [activeView, setActiveView] = useState<'settings' | 'filter' | 'history' | 'activation' | 'detail'>('settings')
   const lastScrollYRef = useRef(0)
   const toolbarRef = useRef<HTMLElement | null>(null)
   const manualToggleRef = useRef<HTMLButtonElement | null>(null)
@@ -190,8 +193,6 @@ function PreviewApp() {
 
   const changeLocale = (next: PreviewLocale): void => {
     setLocale(next)
-    scope.reset()
-    setReadOnly(false)
     setInstance((current) => current + 1)
   }
 
@@ -253,6 +254,7 @@ function PreviewApp() {
             <option value="filter">{toolbar.filterTab}</option>
             <option value="history">{t('history.title')}</option>
             <option value="activation">{t('onboarding.title')}</option>
+            <option value="detail">{t('detail.preview')}</option>
           </select>
           <select aria-label={toolbar.language} value={locale} onChange={(event) => { changeLocale(event.target.value as PreviewLocale) }}>
             <option value="zh">中文</option>
@@ -273,7 +275,8 @@ function PreviewApp() {
       </div>
     </header>
     <main className={`preview-stage${activeView === 'filter' ? ' preview-stage-filter' : ''}`}>
-      {activeView === 'history' ? <AudioHistoryTab history={history} scope={scope} t={t} beforePlayback={() => {}} />
+      {activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} />
+        : activeView === 'history' ? <AudioHistoryTab history={history} scope={scope} t={t} beforePlayback={() => {}} />
         : activeView === 'activation' ? <ActivationGuide packageName="dsh-xiaomi-tts" scope={scope} t={t} audioFocus={unrestrictedAudioFocus} beforePreview={() => history.stopReplay()} onOpenDetails={() => setActiveView('settings')} onDismiss={() => setActiveView('settings')} />
         : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} /> :
       <div className={`preview-workspace${isManualOpen ? '' : ' preview-workspace-manual-closed'}`}>

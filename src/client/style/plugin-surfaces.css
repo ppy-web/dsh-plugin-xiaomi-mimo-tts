@@ -14,3 +14,35 @@
 .xmimo-tts-activation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .xmimo-tts-activation-actions button { min-height: 44px; }
 .xmimo-tts-plugin-status { margin: 0; padding: 16px; color: var(--xmimo-ui-text-muted); }
+
+.xmimo-tts-detail-manual {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: 8px;
+  color: var(--xmimo-ui-text);
+  font-size: 14px;
+  text-decoration: none;
+}
+.xmimo-tts-detail-manual:hover { background: var(--xmimo-ui-hover); }
+.xmimo-tts-detail-manual:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 3px; }
+.xmimo-tts-detail-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  max-width: 100%;
+  color: var(--xmimo-ui-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.xmimo-tts-detail-help { color: var(--xmimo-ui-text); font-size: 14px; line-height: 1.6; }
+.xmimo-tts-detail-help h2 { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+.xmimo-tts-detail-help p { margin: 8px 0 0; max-width: 70ch; }
+@media (pointer: coarse) {
+  .xmimo-tts-detail-manual,
+  .xmimo-tts-detail-status button { min-height: 44px; }
+}

@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
-import { TTS_API_KEY_STATUS_ROUTE } from '../../shared.js'
+import { useCallback, useSyncExternalStore } from 'react'
 import type { TtsProvider } from '../../types/providers.js'
-import { hostRoute } from '../host-route.js'
+import type { ApiKeyStatus } from '../settings/api-key-state.js'
+import { apiKeyStatusStore } from '../settings/api-key-status-store.js'
 
-const cache = new Map<TtsProvider, { expires: number; request: Promise<boolean>; abort: AbortController }>()
 const listeners = new Set<() => void>()
 
 export function onTtsCredentialsSaved(listener: () => void): () => void {
@@ -12,32 +11,19 @@ export function onTtsCredentialsSaved(listener: () => void): () => void {
 }
 
 export function invalidateApiKeyStatus(): void {
-  for (const entry of cache.values()) entry.abort.abort()
-  cache.clear()
+  apiKeyStatusStore.invalidate()
   for (const listener of listeners) listener()
 }
 
-export function useApiKeySupported(active: boolean, provider: TtsProvider = 'xiaomi', revision?: unknown): boolean | null {
-  const [supported, setSupported] = useState<boolean | null>(null)
-  const [generation, setGeneration] = useState(0)
-  useEffect(() => onTtsCredentialsSaved(() => setGeneration(value => value + 1)), [])
-  useEffect(() => {
-    setSupported(null)
-    if (!active) return
-    let entry = cache.get(provider)
-    if (!entry || entry.expires <= Date.now()) {
-      const abort = new AbortController()
-      entry = { abort, expires: Date.now() + 2000, request: fetch(`${hostRoute(TTS_API_KEY_STATUS_ROUTE)}?provider=${provider}`, { headers: { accept: 'application/json' }, signal: abort.signal })
-        .then(async response => {
-          if (!response.ok) throw new Error('api-key-status-failed')
-          const result = await response.json() as { supported?: unknown }
-          return result.supported === true
-        }).catch(() => false) }
-      cache.set(provider, entry)
-    }
-    let mounted = true
-    void entry.request.then(value => { if (mounted) setSupported(value) })
-    return () => { mounted = false }
-  }, [active, provider, revision, generation])
-  return supported
+export function useApiKeyStatus(active: boolean, provider: TtsProvider): ApiKeyStatus {
+  const subscribe = useCallback((listener: () => void) => active
+    ? apiKeyStatusStore.subscribe(provider, listener)
+    : () => {}, [active, provider])
+  const getSnapshot = useCallback(() => active ? apiKeyStatusStore.getSnapshot(provider) : 'loading', [active, provider])
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+export function useApiKeySupported(active: boolean, provider: TtsProvider = 'xiaomi'): boolean | null {
+  const status = useApiKeyStatus(active, provider)
+  return status === 'loading' ? null : status === 'recognized'
 }

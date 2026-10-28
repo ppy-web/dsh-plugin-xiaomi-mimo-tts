@@ -16,8 +16,10 @@ import { NS, en, zh, ja, fr } from './localization.js'
 import type { Translate } from './localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback/index.js'
 import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
-import { invalidateApiKeyStatus, onTtsCredentialsSaved } from './conversation/api-key-status.js'
+import { onTtsCredentialsSaved } from './conversation/api-key-status.js'
 import { SettingsCard } from './settings/card.js'
+import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
+import { PluginDetailActions, PluginDetailBadge, PluginDetailSection } from './settings/plugin-detail.js'
 import { ActivationGuide } from './settings/activation-guide.js'
 import { AudioHistoryTab } from './history/audio-history-tab.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
@@ -56,7 +58,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: Context,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.tab',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.tab' | 'plugins.detail.actions' | 'plugins.detail.badge' | 'plugins.detail.section',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -88,6 +90,11 @@ export function apply(ctx: Context): void {
   const scope = ctx.configForms.get<TtsSettings>(TTS_SETTINGS_NAMESPACE)
   const focusOwner = new TabAudioFocus()
   const changes = ctx.pluginChanges.bundle('dsh-xiaomi-tts')
+  ctx.effect(() => {
+    const off = bindApiKeyStatus(scope, changes)
+    window.addEventListener('online', apiKeyStatusStore.invalidate)
+    return () => { window.removeEventListener('online', apiKeyStatusStore.invalidate); off() }
+  }, 'xiaomi-mimo-tts: API key status')
   const audioFocus = new PluginAudioFocus(focusOwner, changes)
   const soundEffects = createSoundEffectsController(audioFocus.canPlay)
   const getSoundSettings = () => {
@@ -195,10 +202,7 @@ export function apply(ctx: Context): void {
     live.interrupt(); local.interrupt(); playback.interrupt()
     pcmService.stop(); questionPlayback?.stop(); history.stopReplay()
   }
-  ctx.effect(() => observePluginActivity(changes, () => {
-    stopAllPlayback()
-    invalidateApiKeyStatus()
-  }, invalidateApiKeyStatus), 'xiaomi-mimo-tts: plugin changes')
+  ctx.effect(() => observePluginActivity(changes, stopAllPlayback), 'xiaomi-mimo-tts: plugin changes')
   const updateVoiceVolume = () => { const volume = resolveTtsSettings(scope.getSnapshot().value).voiceVolume; live.setVolume(volume); local.setVolume(volume); playback.setVolume(volume); pcmService.setVolume(volume); questionPlayback?.setVolume(volume) }
   updateVoiceVolume()
   ctx.effect(() => scope.subscribe(updateVoiceVolume), 'xiaomi-mimo-tts: voice volume')
@@ -244,6 +248,27 @@ export function apply(ctx: Context): void {
     locale: NS,
     inject: (_sessionId: string) => ({ playback, live, local, settings: scope, t, audioFocus, automaticReading }),
   }, ReadAloudAction))
+
+  registerSlotContribution(ctx, 'plugins.detail.actions', () => ctx.slots.register({
+    name: 'plugins.detail.actions',
+    id: 'xiaomi-mimo-tts.manual',
+    locale: NS,
+    inject: () => ({ t }),
+  }, PluginDetailActions))
+
+  registerSlotContribution(ctx, 'plugins.detail.badge', () => ctx.slots.register({
+    name: 'plugins.detail.badge',
+    id: 'xiaomi-mimo-tts.key-status',
+    locale: NS,
+    inject: () => ({ t, scope, changes }),
+  }, PluginDetailBadge))
+
+  registerSlotContribution(ctx, 'plugins.detail.section', () => ctx.slots.register({
+    name: 'plugins.detail.section',
+    id: 'xiaomi-mimo-tts.help',
+    locale: NS,
+    inject: () => ({ t }),
+  }, PluginDetailSection))
 
   registerSlotContribution(ctx, 'plugins.bundle.config', () => ctx.slots.register({
     name: 'plugins.bundle.config',

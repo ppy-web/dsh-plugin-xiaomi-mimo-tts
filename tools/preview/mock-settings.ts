@@ -10,6 +10,7 @@ import type { TtsProvider } from '../../src/types/providers.js'
 import { TTS_DUPLEX_ROUTE } from '../../src/constants.js'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PcmRecording } from '../../src/client/history/pcm-recording.js'
+import type { ApiKeyStatus } from '../../src/client/settings/api-key-state.js'
 
 export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
   private readonly listeners = new Set<() => void>()
@@ -17,6 +18,7 @@ export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
   private user: TtsSettings = {}
   private writable = true
   private revision = 1
+  keyStatusPreview: ApiKeyStatus | null = null
   private snapshot = this.createSnapshot()
 
   getSnapshot(): ConfigFormSnapshot<TtsSettings> {
@@ -65,18 +67,29 @@ export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
   }
 
   reset(): void {
+    this.keyStatusPreview = null
     this.user = {}
     this.writable = true
     this.publish()
   }
 
   apiKeyStatus(provider: TtsProvider = this.snapshot.value?.provider ?? 'xiaomi'): { configured: boolean; supported: boolean; provider: TtsProvider } {
+    if (this.keyStatusPreview !== null) return {
+      configured: this.keyStatusPreview !== 'missing',
+      supported: this.keyStatusPreview === 'recognized',
+      provider,
+    }
     const apiKey = this.snapshot.value?.[provider === 'doubao' ? 'doubaoApiKey' : 'apiKey']?.trim() ?? ''
     return {
       provider,
       configured: apiKey.length > 0,
       supported: isSupportedTtsApiKey(apiKey, provider),
     }
+  }
+
+  setKeyStatusPreview(status: ApiKeyStatus | null): void {
+    this.keyStatusPreview = status
+    this.publish()
   }
 
   private createSnapshot(): ConfigFormSnapshot<TtsSettings> {
@@ -136,7 +149,15 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
     const url = new URL(rawUrl, window.location.href)
     const pathname = url.pathname
 
-    if (pathname === TTS_API_KEY_STATUS_ROUTE) return jsonResponse(scope.apiKeyStatus(url.searchParams.get('provider') === 'doubao' ? 'doubao' : 'xiaomi'))
+    if (pathname === TTS_API_KEY_STATUS_ROUTE) {
+      if (scope.keyStatusPreview === 'unavailable') return jsonResponse({}, 503)
+      if (scope.keyStatusPreview === 'loading') return new Promise((_resolve, reject) => {
+        const abort = (): void => reject(new DOMException('Aborted', 'AbortError'))
+        if (init?.signal?.aborted) abort()
+        else init?.signal?.addEventListener('abort', abort, { once: true })
+      })
+      return jsonResponse(scope.apiKeyStatus(url.searchParams.get('provider') === 'doubao' ? 'doubao' : 'xiaomi'))
+    }
     if (pathname === TTS_ROUTE || pathname === TTS_STREAM_ROUTE) {
       return previewAudioResponse(pathname === TTS_STREAM_ROUTE)
     }

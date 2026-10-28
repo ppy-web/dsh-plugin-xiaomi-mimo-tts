@@ -156,7 +156,7 @@
 }
 
 @container xmimo-actions (max-width: 520px) {
-  .xmimo-tts-card-actions :is(.xmimo-tts-star, undefined.xmimo-tts-mode-toggle) {
+  .xmimo-tts-card-actions :is(.xmimo-tts-star, .xmimo-tts-mode-toggle) {
     position: relative;
     padding-inline: 8px
   }
@@ -179,7 +179,7 @@
     gap: 6px
   }
 
-  .xmimo-tts-card-actions :is(.xmimo-tts-star, undefined.xmimo-tts-mode-toggle) {
+  .xmimo-tts-card-actions :is(.xmimo-tts-star, .xmimo-tts-mode-toggle) {
     padding-inline: 6px
   }
 }

@@ -4,7 +4,6 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AiFillGithub } from 'react-icons/ai'
 import { RiSwitchFill } from 'react-icons/ri'
 import {
-  TTS_API_KEY_STATUS_ROUTE,
   TTS_MIMO_LOGO_ASSET_ROUTE,
   getSoundEffectsModeFlags,
   isSupportedTtsApiKey,
@@ -12,7 +11,7 @@ import {
   resolveTtsSettings,
 } from '../../shared.js'
 import { saveSettingsDraft, validateSettingsDraft, EDITABLE_SETTING_FIELDS } from './save-settings.js'
-import { invalidateApiKeyStatus } from '../conversation/api-key-status.js'
+import { invalidateApiKeyStatus, useApiKeyStatus } from '../conversation/api-key-status.js'
 import type { TtsSettings, SoundEffectsScope } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -24,7 +23,6 @@ import { ToggleSoundPlayer } from '../sound-effects/toggle-sound-player.js'
 import type { SoundEffectsController } from '../sound-effects/types.js'
 import { ApiKeyModule } from './api-key-module.js'
 import { resolveApiKeyViewState } from './api-key-state.js'
-import type { ApiKeyStatus } from './api-key-state.js'
 import { DetailsModule } from './details-module.js'
 import { PreviewModule } from './preview-module.js'
 import { SoundEffectsPanel } from './sound-effects-module.js'
@@ -122,7 +120,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     previewPlayer.stop()
     toggleSoundPlayer.dispose()
   }), [audioFocus, previewPlayer, toggleSoundPlayer])
-  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>('loading')
+  const apiKeyStatus = useApiKeyStatus(snapshot.status === 'ready' && !changing, provider)
   const [minimalMode, setMinimalMode] = useState(readMinimalMode)
 
   const accepted = resolveTtsSettings(value)
@@ -163,26 +161,6 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
               ? 'settings.apiKeyPendingSave'
               : 'settings.apiKeyUnsupported')
   const apiKeyInvalid = apiKeyViewState === 'pending-invalid' || apiKeyViewState === 'unrecognized'
-
-  useEffect(() => {
-    if (snapshot.status === 'unavailable' || changing) { setApiKeyStatus('loading'); return }
-    let active = true
-    const request = new AbortController()
-    setApiKeyStatus('loading')
-    void fetch(`${hostRoute(TTS_API_KEY_STATUS_ROUTE)}?provider=${provider}`, { headers: { accept: 'application/json' }, signal: request.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error('api-key-status-failed')
-        return await response.json() as { configured?: unknown; supported?: unknown }
-      })
-      .then((status) => {
-        if (!active) return
-        setApiKeyStatus(status.configured !== true ? 'missing' : status.supported === true ? 'recognized' : 'unrecognized')
-      })
-      .catch(() => {
-        if (active) setApiKeyStatus('unavailable')
-      })
-    return () => { active = false; request.abort() }
-  }, [provider, snapshot.status, value, changing])
 
   useEffect(() => {
     if (dirty) return

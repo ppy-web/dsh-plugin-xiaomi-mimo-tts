@@ -31,7 +31,7 @@ export class PluginAudioFocus implements AudioFocus {
 }
 
 /** React only to this bundle entering or leaving a management operation. */
-export function observePluginActivity(changes: SnapshotSource<boolean>, onStart: () => void, onSettled: () => void): () => void {
+export function observePluginActivity(changes: SnapshotSource<boolean>, onStart: () => void, onSettled: () => void = () => {}): () => void {
   let previous = false
   const update = (): void => {
     const current = changes.getSnapshot()

@@ -6,3 +6,4 @@
  */
 
 export const SOURCE_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts'
+export const MANUAL_URL = `${SOURCE_URL}/blob/main/handbook.md`

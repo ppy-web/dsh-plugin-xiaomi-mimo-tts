@@ -382,3 +382,17 @@ button, input, select, textarea { font: inherit; }
   .preview-manual { border-color: CanvasText; background: Canvas; }
   .preview-controls select, .preview-controls button { color: ButtonText; background: ButtonFace; border-color: ButtonText; }
 }
+
+.preview-detail { max-width: 960px; margin-inline: auto; padding: 24px; background: var(--xmimo-ui-surface); border-radius: 12px; }
+.preview-detail-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid var(--xmimo-ui-border); }
+.preview-detail-controls label { display: grid; gap: 6px; font-size: 12px; color: var(--xmimo-ui-text); }
+.preview-detail-controls select { max-width: 100%; min-height: 36px; padding: 6px; border: 1px solid var(--xmimo-ui-border); border-radius: 8px; background: var(--xmimo-ui-surface); color: var(--xmimo-ui-text); font: inherit; }
+.preview-detail-controls .preview-detail-checkbox { display: flex; align-items: center; min-height: 36px; }
+.preview-detail-header { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 32px; }
+.preview-detail-header h1 { margin: 0 0 8px; font-size: 22px; font-weight: 600; color: var(--xmimo-ui-text); }
+@media (max-width: 560px) {
+  .preview-detail { padding: 16px; }
+  .preview-detail-controls { align-items: stretch; }
+  .preview-detail-controls label { width: 100%; }
+  .preview-detail-controls select { min-height: 44px; }
+}

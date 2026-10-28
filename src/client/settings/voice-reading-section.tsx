@@ -124,7 +124,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
     <VoiceReadingProvider value={settings.provider} disabled={disabled} t={t} onChange={provider => {
       write([{ op: 'set', path: ['provider'], value: provider }])
     }} />
-    {ready ? <VoiceReadingWarning active={!changing} settings={settings} revision={snapshot.revision} t={t} openPluginSettings={openPluginSettings} /> : null}
+    {ready ? <VoiceReadingWarning active={!changing} settings={settings} t={t} openPluginSettings={openPluginSettings} /> : null}
     {ready && !snapshot.writable && <p className="xmimo-voice-reading-notice" role="status">{t('settings.voiceReadingReadOnly')}</p>}
     <div className="xmimo-voice-reading-card">
       <div className="xmimo-voice-reading-row">
