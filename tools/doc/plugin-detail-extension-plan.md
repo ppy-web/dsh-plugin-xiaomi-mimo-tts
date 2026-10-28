@@ -78,5 +78,7 @@
 
 验证：1280×720 下弹窗与视口中心同为 (640, 360)，Portal 挂载和 aria-modal 正确；初始焦点进入设置按钮，Tab 在弹窗内循环。Esc、关闭按钮及点击遮罩均可撤销弹窗。390×844 窄屏下弹窗在视口内完整显示，按钮正常换行。`pnpm typecheck`、`pnpm test`（280/280）、`pnpm dev:build` 均通过；本记录为独立浏览器预览结果，不替代真实宿主回归。
 
+布局调整：引导改为左右分栏，左侧使用 `assets/plugin-icons/avatar.webp`，复用已发布的同图静态资源；右侧保留标题、说明、三个操作及状态提示。桌面弹窗宽度为 780px，390px 窄屏仍保留左右关系并自动换行按钮，已验证头像加载、无横向溢出和 Esc 关闭。类型检查、280 项测试与预览构建通过，以下截图已更新为当前布局。
+
 ![居中激活引导](screenshots/activation-guide-desktop.png)
 ![窄屏激活引导](screenshots/activation-guide-mobile.png)
