@@ -1,0 +1,16 @@
+.xmimo-tts-activation {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  color: var(--xmimo-ui-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.xmimo-tts-activation h2,
+.xmimo-tts-activation p { margin: 0; }
+.xmimo-tts-activation h2 { font-size: 18px; font-weight: 600; }
+.xmimo-tts-activation > p { max-width: 65ch; }
+.xmimo-tts-activation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.xmimo-tts-activation-actions button { min-height: 44px; }
+.xmimo-tts-plugin-status { margin: 0; padding: 16px; color: var(--xmimo-ui-text-muted); }

@@ -193,6 +193,20 @@ export class PreviewPlayer {
     }
   }
 
+  /** Audition browser speech without contacting a cloud provider, including on failure. */
+  async playBrowserPreview(text: string, settings: Pick<PreviewSettings, 'localVoiceURI' | 'voiceVolume' | 'voiceRate'>): Promise<void> {
+    this.stop()
+    this.setVolume(settings.voiceVolume)
+    this.voiceRate = normalizeVoiceRate(settings.voiceRate)
+    const generation = this.generation
+    try {
+      await this.playLocal(text, settings.localVoiceURI, generation)
+      if (generation === this.generation) this.publish('idle', 'local')
+    } catch (error) {
+      if (generation === this.generation) this.publish('error', 'local', previewError(error))
+    }
+  }
+
   stop(): void {
     this.generation += 1
     this.request?.abort()

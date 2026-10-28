@@ -15,8 +15,7 @@
 @media (pointer: coarse) {
   .xmimo-tts-history-page button,
   .xmimo-tts-history-page select,
-  .xmimo-tts-history-page input,
-  .xmimo-tts-history-link { min-height: 44px; }
+  .xmimo-tts-history-page input { min-height: 44px; }
   .xmimo-tts-history-row { grid-template-columns: 44px minmax(0, 1fr); }
   .xmimo-tts-history-actions { grid-column: 2; justify-content: flex-end; }
   .xmimo-tts-history-page .xmimo-tts-history-player-toggle { width: 44px; height: 44px; min-width: 44px; }

@@ -14,10 +14,11 @@ import type { Translate } from '../localization.js'
 import type { LiveSpeechController, LocalSpeechController, PlaybackController } from '../playback/index.js'
 import { useSettingsSnapshot } from '../settings/scope.js'
 import { AnimatedAudioLines } from './animated-audio-lines.js'
-import { messageText, messageTime, latestAssistantMessageId, messageLiveIdentity } from './message-text.js'
+import { finalAssistantMessageId, messageText, messageTime, latestAssistantMessageId, messageLiveIdentity } from './message-text.js'
 import { useApiKeySupported } from './api-key-status.js'
 import { handleReadAloudClick, playCompletedReply } from '../playback/read-aloud-playback.js'
 import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
+import type { AutomaticReading } from './automatic-reading.js'
 import type { AudioFocus } from '../playback/tab-audio-focus.js'
 
 const PLAYBACK_ERROR_KEYS: Record<string, Parameters<Translate>[0]> = {
@@ -50,24 +51,27 @@ interface ReadAloudActionProps {
   local: LocalSpeechController
   settings: ConfigForm<TtsSettings>
   t: Translate
+  automaticReading: AutomaticReading
   audioFocus?: AudioFocus
 }
 
-export function ReadAloudAction({ sessionId, messageId, useSession, useChat, playback, live, local, settings, t, audioFocus = unrestrictedAudioFocus }: ReadAloudActionProps): ReactElement | null {
+export function ReadAloudAction({ sessionId, messageId, useSession, useChat, playback, live, local, settings, t, automaticReading, audioFocus = unrestrictedAudioFocus }: ReadAloudActionProps): ReactElement | null {
   const ownsAudio = useSyncExternalStore(audioFocus.subscribe, audioFocus.canPlay, audioFocus.canPlay)
   const sessionSnapshot = useSession(snapshot => snapshot)
   const legacy = useChat(chat => chat.legacy)
+  const foldedReplies = useSyncExternalStore(automaticReading.subscribe, automaticReading.getSnapshot, automaticReading.getSnapshot)
+  const finalMessageId = useChat(finalAssistantMessageId)
   const running = sessionSnapshot.running
   const message = {
     text: messageText(legacy, messageId),
     time: messageTime(legacy, messageId),
-    latestMessageId: latestAssistantMessageId(legacy),
+    latestMessageId: foldedReplies === 'final' ? finalMessageId : latestAssistantMessageId(legacy),
     identity: messageLiveIdentity(legacy, messageId),
   }
   const text = message.text
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
-  const apiKeySupported = useApiKeySupported(resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider, settingsSnapshot.revision)
+  const apiKeySupported = useApiKeySupported(ownsAudio && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider, settingsSnapshot.revision)
   local.setVoiceURI(resolvedSettings.localVoiceURI)
   local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
@@ -79,12 +83,12 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   }
 
   useEffect(() => {
-    if (!ownsAudio || !audioFocus.canPlay() || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (!automaticReading.allowed(sessionId) || (foldedReplies === 'final' && finalMessageId !== messageId) || !ownsAudio || !audioFocus.canPlay() || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
-      if (audioFocus.canPlay() && !live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity) && playback.claimAutomaticPlayback(sessionId, messageId)) playCompletedReply(request, true)
+      if (audioFocus.canPlay() && !live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity) && automaticReading.allowed(sessionId) && playback.claimAutomaticPlayback(sessionId, messageId)) { automaticReading.markAutomatic(); playCompletedReply(request, true) }
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [audioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.latestMessageId, message.time, messageId, playback, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [automaticReading, foldedReplies, finalMessageId, audioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.latestMessageId, message.time, messageId, playback, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 
@@ -115,7 +119,7 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
           aria-label={label}
           aria-pressed={status === 'playing' || liveActive}
           disabled={status === 'loading' && source === 'complete'}
-          onClick={() => { audioFocus.claim(); if (audioFocus.canPlay()) handleReadAloudClick(request, view) }}
+          onClick={() => { audioFocus.claim(); if (audioFocus.canPlay()) { automaticReading.markManual(); handleReadAloudClick(request, view) } }}
         >
           {status === 'playing'
             ? <AnimatedAudioLines size={16} />

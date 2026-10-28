@@ -34,6 +34,7 @@ import motion from './motion.css?raw'
 import global from './global.css?raw'
 import minimal from './minimal.css?raw'
 import history from './history.css?raw'
+import pluginSurfaces from './plugin-surfaces.css?raw'
 
 export const CLIENT_STYLES = [
   action,
@@ -51,6 +52,7 @@ export const CLIENT_STYLES = [
   volume,
   voiceReading,
   history,
+  pluginSurfaces,
   responsive,
   motion,
   global,

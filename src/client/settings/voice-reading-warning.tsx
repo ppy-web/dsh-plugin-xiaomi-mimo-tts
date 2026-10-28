@@ -10,19 +10,22 @@ import type { ApiKeyStatus } from './api-key-state.js'
 import { voiceReadingWarningKey } from './voice-reading-options.js'
 
 interface VoiceReadingWarningProps {
+  active?: boolean
   settings: ResolvedTtsSettings
   revision: unknown
   t: Translate
   openPluginSettings: () => void
 }
 
-export function VoiceReadingWarning({ settings, revision, t, openPluginSettings }: VoiceReadingWarningProps): ReactElement | null {
+export function VoiceReadingWarning({ settings, revision, t, openPluginSettings, active: enabled = true }: VoiceReadingWarningProps): ReactElement | null {
   const { provider } = settings
   const [result, setResult] = useState<{ provider: typeof provider; status: ApiKeyStatus } | null>(null)
   const [generation, setGeneration] = useState(0)
   useEffect(() => onTtsCredentialsSaved(() => { setGeneration(value => value + 1) }), [])
   useEffect(() => {
+    if (!enabled) return
     let active = true
+    setResult(null)
     const controller = new AbortController()
     void fetch(`${hostRoute(TTS_API_KEY_STATUS_ROUTE)}?provider=${provider}`, {
       headers: { accept: 'application/json' },
@@ -35,9 +38,9 @@ export function VoiceReadingWarning({ settings, revision, t, openPluginSettings 
       if (active) setResult({ provider, status: 'unavailable' })
     })
     return () => { active = false; controller.abort() }
-  }, [provider, revision, generation])
+  }, [provider, revision, generation, enabled])
 
-  const status = result?.provider === provider ? result.status : 'loading'
+  const status = enabled && result?.provider === provider ? result.status : 'loading'
   const warning = voiceReadingWarningKey(settings, status)
   return warning === null ? null : <WarningBar
     key={`${provider}:${warning}`}

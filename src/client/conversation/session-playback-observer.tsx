@@ -7,7 +7,8 @@ import type { TtsSettings } from '../../shared.js'
 import type { LiveSpeechController, LocalSpeechController, PlaybackController } from '../playback/index.js'
 import { RealtimeSpeechSession } from '../playback/realtime-speech-session.js'
 import { useSettingsSnapshot } from '../settings/scope.js'
-import { assistantText, finalLiveMessage, latestAssistantMessageId } from './message-text.js'
+import { assistantText, finalAssistantMessageId, finalLiveMessage, latestAssistantMessageId } from './message-text.js'
+import type { AutomaticReading } from './automatic-reading.js'
 import { useApiKeySupported } from './api-key-status.js'
 import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
 import type { AudioFocus } from '../playback/tab-audio-focus.js'
@@ -23,16 +24,17 @@ interface SessionPlaybackObserverProps {
   local: LocalSpeechController
   settings: ConfigForm<TtsSettings>
   audioFocus?: AudioFocus
+  automaticReading: AutomaticReading
   questions?: QuestionTitleCollector
 }
 
 /** Own the active-session boundary and feed its partial assistant output into realtime speech. */
-export function SessionPlaybackObserver({ sessionId, useSession, useChat, playback, live, local, settings, questions, audioFocus = unrestrictedAudioFocus }: SessionPlaybackObserverProps): null {
+export function SessionPlaybackObserver({ sessionId, useSession, useChat, playback, live, local, settings, questions, automaticReading, audioFocus = unrestrictedAudioFocus }: SessionPlaybackObserverProps): null {
   useEffect(() => questions?.activateSession(sessionId), [questions, sessionId])
   const ownsAudio = useSyncExternalStore(audioFocus.subscribe, audioFocus.canPlay, audioFocus.canPlay)
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
-  const apiKeySupported = useApiKeySupported(resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider, settingsSnapshot.revision)
+  const apiKeySupported = useApiKeySupported(ownsAudio && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider, settingsSnapshot.revision)
   live.setMaxPausedPcmBytes(resolvedSettings.maxPausedPcmBytes)
   local.setVoiceURI(resolvedSettings.localVoiceURI)
   local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
@@ -40,6 +42,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   const sessionSnapshot = useSession(snapshot => snapshot)
   const legacy = useChat(chat => chat.legacy)
   const runningSnapshot = sessionSnapshot.running
+  const foldedReplies = useSyncExternalStore(automaticReading.subscribe, automaticReading.getSnapshot, automaticReading.getSnapshot)
 
   const [speech] = useState(() => new RealtimeSpeechSession(live, local))
   const selectionKey = JSON.stringify(ttsSelection(resolvedSettings))
@@ -47,7 +50,8 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   const active = useRef<{ turn: number; step: number } | null>(null)
   const wasRunning = useRef(runningSnapshot)
   const runArmed = useRef(true)
-  const latestMessageId = latestAssistantMessageId(legacy)
+  const finalMessageId = useChat(finalAssistantMessageId)
+  const latestMessageId = foldedReplies === 'final' ? finalMessageId : latestAssistantMessageId(legacy)
   const partial = legacy.partial
   const partialText = partial === null ? '' : assistantText(partial.blocks)
   const attachedMidRun = useRef(runningSnapshot)
@@ -65,10 +69,11 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
     speech.activate(sessionId)
     return () => {
       active.current = null
+      automaticReading.release(sessionId)
       speech.deactivate(sessionId)
       playback.deactivateSession(sessionId)
     }
-  }, [playback, sessionId, speech])
+  }, [automaticReading, playback, sessionId, speech])
 
   useEffect(() => {
     if (previousSelection.current !== selectionKey) {
@@ -94,13 +99,20 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       active.current = null
     }
 
+    automaticReading.observe(sessionId, runningSnapshot)
+    if (!automaticReading.allowed(sessionId)) runArmed.current = false
     const localModel = supportsRealtimeTts(resolvedSettings)
     const realtimeSpeechEnabled = localModel
-    playback.observeSession(sessionId, ownsAudio && audioFocus.canPlay() && runningSnapshot && runArmed.current, latestMessageId, attachedMidRun.current && realtimeSpeechEnabled)
+    playback.observeSession(sessionId, ownsAudio && audioFocus.canPlay() && runningSnapshot && runArmed.current, latestMessageId, attachedMidRun.current)
     if (!ownsAudio || !audioFocus.canPlay() || !resolvedSettings.enabled || !resolvedSettings.autoPlay || !realtimeSpeechEnabled) {
       speech.cancel()
       active.current = null
       if (runningSnapshot) runArmed.current = false
+      return
+    }
+    if (foldedReplies === 'final') {
+      if (active.current !== null) speech.cancel()
+      active.current = null
       return
     }
     if (!runArmed.current) return
@@ -120,6 +132,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       const prime = resumeCheckpoint.current !== null
         && resumeCheckpoint.current.turn === partial.turn && resumeCheckpoint.current.step === partial.step
       resumeCheckpoint.current = null
+      automaticReading.markAutomatic()
       speech.observe(sessionId, partial.turn, partial.step, partialText, prime)
       return
     }
@@ -132,7 +145,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       }
       active.current = null
     }
-  }, [audioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
+  }, [automaticReading, foldedReplies, audioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
 
   return null
 }

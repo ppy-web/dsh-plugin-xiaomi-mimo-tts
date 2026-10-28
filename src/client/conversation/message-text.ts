@@ -1,8 +1,19 @@
-import type { ChatSnapshot, AssistantBlock } from '@deepseek-ai/dsh-client-ui-chat/client'
+import type { ChatSnapshot, AssistantBlock, TurnTailChatData } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { LiveMessageIdentity } from '../playback/types.js'
 import { prepareSpeechText } from '../playback/speech-text.js'
 
 type ChatLegacy = ChatSnapshot['legacy']
+
+/** Use the host's settled closing reply rather than guessing from step order or visible DOM. */
+export function finalAssistantMessageId(chat: ChatSnapshot): string | null {
+  const turn = chat.timeline.turnOrder.at(-1)
+  if (turn === undefined) return null
+  for (const key of chat.locations.getTurn(turn)) {
+    const node = chat.nodes.get(key)
+    if (node?.kind === 'turn-tail') return (node.data as TurnTailChatData).closing?.finalNode.messageId ?? null
+  }
+  return null
+}
 
 export function messageText(legacy: ChatLegacy, messageId: string): string {
   for (const node of legacy.nodes) {

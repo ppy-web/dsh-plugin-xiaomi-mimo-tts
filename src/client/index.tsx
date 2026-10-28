@@ -9,14 +9,18 @@ import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { TTS_SETTINGS_NAMESPACE, resolveTtsSettings, ttsSelection } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
+import { AutomaticReading } from './conversation/automatic-reading.js'
 import { ReadAloudAction } from './conversation/read-aloud.js'
 import { SessionPlaybackObserver } from './conversation/session-playback-observer.js'
-import { NS, en, zh } from './localization.js'
+import { NS, en, zh, ja, fr } from './localization.js'
 import type { Translate } from './localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback/index.js'
 import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
-import { onTtsCredentialsSaved } from './conversation/api-key-status.js'
+import { invalidateApiKeyStatus, onTtsCredentialsSaved } from './conversation/api-key-status.js'
 import { SettingsCard } from './settings/card.js'
+import { ActivationGuide } from './settings/activation-guide.js'
+import { AudioHistoryTab } from './history/audio-history-tab.js'
+import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
 import { installVoiceReadingNavIcon } from './settings/nav-icon.js'
 import { VoiceReadingSection } from './settings/voice-reading-section.js'
 import type { VoiceReadingSectionInjected } from './settings/voice-reading-section.js'
@@ -42,6 +46,7 @@ export const inject = [
   'remote',
   'configForms',
   'pluginNavigation',
+  'pluginChanges',
   'sessions',
 ]
 
@@ -51,7 +56,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: Context,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'settings.section',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.tab',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -75,13 +80,15 @@ function registerSlotContribution(
 export function apply(ctx: Context): void {
   const locale = ctx.locale as unknown as {
     bind(namespace: string): Translate
-    register(namespace: string, dictionaries: { zh: typeof zh; en: typeof en }): () => void
+    register(namespace: string, dictionaries: Record<string, typeof en>): () => void
   }
   const t = locale.bind(NS)
-  ctx.effect(() => locale.register(NS, { zh, en }), 'xiaomi-mimo-tts: dictionaries')
+  ctx.effect(() => locale.register(NS, { zh, en, ja, fr }), 'xiaomi-mimo-tts: dictionaries')
 
   const scope = ctx.configForms.get<TtsSettings>(TTS_SETTINGS_NAMESPACE)
-  const audioFocus = new TabAudioFocus()
+  const focusOwner = new TabAudioFocus()
+  const changes = ctx.pluginChanges.bundle('dsh-xiaomi-tts')
+  const audioFocus = new PluginAudioFocus(focusOwner, changes)
   const soundEffects = createSoundEffectsController(audioFocus.canPlay)
   const getSoundSettings = () => {
     const resolved = resolveTtsSettings(scope.getSnapshot().value)
@@ -117,6 +124,13 @@ export function apply(ctx: Context): void {
     playback.interrupt()
   }, history, audioFocus.canPlay)
   questionPlayback = new QuestionTitlePlayback(speechActivity, () => resolveTtsSettings(scope.getSnapshot().value), pcmService.isBusy)
+  const automaticReading = new AutomaticReading()
+  const hostChatSettings = ctx.configForms.get<{ foldedReplies?: 'all' | 'final' }>('ui-chat')
+  const updateAutomaticReading = () => automaticReading.update(hostChatSettings.getSnapshot().value?.foldedReplies, () => {
+    live.interrupt(); local.interrupt(); playback.interrupt()
+  }, () => playback.resetAutomaticPlayback())
+  updateAutomaticReading()
+  ctx.effect(() => hostChatSettings.subscribe(updateAutomaticReading), 'xiaomi-mimo-tts: host reading preference')
   const questions = new QuestionTitleCollector()
   const announcements = new AnnouncementPlayback(pcmService, speechActivity, questionPlayback)
   const collectors = new AnnouncementManager([
@@ -152,7 +166,7 @@ export function apply(ctx: Context): void {
       history.stopReplay()
       void soundEffects.dispose()
     })
-    const deactivate = audioFocus.activate()
+    const deactivate = focusOwner.activate()
     return () => { deactivate(); off() }
   }, 'xiaomi-mimo-tts: tab audio focus')
   let providerSelectionKey: string | null = null
@@ -176,6 +190,15 @@ export function apply(ctx: Context): void {
   playback.setBeforePlayback(stopOptionalPcm)
   live.setStateChangeListener((sessionId, messageId, status, error) => playback.updateLivePlayback(sessionId, messageId, status, 'live', error))
   local.setStateChangeListener((sessionId, messageId, status, error) => playback.updateLivePlayback(sessionId, messageId, status, 'system', error))
+  const stopAllPlayback = () => {
+    playback.resetAutomaticPlayback()
+    live.interrupt(); local.interrupt(); playback.interrupt()
+    pcmService.stop(); questionPlayback?.stop(); history.stopReplay()
+  }
+  ctx.effect(() => observePluginActivity(changes, () => {
+    stopAllPlayback()
+    invalidateApiKeyStatus()
+  }, invalidateApiKeyStatus), 'xiaomi-mimo-tts: plugin changes')
   const updateVoiceVolume = () => { const volume = resolveTtsSettings(scope.getSnapshot().value).voiceVolume; live.setVolume(volume); local.setVolume(volume); playback.setVolume(volume); pcmService.setVolume(volume); questionPlayback?.setVolume(volume) }
   updateVoiceVolume()
   ctx.effect(() => scope.subscribe(updateVoiceVolume), 'xiaomi-mimo-tts: voice volume')
@@ -211,7 +234,7 @@ export function apply(ctx: Context): void {
     name: 'conversation.input.dock',
     id: 'xiaomi-mimo-tts-session-playback-observer',
     order: 998,
-    inject: (_sessionId: string) => ({ playback, live, local, settings: scope, audioFocus, questions }),
+    inject: (_sessionId: string) => ({ playback, live, local, settings: scope, audioFocus, questions, automaticReading }),
   }, SessionPlaybackObserver))
 
   registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
@@ -219,21 +242,37 @@ export function apply(ctx: Context): void {
     id: 'xiaomi-mimo-tts',
     order: 20,
     locale: NS,
-    inject: (_sessionId: string) => ({ playback, live, local, settings: scope, t, audioFocus }),
+    inject: (_sessionId: string) => ({ playback, live, local, settings: scope, t, audioFocus, automaticReading }),
   }, ReadAloudAction))
 
   registerSlotContribution(ctx, 'plugins.bundle.config', () => ctx.slots.register({
     name: 'plugins.bundle.config',
     key: 'dsh-xiaomi-tts',
     locale: NS,
-    inject: () => ({ scope, t, controller: soundEffects, history, audioFocus, speechActivity, beforeHistoryPlayback: () => {
-      pcmService.stop()
-      questionPlayback?.stop()
-      live.interrupt()
-      local.interrupt()
-      playback.interrupt()
-    } }),
+    inject: () => ({ scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback }),
   }, SettingsCard))
+
+  registerSlotContribution(ctx, 'plugins.bundle.activation', () => ctx.slots.register({
+    name: 'plugins.bundle.activation',
+    key: 'dsh-xiaomi-tts',
+    locale: NS,
+    inject: () => ({ scope, t, audioFocus, changes, beforePreview: stopAllPlayback }),
+  }, ActivationGuide))
+
+  registerSlotContribution(ctx, 'plugins.tab', () => ctx.slots.register({
+    name: 'plugins.tab',
+    id: 'xiaomi-mimo-tts.audio-history',
+    label: () => t('history.title'),
+    order: 30,
+    locale: NS,
+    inject: () => ({ history, t, scope, changes, speechActivity, beforePlayback: () => {
+      audioFocus.claim()
+      if (!audioFocus.canPlay()) return false
+      live.interrupt(); local.interrupt(); playback.interrupt()
+      pcmService.stop(); questionPlayback?.stop()
+      return true
+    } }),
+  }, AudioHistoryTab))
 
   registerSlotContribution(ctx, 'settings.section', () => ctx.slots.register({
     name: 'settings.section',
@@ -243,6 +282,7 @@ export function apply(ctx: Context): void {
     inject: (): VoiceReadingSectionInjected => ({
       scope,
       t,
+      changes,
       openPluginSettings: () => ctx.pluginNavigation.openBundle('dsh-xiaomi-tts'),
     }),
   }, VoiceReadingSection))

@@ -1,12 +1,10 @@
 import type { Context, Volatile } from '@deepseek-ai/cordis'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import {
   TTS_SETTINGS_NAMESPACE,
-  TTS_UPDATE_ROUTE,
   TTS_API_KEY_STATUS_ROUTE,
   TTS_MIMO_LOGO_ASSET_ROUTE,
   TTS_VOICE_DESIGN_ASSET_ROUTE,
@@ -21,7 +19,6 @@ import {
   TTS_TOGGLE_AUDIO_ASSET_ROUTE,
   TTS_TOGGLE_SOUND_FILES,
   TTS_VOLUME_PREVIEW_FILES,
-  TTS_VERSION,
 } from './constants.js'
 import {
   TTS_MODELS,
@@ -36,16 +33,9 @@ import {
   ANNOUNCEMENT_SOURCES,
   isSupportedTtsApiKey,
 } from './types/index.js'
-import { isNewerTtsVersion } from './text/index.js'
 import { registerStaticAsset, registerStaticAssetMap, json } from './host/index.js'
 import { registerSynthesisRoutes } from './host/synthesis-routes.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, ttsApiKey } from './shared.js'
-
-const packageJson = createRequire(import.meta.url)('../package.json') as { version?: unknown }
-const USER_AGENT = typeof packageJson.version === 'string'
-  ? `dsh-xiaomi-tts/${packageJson.version}`
-  : 'dsh-xiaomi-tts'
-const NPM_LATEST_URL = 'https://registry.npmjs.org/dsh-xiaomi-tts/latest'
 
 /** Cordis plugin identifier. */
 export const name = 'xiaomi-mimo-tts'
@@ -99,20 +89,6 @@ type ConfigValues = { [Key in keyof Config]: Config[Key] extends Volatile<infer 
 
 function readConfig(config: Config): ConfigValues {
   return Object.fromEntries(Object.entries(config).map(([key, value]) => [key, (value as Volatile<unknown>).get()])) as ConfigValues
-}
-
-async function latestTtsVersion(): Promise<string | null> {
-  try {
-    const response = await fetch(NPM_LATEST_URL, {
-      headers: { accept: 'application/json', 'user-agent': USER_AGENT },
-      signal: AbortSignal.timeout(8_000),
-    })
-    if (!response.ok) return null
-    const body = await response.json() as { version?: unknown }
-    return typeof body.version === 'string' ? body.version : null
-  } catch {
-    return null
-  }
 }
 
 /** Register the TTS settings and same-origin synthesis route. */
@@ -228,20 +204,6 @@ export function apply(ctx: Context, config: Config): void {
     contentType: 'image/webp',
     description: 'built-in voice assets',
   })
-
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: TTS_UPDATE_ROUTE,
-    async handler(req, res) {
-      if (req.method !== 'GET') {
-        res.setHeader('allow', 'GET')
-        json(res, 405, { error: 'method-not-allowed' })
-        return
-      }
-      const latest = await latestTtsVersion()
-      json(res, 200, { currentVersion: TTS_VERSION, latestVersion: latest, updateAvailable: latest !== null && isNewerTtsVersion(latest, TTS_VERSION) })
-    },
-  }), 'xiaomi-mimo-tts: update status route')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',

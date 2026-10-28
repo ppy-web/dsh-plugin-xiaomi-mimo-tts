@@ -1,8 +1,7 @@
-import type { ReactElement, RefObject } from 'react'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { ReactElement } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { AiFillGithub, AiOutlineGift } from 'react-icons/ai'
-import { GoHistory } from 'react-icons/go'
+import { AiFillGithub } from 'react-icons/ai'
 import { RiSwitchFill } from 'react-icons/ri'
 import {
   TTS_API_KEY_STATUS_ROUTE,
@@ -20,8 +19,7 @@ import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PreviewPlayer } from '../playback/preview-player.js'
 import type { PreviewView } from '../playback/preview-player.js'
 import { isRecord, useSettingsSnapshot } from './scope.js'
-import { RELEASES_URL, SOURCE_URL } from './plugin-links.js'
-import { useAvailableUpdate } from './update-status.js'
+import { SOURCE_URL } from './plugin-links.js'
 import { ToggleSoundPlayer } from '../sound-effects/toggle-sound-player.js'
 import type { SoundEffectsController } from '../sound-effects/types.js'
 import { ApiKeyModule } from './api-key-module.js'
@@ -33,9 +31,9 @@ import { SoundEffectsPanel } from './sound-effects-module.js'
 import { SwitchModule } from './switch-module.js'
 import { readMinimalMode, writeMinimalMode } from './minimal-mode.js'
 import { hostRoute } from '../host-route.js'
+import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 import type { AudioHistory } from '../history/audio-history.js'
-import { AudioHistoryPage } from '../history/audio-history-page.js'
 import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
 import type { SpeechActivity } from '../announcements/speech-activity.js'
 import { isSpeechBusy } from '../announcements/speech-activity.js'
@@ -46,8 +44,9 @@ interface SettingsCardProps {
   scope: ConfigForm<TtsSettings>
   t: Translate
   controller: SoundEffectsController
+  beforePreview?: (() => void) | undefined
+  changes?: SnapshotSource<boolean> | undefined
   history?: AudioHistory | undefined
-  beforeHistoryPlayback?: (() => void) | undefined
   audioFocus?: AudioFocus | undefined
   speechActivity?: SpeechActivity | undefined
 }
@@ -70,21 +69,15 @@ function hasLayerField(value: unknown, field: string): boolean {
   return isRecord(value) && Object.hasOwn(value, field)
 }
 
-function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement | null> }): ReactElement {
-  const view = useSyncExternalStore(history.subscribe, history.getSnapshot)
-  return <Button ref={buttonRef} type="button" className="xmimo-tts-history-link" variant="toolbar" size="sm" onClick={onOpen}>
-    <GoHistory size={14} aria-hidden="true" focusable="false" />
-    <span className="xmimo-tts-action-label">{t('history.title')} · {view.entries.length}</span>
-  </Button>
-}
-
 export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   if (props.view === 'summary') return <>{props.t('settings.description')}</>
-  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} history={props.history} beforeHistoryPlayback={props.beforeHistoryPlayback} audioFocus={props.audioFocus} speechActivity={props.speechActivity} />
+  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} history={props.history} audioFocus={props.audioFocus} speechActivity={props.speechActivity} beforePreview={props.beforePreview} changes={props.changes} />
 }
 
-function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, speechActivity, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
+  const changing = useSyncExternalStore(pluginChanges.subscribe, pluginChanges.getSnapshot, pluginChanges.getSnapshot)
+  const writable = snapshot.writable && !changing
   const value = snapshot.value
   const initial = resolveTtsSettings(value)
   const [apiKeys, setApiKeys] = useState({ xiaomi: '', doubao: '' })
@@ -130,11 +123,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
     toggleSoundPlayer.dispose()
   }), [audioFocus, previewPlayer, toggleSoundPlayer])
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>('loading')
-  const latestVersion = useAvailableUpdate()
   const [minimalMode, setMinimalMode] = useState(readMinimalMode)
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const historyLinkRef = useRef<HTMLButtonElement>(null)
-  const historyWasOpen = useRef(false)
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
@@ -176,10 +165,11 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
   const apiKeyInvalid = apiKeyViewState === 'pending-invalid' || apiKeyViewState === 'unrecognized'
 
   useEffect(() => {
-    if (snapshot.status === 'unavailable') return
+    if (snapshot.status === 'unavailable' || changing) { setApiKeyStatus('loading'); return }
     let active = true
+    const request = new AbortController()
     setApiKeyStatus('loading')
-    void fetch(`${hostRoute(TTS_API_KEY_STATUS_ROUTE)}?provider=${provider}`, { headers: { accept: 'application/json' } })
+    void fetch(`${hostRoute(TTS_API_KEY_STATUS_ROUTE)}?provider=${provider}`, { headers: { accept: 'application/json' }, signal: request.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('api-key-status-failed')
         return await response.json() as { configured?: unknown; supported?: unknown }
@@ -191,8 +181,8 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
       .catch(() => {
         if (active) setApiKeyStatus('unavailable')
       })
-    return () => { active = false }
-  }, [provider, snapshot.status, value])
+    return () => { active = false; request.abort() }
+  }, [provider, snapshot.status, value, changing])
 
   useEffect(() => {
     if (dirty) return
@@ -236,10 +226,6 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
 
   useEffect(() => { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setVolume(voiceVolume) }, [previewPlayer, toggleSoundPlayer, voiceVolume])
 
-  useEffect(() => {
-    if (!historyOpen && historyWasOpen.current) historyLinkRef.current?.focus({ preventScroll: true })
-    historyWasOpen.current = historyOpen
-  }, [historyOpen])
 
   if (snapshot.status === 'unavailable') return null
 
@@ -309,6 +295,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
   }
 
   const save = async (): Promise<void> => {
+    if (!writable || pluginChanges.getSnapshot()) return
     setOpenPanel(null)
     setState('saving')
     try {
@@ -335,7 +322,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
       setPreviewView({ status: 'error', source: provider === 'doubao' ? 'doubao' : 'mimo', error: validationError !== null ? 'voice-required' : 'save-key-first' })
       return
     }
-    beforeHistoryPlayback?.()
+    beforePreview?.()
     void previewPlayer.play(text, {
       provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, instruction,
       model,
@@ -413,16 +400,9 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
     if (next) previewPlayer.stop()
   }
 
-  if (historyOpen && history) return <AudioHistoryPage history={history} t={t} volume={voiceVolume} voiceRate={voiceRate} minimalMode={minimalMode} speechActivity={speechActivity}
-    beforePlayback={() => {
-      audioFocus.claim()
-      previewPlayer.stop()
-      toggleSoundPlayer.dispose()
-      beforeHistoryPlayback?.()
-    }} onBack={() => { setHistoryOpen(false) }} />
-
   return (
     <div className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
+      {changing ? <p className="xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p> : null}
       <div className="xmimo-tts-card-body xmimo-ui-stack">
         <SwitchModule
           t={t}
@@ -431,7 +411,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
           autoPlay={autoPlay}
           soundEnabled={soundEnabled}
           minimal={minimalMode}
-          writable={snapshot.writable}
+          writable={writable}
           onProviderChange={changeProvider}
           onEnabledChange={changeEnabled}
           onAutoPlayChange={changeAutoPlay}
@@ -443,7 +423,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
           value={apiKey}
           message={apiKeyMessage}
           invalid={apiKeyInvalid}
-          writable={snapshot.writable}
+          writable={writable}
           minimal={minimalMode}
           onChange={(next) => { setApiKey(next); markChange(apiKeyField) }}
         />
@@ -464,7 +444,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
           onDoubaoClonedVoiceChange={next => { previewPlayer.stop(); setDoubaoClonedVoice(next); markChange('doubaoClonedVoice') }}
           open={openPanel === 'mixer'}
           minimal={minimalMode}
-          writable={snapshot.writable}
+          writable={writable}
           autoPlay={autoPlay}
           voiceVolume={voiceVolume}
           voiceRate={voiceRate}
@@ -502,7 +482,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
           pack={soundPack}
           taskSounds={taskSounds}
           clickSounds={clickSounds}
-          writable={snapshot.writable}
+          writable={writable}
           minimal={minimalMode}
           open={openPanel === 'sound'}
           onToggle={() => togglePanel('sound')}
@@ -512,7 +492,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
         /> : null}
         {enabled ? <PreviewModule
           t={t}
-          enabled={enabled}
+          enabled={enabled && !changing}
           open={openPanel === 'broadcast'}
           onToggleOpen={() => togglePanel('broadcast')}
           status={previewView.status}
@@ -522,7 +502,7 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
           onToggle={toggleSettingsPreview}
           onTextChange={setPreviewText}
           sources={announcementSources}
-          writable={snapshot.writable}
+          writable={writable}
           overridden={fieldOverridden('announcementSources')}
           onReset={() => resetField('announcementSources')}
           onChange={next => { setAnnouncementSources(next); markChange('announcementSources') }}
@@ -530,12 +510,6 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
         <div className="xmimo-tts-card-footer">
           <div className="xmimo-tts-card-actions">
             <div className="xmimo-tts-card-action-links">
-              {latestVersion !== null
-                ? <a className="xmimo-tts-update" href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
-                  <AiOutlineGift size={14} aria-hidden="true" focusable="false" />
-                  <span className="xmimo-tts-action-label">{t('settings.updateAvailable')}</span>
-                </a>
-                : null}
               <a
                 className="xmimo-tts-star"
                 href={SOURCE_URL}
@@ -545,11 +519,6 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
                 <AiFillGithub size={14} aria-hidden="true" focusable="false" />
                 <span className="xmimo-tts-action-label">{t('settings.source')}</span>
               </a>
-              {history ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
-                previewPlayer.stop()
-                toggleSoundPlayer.dispose()
-                setHistoryOpen(true)
-              }} /> : null}
               <Button
                 type="button"
                 variant="toolbar"
@@ -568,10 +537,10 @@ function SettingsPage({ scope, t, controller, history, beforeHistoryPlayback, sp
             {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}
             <div className="xmimo-tts-card-action-buttons">
               {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
-              <Button type="button" variant="outline" size="sm" className="xmimo-tts-discard" disabled={!snapshot.writable || !dirty || state === 'saving'} onClick={discard}>
+              <Button type="button" variant="outline" size="sm" className="xmimo-tts-discard" disabled={!writable || !dirty || state === 'saving'} onClick={discard}>
                 {t('settings.discard')}
               </Button>
-              <Button type="button" variant="primary" size="sm" className="xmimo-tts-save" disabled={!snapshot.writable || !dirty || state === 'saving' || validationError !== null} onClick={() => { void save() }}>
+              <Button type="button" variant="primary" size="sm" className="xmimo-tts-save" disabled={!writable || !dirty || state === 'saving' || validationError !== null} onClick={() => { void save() }}>
                 {state === 'saving' ? t('settings.saving') : t('settings.save')}
               </Button>
             </div>

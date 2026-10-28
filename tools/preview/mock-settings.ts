@@ -4,7 +4,6 @@ import {
   TTS_API_KEY_STATUS_ROUTE,
   TTS_ROUTE,
   TTS_STREAM_ROUTE,
-  TTS_UPDATE_ROUTE,
 } from '../../src/shared.js'
 import type { TtsSettings } from '../../src/shared.js'
 import type { TtsProvider } from '../../src/types/providers.js'
@@ -138,7 +137,6 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
     const pathname = url.pathname
 
     if (pathname === TTS_API_KEY_STATUS_ROUTE) return jsonResponse(scope.apiKeyStatus(url.searchParams.get('provider') === 'doubao' ? 'doubao' : 'xiaomi'))
-    if (pathname === TTS_UPDATE_ROUTE) return jsonResponse({ latestVersion: null, updateAvailable: false })
     if (pathname === TTS_ROUTE || pathname === TTS_STREAM_ROUTE) {
       return previewAudioResponse(pathname === TTS_STREAM_ROUTE)
     }

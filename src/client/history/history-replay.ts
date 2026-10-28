@@ -27,7 +27,7 @@ export class HistoryReplay {
   private offStop: (() => void) | null = null
   private offHistory: (() => void) | null = null
 
-  constructor(private readonly history: AudioHistory, private beforePlayback: () => void) {}
+  constructor(private readonly history: AudioHistory, private beforePlayback: () => boolean | void) {}
 
   /** Called by the page effect, so interrupted React renders never subscribe. */
   activate(): void {
@@ -45,7 +45,7 @@ export class HistoryReplay {
     return () => { this.listeners.delete(listener) }
   }
 
-  configure(volume: number, voiceRate: number, beforePlayback: () => void): void {
+  configure(volume: number, voiceRate: number, beforePlayback: () => boolean | void): void {
     this.volume = volume
     this.voiceRate = voiceRate
     this.beforePlayback = beforePlayback
@@ -57,7 +57,7 @@ export class HistoryReplay {
 
   async play(entry: AudioHistoryEntry): Promise<void> {
     if (this.disposed) return
-    this.beforePlayback()
+    if (this.beforePlayback() === false) return
     if (this.view.entryId !== entry.id || this.media === null || this.view.status === 'error') {
       this.release()
       const epoch = this.epoch

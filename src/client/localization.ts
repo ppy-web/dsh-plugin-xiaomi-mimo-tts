@@ -3,6 +3,13 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 export const NS = 'xiaomi-mimo-tts'
 
 export const zh = {
+  "plugin.changing": "插件正在变更，语音播放暂时停止。",
+  "onboarding.title": "先听一句，轻松开始",
+  "onboarding.description": "浏览器语音无需 API Key 即可试听。使用小米或豆包语音时，请在插件设置中选择服务商并保存密钥。自动播报和音效默认关闭。",
+  "onboarding.configure": "打开插件设置",
+  "onboarding.preview": "试听浏览器语音",
+  "onboarding.dismiss": "稍后再说",
+  "onboarding.sample": "你好，我是鲸鱼娘。语音已经准备好了，很高兴陪你一起探索。",
   'settings.announcementsApprovals': '审批提醒',
   'settings.announcementsApprovalsHint': '提醒当前会话的待审批操作；处理或撤回后停止',
   'settings.announcementsJobs': '后台任务结果',
@@ -108,9 +115,7 @@ export const zh = {
   "error.timeout": "语音合成超时，请重试。",
   "error.bufferLimit": "音频缓存已达上限，播放已停止。",
 
-  'history.title': '音频',
-  'history.back': '返回',
-  'history.backToSettings': '返回设置页',
+  'history.title': '音频历史',
   'history.search': '搜索音频摘要',
   'history.source': '来源',
   'history.all': '全部',
@@ -335,7 +340,6 @@ export const zh = {
   "settings.discard": "放弃修改",
   "settings.failed": "保存失败，请重试",
   "settings.source": "赏个Star",
-  "settings.updateAvailable": "新版已发布",
   "settings.readOnly": "当前 DSH 设置为只读",
   "settings.secretPlaceholder": "输入当前服务商的新 API Key",
   "settings.expand": "展开设置",
@@ -379,6 +383,13 @@ export const zh = {
 } as const;
 
 export const en: Record<keyof typeof zh, string> = {
+  "plugin.changing": "Plugin changes are in progress. Speech is temporarily paused.",
+  "onboarding.title": "Try your first sentence",
+  "onboarding.description": "Preview browser speech without an API key. For Xiaomi or Doubao voices, choose a provider and save its key in plugin settings. Autoplay and sound effects start off.",
+  "onboarding.configure": "Open plugin settings",
+  "onboarding.preview": "Preview browser speech",
+  "onboarding.dismiss": "Maybe later",
+  "onboarding.sample": "Hello, I am Whale Maid. Your voice is ready. Let us explore together.",
   'settings.announcementsApprovals': 'Approval reminders',
   'settings.announcementsApprovalsHint': 'Announce pending approvals in this conversation; stop when resolved or withdrawn',
   'settings.announcementsJobs': 'Background job results',
@@ -484,9 +495,7 @@ export const en: Record<keyof typeof zh, string> = {
   "error.timeout": "Speech synthesis timed out. Try again.",
   "error.bufferLimit": "Audio buffer limit reached. Playback stopped.",
 
-  'history.title': 'Audio',
-  'history.back': 'Back',
-  'history.backToSettings': 'Back to settings',
+  'history.title': 'Audio history',
   'history.search': 'Search audio summaries',
   'history.source': 'Source',
   'history.all': 'All',
@@ -729,7 +738,6 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.discard": "Discard changes",
   "settings.failed": "Save failed. Try again",
   "settings.source": "View source",
-  "settings.updateAvailable": "New release",
   "settings.readOnly": "DSH settings are read-only",
   "settings.secretPlaceholder": "Enter a new key for this provider",
   "settings.expand": "Expand settings",
@@ -779,3 +787,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'xiaomi-mimo-tts': LocaleKey
   }
 }
+
+export { ja } from './locales/ja.js'
+export { fr } from './locales/fr.js'

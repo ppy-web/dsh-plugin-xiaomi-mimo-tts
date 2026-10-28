@@ -5,6 +5,7 @@ import { resolveTtsSettings, TTS_HISTORY_EMPTY_ASSET_ROUTE, TTS_READ_SCOPES } fr
 import type { TtsReadScope, TtsSettings } from '../../shared.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
 import { readVoiceIdHistory } from './voice-id-history.js'
@@ -33,6 +34,7 @@ import { readMinimalMode, subscribeMinimalMode } from './minimal-mode.js'
 
 export interface VoiceReadingSectionInjected {
   scope: ConfigForm<TtsSettings>
+  changes?: SnapshotSource<boolean> | undefined
   t: Translate
   openPluginSettings: () => void
 }
@@ -42,22 +44,24 @@ export type VoiceReadingSectionProps = PropsRuntime<'settings.section'> & Partia
 export function VoiceReadingSection(props: VoiceReadingSectionProps): ReactElement | null {
   const { scope, t, openPluginSettings } = props
   if (scope === undefined || t === undefined || openPluginSettings === undefined) return null
-  return <VoiceReadingPage scope={scope} t={t} openPluginSettings={() => {
+  return <VoiceReadingPage scope={scope} t={t} changes={props.changes} openPluginSettings={() => {
     props.close()
     openPluginSettings()
   }} />
 }
 
 interface VoiceReadingPageProps {
+  changes?: SnapshotSource<boolean> | undefined
   scope: ConfigForm<TtsSettings>
   t: Translate
   openPluginSettings: () => void
 }
 
 
-function VoiceReadingPage({ scope, t, openPluginSettings }: VoiceReadingPageProps): ReactElement | null {
+function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_CHANGES }: VoiceReadingPageProps): ReactElement | null {
   const minimalMode = useSyncExternalStore(subscribeMinimalMode, readMinimalMode, () => false)
   const snapshot = useSettingsSnapshot(scope)
+  const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
   const [clonedHistory] = useState(() => readVoiceIdHistory('cloned'))
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -68,7 +72,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings }: VoiceReadingPageProp
   )
 
   const write = (ops: VoiceReadingWriteOp[]): void => {
-    if (!snapshot.writable || ops.length === 0) return
+    if (changes.getSnapshot() || !snapshot.writable || ops.length === 0) return
     setBusy(true)
     setFailed(false)
     void scope.mutate(ops as Parameters<ConfigForm<TtsSettings>['mutate']>[0])
@@ -91,7 +95,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings }: VoiceReadingPageProp
   // "not ready" so the page never claims the deployment is read-only while the
   // real values are still arriving.
   const ready = snapshot.status === 'ready'
-  const disabled = !ready || !snapshot.writable || busy
+  const disabled = changing || !ready || !snapshot.writable || busy
   const hasStoredChoice = source.choices.some((choice) => choice.value === source.value)
   const voiceOptions = [
     ...(hasStoredChoice ? [] : [{ id: source.value, label: t('settings.voiceReadingCustomVoice') }]),
@@ -116,10 +120,11 @@ function VoiceReadingPage({ scope, t, openPluginSettings }: VoiceReadingPageProp
         <span aria-hidden="true">↗</span>
       </button>
     </p>
+    {changing ? <p role="status">{t('plugin.changing')}</p> : null}
     <VoiceReadingProvider value={settings.provider} disabled={disabled} t={t} onChange={provider => {
       write([{ op: 'set', path: ['provider'], value: provider }])
     }} />
-    {ready ? <VoiceReadingWarning settings={settings} revision={snapshot.revision} t={t} openPluginSettings={openPluginSettings} /> : null}
+    {ready ? <VoiceReadingWarning active={!changing} settings={settings} revision={snapshot.revision} t={t} openPluginSettings={openPluginSettings} /> : null}
     {ready && !snapshot.writable && <p className="xmimo-voice-reading-notice" role="status">{t('settings.voiceReadingReadOnly')}</p>}
     <div className="xmimo-voice-reading-card">
       <div className="xmimo-voice-reading-row">

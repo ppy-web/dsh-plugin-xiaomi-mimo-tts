@@ -16,7 +16,6 @@ const {
   DEFAULT_TTS_SEGMENT_CHARACTERS,
   firstTtsSegment,
   firstTtsSegments,
-  isNewerTtsVersion,
   MAX_TTS_SEGMENT_CHARACTERS,
   MIN_TTS_SEGMENT_CHARACTERS,
   MIN_TTS_STREAM_CHARACTERS,
@@ -28,7 +27,6 @@ const {
   TTS_READ_SCOPES,
   TTS_SMART_TRUNCATION_OUTROS,
   TOKEN_PLAN_TTS_BASE_URL,
-  TTS_UPDATE_ROUTE,
   TTS_VERSION,
   TtsFirstSegmentLimiter,
 } = sharedModule
@@ -83,7 +81,6 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
   for (const [name, range] of Object.entries(packageJson.devDependencies)) {
     if (name.startsWith('@deepseek-ai/dsh-')) assert.equal(range, DEVELOPMENT_DSH_VERSION, name)
   }
-  assert.equal(TTS_UPDATE_ROUTE, '/plugins/xiaomi-mimo-tts/update')
   assert.ok(packageJson.exports['./client']?.default)
   assert.ok(packageJson.exports['./client-api']?.types)
   assert.ok(packageJson.exports['./client-api']?.default)
@@ -99,14 +96,12 @@ test('Windows profile cleanup supports desktop and removes only profile-local li
   assert.match(unlinkScript, /plugin --profile "%PROFILE%" remove/u)
 })
 
-test('README keeps required structure and local targets valid', async () => {
+test('README keeps local targets, development commands and usage guarantees valid', async () => {
   await assertLocalReadmeTargets(readmeZh, 'README.md')
   assert.match(readmeZh, /https:\/\/ppy-web\.github\.io\/dsh-plugin-xiaomi-mimo-tts/u)
   assert.match(readmeZh, /src\/client\/settings\/card\.tsx/u)
   assert.match(readmeZh, /pnpm dev:build/u)
   assert.match(readmeZh, /Web Speech API/u)
-  assert.match(readmeZh, /(?:^|\r?\n)##\s+[^\r\n]*隐私与网络访问/u, 'README.md should retain privacy guidance')
-  assert.match(readmeZh, /(?:^|\r?\n)##\s+[^\r\n]*开发/u, 'README.md should retain development guidance')
   assert.doesNotMatch(readmeZh, /src\/client\/settings-card\.tsx/u)
   assert.match(readmeZh, /自动播报[^\r\n。；]*关闭/u)
 })

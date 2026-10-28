@@ -24,9 +24,6 @@
 .xmimo-tts-history-player-controls { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .xmimo-tts-history-header { flex: none; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--xmimo-ui-border); }
 .xmimo-tts-history-header h2 { flex: none; margin: 0; font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 6px; }
-.xmimo-tts-history-header .xmimo-tts-history-title-back { display: inline-flex; flex: none; align-items: center; gap: 4px; border: 0; border-radius: 6px; padding: 0 4px 0 0; color: var(--xmimo-ui-brand); background: transparent; font: inherit; cursor: pointer; }
-.xmimo-tts-history-title-back > svg { flex: none; }
-.xmimo-tts-history-title-back:hover { background: var(--xmimo-ui-hover); }
 .xmimo-tts-history-count { font-size: 12px; font-weight: 400; color: var(--xmimo-ui-text-muted); flex: none; }
 .xmimo-tts-history-toolbar { flex: 0 1 460px; justify-content: flex-end; margin-inline-start: auto; }
 .xmimo-tts-history-search { flex: 1 1 150px; min-width: 0; }
@@ -72,7 +69,6 @@
 .xmimo-tts-history-page select:focus-visible,
 .xmimo-tts-history-page input:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
 .xmimo-tts-history-text:hover { color: var(--xmimo-ui-brand); }
-.xmimo-tts-history-link { color: var(--xmimo-ui-text); }
 
 .xmimo-tts-history-page .xmimo-tts-history-search:focus-within,
 .xmimo-tts-history-page .xmimo-tts-history-search input:focus {
@@ -88,7 +84,6 @@
   .xmimo-tts-history-page .xmimo-tts-history-action { width: 44px; min-width: 44px; padding: 0; }
   .xmimo-tts-history-action > span { display: none; }
   .xmimo-tts-history-page button,
-  .xmimo-tts-history-page .xmimo-tts-history-back,
   .xmimo-tts-history-search input { min-height: 44px; }
   .xmimo-tts-history-page .xmimo-tts-history-row { grid-template-columns: 44px minmax(0, 1fr) auto; align-items: start; padding-block: 10px; }
   .xmimo-tts-history-page .xmimo-tts-history-player-toggle { width: 44px; height: 44px; min-width: 44px; }

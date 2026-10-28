@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { SettingsCard } from '../../src/client/settings/card.js'
 import { createSoundEffectsController } from '../../src/client/sound-effects/index.js'
 import { CLIENT_STYLES } from '../../src/client/style/index.js'
-import { en, zh } from '../../src/client/localization.js'
+import { en, zh, ja, fr } from '../../src/client/localization.js'
 import type { LocaleKey, Translate } from '../../src/client/localization.js'
 import pluginIcon from '../../assets/plugin-icons/avatar.webp'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
@@ -14,16 +14,21 @@ import { FilterLab } from './filter-lab.js'
 import { TTS_VERSION } from '../../src/shared.js'
 import enPluginLocale from '../../locale/en.json'
 import zhPluginLocale from '../../locale/zh.json'
+import jaPluginLocale from '../../locale/ja.json'
+import frPluginLocale from '../../locale/fr.json'
+import { ActivationGuide } from '../../src/client/settings/activation-guide.js'
+import { AudioHistoryTab } from '../../src/client/history/audio-history-tab.js'
+import { unrestrictedAudioFocus } from '../../src/client/playback/tab-audio-focus.js'
 import './preview.css'
 import { AudioHistory } from '../../src/client/history/audio-history.js'
 import { ConversationPreview } from './conversation-preview.js'
 import { VoiceReadingPreview } from './voice-reading-preview.js'
 import { PreviewNotice } from './preview-notice.js'
 
-type PreviewLocale = 'zh' | 'en'
+type PreviewLocale = 'zh' | 'en' | 'ja' | 'fr'
 type PreviewTheme = 'light' | 'dark'
 
-const TOOLBAR_COPY: Record<PreviewLocale, {
+const TOOLBAR_COPY: Record<'zh' | 'en', {
   subtitle: string
   page: string
   language: string
@@ -84,6 +89,8 @@ const PREVIEW_PLUGIN_META = {
   locales: {
     zh: zhPluginLocale.meta,
     en: enPluginLocale.meta,
+    ja: jaPluginLocale.meta,
+    fr: frPluginLocale.meta,
   },
 } as const
 
@@ -95,7 +102,7 @@ const history = new AudioHistory()
 if (import.meta.hot) import.meta.hot.dispose(() => { restorePreviewFetch(); void soundEffects.dispose(); void history.dispose() })
 
 function translator(locale: PreviewLocale): Translate {
-  const dictionary: Record<LocaleKey, string> = locale === 'zh' ? zh : en
+  const dictionary: Record<LocaleKey, string> = { zh, en, ja, fr }[locale]
   return (key) => dictionary[key]
 }
 
@@ -107,18 +114,18 @@ function PreviewApp() {
   const [isToolbarCompact, setIsToolbarCompact] = useState(false)
   const [isManualOpen, setIsManualOpen] = useState(false)
   const [isControlsOpen, setIsControlsOpen] = useState(false)
-  const [activeView, setActiveView] = useState<'settings' | 'filter'>('settings')
+  const [activeView, setActiveView] = useState<'settings' | 'filter' | 'history' | 'activation'>('settings')
   const lastScrollYRef = useRef(0)
   const toolbarRef = useRef<HTMLElement | null>(null)
   const manualToggleRef = useRef<HTMLButtonElement | null>(null)
   const controlsToggleRef = useRef<HTMLButtonElement | null>(null)
   const listRef = useRef<HTMLUListElement | null>(null)
   const t = useMemo(() => translator(locale), [locale])
-  const toolbar = TOOLBAR_COPY[locale]
+  const toolbar = TOOLBAR_COPY[locale === 'zh' ? 'zh' : 'en']
   const pluginMeta = PREVIEW_PLUGIN_META.locales[locale]
 
   useEffect(() => {
-    document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en'
+    document.documentElement.lang = locale === 'zh' ? 'zh-CN' : locale
     document.documentElement.dataset.theme = theme
   }, [locale, theme])
 
@@ -241,13 +248,17 @@ function PreviewApp() {
         aria-label={toolbar.controls}
       >
         <div className="preview-control-selects">
-          <select aria-label={toolbar.page} value={activeView} onChange={(event) => { setActiveView(event.target.value as 'settings' | 'filter') }}>
+          <select aria-label={toolbar.page} value={activeView} onChange={(event) => { setActiveView(event.target.value as typeof activeView) }}>
             <option value="settings">{toolbar.settingsTab}</option>
             <option value="filter">{toolbar.filterTab}</option>
+            <option value="history">{t('history.title')}</option>
+            <option value="activation">{t('onboarding.title')}</option>
           </select>
           <select aria-label={toolbar.language} value={locale} onChange={(event) => { changeLocale(event.target.value as PreviewLocale) }}>
             <option value="zh">中文</option>
             <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="fr">Français</option>
           </select>
           <select aria-label={toolbar.theme} value={theme} onChange={(event) => { setTheme(event.target.value as PreviewTheme) }}>
             <option value="light">{toolbar.light}</option>
@@ -262,10 +273,12 @@ function PreviewApp() {
       </div>
     </header>
     <main className={`preview-stage${activeView === 'filter' ? ' preview-stage-filter' : ''}`}>
-      {activeView === 'filter' ? <FilterLab locale={locale} /> :
+      {activeView === 'history' ? <AudioHistoryTab history={history} scope={scope} t={t} beforePlayback={() => {}} />
+        : activeView === 'activation' ? <ActivationGuide packageName="dsh-xiaomi-tts" scope={scope} t={t} audioFocus={unrestrictedAudioFocus} beforePreview={() => history.stopReplay()} onOpenDetails={() => setActiveView('settings')} onDismiss={() => setActiveView('settings')} />
+        : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} /> :
       <div className={`preview-workspace${isManualOpen ? '' : ' preview-workspace-manual-closed'}`}>
         <UserManual
-          locale={locale}
+          locale={locale === 'zh' ? 'zh' : 'en'}
           isOpen={isManualOpen}
           onOpenChange={setIsManualOpen}
           onFocusToggle={() => { manualToggleRef.current?.focus() }}
@@ -292,7 +305,7 @@ function PreviewApp() {
           <div className="preview-voice-reading">
             <VoiceReadingPreview scope={scope} t={t} />
           </div>
-          <BundleComponents locale={locale} />
+          <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} />
           <ConversationPreview scope={scope} />
         </section>
       </div>

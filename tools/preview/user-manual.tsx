@@ -99,11 +99,10 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       {
         id: 'manual-actions',
         title: '07 · 底部操作栏',
-        summary: '统一处理更新、放弃和保存。',
+        summary: '查看源码、放弃草稿与保存配置。',
         items: [
-          { label: '🎉 新版已发布', detail: '当检测到新版本时显示。点击后在新标签页打开 GitHub Releases；它只是查看发布页，不会自动升级。' },
           { label: '✨ 查看源码', detail: '点击后在新标签页打开插件 GitHub 仓库，用于查看源代码、问题和发布记录。' },
-          { label: '音频', detail: '底部小按钮进入独立历史页，普通与极简模式共用紧凑布局，关闭语音播放后仍可访问。标题栏右侧可搜索摘要或按来源筛选，点击摘要展开文字；使用记录左侧的圆形按钮播放或暂停，当前记录内可拖动进度。存储信息与返回按钮位于底部。下载不请求 MiMo；删除需确认，清空会删除全部记录，包括被筛选隐藏的记录。返回设置会停止重听并保留未保存草稿。记录保存在当前浏览器，最多 100 条 / 100 MB；存储不可用时会显示临时保存提示。' },
+          { label: '音频', detail: '在插件页面选择“音频历史”标签进入，普通与极简模式共用紧凑布局，关闭语音播放后仍可访问。标题栏右侧可搜索摘要或按来源筛选，点击摘要展开文字；使用记录左侧的圆形按钮播放或暂停，当前记录内可拖动进度。存储信息位于底部。下载不请求 MiMo；删除需确认，清空会删除全部记录，包括被筛选隐藏的记录。离开标签页会停止重听。记录保存在当前浏览器，最多 100 条 / 100 MB；存储不可用时会显示临时保存提示。' },
           { label: '放弃修改', detail: '点击后丢弃当前所有未保存草稿，恢复到设置层最近一次已接受的值；不会写入新的配置。没有未保存修改或只读时按钮不可用。' },
           { label: '保存', detail: '点击后按字段提交所有修改，并在提交前收起调音台和音效库。成功显示“已保存”；失败显示错误提示，可在修正后重试。保存是 API Key、语音和音效设置真正持久化的边界。' },
         ],
@@ -220,11 +219,10 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       {
         id: 'manual-actions',
         title: '07 · Bottom action bar',
-        summary: 'Handle updates, discard, and save in one place.',
+        summary: 'View the source, discard drafts, and save changes.',
         items: [
-          { label: '🎉 New release', detail: 'Appears when an update is detected. Click it to open GitHub Releases in a new tab; it only opens the release page and does not upgrade automatically.' },
           { label: '✨ View source', detail: 'Click to open the plugin GitHub repository in a new tab for source, issues, and release history.' },
-          { label: 'Audio · count', detail: 'The small footer button opens a separate compact page shared by default and minimal modes, available even when speech is off. Search summaries, filter by source, or expand text. Replay controls with pause and seeking sit in the title bar; storage information and Back sit at the bottom. Downloads do not call MiMo. Deletion requires confirmation; clearing removes all entries, including filtered-out records. Returning stops replay and preserves unsaved drafts. This browser retains up to 100 entries / 100 MB; a warning appears when only temporary storage is available.' },
+          { label: 'Audio · count', detail: 'The Audio history tab on the Plugins page opens a compact page shared by default and minimal modes, available even when speech is off. Search summaries, filter by source, or expand text. Replay controls with pause and seeking sit in the title bar; storage information sits at the bottom. Downloads do not call MiMo. Deletion requires confirmation; clearing removes all entries, including filtered-out records. Leaving the tab stops replay. This browser retains up to 100 entries / 100 MB; a warning appears when only temporary storage is available.' },
           { label: 'Discard changes', detail: 'Click to drop every unsaved draft and restore the last accepted settings-layer values. It writes no new configuration and is disabled when clean or read-only.' },
           { label: 'Save', detail: 'Click to submit all changed fields and collapse the Console and Sound Effects panels first. Success shows Saved; failure shows an error so you can retry. Save is the persistence boundary for API keys, voice, and sound settings.' },
         ],

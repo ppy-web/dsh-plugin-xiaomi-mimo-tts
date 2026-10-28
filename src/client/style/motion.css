@@ -3,14 +3,14 @@
  */
 
 @media (prefers-reduced-motion: reduce) {
-  .xmimo-tts-card-actions :is(.xmimo-tts-update, .xmimo-tts-star),
-  .xmimo-tts-card-actions :is(.xmimo-tts-update, .xmimo-tts-star):is(:hover, :focus-visible) {
+  .xmimo-tts-card-actions :is(.xmimo-tts-star),
+  .xmimo-tts-card-actions :is(.xmimo-tts-star):is(:hover, :focus-visible) {
     transition: none;
     transform: none
   }
 
-  .xmimo-tts-card-actions :is(.xmimo-tts-update, .xmimo-tts-star)::before,
-  .xmimo-tts-card-actions :is(.xmimo-tts-update, .xmimo-tts-star):is(:hover, :focus-visible)::before {
+  .xmimo-tts-card-actions :is(.xmimo-tts-star)::before,
+  .xmimo-tts-card-actions :is(.xmimo-tts-star):is(:hover, :focus-visible)::before {
     animation: none;
     transform: none
   }

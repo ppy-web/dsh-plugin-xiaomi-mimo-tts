@@ -6,5 +6,3 @@
  */
 
 export const SOURCE_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts'
-
-export const RELEASES_URL = `${SOURCE_URL}/releases`

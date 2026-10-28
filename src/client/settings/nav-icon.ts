@@ -14,7 +14,7 @@
  * switch, registrant changes), so the mark is re-applied from a coalesced
  * MutationObserver scan and removed on dispose.
  */
-import { en, zh } from '../localization.js'
+import { en, zh, ja, fr } from '../localization.js'
 
 /** Attribute the stylesheet keys the glyph swap off. */
 export const VOICE_READING_NAV_ATTRIBUTE = 'data-xmimo-voice-reading-nav'
@@ -27,7 +27,7 @@ const NAV_CELL_SELECTOR = 'nav button'
 
 /** Section labels in every locale the plugin ships; the shell renders one at a time. */
 export function voiceReadingNavLabels(): readonly string[] {
-  return [zh['settings.voiceReadingNav'], en['settings.voiceReadingNav']]
+  return [zh, en, ja, fr].map(dictionary => dictionary['settings.voiceReadingNav'])
 }
 
 /** Structural nav-cell contract, so the marker is testable with a fake root. */
