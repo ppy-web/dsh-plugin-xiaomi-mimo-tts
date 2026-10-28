@@ -1,6 +1,7 @@
 {
   "meta": {
     "title": "MiMo & Seed TTS",
-    "description": "Add Xiaomi MiMo and Doubao text-to-speech to DSH, audio history and downloads, browser speech fallback, and optional UI sound effects."
+    "description": "Add Xiaomi MiMo and Doubao text-to-speech to DSH, audio history and downloads, browser speech fallback, and optional UI sound effects.",
+    "detail": "intro.md"
   }
 }

@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "MiMo & Seed TTS",
+    "description": "Xiaomi MiMo と Doubao による DSH の音声読み上げ。音声履歴とダウンロード、ブラウザー音声への切り替え、任意の効果音に対応します。",
+    "detail": "intro.md"
+  }
+}

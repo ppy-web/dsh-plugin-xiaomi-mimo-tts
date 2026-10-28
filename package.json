@@ -49,6 +49,8 @@
     "tools/scripts/prepare-package.mjs",
     "cordis.patch.yml",
     "README.md",
+    "handbook.md",
+    "intro.md",
     "skills",
     "assets",
     "LICENSE",

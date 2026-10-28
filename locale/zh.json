@@ -1,6 +1,7 @@
 {
   "meta": {
     "title": "MiMo & Seed TTS",
-    "description": "为 DSH 接入 Xiaomi MiMo 与豆包语音朗读，提供流畅的播报体验，并支持音频历史与下载、浏览器本地语音兜底和可选 UI 音效。"
+    "description": "为 DSH 接入 Xiaomi MiMo 与豆包语音朗读，提供流畅的播报体验，并支持音频历史与下载、浏览器本地语音兜底和可选 UI 音效。",
+    "detail": "intro.md"
   }
 }

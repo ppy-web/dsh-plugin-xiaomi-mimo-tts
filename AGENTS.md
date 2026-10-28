@@ -38,10 +38,16 @@ Assert observable behavior and stable contracts, not exact README prose, transla
 
 Do not write “傻逼断言”: never assert optional metadata, removed features, exact copy, or internal implementation details merely because they are easy to match. If a test fails after an intentional product change, delete or rewrite the stale assertion around the behavior that still matters instead of restoring dead compatibility just to satisfy the test.
 
+## Documentation Maintenance
+
+- `handbook.md` is the user manual. Add new configuration details, feature instructions, and detailed usage guidance there.
+- Only edit `README.md` when the user explicitly requests a README change, and limit edits to the requested scope. Do not expand it when adding features or configuration options.
+- `intro.md` is the host-facing plugin detail document, declared through `meta.detail` in both locale files. Keep it and any referenced assets in the published package.
+
 ## Commit & Pull Request Guidelines
 
 History uses prefixes such as `feat:`, `fix:`, `chore(deps-dev):`, and `release:`; keep subjects concise.
 
 For version preparation, Git tags, and GitHub Releases, use the project skill at [`.agents/skills/dsh-xiaomi-release/SKILL.md`](.agents/skills/dsh-xiaomi-release/SKILL.md).
 
-PRs should explain the changed behavior, link relevant issues, and report validation. Include screenshots for settings or preview changes. Keep `README.md` current, and verify preview builds and package contents when affected. Never commit API keys or local profile credentials.
+PRs should explain the changed behavior, link relevant issues, and report validation. Include screenshots for settings or preview changes. Keep `handbook.md` current for user-facing behavior changes, and verify preview builds and package contents when affected. Never commit API keys or local profile credentials.
