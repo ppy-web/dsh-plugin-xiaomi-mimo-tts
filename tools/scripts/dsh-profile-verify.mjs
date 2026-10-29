@@ -75,8 +75,8 @@ if (!Array.isArray(profileBundles) || !profileBundles.includes(PACKAGE_NAME)) {
 }
 
 const installedManifest = JSON.parse(await readFile(installedManifestPath, 'utf8'))
-if (installedManifest.version !== '4.2.4') {
-  throw new Error(`installed plugin version is ${String(installedManifest.version)}, expected 4.2.4`)
+if (installedManifest.version !== '4.3.0-alpha.1') {
+  throw new Error(`installed plugin version is ${String(installedManifest.version)}, expected 4.3.0-alpha.1`)
 }
 const installedStat = await lstat(installedRoot)
 const installedRealPath = await realpath(installedRoot)
