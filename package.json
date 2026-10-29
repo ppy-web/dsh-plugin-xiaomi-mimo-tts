@@ -44,6 +44,16 @@
       "types": "./lib/speech-agent.d.ts",
       "default": "./lib/speech-agent.js"
     },
+    "./qqbot": {
+      "types": "./lib/qqbot.d.ts",
+      "default": "./lib/qqbot.js"
+    },
+    "./qqbot/icon": "./assets/plugin-icons/qqbot.webp",
+    "./qqbot-agent": {
+      "types": "./lib/qqbot-agent.d.ts",
+      "default": "./lib/qqbot-agent.js"
+    },
+    "./qqbot/locale/*.json": "./locale/qqbot/*.json",
     "./whale-girl": {
       "types": "./lib/whale-girl.d.ts",
       "default": "./lib/whale-girl.js"

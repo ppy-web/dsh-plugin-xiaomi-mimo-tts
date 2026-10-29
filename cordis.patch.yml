@@ -24,6 +24,12 @@
         maxWavAudioBytes: 134217728
         maxPausedPcmBytes: 33554432
 
+# Optional QQ transport. Generic synthesis and tools do not depend on QQBot.
+- insert:
+    - id: speech-delivery-qqbot
+      name: 'dsh-xiaomi-tts/qqbot'
+      disabled: true
+
 # Optional companion preset: a whale maid with file, web, and question tools.
 - insert:
     - id: preset-whale-girl

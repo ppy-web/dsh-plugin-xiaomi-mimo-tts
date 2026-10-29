@@ -89,6 +89,8 @@ export default defineConfig([{
     'host-api': 'src/host-api.ts',
     'speech-host': 'src/speech-host.ts',
     'speech-agent': 'src/speech-agent.ts',
+    qqbot: 'src/qqbot.ts',
+    'qqbot-agent': 'src/qqbot-agent.ts',
     'pcm-stream': 'src/pcm-stream.ts',
     shared: 'src/shared.ts',
   },
