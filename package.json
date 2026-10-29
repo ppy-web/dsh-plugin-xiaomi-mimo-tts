@@ -32,6 +32,18 @@
       "types": "./lib/client-api.d.ts",
       "default": "./lib/client-api.js"
     },
+    "./host-api": {
+      "types": "./lib/host-api.d.ts",
+      "default": "./lib/host-api.js"
+    },
+    "./host": {
+      "types": "./lib/speech-host.d.ts",
+      "default": "./lib/speech-host.js"
+    },
+    "./speech-agent": {
+      "types": "./lib/speech-agent.d.ts",
+      "default": "./lib/speech-agent.js"
+    },
     "./whale-girl": {
       "types": "./lib/whale-girl.d.ts",
       "default": "./lib/whale-girl.js"
@@ -85,6 +97,9 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4 || ~4.0.6-alpha.1",
     "@deepseek-ai/dsh-agent-preset": ">=0.2.2-0 <0.3.0-0",
+    "@deepseek-ai/dsh-agent": ">=0.2.2-0 <0.3.0-0",
+    "@deepseek-ai/dsh-llm": ">=0.2.2-0 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/dsh-api-session-controller": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/dsh-client-locale": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/dsh-client-ui-chat": ">=0.2.2-0 <0.3.0-0",
@@ -101,6 +116,9 @@
     "react": "^18.2.0"
   },
   "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-agent": { "optional": true },
+    "@deepseek-ai/dsh-llm": { "optional": true },
+    "@deepseek-ai/dsh-tools": { "optional": true },
     "@deepseek-ai/dsh-agent-preset": {
       "optional": true
     },
@@ -169,9 +187,12 @@
     "@deepseek-ai/dsh-client-ui-settings": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-host-webserver": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-llm": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-scope": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-session": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-session-projection": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-settings": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-tools": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-util-code-language": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-util-workspace-path": "0.2.2-alpha.2",
     "@deepseek-ai/schemastery": "3.18.6-alpha.1",
@@ -213,6 +234,7 @@
   "dependencies": {
     "motion": "^14.1.0",
     "react-icons": "^5.7.0",
+    "silk-wasm": "3.7.1",
     "ws": "8.21.3"
   },
   "scripts": {

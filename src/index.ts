@@ -35,6 +35,7 @@ import {
 } from './types/index.js'
 import { registerStaticAsset, registerStaticAssetMap, json } from './host/index.js'
 import { registerSynthesisRoutes } from './host/synthesis-routes.js'
+import SpeechHost from './host/speech-service.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, ttsApiKey } from './shared.js'
 
 /** Cordis plugin identifier. */
@@ -48,6 +49,7 @@ export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = TTS_SETTINGS_NAMESPACE
 
 /** Validated Host settings schema. */
 export const Config = z.object({
+  qqbotEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.qqbotEnabled).volatile(),
   announcementSources: z.array(z.union(ANNOUNCEMENT_SOURCES)).default(DEFAULT_TTS_SETTINGS.announcementSources).volatile(),
   provider: z.union(TTS_PROVIDERS).default(DEFAULT_TTS_SETTINGS.provider).volatile(),
   doubaoApiKey: z.string().role('secret').default('').volatile(),
@@ -94,6 +96,7 @@ function readConfig(config: Config): ConfigValues {
 /** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
   const current = () => readConfig(config)
+  ctx.inject(['webServer'], host => { host.plugin(SpeechHost, { current, updates: (listener: () => void) => ctx.on('loader/volatile-update', listener) }) })
 
   // Load all assets
   const voicePresetAssets = new Map(TTS_VOICE_DESIGN_PRESETS.map((preset) => {

@@ -24,6 +24,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
       : resolved.voiceDesignPrompt
   return {
     ...resolved,
+    qqbotEnabled: resolved.qqbotEnabled === true,
     announcementSources: ANNOUNCEMENT_SOURCES.filter(source => (Array.isArray(value?.announcementSources) ? value.announcementSources : DEFAULT_TTS_SETTINGS.announcementSources).includes(source)),
     provider: resolved.provider === 'doubao' ? 'doubao' : 'xiaomi',
     instruction: typeof resolved.instruction === 'string' ? resolved.instruction : DEFAULT_TTS_SETTINGS.instruction,

@@ -6,11 +6,12 @@ import { prepareTtsText, resolveTtsSettings } from '../shared.js'
 import type { ResolvedTtsSettings } from '../shared.js'
 import { json, readJsonBody } from './http.js'
 import type { SynthesizeBody } from './synthesis.js'
-import { synthesisOptions, validateSynthesisSettings, completeAudioFormat, completeAudioLimit, CompleteAudioResponseError } from './validation.js'
+import { synthesisOptions, validateSynthesisSettings, completeAudioFormat, CompleteAudioResponseError } from './validation.js'
 import { TtsProviderError, safeProviderError } from './provider-error.js'
-import { DoubaoSession, synthesizeDoubao, wrapPcmWav } from './doubao.js'
+import { DoubaoSession, synthesizeDoubao } from './doubao.js'
 import type { DoubaoSessionOptions } from './doubao.js'
-import { synthesizeXiaomi, streamXiaomi } from './xiaomi.js'
+import { streamXiaomi } from './xiaomi.js'
+import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
 
 function responseError(res: ServerResponse, error: unknown, settings: ResolvedTtsSettings): void {
   if (res.destroyed || res.writableEnded) return
@@ -38,11 +39,9 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
         try { body = await readJsonBody(req) as SynthesizeBody } catch (error) {
           throw new TtsProviderError(error instanceof Error && error.message === 'request-body-too-large' ? 'request-body-too-large' : 'invalid-json', 'Invalid synthesis request.', error instanceof Error && error.message === 'request-body-too-large' ? 413 : 400)
         }
-        settings = synthesisOptions(settings, body)
-        const text = typeof body.text === 'string' ? prepareTtsText(body.text) : ''
-        if (!text) throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)
-        if (text.length > settings.maxTextLength) throw new TtsProviderError('text-too-long', 'Text exceeds the configured limit.', 413)
-        validateSynthesisSettings(settings)
+        const prepared = prepareSpeechRequest(settings, body)
+        settings = prepared.settings
+        const text = prepared.text
         if (!stream && body.format !== undefined && body.format !== 'mp3' && body.format !== 'wav') throw new TtsProviderError('invalid-audio-format', 'Select MP3 or WAV.', 400)
         // Doubao owns an activity-based timeout; Xiaomi retains its total request timeout.
         if (settings.provider === 'xiaomi') timeout = setTimeout(() => controller.abort(), settings.requestTimeoutMs)
@@ -79,20 +78,7 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
           if (!res.destroyed) res.end()
         } else {
           const format = body.format === 'mp3' || body.format === 'wav' ? body.format : completeAudioFormat(settings)
-          const limit = completeAudioLimit(settings, format)
-          let audio: Buffer
-          if (settings.provider === 'doubao') {
-            const chunks: Buffer[] = []
-            let size = 0
-            await synthesizeDoubao(text, { ...connection, settings, signal: controller.signal, format: format === 'wav' ? 'pcm' : 'mp3', onAudio: bytes => {
-              size += bytes.length
-              if (size + (format === 'wav' ? 44 : 0) > limit) throw new TtsProviderError('audio-too-large')
-              chunks.push(bytes)
-            } })
-            const bytes = Buffer.concat(chunks)
-            audio = format === 'wav' ? wrapPcmWav(bytes) : bytes
-            if (format === 'mp3' && !(audio.length >= 2 && (audio.toString('ascii', 0, 3) === 'ID3' || (audio[0] === 0xff && (audio[1]! & 0xe0) === 0xe0)))) throw new TtsProviderError('invalid-audio-format')
-          } else audio = await synthesizeXiaomi(settings, text, format, limit, controller)
+          const audio = await synthesizeCompleteAudio(settings, text, format, controller, runtime)
           res.setHeader('content-type', format === 'wav' ? 'audio/wav' : 'audio/mpeg')
           res.setHeader('content-length', audio.length)
           res.setHeader('cache-control', 'no-store')

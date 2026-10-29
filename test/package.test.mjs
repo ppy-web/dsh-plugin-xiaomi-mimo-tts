@@ -106,13 +106,12 @@ test('README keeps local targets, development commands and usage guarantees vali
   assert.match(readmeZh, /自动播报[^\r\n。；]*关闭/u)
 })
 
-test('Voice Design remains manual and has no AI-only dependency contract', () => {
+test('Voice Design remains manual and has no model-routing dependency contract', () => {
   assert.equal(sharedModule.VOICE_DESIGN_AI_RPC_CHANNEL, undefined)
   assert.equal(sharedModule.VOICE_DESIGN_AI_RPC_ENDPOINT, undefined)
   assert.equal(sharedModule.TTS_VOICE_DESIGN_AI_STATUS_ROUTE, undefined)
   assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-client-connection'], undefined)
   assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-agent-default-model'], undefined)
-  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-llm'], undefined)
   assert.ok(sharedModule.TTS_MODELS.includes('mimo-v2.5-tts-voicedesign'))
   assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.length > 0)
   const whale = sharedModule.TTS_VOICE_DESIGN_PRESETS.find((item) => item.id === 'energetic-girl')
