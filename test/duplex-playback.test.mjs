@@ -118,6 +118,41 @@ test('one live message uses one duplex session, plays early and saves one comple
   })
 })
 
+test('early duplex speech owns the reply before its final identity arrives, including after cancellation', async () => {
+  await withLive(async ({ live, sockets, state }) => {
+    const text = '这是已经开始朗读的正文。'
+    live.observe('session', 1, 0, text)
+    await settle()
+    assert.equal(state.contexts[0].sources.length, 1)
+    assert.equal(live.hasHandled('session', final(text)), true, 'completed autoplay must not restart a reply already streaming')
+    assert.equal(live.hasHandled('session', final('下一步的回复。', 1)), false)
+
+    // The running/session snapshot may settle before the durable message arrives.
+    live.cancelSession('session')
+    live.finish('session', final(text))
+    assert.equal(live.hasHandled('session', final(text)), true)
+    await settle()
+    assert.equal(sockets.length, 1)
+    assert.equal(sockets[0].sent.filter(command => command.type === 'text').map(command => command.text).join(''), prepareTtsText(text))
+
+    // The automatic deduplication marker must still allow an explicit replay.
+    live.playCompleted('session', 'message-0', text, () => assert.fail('unexpected fallback'))
+    await settle()
+    assert.equal(sockets.length, 2)
+  })
+})
+
+test('unspoken duplex text leaves completed autoplay eligible', async () => {
+  await withLive(async ({ live, sockets }) => {
+    for (const text of ['', '尚未说完', '```js\nconst value = 1\n```']) {
+      live.observe('session', 1, 0, text)
+      assert.equal(live.hasHandled('session', final(text)), false)
+    }
+    await settle()
+    assert.equal(sockets.length, 0)
+  })
+})
+
 test('successive steps use ordered independent duplex jobs without mixing audio', async () => {
   await withLive(async ({ live, sockets, saved }) => {
     live.observe('session', 1, 0, '第一条。')

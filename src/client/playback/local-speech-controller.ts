@@ -232,13 +232,19 @@ export class LocalSpeechController {
       const text = prepareSpeechText(sentence)
       const batch = batchTtsStreamText(this.pendingText, text, false)
       this.pendingText = batch.pending
-      if (batch.request !== null) this.queue.enqueue(batch.request)
+      if (batch.request !== null) this.enqueueLive(batch.request)
     }
     if (flush) {
       const text = prepareSpeechText(this.pendingText)
       this.pendingText = ''
-      if (text.length > 0) this.queue.enqueue(text)
+      if (text.length > 0) this.enqueueLive(text)
     }
+  }
+
+  private enqueueLive(text: string): void {
+    // Preserve automatic deduplication even if final settlement follows cancellation.
+    if (this.active !== null) this.handled.add(`${this.active.sessionId}:${this.active.turn}:${this.active.step}`)
+    this.queue.enqueue(text)
   }
 
   private segments(text: string): string[] {

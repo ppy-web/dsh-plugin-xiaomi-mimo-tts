@@ -336,11 +336,14 @@ export class LiveSpeechController {
   private stageSentences(sentences: readonly string[], flush: boolean): void {
     const prepared = sentences.map(prepareSpeechText).filter(text => countTtsSpeechCharacters(text) > 0)
     if (this.isDuplex()) {
+      if (prepared.length > 0 && this.active !== null) this.handled.add(this.cursorKey(this.active))
       for (const text of prepared) this.enqueueDuplex(text)
       return
     }
     const batch = batchTtsStreamSegments(this.pendingText, prepared, flush)
     this.pendingText = batch.pending
+    // Claim streamed replies before final settlement so completed autoplay cannot restart them.
+    if (batch.requests.length > 0 && this.active !== null) this.handled.add(this.cursorKey(this.active))
     for (const request of batch.requests) this.queue.enqueue(request)
   }
 

@@ -140,10 +140,12 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       const final = finalLiveMessage(legacy, active.current.turn, active.current.step)
       if (final !== null) {
         speech.finish(sessionId, final)
+        active.current = null
       } else if (!runningSnapshot) {
         speech.cancel()
+        active.current = null
       }
-      active.current = null
+      // Keep the cursor across a gap between the partial and durable message snapshots.
     }
   }, [automaticReading, foldedReplies, audioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
 

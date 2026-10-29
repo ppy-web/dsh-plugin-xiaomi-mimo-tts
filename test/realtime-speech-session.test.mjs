@@ -38,6 +38,22 @@ async function finishUtterances(state) {
   }
 }
 
+for (const mode of ['disabled', 'local-first']) {
+  test(`streamed speech prevents completed autoplay before final settlement (${mode})`, async () => {
+    await withSpeech(async state => {
+      const text = '甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS) + '。'
+      state.speech.observe('session', 1, 0, text)
+      await settle()
+      const controller = mode === 'local-first' ? state.local : state.live
+      assert.equal(controller.hasHandled('session', final(text)), true)
+      assert.equal(controller.hasHandled('session', final('下一步', 1)), false)
+      state.speech.cancel()
+      assert.equal(controller.hasHandled('session', final(text)), true, 'a late final message must not restart cancelled speech')
+      assert.equal([...state.requests, ...state.utterances].length, 1)
+    }, { endPcm: true }, mode)
+  })
+}
+
 test('MiMo fallback owns future updates, flushes the tail, and never retries the failed backend', async () => {
   await withSpeech(async state => {
     const first = '甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS) + '。'
