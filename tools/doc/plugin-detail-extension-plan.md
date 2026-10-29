@@ -82,3 +82,12 @@
 
 ![居中激活引导](screenshots/activation-guide-desktop.png)
 ![窄屏激活引导](screenshots/activation-guide-mobile.png)
+
+## 独立预览导航调整
+
+2026-10-29：参考 shadcn Sidebar 的侧栏与内嵌内容布局，将插件设置、语音朗读、会话朗读、音频历史、插件详情、组件、文本过滤和手册拆成八个独立入口。激活引导通过独立按钮打开现有弹窗；页面支持 hash 直达、浏览器前进后退、面包屑与侧栏收起。1023px 及以下改用抽屉导航，环境模拟选项默认折叠。
+
+仅改造预览外壳，继续使用真实插件组件和宿主基础组件，没有增加运行时依赖。视觉方向沿用 framed-sheet（seed 1086428086）。已通过 CUA 浏览器检查 1440×900、768×1024、390×844、深浅主题、四语言、导航返回、手册目录、只读与重置；未发现横向溢出。静态样式检查 0 FAIL / 0 WARN，预览构建和 280 项测试通过；保留既有 chunk 大小提示。未操作真实 DSH profile。
+
+![桌面预览导航](screenshots/preview-shell-desktop.png)
+![手机预览导航](screenshots/preview-shell-mobile-nav.png)

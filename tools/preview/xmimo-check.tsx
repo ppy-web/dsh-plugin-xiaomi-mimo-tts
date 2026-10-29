@@ -7,6 +7,7 @@ import { CLIENT_STYLES } from '../../src/client/style/index.js'
 import { zh } from '../../src/client/localization.js'
 import type { LocaleKey, Translate } from '../../src/client/localization.js'
 import './preview.css'
+import './preview-shell.css'
 
 const scope = new PreviewSettingsScope()
 const t: Translate = (key) => zh[key as LocaleKey]
@@ -33,11 +34,11 @@ function Check(): ReactElement {
     }, 600)
     return () => { clearTimeout(timer) }
   }, [instance])
-  return <div className="preview-shell">
-    <main className="preview-stage">
-      <section className="preview-settings-pane" style={{ width: '560px' }}>
-        <div className="preview-voice-reading" key={instance}>
-          <VoiceReadingPreview scope={scope} t={t} />
+  return <div className="preview-canvas">
+    <main className="preview-page">
+      <section className="preview-voice-surface" style={{ maxWidth: '560px', marginInline: 'auto' }}>
+        <div key={instance}>
+          <VoiceReadingPreview scope={scope} t={t} onOpenPluginSettings={() => { window.location.href = './#settings' }} />
         </div>
         <button type="button" onClick={() => { setInstance((current) => current + 1) }}>重置</button>
       </section>

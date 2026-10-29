@@ -8,7 +8,7 @@ interface FixtureSection {
   content: string
 }
 
-const fixtureModules = import.meta.glob<string>('../test/fixtures/*.md', {
+const fixtureModules = import.meta.glob<string>('./fixtures/*.md', {
   eager: true,
   import: 'default',
   query: '?raw',
@@ -42,7 +42,7 @@ export function FilterLab({ locale }: { locale: PreviewLocale }) {
   return <section className="preview-filter-lab" aria-label={zh ? '文本过滤测试' : 'Text filter lab'}>
     <header className="preview-filter-heading">
       <div>
-        <h1>{zh ? '文本过滤测试' : 'Text filter lab'}</h1>
+        <h2>{zh ? '文本过滤测试' : 'Text filter lab'}</h2>
         <p>{zh ? '直接运行当前源码的 prepareTtsText；修改源码或 Markdown fixture 后自动更新。' : 'Runs prepareTtsText from the current source. Source and Markdown fixture edits update automatically.'}</p>
       </div>
       <label>

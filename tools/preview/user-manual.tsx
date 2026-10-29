@@ -1,15 +1,12 @@
 import type { ReactElement } from 'react'
-import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 
 export type ManualLocale = 'zh' | 'en'
 
 interface ManualCopy {
-  eyebrow: string
   title: string
   intro: string
   toc: string
-  closeDrawer: string
   sections: Array<{
     id: string
     title: string
@@ -22,20 +19,18 @@ interface ManualCopy {
 
 const COPY: Record<ManualLocale, ManualCopy> = {
   zh: {
-    eyebrow: 'USER MANUAL · 设置手册',
     title: '把鲸鱼娘调成你喜欢的样子',
-    intro: '左侧是完整操作说明，右侧是真实设置卡片。你可以边读边在右侧试用；Preview 中的修改只存在于本地模拟状态。',
+    intro: '从侧栏选择要体验的功能，在独立页面中查看和操作。预览中的修改只用于本页演示，不会写入 DSH。',
     toc: '目录',
-    closeDrawer: '关闭设置手册',
     sections: [
       {
         id: 'manual-start',
         title: '01 · 开始使用',
         summary: '先选择小米 MiMo 或豆包语音并保存密钥，再选择模型和音色试听。',
         items: [
-          { label: '设置卡片标题按钮', detail: '点击“语音朗读 (Xiaomi MiMo)”标题栏可展开或收起全部设置。标题栏右侧的箭头和 aria 状态会同步变化；有未保存修改时，标题栏会显示“未保存”。' },
+          { label: '功能入口', detail: '侧栏按语音体验、插件管理和工具与帮助分组。插件设置、语音朗读、对话效果、音频历史、详情、组件、文本过滤和手册均可单独打开；启用引导以弹窗展示。手机上点击顶部侧栏按钮展开导航。' },
           { label: '推荐操作顺序', detail: '依次选择语音服务商 → 填写该服务商的 API Key → 点击底部“保存” → 选择模型和音色 → 在“播报台”试听 → 按需开启自动播报和音效。除 API Key 外，播报台会即时使用当前草稿；新密钥必须先保存才能用于云端合成。' },
-          { label: '只读状态', detail: '如果顶部勾选“只读”，所有输入、开关、滑块和选择器都会禁用；仍可阅读内容，但不能提交设置。' },
+          { label: '只读状态', detail: '在侧栏底部开启“只读配置”，可检查设置面板中输入、开关和选择器的禁用状态；关闭后即可继续编辑。' },
         ],
       },
       {
@@ -126,12 +121,12 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       },
       {
         id: 'manual-preview-tools',
-        title: '09 · Preview 工具栏',
+        title: '09 · 预览导航与工具',
         summary: '这些控件只服务于本地预览，不属于插件设置。',
         items: [
-          { label: '语言', detail: '选择“中文”或“English”切换手册和右侧真实设置卡片的显示语言；切换后会重置当前本地预览状态。' },
-          { label: '主题', detail: '选择“浅色”或“深色”查看两套主题下的布局与控件状态。主题切换不改变设置值。' },
-          { label: '只读', detail: '勾选后模拟 DSH 只读设置层，检查禁用态和只读提示；取消勾选即可恢复编辑。' },
+          { label: '语言', detail: '顶部语言菜单支持中文、英文、日语和法语，切换语言保留配置。手册提供中文和英文版本，日语与法语界面显示英文手册。' },
+          { label: '主题', detail: '点击顶部的太阳或月亮图标切换浅色和深色主题，不改变设置值。' },
+          { label: '只读', detail: '侧栏底部的“只读配置”模拟 DSH 只读设置层；关闭后恢复编辑。' },
           { label: '重置状态', detail: '清空 Preview 的本地草稿、关闭只读并重新载入设置卡片，用于重新开始一次演示；不会改动真实 DSH 配置。' },
         ],
       },
@@ -142,20 +137,18 @@ const COPY: Record<ManualLocale, ManualCopy> = {
     ],
   },
   en: {
-    eyebrow: 'USER MANUAL · Settings guide',
     title: 'Tune Whale Maid your way',
-    intro: 'The complete guide is on the left and the real settings card is on the right. Try each control as you read; changes in Preview live only in its local mock state.',
+    intro: 'Choose a feature in the sidebar to explore it on its own page. Changes apply to this preview only and never write to DSH.',
     toc: 'Contents',
-    closeDrawer: 'Close settings manual',
     sections: [
       {
         id: 'manual-start',
         title: '01 · Getting started',
         summary: 'Choose Xiaomi MiMo or Doubao, save its key, then select a model and voice to preview.',
         items: [
-          { label: 'Settings card header', detail: 'Click the “Text To Speech (Xiaomi MiMo)” header to expand or collapse all settings. The arrow and aria state update together; “Unsaved” appears while a draft is dirty.' },
+          { label: 'Feature navigation', detail: 'The sidebar groups speech, plugin management, and tools. Each feature has its own page; Activation guide opens a modal. On a phone, use the sidebar button in the top bar to open navigation.' },
           { label: 'Recommended order', detail: 'Choose a speech provider → enter its API key → click Save → choose a model and voice → test it in Broadcast Desk → optionally enable autoplay and sounds. Most drafts apply to previews immediately, but a new key must be saved before cloud synthesis can use it.' },
-          { label: 'Read-only state', detail: 'Check Read-only in the toolbar to disable inputs, switches, sliders, and pickers. You can still read the guide, but cannot submit settings.' },
+          { label: 'Read-only state', detail: 'Turn on Read-only settings at the bottom of the sidebar to inspect disabled controls. Turn it off to edit again.' },
         ],
       },
       {
@@ -246,12 +239,12 @@ const COPY: Record<ManualLocale, ManualCopy> = {
       },
       {
         id: 'manual-preview-tools',
-        title: '09 · Preview toolbar',
+        title: '09 · Navigation and preview controls',
         summary: 'These controls belong to the local preview, not the plugin settings.',
         items: [
-          { label: 'Language', detail: 'Choose 中文 or English to switch the guide and the real settings card. Switching language resets the local preview state.' },
-          { label: 'Theme', detail: 'Choose Light or Dark to inspect both themes. Theme changes do not change setting values.' },
-          { label: 'Read-only', detail: 'Check it to simulate a read-only DSH settings layer and inspect disabled states; uncheck it to edit again.' },
+          { label: 'Language', detail: 'The top-bar language menu supports Chinese, English, Japanese, and French without resetting configuration. The manual is available in Chinese and English; Japanese and French use the English manual.' },
+          { label: 'Theme', detail: 'Use the sun or moon button in the top bar to switch themes without changing settings.' },
+          { label: 'Read-only', detail: 'Use Read-only settings at the bottom of the sidebar to inspect a read-only DSH settings layer; turn it off to edit again.' },
           { label: 'Reset state', detail: 'Clears the local Preview draft, turns off read-only, and reloads the settings card for a fresh walkthrough. It does not modify real DSH configuration.' },
         ],
       },
@@ -263,130 +256,41 @@ const COPY: Record<ManualLocale, ManualCopy> = {
   },
 }
 
-export function UserManual({ locale, isOpen, onOpenChange, onFocusToggle }: {
-  locale: ManualLocale
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  onFocusToggle: () => void
-}): ReactElement {
+export function UserManual({ locale }: { locale: ManualLocale }): ReactElement {
   const copy = COPY[locale]
   const manualRef = useRef<HTMLElement | null>(null)
-  const manualCloseRef = useRef<HTMLButtonElement | null>(null)
-  const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1080px)').matches)
   const [activeSection, setActiveSection] = useState(copy.sections[0]?.id ?? '')
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 1080px)')
-    const updateLayout = (): void => {
-      setIsNarrow(mediaQuery.matches)
-      if (!mediaQuery.matches) onOpenChange(false)
-    }
-    updateLayout()
-    mediaQuery.addEventListener('change', updateLayout)
-    return () => mediaQuery.removeEventListener('change', updateLayout)
-  }, [onOpenChange])
-
-  useEffect(() => {
-    if (!isNarrow || !isOpen) return
-    manualCloseRef.current?.focus()
-    const closeWithEscape = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') return
-      onOpenChange(false)
-      onFocusToggle()
-    }
-    document.addEventListener('keydown', closeWithEscape)
-    return () => document.removeEventListener('keydown', closeWithEscape)
-  }, [isNarrow, isOpen, onFocusToggle, onOpenChange])
-
-  const closeManual = (): void => {
-    onOpenChange(false)
-    onFocusToggle()
-  }
+  const title = (value: string): string => value.replace(/^\d+\s*·\s*/, '')
 
   useEffect(() => {
     setActiveSection(copy.sections[0]?.id ?? '')
     const root = manualRef.current
     if (root === null || typeof IntersectionObserver === 'undefined') return
-    const sections = Array.from(root.querySelectorAll<HTMLElement>('.preview-manual-section'))
-    if (sections.length === 0) return
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top)
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
       const section = visible[0]?.target
       if (section instanceof HTMLElement) setActiveSection(section.id)
-    }, { root, rootMargin: '-12% 0px -70% 0px', threshold: 0 })
-    sections.forEach((section) => observer.observe(section))
+    }, { rootMargin: '-100px 0px -55% 0px', threshold: 0 })
+    root.querySelectorAll('.preview-manual-section').forEach(section => observer.observe(section))
     return () => observer.disconnect()
   }, [copy.sections])
 
-  const drawer = <div
-    className={`preview-manual-drawer${isOpen ? ' preview-manual-drawer-open' : ''}`}
-    id="preview-manual-drawer"
-  >
-    <div className="preview-manual-drawer-backdrop" aria-hidden="true" onClick={closeManual} />
-    <aside
-      className="preview-manual"
-      id="preview-manual-panel"
-      ref={manualRef}
-      aria-hidden={isNarrow && !isOpen ? true : undefined}
-      aria-label={copy.title}
-    >
-      <div className="preview-manual-close-row">
-        <button
-          ref={manualCloseRef}
-          className="preview-manual-close"
-          type="button"
-          aria-label={copy.closeDrawer}
-          title={copy.closeDrawer}
-          onClick={closeManual}
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="m6 6 12 12M18 6 6 18" />
-          </svg>
-        </button>
-      </div>
-      <div className="preview-manual-intro">
-        <span className="preview-manual-eyebrow">{copy.eyebrow}</span>
-        <h1>{copy.title}</h1>
-        <p>{copy.intro}</p>
-      </div>
-      <nav className="preview-manual-toc" aria-label={copy.toc}>
-        <span>{copy.toc}</span>
-        <div>
-          {copy.sections.map((section) => <a
-            className={activeSection === section.id ? 'preview-manual-toc-link-active' : undefined}
-            key={section.id}
-            href={`#${section.id}`}
-            aria-current={activeSection === section.id ? 'location' : undefined}
-          >{section.title}</a>)}
-        </div>
-      </nav>
-      <div className="preview-manual-sections">
-        {copy.sections.map((section) => <section className="preview-manual-section" id={section.id} key={section.id}>
-          <h2>{section.title}</h2>
-          <p className="preview-manual-summary">{section.summary}</p>
-          <dl>
-            {section.items.map((item) => <div key={item.label}>
-              <dt>{item.label}</dt>
-              <dd>{item.detail}</dd>
-            </div>)}
-          </dl>
-          {section.links ? <ul>
-            {section.links.map(link => <li key={link.href}><a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}
-          </ul> : null}
-        </section>)}
-      </div>
-      <div className="preview-manual-notes">
-        {copy.notes.map((note) => <div className="preview-manual-note" key={note.title}>
-          <strong>{note.title}</strong>
-          <p>{note.body}</p>
-        </div>)}
-      </div>
-    </aside>
-  </div>
-
-  return isNarrow && typeof document !== 'undefined'
-    ? createPortal(drawer, document.body)
-    : drawer
+  return <article className="preview-manual" ref={manualRef} aria-label={copy.title}>
+    <nav className="preview-manual-toc" aria-label={copy.toc}>
+      <strong>{copy.toc}</strong>
+      {copy.sections.map(section => <a key={section.id} href={`#${section.id}`}
+        aria-current={activeSection === section.id ? 'location' : undefined}>{title(section.title)}</a>)}
+    </nav>
+    <div className="preview-manual-article">
+      <header className="preview-manual-intro"><h2>{copy.title}</h2><p>{copy.intro}</p></header>
+      {copy.sections.map(section => <section className="preview-manual-section" id={section.id} key={section.id}>
+        <h2>{title(section.title)}</h2><p className="preview-manual-summary">{section.summary}</p>
+        <dl>{section.items.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.detail}</dd></div>)}</dl>
+        {section.links ? <ul>{section.links.map(link => <li key={link.href}><a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}</ul> : null}
+      </section>)}
+      <div className="preview-manual-notes">{copy.notes.map(note => <div key={note.title}>
+        <strong>{note.title}</strong><p>{note.body}</p>
+      </div>)}</div>
+    </div>
+  </article>
 }

@@ -59,7 +59,7 @@ export function PluginDetailPreview({ scope, t }: { scope: PreviewSettingsScope;
       <label className="preview-detail-checkbox"><input type="checkbox" checked={activity} onChange={event => previewPluginChanges.set(event.target.checked)} />{t('detail.previewChanging')}</label>
     </div>
     <header className="preview-detail-header">
-      <div><h1>{target === 'target' ? 'MiMo & Seed TTS' : t(`detail.preview${target === 'other' ? 'Other' : target === 'row' ? 'Row' : 'Item'}`)}</h1>
+      <div><h2>{target === 'target' ? 'MiMo & Seed TTS' : t(`detail.preview${target === 'other' ? 'Other' : target === 'row' ? 'Row' : 'Item'}`)}</h2>
         <PluginDetailBadge subject={subject} t={t} scope={scope} changes={previewPluginChanges} />
       </div>
       <PluginDetailActions subject={subject} t={t} />
