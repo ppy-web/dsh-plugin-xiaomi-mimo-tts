@@ -37,6 +37,8 @@ export const ja: Record<LocaleKey, string> = {
   'settings.announcementsTitle': '通知元',
   'settings.announcementsPlugins': 'プラグイン連携',
   'settings.announcementsPluginsHint': '対応するプラグインのインストールと有効化が必要です',
+  'settings.qqbotIntegration': 'QQ Bot',
+  'settings.qqbotIntegrationHint': 'オンでは全文を自動で音声送信し、オフでは依頼時のみ送信します。QQ Bot Voice Relay を有効にし、保存してください',
   'settings.announcementsPet': 'dsh-pet',
   'settings.announcementsHint': '音声を有効にし、DSH Web を開いておいてください。再生中に届いた通知はスキップします',
   'settings.provider': '音声サービス',

@@ -69,7 +69,8 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
         <span>{t(busy ? 'settings.previewStopShort' : 'settings.previewListen')}</span>
       </button>
       {ANNOUNCEMENT_SOURCE_OPTIONS.filter(option => settings.sources.includes(option.id)).map(option => <span key={option.id}>{t(option.label)}</span>)}
-      {settings.sources.length === 0 ? <span>{t('settings.announcementsNone')}</span> : null}
+      {settings.qqbotEnabled ? <span>{t('settings.qqbotIntegration')}</span> : null}
+      {settings.sources.length === 0 && !settings.qqbotEnabled ? <span>{t('settings.announcementsNone')}</span> : null}
     </span>
       {!open && status === 'error' ? <small className="xmimo-tts-preview-summary-status xmimo-tts-failed" role="status">{t(messageKey)}</small> : null}
     </>}>
@@ -98,6 +99,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
       </div>
       <AnnouncementSettings t={t} sources={settings.sources} writable={settings.writable} overridden={settings.overridden}
+        qqbotEnabled={settings.qqbotEnabled} onQqbotChange={settings.onQqbotChange}
         onChange={settings.onChange} onReset={settings.onReset} />
     </div>
   </CollapsibleModule>

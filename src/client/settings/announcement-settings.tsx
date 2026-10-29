@@ -8,6 +8,8 @@ import { FieldInfo } from './controls/field-info.js'
 export interface AnnouncementSettingsProps {
   t: Translate
   sources: AnnouncementSourceId[]
+  qqbotEnabled: boolean
+  onQqbotChange: (enabled: boolean) => void
   writable: boolean
   overridden: boolean
   onChange: (sources: AnnouncementSourceId[]) => void
@@ -32,7 +34,7 @@ const SOURCE_GROUPS = [
   { label: 'settings.announcementsPlugins', hint: 'settings.announcementsPluginsHint', options: PLUGIN_SOURCE_OPTIONS },
 ] as const
 
-export function AnnouncementSettings({ t, sources, writable, overridden, onChange, onReset }: AnnouncementSettingsProps): ReactElement {
+export function AnnouncementSettings({ t, sources, qqbotEnabled, onQqbotChange, writable, overridden, onChange, onReset }: AnnouncementSettingsProps): ReactElement {
   return <>{SOURCE_GROUPS.map((group, index) => <section key={group.label} className="xmimo-tts-format" aria-label={t(group.label)}>
     <SettingFieldHeading label={t(group.label)}
       suffix={<FieldInfo label={t(group.label)} text={t(group.hint)} />}
@@ -46,5 +48,12 @@ export function AnnouncementSettings({ t, sources, writable, overridden, onChang
       <Switch checked={sources.includes(option.id)} disabled={!writable} label={t(option.label)}
         onChange={checked => onChange(ANNOUNCEMENT_SOURCES.filter(id => id === option.id ? checked : sources.includes(id)))} />
     </div>)}
+    {index === 1 ? <div className="xmimo-tts-announcement-source">
+      <div>
+        <a href="https://github.com/tencent-connect/dsh-qqbot" target="_blank" rel="noopener noreferrer">{t('settings.qqbotIntegration')} ↗</a>
+        <small>{t('settings.qqbotIntegrationHint')}</small>
+      </div>
+      <Switch checked={qqbotEnabled} disabled={!writable} label={t('settings.qqbotIntegration')} onChange={onQqbotChange} />
+    </div> : null}
   </section>)}</>
 }

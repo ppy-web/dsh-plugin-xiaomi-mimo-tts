@@ -1,4 +1,4 @@
-export type EditableSettingField = 'announcementSources' | 'provider' | 'doubaoModel' | 'doubaoVoice' | 'doubaoClonedVoice' | 'doubaoInstruction' | 'instruction' | 'enabled' | 'autoPlay' | 'voiceVolume' | 'voiceRate' | 'readScope' | 'model' | 'localSpeechMode' | 'localVoiceURI' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'soundEnabled' | 'soundVolume' | 'soundPack' | 'taskSounds' | 'clickSounds'
+export type EditableSettingField = 'qqbotEnabled' | 'announcementSources' | 'provider' | 'doubaoModel' | 'doubaoVoice' | 'doubaoClonedVoice' | 'doubaoInstruction' | 'instruction' | 'enabled' | 'autoPlay' | 'voiceVolume' | 'voiceRate' | 'readScope' | 'model' | 'localSpeechMode' | 'localVoiceURI' | 'voice' | 'voiceDesignPrompt' | 'voiceDesignCustomPrompt' | 'soundEnabled' | 'soundVolume' | 'soundPack' | 'taskSounds' | 'clickSounds'
 export type SettingField = EditableSettingField | 'apiKey' | 'doubaoApiKey'
 export type DraftChange = { kind: 'set' } | { kind: 'clear' }
 export type DraftChanges = Partial<Record<EditableSettingField, DraftChange> & Record<'apiKey' | 'doubaoApiKey', { kind: 'set' }>>

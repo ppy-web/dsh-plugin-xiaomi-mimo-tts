@@ -100,6 +100,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const apiKeyField = provider === 'doubao' ? 'doubaoApiKey' : 'apiKey'
   const setApiKey = (next: string): void => { setApiKeys(current => ({ ...current, [provider]: next })) }
   const [announcementSources, setAnnouncementSources] = useState(initial.announcementSources)
+  const [qqbotEnabled, setQqbotEnabled] = useState(initial.qqbotEnabled)
   const [enabled, setEnabled] = useState(initial.enabled)
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
   const [voiceVolume, setVoiceVolume] = useState(initial.voiceVolume)
@@ -139,7 +140,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -186,6 +187,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setDoubaoInstruction(next.doubaoInstruction)
     setInstruction(next.instruction)
     setAnnouncementSources(next.announcementSources)
+    setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
     setVoiceVolume(next.voiceVolume)
@@ -241,6 +243,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'doubaoInstruction') setDoubaoInstruction(base.doubaoInstruction)
     if (field === 'instruction') setInstruction(base.instruction)
     if (field === 'announcementSources') setAnnouncementSources(base.announcementSources)
+    if (field === 'qqbotEnabled') setQqbotEnabled(base.qqbotEnabled)
     if (field === 'enabled') setEnabled(base.enabled)
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
     if (field === 'voiceVolume') setVoiceVolume(base.voiceVolume)
@@ -268,6 +271,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setDoubaoInstruction(next.doubaoInstruction)
     setInstruction(next.instruction)
     setAnnouncementSources(next.announcementSources)
+    setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
     setVoiceVolume(next.voiceVolume)
@@ -511,6 +515,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onToggle={toggleSettingsPreview}
           onTextChange={setPreviewText}
           sources={announcementSources}
+          qqbotEnabled={qqbotEnabled}
+          onQqbotChange={next => { setQqbotEnabled(next); markChange('qqbotEnabled') }}
           writable={writable}
           overridden={fieldOverridden('announcementSources')}
           onReset={() => resetField('announcementSources')}

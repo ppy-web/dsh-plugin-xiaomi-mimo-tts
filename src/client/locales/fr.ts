@@ -37,6 +37,8 @@ export const fr: Record<LocaleKey, string> = {
   'settings.announcementsTitle': 'Sources des annonces',
   'settings.announcementsPlugins': 'Intégrations de plugins',
   'settings.announcementsPluginsHint': 'Le plugin correspondant doit être installé et activé',
+  'settings.qqbotIntegration': 'QQ Bot',
+  'settings.qqbotIntegrationHint': 'Activé : envoie toute la réponse vocale automatiquement. Désactivé : envoie sur demande. Activez QQ Bot Voice Relay puis enregistrez',
   'settings.announcementsPet': 'dsh-pet',
   'settings.announcementsHint': 'Gardez la voix activée et DSH Web ouvert. Les messages reçus pendant une lecture sont ignorés',
   'settings.provider': 'Fournisseur vocal',
