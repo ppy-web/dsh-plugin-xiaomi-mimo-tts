@@ -19,7 +19,7 @@ import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
 import { onTtsCredentialsSaved } from './conversation/api-key-status.js'
 import { SettingsCard } from './settings/card.js'
 import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
-import { PluginDetailActions, PluginDetailBadge, PluginDetailSection } from './settings/plugin-detail.js'
+import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
 import { ActivationGuide } from './settings/activation-guide.js'
 import { AudioHistoryTab } from './history/audio-history-tab.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
@@ -58,7 +58,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: Context,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.tab' | 'plugins.detail.actions' | 'plugins.detail.badge' | 'plugins.detail.section',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.tab' | 'plugins.detail.actions' | 'plugins.detail.badge',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -262,13 +262,6 @@ export function apply(ctx: Context): void {
     locale: NS,
     inject: () => ({ t, scope, changes }),
   }, PluginDetailBadge))
-
-  registerSlotContribution(ctx, 'plugins.detail.section', () => ctx.slots.register({
-    name: 'plugins.detail.section',
-    id: 'xiaomi-mimo-tts.help',
-    locale: NS,
-    inject: () => ({ t }),
-  }, PluginDetailSection))
 
   registerSlotContribution(ctx, 'plugins.bundle.config', () => ctx.slots.register({
     name: 'plugins.bundle.config',

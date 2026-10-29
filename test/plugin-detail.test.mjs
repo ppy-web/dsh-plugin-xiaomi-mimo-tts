@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 
 const { ApiKeyStatusStore, apiKeyStatusStore, bindApiKeyStatus } = await loadClientModule('src/client/settings/api-key-status-store.ts')
-const { PluginDetailActions, PluginDetailBadge, PluginDetailSection } = await loadClientModule('src/client/settings/plugin-detail.tsx')
+const { PluginDetailActions, PluginDetailBadge } = await loadClientModule('src/client/settings/plugin-detail.tsx')
 const { MANUAL_URL } = await loadClientModule('src/client/settings/plugin-links.ts')
 
 function source(initial) {
@@ -162,20 +162,30 @@ test('all detail contributions ignore other packages, component rows and officia
     { kind: 'bundle', pkg: { ...pkg, name: 'unrelated' } },
     { kind: 'row', pkg, row: { rowId: 'whale-girl', moduleName: 'dsh-xiaomi-tts/whale-girl', enabled: true } },
     { kind: 'item', id: 'dsh-xiaomi-tts' },
-  ]) for (const component of [PluginDetailActions, PluginDetailBadge, PluginDetailSection]) {
+  ]) for (const component of [PluginDetailActions, PluginDetailBadge]) {
     assert.equal(component({ subject: other, t: key => key, scope }), null)
   }
 })
 
-test('manual action uses the maintained external handbook and remains available during plugin changes', () => {
+test('manual action opens the preview website separately and remains available during plugin changes', t => {
   const html = renderToStaticMarkup(createElement(PluginDetailActions, { subject, t: key => key }))
   const url = new URL(MANUAL_URL)
   assert.equal(url.protocol, 'https:')
-  assert.equal(url.hostname, 'github.com')
-  assert.ok(url.pathname.endsWith('/blob/main/handbook.md'))
-  assert.ok(html.includes(`href="${MANUAL_URL}"`))
-  assert.match(html, /rel="noopener noreferrer"/)
+  assert.equal(url.hostname, 'ppy-web.github.io')
+  assert.equal(url.pathname, '/dsh-plugin-xiaomi-mimo-tts/')
+  assert.equal(url.hash, '#manual')
+  assert.match(html, /<button/)
   assert.doesNotMatch(html, /disabled/)
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window')
+  const open = t.mock.fn()
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: { open } })
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, 'window', previous)
+    else delete globalThis.window
+  })
+  PluginDetailActions({ subject, t: key => key }).props.onClick()
+  assert.equal(open.mock.callCount(), 1)
+  assert.deepEqual(open.mock.calls[0].arguments, [MANUAL_URL, '_blank', 'noopener,noreferrer'])
 })
 
 test('detail badge reads the saved provider, offers retry on failure, and suspends during bundle changes', async t => {

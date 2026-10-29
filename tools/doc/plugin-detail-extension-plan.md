@@ -91,3 +91,12 @@
 
 ![桌面预览导航](screenshots/preview-shell-desktop.png)
 ![手机预览导航](screenshots/preview-shell-mobile-nav.png)
+
+## 详情页精简
+
+2026-10-29：按用户反馈，独立预览固定展示本插件，移除「详情对象」选择。真实插件和预览同时移除「语音使用帮助」区域，撤销 `plugins.detail.section` 注册并清理四语言无用文案。密钥状态和失败重试继续保留。
+
+「用户手册」直接复用宿主 `Button` 的 `outline` / `sm` 样式及交互，不再维护自绘链接按钮。浏览器已验证原网站首页跳转，模拟插件变更时入口仍可用，1440px 桌面及 390px 深浅主题均无横向溢出；280 项测试和预览构建通过。随后按用户要求，将地址补为 `https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual`，直接进入手册路由，并同步测试预期和手册说明；用户已确认功能可用，此链接调整未再执行验证。
+
+![精简后的详情页](screenshots/plugin-detail-desktop.png)
+![精简后的手机详情页](screenshots/plugin-detail-mobile.png)

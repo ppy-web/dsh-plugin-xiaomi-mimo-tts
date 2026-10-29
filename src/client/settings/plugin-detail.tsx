@@ -28,7 +28,7 @@ function isTtsBundle({ subject }: PluginDetailProps): boolean {
 
 export function PluginDetailActions(props: DetailProps): ReactElement | null {
   if (!isTtsBundle(props)) return null
-  return <a className="xmimo-ui-scope xmimo-tts-detail-manual" href={MANUAL_URL} target="_blank" rel="noopener noreferrer">{props.t('detail.manual')}</a>
+  return <Button variant="outline" size="sm" onClick={() => window.open(MANUAL_URL, '_blank', 'noopener,noreferrer')}>{props.t('detail.manual')}</Button>
 }
 
 const STATUS_KEYS: Record<ApiKeyStatus, LocaleKey> = {
@@ -56,14 +56,4 @@ function KeyBadge({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Omit<DetailBadgeP
       ? <Button type="button" variant="toolbar" size="sm" onClick={apiKeyStatusStore.invalidate}>{t('detail.retry')}</Button>
       : null}
   </span>
-}
-
-export function PluginDetailSection(props: DetailProps): ReactElement | null {
-  if (!isTtsBundle(props)) return null
-  return <section className="xmimo-ui-scope xmimo-tts-detail-help" aria-label={props.t('detail.helpTitle')}>
-    <h2>{props.t('detail.helpTitle')}</h2>
-    <p>{props.t('detail.keyHint')}</p>
-    <p>{props.t('detail.historyHint')}</p>
-    <p>{props.t('detail.readingHint')}</p>
-  </section>
 }
