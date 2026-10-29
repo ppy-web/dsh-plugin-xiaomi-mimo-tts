@@ -113,7 +113,6 @@
 }
 
 .preview-conversation { margin: 26px 0 0; border: 1px solid var(--dsw-alias-border-l2, #d7dbe2); border-radius: 12px; padding: 16px 20px 14px; color: var(--dsw-alias-label-primary, #1f2328); background: var(--dsw-alias-bg-layer-1, #fff); }
-.preview-conversation-title { margin: 0 0 18px; color: var(--dsw-alias-label-primary, #1f2328); font-size: 15px; font-weight: 700; line-height: 19px; }
 .preview-conversation-user-row { display: flex; justify-content: flex-end; }
 .preview-conversation-user-bubble { max-width: min(86%, 430px); border-radius: 15px; padding: 10px 15px; color: var(--dsw-alias-label-primary, #1f2328); background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 10%, var(--dsw-alias-bg-layer-1, #fff)); font-size: 14px; line-height: 1.45; }
 .preview-conversation-user-meta { margin: 8px 16px 24px 0; color: var(--dsw-alias-label-tertiary, #66707d); font-size: 12px; text-align: right; }

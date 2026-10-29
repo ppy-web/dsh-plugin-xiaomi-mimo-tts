@@ -83,7 +83,6 @@ export function ConversationPreview({ scope }: ConversationPreviewProps): React.
   }
 
   return <section className="preview-conversation" aria-label="对话效果预览">
-    <h2 className="preview-conversation-title">对话效果预览</h2>
     <div className="preview-conversation-user-row">
       <div className="preview-conversation-user-bubble">{USER_TEXT}</div>
     </div>

@@ -45,7 +45,7 @@ export function ActivationGuide({ t, scope, audioFocus, beforePreview, onOpenDet
     onClose={dismiss}
     className="xmimo-ui-scope xmimo-tts-activation-dialog"
   >
-    <Button type="button" variant="toolbar" size="sm" className="xmimo-tts-activation-close" aria-label={t('onboarding.dismiss')} onClick={dismiss}>
+    <Button type="button" variant="ghost" size="sm" className="xmimo-tts-activation-close" aria-label={t('onboarding.dismiss')} onClick={dismiss}>
       <IconCloseOutlineRegular size={16} />
     </Button>
     <div className="xmimo-tts-activation-layout">
@@ -58,7 +58,7 @@ export function ActivationGuide({ t, scope, audioFocus, beforePreview, onOpenDet
         <div className="xmimo-tts-activation-actions">
           <Button type="button" variant="primary" data-modal-autofocus onClick={openDetails} disabled={changing}>{t('onboarding.configure')}</Button>
           <Button type="button" variant="outline" onClick={preview} disabled={changing}>{t(playing ? 'action.stop' : 'onboarding.preview')}</Button>
-          <Button type="button" variant="toolbar" onClick={dismiss}>{t('onboarding.dismiss')}</Button>
+          <Button type="button" variant="ghost" onClick={dismiss}>{t('onboarding.dismiss')}</Button>
         </div>
         {view.status === 'error' || changing ? <div className="xmimo-tts-activation-feedback">
           {view.status === 'error' ? <p className="xmimo-tts-failed" role="alert">{t(view.error === 'autoplay-blocked' ? 'settings.previewErrorAutoplay' : 'settings.previewErrorLocalUnavailable')}</p> : null}
