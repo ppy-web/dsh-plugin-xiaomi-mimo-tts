@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="assets/social.webp" alt="dsh-xiaomi-tts" width="100%">
-</p>
+![dsh-xiaomi-tts](assets/social.webp)
 
 <h1 align="center">dsh-xiaomi-tts</h1>
 
@@ -102,7 +100,7 @@ pnpm pack:check   # 检查打包内容
 - [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme) · 语义化 UI 音效。本项目已内置。
 - [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme) · 原生换肤、背景壁纸、强调色和主题包。
 - [DeepSeek-chan Meme Pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack) · 鲸鱼娘Agent预设 - 人设参考 
-- [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy) · 作者自用的稳定🪜
+- [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy) · 一个稳定的🪜
 
 <a href="https://www.star-history.com/?repos=ppy-web%2Fdsh-plugin-xiaomi-mimo-tts&type=timeline&logscale=&legend=bottom-right">
  <picture>
