@@ -63,7 +63,7 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
   assert.equal(packageJson.scripts.typecheck, 'tsc --noEmit')
   assert.equal(packageJson.scripts.test, 'pnpm run build && node --test test/*.test.mjs')
   assert.equal(packageJson.scripts['pack:check'], 'node tools/scripts/pack-check.mjs')
-  assert.equal(packageJson.engines.dsh, '>=0.1.7-0 <0.3.0-0')
+  assert.equal(packageJson.engines.dsh, '>=0.2.2-0 <0.3.0-0')
   assert.ok(packageJson.files.includes('tools/scripts/prepare-package.mjs'))
   assert.ok(packageJson.files.includes('NOTICE'))
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
