@@ -46,11 +46,14 @@ test('Ark keys connect directly to Agent Plan with the trimmed key and synthesis
       attempts.push(new URL(endpoint).pathname)
       return new WebSocket(`${url}${new URL(endpoint).pathname}`, { headers: values })
     }
-    await synthesizeDoubao('方舟语音', { settings: settings({ doubaoApiKey: `  ${key}\n` }), connect, signal: new AbortController().signal, onAudio: bytes => chunks.push(bytes) })
+    await synthesizeDoubao('方舟语音', { settings: settings({ doubaoApiKey: `  ${key}\n`, doubaoInstruction: '用温柔的语气' }), connect, signal: new AbortController().signal, onAudio: bytes => chunks.push(bytes) })
     assert.deepEqual(attempts, ['/api/v3/plan/tts/bidirection'])
     assert.equal(headers[0]['x-api-key'], key)
     assert.equal(headers[0]['x-api-resource-id'], 'seed-tts-2.0')
     assert.deepEqual(frames.filter(frame => frame.event === 200).map(frame => frame.payload.req_params.text), ['方舟语音'])
+    for (const frame of frames.filter(frame => frame.event === 100 || frame.event === 200)) {
+      assert.deepEqual(JSON.parse(frame.payload.req_params.additions), { context_texts: ['用温柔的语气'] })
+    }
     assert.ok(Buffer.concat(chunks).length > 0)
   }, undefined, (info, done) => done(info.req.url === '/api/v3/plan/tts/bidirection', 401))
 })
@@ -133,6 +136,10 @@ test('cloned voice uses its own resource and explicit inference model without co
     assert.equal(start.speaker, 'my-clone')
     assert.equal(start.model, 'seed-tts-2.0-standard')
     assert.equal(start.additions, undefined)
+    const task = frames.find(frame => frame.event === 200).payload.req_params
+    assert.equal(task.speaker, 'my-clone')
+    assert.equal(task.model, 'seed-tts-2.0-standard')
+    assert.equal(task.additions, undefined)
     const wav = wrapPcmWav(Buffer.concat(chunks))
     assert.equal(wav.toString('ascii', 0, 4), 'RIFF')
     assert.equal(wav.readUInt32LE(24), 24000)
@@ -141,7 +148,7 @@ test('cloned voice uses its own resource and explicit inference model without co
   })
 })
 
-test('standard voice instructions are serialized once at session start and fixed for appended text', async () => {
+test('standard voice instructions accompany every text request and stay fixed for the session', async () => {
   await withDoubaoServer(async ({ connect, frames }) => {
     const configured = settings({ doubaoInstruction: '  温柔地说话，保留 "停顿"。\n不要改变原文。  ' })
     const session = new DoubaoSession({ settings: configured, connect, signal: new AbortController().signal, onAudio() {} })
@@ -156,14 +163,46 @@ test('standard voice instructions are serialized once at session start and fixed
     assert.equal(typeof params.additions, 'string')
     assert.deepEqual(JSON.parse(params.additions), { context_texts: ['温柔地说话，保留 "停顿"。\n不要改变原文。'] })
     assert.equal(params.model, undefined)
-    assert.deepEqual(frames.filter(frame => frame.event === 200).map(frame => frame.payload.req_params), [{ text: '第一句。' }, { text: '第二句。' }])
+    const tasks = frames.filter(frame => frame.event === 200).map(frame => frame.payload.req_params)
+    assert.deepEqual(tasks.map(task => task.text), ['第一句。', '第二句。'])
+    for (const task of tasks) {
+      assert.equal(task.speaker, configured.doubaoVoice)
+      assert.deepEqual(task.audio_params, { format: 'pcm', sample_rate: 24000, speech_rate: 0 })
+      assert.deepEqual(JSON.parse(task.additions), { context_texts: ['温柔地说话，保留 "停顿"。\n不要改变原文。'] })
+      assert.equal(task.model, undefined, 'standard voices must not set the clone-only model parameter')
+    }
   })
 })
 
 test('empty standard voice instructions omit upstream additions', async () => {
   await withDoubaoServer(async ({ connect, frames }) => {
     await synthesizeDoubao('默认表达', { settings: settings({ doubaoInstruction: ' \n ' }), connect, signal: new AbortController().signal, onAudio() {} })
-    assert.equal(frames.find(frame => frame.event === 100).payload.req_params.additions, undefined)
+    for (const frame of frames.filter(frame => frame.event === 100 || frame.event === 200)) {
+      assert.equal(frame.payload.req_params.additions, undefined)
+    }
+  })
+})
+
+for (const format of ['pcm', 'mp3']) test(`${format} text requests retain the session voice, speed and instruction snapshot`, async () => {
+  await withDoubaoServer(async ({ connect, frames }) => {
+    const configured = settings({ voiceRate: 1.5, doubaoInstruction: '轻声说话', doubaoVoice: 'zh_female_vv_uranus_bigtts' })
+    const session = new DoubaoSession({ settings: configured, format, connect, signal: new AbortController().signal, onAudio() {} })
+    await session.ready
+    configured.voiceRate = 2
+    configured.doubaoVoice = 'different-voice'
+    configured.doubaoInstruction = 'another style'
+    session.append('第一段。')
+    session.append('第二段。')
+    await session.finish()
+    const requests = frames.filter(frame => frame.event === 100 || frame.event === 200)
+    assert.equal(requests.length, 3)
+    for (const frame of requests) {
+      const params = frame.payload.req_params
+      assert.equal(params.speaker, 'zh_female_vv_uranus_bigtts')
+      assert.deepEqual(params.audio_params, { format, sample_rate: 24000, speech_rate: 50 })
+      assert.deepEqual(JSON.parse(params.additions), { context_texts: ['轻声说话'] })
+    }
+    assert.deepEqual(requests.slice(1).map(frame => frame.payload.req_params.text), ['第一段。', '第二段。'])
   })
 })
 

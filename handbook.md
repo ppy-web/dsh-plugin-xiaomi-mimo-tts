@@ -9,14 +9,18 @@
 - **小米**：内置音色 `mimo-v2.5-tts`；音色设计 `mimo-v2.5-tts-voicedesign` 支持预设或描述。
 - **豆包**：标准合成 `seed-tts-2.0`；声音复刻 `seed-icl-2.0` 需先[创建音色](https://console.volcengine.com/speech/new/experience/clone?projectName=default)并填写 ID。需开通对应资源，Agent Plan 使用专属 Key，Coding Plan 不含语音模型。
 - **服务商**：各自保留密钥、模型和音色；豆包按 Key 自动选择标准或 Agent Plan 线路。
-- **语音指令**：支持情绪、风格、方言；本地语音和豆包复刻不应用指令。
+- **语音指令**：小米与豆包标准合成分别提供情绪、风格和方言预设，也可自行输入；两家的指令独立保存，切换服务商不会覆盖。本地语音和豆包复刻不应用指令。
 - **本地语音**：可选云端优先、本地优先或关闭；云端已开始播放后失败不会自动兜底或重播。
 - **朗读范围**：智能模式自动读前两个语义段、手动读全文；全文模式始终读全文；首段模式只读首个语义段。
 - **连接**：豆包持续文本输入需 Host 支持 WebSocket upgrade，反向代理需转发 Upgrade。
 - **鲸鱼娘 Agent 预设**：默认关闭，在「设置 → 插件 → 本插件 → 包含的组件」开启，新建会话时选择。附带[本地表情包](skills/whale-girl/memes.json)
 
 
-官方文档：[小米 TTS](https://mimo.mi.com/models/zh-CN/mimo-v2.5-tts) · [豆包音色](https://docs.volcengine.com/docs/DoubaoVoice/Tonelist-1?lang=zh) · [语音指令](https://docs.volcengine.com/docs/DoubaoVoice/DoubaoTextToSpeech20CapabilityIntroduction?lang=zh) · [Agent Plan 语音](https://docs.volcengine.com/docs/6561/2532486?lang=zh)。
+小米内置音色的 `presetStylePrompt` 和 `instruction` 默认均为空，未选择风格时只发送待朗读文本。选择预设或填写非空指令后，仅使用该指令，不再叠加 `presetStylePrompt`。如果已有非空的 `presetStylePrompt` 配置，它仅在语音指令为空时生效；将两项均清空即可完全不附加风格。升级不会删除已保存的自定义配置。音色设计模式继续保留 `voiceDesignPrompt`，并追加语音指令；音色描述与指令应避免矛盾。风格效果随模型、音色和文本变化，建议先试听。
+
+豆包语音指令仅适用于支持指令的 TTS 2.0 标准音色；自定义 ID 也需确认是该系列音色，声音复刻不发送指令。指令按 `req_params.additions` 中的 `context_texts` 数组发送，建会话和每次文本请求均携带相同配置。方言预设目前发送自然语言指令，并未设置接口的 `explicit_dialect` 参数；固定方言能力还取决于音色支持。云端试听请选择「关闭本地语音」，以免浏览器语音兜底掩盖云端失败；听到浏览器语音不代表豆包指令已生效。
+
+官方文档：[小米风格控制](https://mimo.mi.com/docs/zh-CN/quick-start/usage-guide/audio/speech-synthesis-v2.5) · [豆包音色](https://docs.volcengine.com/docs/DoubaoVoice/Tonelist-1?lang=zh) · [豆包语音指令](https://docs.volcengine.com/docs/DoubaoVoice/DoubaoTextToSpeech20CapabilityIntroduction?lang=zh) · [Agent Plan 语音](https://docs.volcengine.com/docs/6561/2532486?lang=zh)。
 
 ## 自动朗读与宿主回复偏好
 

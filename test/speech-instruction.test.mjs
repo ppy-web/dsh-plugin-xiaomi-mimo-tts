@@ -10,13 +10,15 @@ const { PreviewPlayer } = await loadClientModule('src/client/playback/preview-pl
 const { LiveSpeechController } = await loadClientModule('src/client/playback/live-speech-controller.ts')
 
 for (const model of ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign']) {
-  test(`${model} preserves voice context and sends saved, draft and cleared instructions separately from speech`, () => {
+  test(`${model} applies saved, draft and cleared instructions without mixing in another provider's style`, () => {
     const saved = resolveTtsSettings({ model, presetStylePrompt: 'preset context', voiceDesignPrompt: 'voice description', instruction: 'saved delivery', doubaoInstruction: 'Doubao delivery' })
-    const context = model.endsWith('voicedesign') ? 'voice description' : 'preset context'
-    for (const [body, delivery] of [[{}, 'saved delivery'], [{ speechInstruction: '  draft delivery  ' }, 'draft delivery'], [{ speechInstruction: '' }, '']]) {
+    const cases = model.endsWith('voicedesign')
+      ? [[{}, 'saved delivery', 'voice description\nsaved delivery'], [{ speechInstruction: '  draft delivery  ' }, 'draft delivery', 'voice description\ndraft delivery'], [{ speechInstruction: '' }, '', 'voice description']]
+      : [[{}, 'saved delivery', 'saved delivery'], [{ speechInstruction: '  draft delivery  ' }, 'draft delivery', 'draft delivery'], [{ speechInstruction: '' }, '', 'preset context']]
+    for (const [body, delivery, context] of cases) {
       const selected = synthesisOptions(saved, body)
       assert.deepEqual(requestMessages(selected, '只朗读这句话。'), [
-        { role: 'user', content: [context, delivery].filter(Boolean).join('\n') },
+        { role: 'user', content: context },
         { role: 'assistant', content: '只朗读这句话。' },
       ])
       assert.equal(ttsSelection(selected).speechInstruction, delivery)
@@ -28,6 +30,23 @@ for (const model of ['mimo-v2.5-tts', 'mimo-v2.5-tts-voicedesign']) {
     }
   })
 }
+
+test('Xiaomi built-in voices add no default style and accept both empty style fields', () => {
+  const text = '忠实保留待朗读的文字。'
+  assert.deepEqual(requestMessages(resolveTtsSettings(), text), [{ role: 'assistant', content: text }])
+  assert.deepEqual(requestMessages(resolveTtsSettings({ instruction: '  ', presetStylePrompt: '\n ' }), text), [{ role: 'assistant', content: text }])
+})
+
+test('an explicit Xiaomi style replaces a conflicting saved preset style without changing saved settings', () => {
+  const saved = resolveTtsSettings({ presetStylePrompt: '平和克制，避免夸张', instruction: '' })
+  const selected = synthesisOptions(saved, { speechInstruction: '  愤怒地争辩  ' })
+  assert.deepEqual(requestMessages(selected, '台词。'), [
+    { role: 'user', content: '愤怒地争辩' },
+    { role: 'assistant', content: '台词。' },
+  ])
+  assert.equal(saved.instruction, '')
+  assert.equal(saved.presetStylePrompt, '平和克制，避免夸张')
+})
 
 test('Xiaomi preview sends draft and explicit empty instructions for streamed, complete and segmented audio', async () => {
   await withBrowserPlayback(async state => {

@@ -34,12 +34,20 @@ export class DoubaoSession {
   private textLength = 0
   private audioBytes = 0
   private pcmTail: Buffer | null = null
-  private readonly selection
+  private readonly requestParams
 
   constructor(private readonly options: DoubaoSessionOptions) {
     this.options = { ...options, settings: { ...options.settings } }
     const { settings } = this.options
-    this.selection = ttsSelection(settings)
+    const selection = ttsSelection(settings)
+    // Follow the official base_request example: StartSession and every TaskRequest
+    // carry the same voice, audio and instruction parameters for this session.
+    this.requestParams = {
+      speaker: selection.voice,
+      ...(selection.model === 'seed-icl-2.0' ? { model: 'seed-tts-2.0-standard' } : {}),
+      ...(selection.provider === 'doubao' && selection.model === 'seed-tts-2.0' && selection.speechInstruction ? { additions: JSON.stringify({ context_texts: [selection.speechInstruction] }) } : {}),
+      audio_params: { format: this.options.format ?? 'pcm', sample_rate: 24000, speech_rate: Math.round((normalizeVoiceRate(settings.voiceRate) - 1) * 100) },
+    }
     this.ready = new Promise((resolve, reject) => { this.resolveReady = resolve; this.rejectReady = reject })
     this.done = new Promise((resolve, reject) => { this.resolveDone = resolve; this.rejectDone = reject })
     // Consumers may be awaiting ready before they attach to done.
@@ -87,7 +95,7 @@ export class DoubaoSession {
       this.fail(error)
       throw error
     }
-    this.send(E.TaskRequest, { user: { uid: 'dsh-tts' }, event: E.TaskRequest, namespace: 'BidirectionalTTS', req_params: { text } })
+    this.send(E.TaskRequest, { user: { uid: 'dsh-tts' }, event: E.TaskRequest, namespace: 'BidirectionalTTS', req_params: { ...this.requestParams, text } })
     this.arm()
   }
 
@@ -135,12 +143,7 @@ export class DoubaoSession {
         this.state = 'starting'
         this.send(E.StartSession, {
           user: { uid: 'dsh-tts' }, event: E.StartSession, namespace: 'BidirectionalTTS',
-          req_params: {
-            speaker: this.selection.voice,
-            ...(this.selection.model === 'seed-icl-2.0' ? { model: 'seed-tts-2.0-standard' } : {}),
-            ...(this.selection.provider === 'doubao' && this.selection.model === 'seed-tts-2.0' && this.selection.speechInstruction ? { additions: JSON.stringify({ context_texts: [this.selection.speechInstruction] }) } : {}),
-            audio_params: { format: this.options.format ?? 'pcm', sample_rate: 24000, speech_rate: Math.round((normalizeVoiceRate(this.options.settings.voiceRate) - 1) * 100) },
-          },
+          req_params: this.requestParams,
         })
       } else if (frame.event === E.SessionStarted && this.state === 'starting') {
         this.state = 'ready'
