@@ -32,9 +32,121 @@
 - **切换宿主偏好**：停止当前自动朗读，本轮不补播，从下一轮开始应用。手动点击消息的朗读按钮，仍按该消息与插件朗读范围执行。
 - 切换会话或中途打开正在生成的会话，不补播已存在的内容。
 
+## 通用宿主语音与渠道联动
+
+宿主语音独立于浏览器播放：其他插件可以合成音频、导出文件，或注册自己的渠道发送适配器。小米、豆包及其已保存音色共用原有配置；密钥不会交给模型或发送适配器。浏览器的本地语音兜底、自动播放开关、音量和音频历史不控制这条链路。宿主不需要打开浏览器即可工作。
+
+### 内置工具与预设
+
+通用语音工具通过 `dsh-xiaomi-tts/speech-agent` 模块组合到已有预设中，不额外提供需要用户开启的通用预设组件。QQ 联动只提供一个「QQ Bot 传声」组件，由它内部装配发送器和「QQ 鲸鱼娘」预设（`qq-speech-assistant`）。模块提供以下工具，自动语音默认关闭：
+
+| 工具 | 用途 |
+| --- | --- |
+| `synthesize_speech` | 生成 MP3、WAV 或 SILK 文件，返回绝对路径、格式与大小；供模型再用 `present` 或其他文件工具交付。不会自行发送到聊天。 |
+| `speak` | 合成并通过预设指定的适配器交付。默认 `file` 适配器只导出 WAV 文件；渠道适配器可发送到对应会话。成功后不要再重复发送同一音频。 |
+| `speech_mode` | 通用渠道的会话自动模式控制；QQ 预设不注册此工具，自动发送直接由播报台的来源开关控制。 |
+
+可以说「把这段文字生成音频」「用语音回答」。自然语言按需请求由模型调用对应工具；QQ 来源开关开启后，每轮成功结束时的自动合成由宿主代码触发，不需要再通过会话指令开启，也不依赖模型每轮再次调用 `speak`。
+
+自动模式只朗读最后一条助手正文，不读工具过程、思考、代码、链接或文件路径，不重播历史回复，也不朗读取消、失败或被打断的轮次及子任务。**QQ 不再按 300 字或 60 秒限制发送，不截断、不生成摘要。** 超过合成接口单次文本上限时，按顺序分段合成并发送完整正文；单次合成大小、供应商与 QQ 平台的实际限制仍会检查，发送失败时停止后续段落且不自动重复发送。其他渠道的通用模块仍默认采用 300 字自动范围、60 秒时长，可将对应限制设为 `0` 取消；`synthesize_speech` 继续遵循单次合成限制。
+
+通用渠道的会话模式保存在 `~/.dsh-xiaomi-tts/sessions`，重启后恢复；QQ 忽略此前保存的会话自动模式，只读取来源开关。文件导出保存在 `~/.dsh-xiaomi-tts/audio`，至少保留到 24 小时过期，宿主每小时清理一次。导出的音频不会自动进入浏览器音频历史；`speech/delivered` 事件会报告导出路径或渠道交付结果，其他插件可据此展示附件。
+
+### QQBot 接入
+
+先确认本插件已安装并启用，在插件设置中选择小米或豆包，填写并保存 API Key、模型和音色，并确认**云端试听**正常。浏览器本地语音试听成功不能代替云端验证。以下配置需在同一个 DSH 实例／profile 中完成。
+
+1. **安装并连接 QQBot。** 在 DSH「插件 → 添加插件」输入 `@tencent-connect/dsh-qqbot@latest`，安装并启动；进入「设置 → QQ 机器人」，用手机 QQ 扫码连接。先在 QQ 中向机器人发送一条消息，确认它能够正常回复文字。安装和绑定方式详见 [QQBot 官方说明](https://github.com/tencent-connect/dsh-qqbot#安装)。
+
+2. **开启组件开关。** 进入「设置 → 插件 → 本插件 → 包含的组件」，开启 **QQ Bot 传声**。它同时提供发送适配和内置的 **QQ 鲸鱼娘** Agent 预设，只需开启这一个 QQ 联动组件。
+
+3. **开启播报来源。** 在本插件「播报台 → 插件联动」打开 **QQ Bot** 来源开关，然后点击**保存**。开启后，新会话中的普通回复也会自动发送完整语音，不需要额外开启浏览器自动播放，也不需要在 QQ 中再设置会话自动模式。可以关闭网页，但 DSH 宿主需继续运行。
+
+4. **在 QQ 中用官方指令切换 Agent 预设。** 向机器人发送 `/preset`，查看可用预设，确认列表中有 **QQ 鲸鱼娘（`qq-speech-assistant`）**，再单独发送：
+
+   ```text
+   /preset qq-speech-assistant
+   ```
+
+   参数使用预设 ID `qq-speech-assistant`。机器人应确认预设已切换，并提示新会话生效；仅发送 `/preset` 查看列表不会完成切换。该命令及生效方式见 [QQBot 官方预设命令](https://github.com/tencent-connect/dsh-qqbot/blob/main/src/commands/preset.ts)。预设 ID 沿用旧版「QQ 语音助手」，已保存该 ID 的用户无需修改。
+
+5. **用 `/new` 开启应用预设的新对话。** 在刚才切换预设的同一个 QQ 私聊或群聊中，单独发送：
+
+   ```text
+   /new
+   ```
+
+   `/preset` 设置下一次会话使用的预设，当前对话仍保留原预设，因此这一步不能省略。新对话会启用 QQ 鲸鱼娘的人设、语音和表情包能力。私聊和各个群聊分别选择预设；在一个私聊里切换，不会替其他群聊切换。
+
+6. **发送消息测试 QQ 语音。** 在新对话中发送「你好，介绍一下自己」。来源开启时，无需特别要求语音，应能在 QQ 会话中收到文字回复和可点击播放的语音消息；播放确认内容与当前配置的音色符合预期。群聊中请按 QQBot 设置要求 **@机器人**，命令和测试消息都在同一个目标群内发送。
+
+发送规则如下，可在基础流程完成后分别验证：
+
+| 组件开关 | QQ Bot 来源开关 | 发送规则与测试方法 |
+| --- | --- | --- |
+| 开启 | 开启并保存 | 普通消息触发自动语音；长回复完整发送，超过单次合成上限时顺序分段。 |
+| 开启 | 关闭并保存 | 普通消息不自动发送语音；发送「请用语音说一句你好」验证按需发送。 |
+| 关闭 | 任意 | 本插件的按需、自动语音均不可发送，QQBot 仍可回复文字。 |
+
+来源默认关闭。关闭来源只取消待处理的自动语音，不影响按需语音；再次开启不会补发关闭期间的回复。如果 `/preset` 列表没有 QQ 鲸鱼娘，先检查 QQ Bot 传声组件是否已启用，以及两个插件是否运行在同一个 DSH 实例。若只有文字没有语音，依次检查来源开关是否保存、是否执行了 `/preset qq-speech-assistant` 和 `/new`、云端试听是否正常；进一步的发送失败原因查看 QQBot 与本插件日志。
+
+适配器将音频转换为 SILK，临时放入 QQBot 默认允许的 `~/.dsh-qqbot/media`，通过已注册的 `qqbot_send_file` 工具发送，并在发送操作结束后清理。目标由 QQBot 根据当前 Agent 解析，不让模型填写 openid；发送继续经过 DSH 工具策略、QQBot 路径白名单和回复额度管理。缺少发送工具、工具被限制、平台拒绝或额度不足时，不会另起连接或绕过限制发送，也不会盲目自动重试。
+
+QQ 原有文字回复照常发送。自动语音在轮次成功结束后开始合成，但由于 QQBot 没有公开文字送达确认接口，不严格保证文字与语音到达先后。新轮次、关闭语音或插件卸载会取消尚未发送的旧任务；QQBot 的上传发送一旦开始，取消信号不能保证撤回已经送出的消息，`/stop` 也不能作为语音撤回命令。请在 QQBot 日志核对发送结果后再决定是否重试。
+
+内置「QQ 鲸鱼娘」改编自本项目鲸鱼娘人设，保留白饭、嘴硬心软和温柔可靠的性格，日常默认一到三句口语短话；明确要求详细解释时才展开。它使用随包附带的 [QQ 鲸鱼娘 skill](skills/qqbot-whale-girl/SKILL.md)，由预设自动注入，无需用户单独安装或手动加载。
+
+表情包与普通鲸鱼娘共用[本地素材目录](skills/whale-girl/memes.json)。QQ 预设提供 `qqbot_send_meme`，按目录 ID 将图片文件发送到当前 QQ 私聊或群聊，默认按语境偶尔发一张；要求不发图或只要语音时不发。发送沿用 `qqbot_send_file` 的权限、路由和额度检查，不需要 shell 或修改路径白名单。图片会临时复制到 `~/.dsh-qqbot/media`，发送结束删除；异常退出遗留的副本在 24 小时过期后由每小时清理任务处理。缺图或发送失败时退回文字，不自动重试。播报台来源开关只控制自动语音，不控制表情包。
+
+内置 QQ 预设专注聊天、语音和表情包。如需保留其他既有人格、文件和网页工具，在原预设的 `plugins` 中追加下面的通用模块即可，不需要替换人格：
+
+```yaml
+- id: conversation-speech
+  name: 'dsh-xiaomi-tts/speech-agent'
+  config:
+    delivery: qqbot # 也可以是 file 或其他插件注册的适配器 ID
+    # QQ 自动模式由来源开关控制，不需要额外配置长度或时长限制。
+```
+
+将这个模块仅挂到需要语音能力的预设。QQ 发送适配器只挂一份；面向 QQ 的预设应只分配给 QQBot 会话。一次会话中显式调用 `speak` 后，本轮不再自动补发，避免同一内容发送两次。
+
+### 插件开发接口
+
+公开类型从 `dsh-xiaomi-tts/host-api` 导入。在插件中声明 `inject = ['speechSynthesis']`，通过 `ctx.speechSynthesis` 调用：
+
+```ts
+import type { Context } from '@deepseek-ai/cordis'
+import type {} from 'dsh-xiaomi-tts/host-api'
+
+export const inject = ['speechSynthesis']
+
+export async function apply(ctx: Context) {
+  const controller = new AbortController()
+  const audio = await ctx.speechSynthesis.synthesize({
+    text: '这是一段宿主合成的语音。',
+    format: 'wav', // mp3 / wav / silk
+    signal: controller.signal,
+  })
+  // audio.data 是 Buffer；交给自己的播放器、上传或存储逻辑。
+  ctx.logger.info(`Generated ${audio.data.length} bytes`)
+}
+```
+
+`exportAudio(request)` 返回托管文件及幂等的 `remove()`；`synthesize(request)` 只返回内存音频。请求可覆盖 `provider`、`model`、`voice`、`speechInstruction`、`voiceDesignPrompt` 和豆包 `voiceRate`，不支持从模型参数传入密钥或合成地址。`maxDurationMs` 要求使用 WAV/SILK，以便在交付前检查实际时长。
+
+渠道插件通过 `registerDelivery({ id, format, check?, send })` 注册适配器，并用 `ctx.effect(() => registerDelivery(...))` 绑定卸载清理。可选的 `check({ agent, signal })` 在合成前检查发送前提，缺少发送工具时避免消耗云端请求。`send(audio, { agent, signal })` 负责按当前 Agent 路由和执行渠道权限检查，返回 `{ adapter, messageId?, target?, path? }`；通用模块使用 `deliver(request, id, { agent, signal })` 完成合成和交付。适配器不接触供应商密钥，`file` 是保留 ID。适配器需要遵守取消信号，发送失败或结果不明时不要自动重复发送。
+
+`setDeliveryEnabled(id, enabled)` 可单独控制某个渠道并取消其全部待处理任务；`hasDelivery(id)` 检查适配器是否注册及是否允许交付。`setAutomaticDeliveryEnabled(id, enabled)` 和 `isAutomaticDeliveryEnabled(id)` 单独控制自动发送，关闭时保留显式请求。QQ 的自动发送由宿主设置 `qqbotEnabled` 控制，组件注册本身决定是否具备发送能力；纯 CLI 也可配置该设置。`deliver` 的上下文使用 `automatic: true` 标记自动任务，长文完整交付可在请求中设置 `splitLongText: true`。
+
+纯 CLI／无 Web 服务的 profile 可以将宿主插件条目设为 `dsh-xiaomi-tts/host`，配置沿用本插件的 `provider`、API Key、音色和限制等字段。它只提供宿主语音服务，不要求 `webServer`。它与默认 Web 入口二选一，不要在同一个服务作用域重复挂载；`speech-agent` 和渠道适配器仍按需挂载。
+
+本地回归验证合成、转码、会话隔离、取消、策略拒绝及临时文件清理；QQ 平台权限、实际回复额度和手机端播放需要在真实账号上验证。
+
 ## 插件详情页
 
 在宿主中打开本插件的组合包详情，可通过「用户手册」直接打开[在线使用手册](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual)。该按钮沿用宿主按钮样式；详情同时显示当前已保存服务商的密钥格式状态。组件详情、其他插件和官方条目不显示这些扩展。
+
+在线手册包含[自动朗读与回复偏好](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual-reading)、[QQ Bot 接入流程](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual-qqbot)及[试听与故障排查](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual-troubleshooting)，目录可直接定位章节。预览站点的保存、组件状态和云端合成均为演示，不会修改真实 DSH 配置，也不会向 QQ 发送消息；供应商权限、真实音色和 QQ 语音送达需在 DSH 与 QQ 中验证。
 
 密钥状态区分检查中、未配置、格式已识别、格式不支持和无法检查。**格式已识别仅表示密钥格式受支持**，不代表额度、音色权限或网络连接正常；请在插件设置中试听确认。无法检查时可「重新检查」。浏览器语音无需云端密钥。
 
