@@ -122,6 +122,7 @@ export const ja: Record<LocaleKey, string> = {
   'error.timeout': '音声合成がタイムアウトしました。もう一度お試しください。',
   'error.bufferLimit': '音声バッファーの上限に達したため再生を停止しました。',
   'history.title': '音声履歴',
+  'history.backToSettings': '設定に戻る',
   'history.search': '音声の概要を検索',
   'history.source': '作成元',
   'history.all': 'すべて',

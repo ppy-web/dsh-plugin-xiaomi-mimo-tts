@@ -1,7 +1,8 @@
-import type { ReactElement } from 'react'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import type { ReactElement, RefObject } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AiFillGithub } from 'react-icons/ai'
+import { GoHistory } from 'react-icons/go'
 import { RiSwitchFill } from 'react-icons/ri'
 import {
   TTS_MIMO_LOGO_ASSET_ROUTE,
@@ -32,6 +33,7 @@ import { hostRoute } from '../host-route.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 import type { AudioHistory } from '../history/audio-history.js'
+import { AudioHistoryPage } from '../history/audio-history-page.js'
 import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
 import type { SpeechActivity } from '../announcements/speech-activity.js'
 import { isSpeechBusy } from '../announcements/speech-activity.js'
@@ -43,6 +45,7 @@ interface SettingsCardProps {
   t: Translate
   controller: SoundEffectsController
   beforePreview?: (() => void) | undefined
+  beforeHistoryPlayback?: (() => void) | undefined
   changes?: SnapshotSource<boolean> | undefined
   history?: AudioHistory | undefined
   audioFocus?: AudioFocus | undefined
@@ -67,12 +70,20 @@ function hasLayerField(value: unknown, field: string): boolean {
   return isRecord(value) && Object.hasOwn(value, field)
 }
 
-export function SettingsCard(props: SettingsCardProps): ReactElement | null {
-  if (props.view === 'summary') return <>{props.t('settings.description')}</>
-  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} history={props.history} audioFocus={props.audioFocus} speechActivity={props.speechActivity} beforePreview={props.beforePreview} changes={props.changes} />
+function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement | null> }): ReactElement {
+  const view = useSyncExternalStore(history.subscribe, history.getSnapshot)
+  return <Button ref={buttonRef} type="button" className="xmimo-tts-history-link" variant="toolbar" size="sm" onClick={onOpen}>
+    <GoHistory size={14} aria-hidden="true" focusable="false" />
+    <span className="xmimo-tts-action-label">{t('history.title')} · {view.entries.length}</span>
+  </Button>
 }
 
-function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+export function SettingsCard(props: SettingsCardProps): ReactElement | null {
+  if (props.view === 'summary') return <>{props.t('settings.description')}</>
+  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} history={props.history} audioFocus={props.audioFocus} speechActivity={props.speechActivity} beforePreview={props.beforePreview} beforeHistoryPlayback={props.beforeHistoryPlayback} changes={props.changes} />
+}
+
+function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(pluginChanges.subscribe, pluginChanges.getSnapshot, pluginChanges.getSnapshot)
   const writable = snapshot.writable && !changing
@@ -122,6 +133,9 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   }), [audioFocus, previewPlayer, toggleSoundPlayer])
   const apiKeyStatus = useApiKeyStatus(snapshot.status === 'ready' && !changing, provider)
   const [minimalMode, setMinimalMode] = useState(readMinimalMode)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const historyLinkRef = useRef<HTMLButtonElement>(null)
+  const historyWasOpen = useRef(false)
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
@@ -204,6 +218,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   useEffect(() => { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setVolume(voiceVolume) }, [previewPlayer, toggleSoundPlayer, voiceVolume])
 
+  useEffect(() => {
+    if (!historyOpen && historyWasOpen.current) historyLinkRef.current?.focus({ preventScroll: true })
+    historyWasOpen.current = historyOpen
+  }, [historyOpen])
 
   if (snapshot.status === 'unavailable') return null
 
@@ -378,6 +396,19 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (next) previewPlayer.stop()
   }
 
+  if (historyOpen && history) return changing
+    ? <p className="xmimo-ui-scope xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p>
+    : <AudioHistoryPage history={history} t={t} volume={voiceVolume} voiceRate={voiceRate} minimalMode={minimalMode} speechActivity={speechActivity}
+      beforePlayback={() => {
+        if (pluginChanges.getSnapshot()) return false
+        audioFocus.claim()
+        if (!audioFocus.canPlay()) return false
+        previewPlayer.stop()
+        toggleSoundPlayer.dispose()
+        beforeHistoryPlayback?.()
+        return true
+      }} onBack={() => { setHistoryOpen(false) }} />
+
   return (
     <div className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
       {changing ? <p className="xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p> : null}
@@ -497,6 +528,11 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
                 <AiFillGithub size={14} aria-hidden="true" focusable="false" />
                 <span className="xmimo-tts-action-label">{t('settings.source')}</span>
               </a>
+              {history ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
+                previewPlayer.stop()
+                toggleSoundPlayer.dispose()
+                setHistoryOpen(true)
+              }} /> : null}
               <Button
                 type="button"
                 variant="toolbar"

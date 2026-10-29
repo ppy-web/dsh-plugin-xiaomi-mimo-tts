@@ -122,6 +122,7 @@ export const fr: Record<LocaleKey, string> = {
   'error.timeout': 'Délai de synthèse vocale dépassé. Réessayez.',
   'error.bufferLimit': 'Limite du tampon audio atteinte. Lecture arrêtée.',
   'history.title': 'Historique audio',
+  'history.backToSettings': 'Retour aux paramètres',
   'history.search': 'Rechercher dans les résumés audio',
   'history.source': 'Origine',
   'history.all': 'Tout',

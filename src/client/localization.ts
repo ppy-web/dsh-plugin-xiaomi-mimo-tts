@@ -126,6 +126,7 @@ export const zh = {
   "error.bufferLimit": "音频缓存已达上限，播放已停止。",
 
   'history.title': '音频历史',
+  'history.backToSettings': '返回设置页',
   'history.search': '搜索音频摘要',
   'history.source': '来源',
   'history.all': '全部',
@@ -516,6 +517,7 @@ export const en: Record<keyof typeof zh, string> = {
   "error.bufferLimit": "Audio buffer limit reached. Playback stopped.",
 
   'history.title': 'Audio history',
+  'history.backToSettings': 'Back to settings',
   'history.search': 'Search audio summaries',
   'history.source': 'Source',
   'history.all': 'All',

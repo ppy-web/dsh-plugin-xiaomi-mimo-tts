@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, ReactElement } from 'react'
-import { RiCheckLine, RiDeleteBinLine, RiDownloadLine } from 'react-icons/ri'
+import { RiArrowLeftSLine, RiCheckLine, RiDeleteBinLine, RiDownloadLine } from 'react-icons/ri'
 import { Button, Input, IconRefreshOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AudioHistory, AudioHistoryEntry } from './audio-history.js'
 import type { Translate } from '../localization.js'
@@ -22,9 +22,10 @@ export interface AudioHistoryPageProps {
   minimalMode: boolean
   speechActivity?: SpeechActivity | undefined
   beforePlayback: () => boolean | void
+  onBack: () => void
 }
 
-export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, speechActivity, beforePlayback }: AudioHistoryPageProps): ReactElement {
+export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, speechActivity, beforePlayback, onBack }: AudioHistoryPageProps): ReactElement {
   const view = useSyncExternalStore(history.subscribe, history.getSnapshot)
   const [replay] = useState(() => new HistoryReplay(history, beforePlayback))
   useEffect(() => speechActivity?.register(() => isSpeechBusy(replay.getSnapshot().status)), [speechActivity, replay])
@@ -37,11 +38,12 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
   const [clearing, setClearing] = useState(false)
   const [pending, setPending] = useState(false)
   const [actionError, setActionError] = useState(false)
+  const backRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const pageRef = useRef<HTMLElement>(null)
   useEffect(() => {
     replay.activate()
-    pageRef.current?.focus({ preventScroll: true })
+    backRef.current?.focus({ preventScroll: true })
     return () => { replay.dispose(); downloads.dispose() }
   }, [replay, downloads])
   useEffect(() => { replay.configure(volume, voiceRate, beforePlayback) }, [replay, volume, voiceRate, beforePlayback])
@@ -69,7 +71,7 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
       else await history.remove(id)
       setDeleting(null)
       setClearing(false)
-      const focusTarget = searchRef.current?.getClientRects().length ? searchRef.current : pageRef.current
+      const focusTarget = searchRef.current?.getClientRects().length ? searchRef.current : backRef.current
       focusTarget?.focus({ preventScroll: true })
     } catch { setActionError(true) }
     finally { setPending(false) }
@@ -81,7 +83,11 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
   return <section ref={pageRef} tabIndex={-1} className="xmimo-ui-scope xmimo-tts-history-page" aria-label={t('history.title')}>
     <header className="xmimo-tts-history-header">
       <h2 aria-label={t('history.title')}>
-        <span>{t('history.title')}</span>
+        <button ref={backRef} type="button" className="xmimo-tts-history-title-back"
+          aria-label={t('history.backToSettings')} title={t('history.backToSettings')} onClick={onBack}>
+          <RiArrowLeftSLine size={18} aria-hidden="true" focusable="false" />
+          <span>{t('history.title')}</span>
+        </button>
         <span className="xmimo-tts-history-count">{view.entries.length}</span>
       </h2>
       {hasEntries ? <div className="xmimo-tts-history-toolbar">

@@ -21,7 +21,6 @@ import { SettingsCard } from './settings/card.js'
 import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
 import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
 import { ActivationGuide } from './settings/activation-guide.js'
-import { AudioHistoryTab } from './history/audio-history-tab.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
 import { installVoiceReadingNavIcon } from './settings/nav-icon.js'
 import { VoiceReadingSection } from './settings/voice-reading-section.js'
@@ -58,7 +57,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: Context,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.tab' | 'plugins.detail.actions' | 'plugins.detail.badge',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.detail.actions' | 'plugins.detail.badge',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -267,7 +266,7 @@ export function apply(ctx: Context): void {
     name: 'plugins.bundle.config',
     key: 'dsh-xiaomi-tts',
     locale: NS,
-    inject: () => ({ scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback }),
+    inject: () => ({ scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback }),
   }, SettingsCard))
 
   registerSlotContribution(ctx, 'plugins.bundle.activation', () => ctx.slots.register({
@@ -276,21 +275,6 @@ export function apply(ctx: Context): void {
     locale: NS,
     inject: () => ({ scope, t, audioFocus, changes, beforePreview: stopAllPlayback }),
   }, ActivationGuide))
-
-  registerSlotContribution(ctx, 'plugins.tab', () => ctx.slots.register({
-    name: 'plugins.tab',
-    id: 'xiaomi-mimo-tts.audio-history',
-    label: () => t('history.title'),
-    order: 30,
-    locale: NS,
-    inject: () => ({ history, t, scope, changes, speechActivity, beforePlayback: () => {
-      audioFocus.claim()
-      if (!audioFocus.canPlay()) return false
-      live.interrupt(); local.interrupt(); playback.interrupt()
-      pcmService.stop(); questionPlayback?.stop()
-      return true
-    } }),
-  }, AudioHistoryTab))
 
   registerSlotContribution(ctx, 'settings.section', () => ctx.slots.register({
     name: 'settings.section',

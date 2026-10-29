@@ -1,4 +1,4 @@
-import { LuSettings2, LuVolume2, LuMessageSquare, LuHistory, LuInfo, LuPackage, LuBookOpen, LuTextSearch, LuSparkles, LuRotateCcw, LuGithub, LuArrowUpRight, LuX } from 'react-icons/lu'
+import { LuSettings2, LuVolume2, LuMessageSquare, LuInfo, LuPackage, LuBookOpen, LuTextSearch, LuSparkles, LuRotateCcw, LuGithub, LuArrowUpRight, LuX } from 'react-icons/lu'
 import { Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { IconType } from 'react-icons'
 import type { PreviewCopy, PreviewView } from './preview-copy.js'
@@ -7,7 +7,7 @@ import { TTS_VERSION } from '../../src/shared.js'
 import { SOURCE_URL } from '../../src/client/settings/plugin-links.js'
 
 const GROUPS: { label: 'speech' | 'plugin' | 'help'; items: { view: PreviewView; icon: IconType }[] }[] = [
-  { label: 'speech', items: [{ view: 'settings', icon: LuSettings2 }, { view: 'voice', icon: LuVolume2 }, { view: 'conversation', icon: LuMessageSquare }, { view: 'history', icon: LuHistory }] },
+  { label: 'speech', items: [{ view: 'settings', icon: LuSettings2 }, { view: 'voice', icon: LuVolume2 }, { view: 'conversation', icon: LuMessageSquare }] },
   { label: 'plugin', items: [{ view: 'detail', icon: LuInfo }, { view: 'components', icon: LuPackage }] },
   { label: 'help', items: [{ view: 'filter', icon: LuTextSearch }, { view: 'manual', icon: LuBookOpen }] },
 ]

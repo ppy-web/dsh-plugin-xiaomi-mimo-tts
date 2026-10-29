@@ -15,7 +15,6 @@ import { BundleComponents } from './bundle-components.js'
 import { FilterLab } from './filter-lab.js'
 import { TTS_VERSION } from '../../src/shared.js'
 import { ActivationGuide } from '../../src/client/settings/activation-guide.js'
-import { AudioHistoryTab } from '../../src/client/history/audio-history-tab.js'
 import { unrestrictedAudioFocus } from '../../src/client/playback/tab-audio-focus.js'
 import { AudioHistory } from '../../src/client/history/audio-history.js'
 import { ConversationPreview } from './conversation-preview.js'
@@ -141,7 +140,6 @@ function PreviewApp() {
             </div>
               : activeView === 'voice' ? <div className="preview-voice-surface"><VoiceReadingPreview scope={scope} t={t} onOpenPluginSettings={() => { window.location.hash = 'settings' }} /></div>
               : activeView === 'conversation' ? <ConversationPreview scope={scope} />
-              : activeView === 'history' ? <AudioHistoryTab history={history} scope={scope} t={t} beforePlayback={() => {}} />
               : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} />
               : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} />

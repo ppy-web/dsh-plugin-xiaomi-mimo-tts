@@ -1,5 +1,5 @@
 export type PreviewLocale = 'zh' | 'en' | 'ja' | 'fr'
-export type PreviewView = 'settings' | 'voice' | 'conversation' | 'history' | 'detail' | 'components' | 'filter' | 'manual'
+export type PreviewView = 'settings' | 'voice' | 'conversation' | 'detail' | 'components' | 'filter' | 'manual'
 
 export interface PreviewCopy {
   workspace: string
@@ -34,7 +34,6 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       settings: { title: '插件设置', description: '配置语音服务商、音色与音效，体验完整的设置面板。' },
       voice: { title: '语音朗读', description: '宿主设置中的快捷入口，调整音色、语速和自动朗读。' },
       conversation: { title: '对话效果', description: '在一段示例对话中体验消息朗读与播放控制。' },
-      history: { title: '音频历史', description: '试听、下载和管理当前浏览器中保存的录音。' },
       detail: { title: '插件详情', description: '检查详情扩展在不同服务商和密钥状态下的显示。' },
       components: { title: '包含的组件', description: '查看语音插件和鲸鱼娘 Agent 预设的组件列表。' },
       filter: { title: '文本过滤', description: '比较原始文本与朗读内容，试用自定义输入或测试样例。' },
@@ -52,7 +51,6 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       settings: { title: 'Plugin settings', description: 'Explore providers, voices, and sound effects in the full settings panel.' },
       voice: { title: 'Voice reading', description: 'Quick voice, speed, and automatic reading controls from host settings.' },
       conversation: { title: 'Conversation', description: 'Try message reading and playback controls in a sample conversation.' },
-      history: { title: 'Audio history', description: 'Replay, download, and manage recordings saved in this browser.' },
       detail: { title: 'Plugin details', description: 'Inspect contributions across providers and key states.' },
       components: { title: 'Included components', description: 'Explore the speech plugin and Whale Girl Agent preset.' },
       filter: { title: 'Text filtering', description: 'Compare source text with spoken text using your input or test samples.' },
@@ -70,7 +68,6 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       settings: { title: 'プラグイン設定', description: 'サービス、音声、効果音を設定できる実際のパネルです。' },
       voice: { title: '音声読み上げ', description: 'ホスト設定から音声、速度、自動読み上げを調整します。' },
       conversation: { title: '会話プレビュー', description: 'サンプル会話でメッセージの読み上げと再生操作を試せます。' },
-      history: { title: '音声履歴', description: 'このブラウザーに保存した録音を再生、保存、管理します。' },
       detail: { title: 'プラグイン詳細', description: 'サービス、キー状態ごとの詳細表示を確認します。' },
       components: { title: '含まれるコンポーネント', description: '音声プラグインとクジラメイドの Agent プリセットを確認します。' },
       filter: { title: 'テキストフィルター', description: '入力文やサンプルで、元の文章と読み上げ用テキストを比較します。' },
@@ -88,7 +85,6 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       settings: { title: 'Réglages du plugin', description: 'Découvrez les services, les voix et les effets sonores du panneau complet.' },
       voice: { title: 'Lecture vocale', description: 'Réglez la voix, la vitesse et la lecture automatique depuis les paramètres de l’hôte.' },
       conversation: { title: 'Conversation', description: 'Essayez la lecture des messages dans un exemple de conversation.' },
-      history: { title: 'Historique audio', description: 'Écoutez, téléchargez et gérez les enregistrements de ce navigateur.' },
       detail: { title: 'Détails du plugin', description: 'Vérifiez l’affichage selon le service et l’état de la clé.' },
       components: { title: 'Composants inclus', description: 'Découvrez le plugin vocal et le préréglage Agent Whale Girl.' },
       filter: { title: 'Filtrage du texte', description: 'Comparez le texte source et le texte lu avec votre saisie ou les exemples.' },
