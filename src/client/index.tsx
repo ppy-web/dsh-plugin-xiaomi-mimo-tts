@@ -21,7 +21,7 @@ import { SettingsCard } from './settings/card.js'
 import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
 import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
 import { ActivationGuide } from './settings/activation-guide.js'
-import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
+import { PluginAudioFocus, observePluginActivity, IDLE_PLUGIN_CHANGES } from './plugin-activity.js'
 import { installVoiceReadingNavIcon } from './settings/nav-icon.js'
 import { VoiceReadingSection } from './settings/voice-reading-section.js'
 import type { VoiceReadingSectionInjected } from './settings/voice-reading-section.js'
@@ -47,7 +47,6 @@ export const inject = [
   'remote',
   'configForms',
   'pluginNavigation',
-  'pluginChanges',
   'sessions',
 ]
 
@@ -88,7 +87,7 @@ export function apply(ctx: Context): void {
 
   const scope = ctx.configForms.get<TtsSettings>(TTS_SETTINGS_NAMESPACE)
   const focusOwner = new TabAudioFocus()
-  const changes = ctx.pluginChanges.bundle('dsh-xiaomi-tts')
+  const changes = IDLE_PLUGIN_CHANGES
   ctx.effect(() => {
     const off = bindApiKeyStatus(scope, changes)
     window.addEventListener('online', apiKeyStatusStore.invalidate)

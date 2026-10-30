@@ -3,7 +3,7 @@ import test from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { Context } from '@deepseek-ai/cordis'
 import ToolsService from '@deepseek-ai/dsh-tools'
-import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { createScope, scopeTarget } from '@deepseek-ai/dsh-scope'
 import * as speechAgent from '../lib/speech-agent.js'
 import * as speechHost from '../lib/speech-host.js'
@@ -41,12 +41,8 @@ for (const delivery of ['custom-channel', 'qqbot']) test(`${delivery} speech too
   agent.ctx = owner.ctx
   const plugin = preset.ctx.plugin(speechAgent, { delivery })
   await settle()
-  const pipeline = new ToolExecutionPipeline(ctx)
   ctx.on('speech/delivered', payload => { deliveries.push(payload) })
-  const call = async (name, args) => {
-    const prepared = await pipeline.prepare({ callId: randomUUID(), name, arguments: args, agent, signal: new AbortController().signal })
-    return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
-  }
+  const call = async (name, args) => ctx.tools.execute({ callId: ToolCallId(randomUUID()), name, arguments: args, agent, signal: new AbortController().signal })
   try {
     assert.equal(ctx.tools.get('speak'), undefined, 'the capability is only visible through its preset')
     const exported = await call('synthesize_speech', { text: '文件', format: 'wav' })

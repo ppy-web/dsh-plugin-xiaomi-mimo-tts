@@ -14,11 +14,11 @@ export function createQqbotSpeechDelivery(ctx: Context, directory = QQBOT_MEDIA_
     id: 'qqbot', format: 'silk',
     check({ agent, signal }) {
       signal.throwIfAborted()
-      if (!ctx.tools.executable('qqbot_send_file', agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending speech.', 409)
+      if (!ctx.tools.get('qqbot_send_file', agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending speech.', 409)
     },
     async send(audio, { agent, signal }) {
       signal.throwIfAborted()
-      if (!ctx.tools.executable('qqbot_send_file', agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending speech.', 409)
+      if (!ctx.tools.get('qqbot_send_file', agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending speech.', 409)
       const artifact = await writeSpeechArtifact(audio, directory)
       try {
         signal.throwIfAborted()

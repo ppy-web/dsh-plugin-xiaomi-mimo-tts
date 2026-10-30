@@ -7,7 +7,7 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import ToolsService from '@deepseek-ai/dsh-tools'
-import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import { buildQqbotPersona, cleanupQqbotMemes, loadWhaleMemes, registerQqbotMemeTool } from '../lib/qqbot-agent.js'
 
@@ -32,11 +32,7 @@ async function setup(run) {
     apply(owner) { registerQqbotMemeTool(owner, { directory }) },
   })
   await settle()
-  const pipeline = new ToolExecutionPipeline(ctx)
-  const call = async (args, signal = new AbortController().signal) => {
-    const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'qqbot_send_meme', arguments: args, agent, signal })
-    return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
-  }
+  const call = async (args, signal = new AbortController().signal) => ctx.tools.execute({ callId: ToolCallId(randomUUID()), name: 'qqbot_send_meme', arguments: args, agent, signal })
   const sender = execute => ctx.tools.register({
     name: 'qqbot_send_file', description: 'test QQ file sender',
     parameters: { type: 'object', properties: { file_path: { type: 'string' } }, required: ['file_path'], additionalProperties: false },
