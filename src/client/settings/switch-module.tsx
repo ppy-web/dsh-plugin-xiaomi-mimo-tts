@@ -4,6 +4,7 @@ import { TTS_PROVIDER_CHARACTER_ASSET_ROUTES, TTS_SOUND_EFFECTS_CHARACTER_ASSET_
 import type { TtsProvider } from '../../types/providers.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
+import { useHoloHover } from './use-holo-hover.js'
 
 interface CharacterToggleProps {
   kind: 'voice' | 'autoplay' | 'sound'
@@ -113,8 +114,10 @@ export interface SwitchModuleProps {
 }
 
 export function SwitchModule({ t, provider, enabled, autoPlay, soundEnabled, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
+  const rowRef = useHoloHover(!minimal && writable)
+
   return <section className={minimal ? 'xmimo-tts-switch-module xmimo-tts-switch-module-minimal' : 'xmimo-tts-switch-module'}>
-    <div className="xmimo-tts-switch-row xmimo-ui-grid">
+    <div ref={rowRef} className="xmimo-tts-switch-row xmimo-ui-grid">
       <CharacterToggle kind="voice" checked={enabled} disabled={!writable} label={t(minimal ? 'settings.enabled' : enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onEnabledChange} />
       <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!writable} label={t(minimal ? 'settings.autoPlay' : enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onAutoPlayChange} />
       <CharacterToggle kind="sound" checked={soundEnabled} disabled={!writable} label={t(minimal ? 'settings.soundEffectsTitle' : soundEnabled ? 'settings.soundEffectsOnLabel' : 'settings.soundEffectsOffLabel')} stateLabel={t(soundEnabled ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onSoundEnabledChange} />

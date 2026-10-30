@@ -11,11 +11,29 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-character-toggle>.xmimo-tts-character-control {
+    transform: none !important
+  }
+
   .xmimo-tts-character-control,
+  .xmimo-tts-character-control::before,
+  .xmimo-tts-character-control::after,
   .xmimo-tts-character-portrait,
   .xmimo-tts-provider-flipper,
   .xmimo-tts-api-key-whale {
     transition: none !important
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (any-hover: hover) and (any-pointer: fine) {
+  .xmimo-tts-character-toggle:hover>input:not(:disabled)+.xmimo-tts-character-control::before,
+  .xmimo-tts-provider-toggle:hover:not(:disabled)>.xmimo-tts-character-control::before {
+    opacity: var(--xmimo-holo-strength)
+  }
+
+  .xmimo-tts-character-toggle:hover>input:not(:disabled)+.xmimo-tts-character-control::after,
+  .xmimo-tts-provider-toggle:hover:not(:disabled)>.xmimo-tts-character-control::after {
+    opacity: .8
   }
 }
 

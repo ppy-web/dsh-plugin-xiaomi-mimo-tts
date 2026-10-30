@@ -2,6 +2,11 @@
  * Character toggle: the portrait mascot switch (voice / autoplay on-off states).
  */
 
+.xmimo-tts-card:has(.xmimo-tts-switch-module:not(.xmimo-tts-switch-module-minimal)) {
+  display: flow-root;
+  overflow: visible
+}
+
 .xmimo-tts-character-toggle {
   position: relative;
   display: flex !important;
@@ -25,12 +30,14 @@
 }
 
 .xmimo-tts-character-control {
+  --xmimo-holo-strength: .22;
   box-sizing: border-box;
   position: relative;
   display: flex !important;
   width: 100%;
   min-width: 0;
   overflow: hidden;
+  isolation: isolate;
   align-items: center;
   justify-content: flex-end;
   flex-direction: column;
@@ -41,10 +48,58 @@
   background: linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 8%, var(--dsw-alias-bg-layer-1, #fff)), var(--dsw-alias-bg-layer-1, #fff));
   box-shadow: 0 3px 12px rgba(47, 74, 145, .08);
   text-align: center;
-  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease
+  transition: transform 220ms cubic-bezier(.16, 1, .3, 1), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease
+}
+
+/* A foil face and a separate light-catching rim, behind portraits and labels. */
+.xmimo-tts-character-control::before,
+.xmimo-tts-character-control::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease
+}
+
+.xmimo-tts-character-control::before {
+  background-image:
+    radial-gradient(ellipse at var(--xmimo-holo-x, 50%) var(--xmimo-holo-y, 35%), rgba(255, 255, 255, .9), rgba(255, 255, 255, .15) 30%, transparent 65%),
+    linear-gradient(115deg, #79e8e6, #9ba8ff 18%, #efb6e8 36%, #ffe0a8 52%, #9debd5 68%, #94beff 84%, #e4bcf5);
+  background-size: 100% 100%, 260% 260%;
+  background-position: center, var(--xmimo-holo-bg-x, 50%) var(--xmimo-holo-bg-y, 50%);
+  mask-image: radial-gradient(ellipse farthest-corner at var(--xmimo-holo-x, 50%) var(--xmimo-holo-y, 35%), #000 8%, rgba(0, 0, 0, .65) 50%, transparent 90%)
+}
+
+.xmimo-tts-character-control::after {
+  padding: 1px;
+  background: radial-gradient(ellipse at var(--xmimo-holo-x, 50%) var(--xmimo-holo-y, 35%), #fff, #a4edff 25%, rgba(241, 180, 233, .75) 45%, transparent 75%);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude
+}
+
+.xmimo-tts-character-toggle[data-xmimo-holo-active]>.xmimo-tts-character-control {
+  transform: perspective(700px) translateY(-2px) rotateX(var(--xmimo-holo-rx, 0deg)) rotateY(var(--xmimo-holo-ry, 0deg)) scale(1.015);
+  will-change: transform
+}
+
+.xmimo-tts-character-toggle[data-xmimo-holo-active]>.xmimo-tts-character-control::before,
+.xmimo-tts-character-toggle>input:focus-visible+.xmimo-tts-character-control::before,
+.xmimo-tts-provider-toggle:focus-visible>.xmimo-tts-character-control::before {
+  opacity: var(--xmimo-holo-strength)
+}
+
+.xmimo-tts-character-toggle[data-xmimo-holo-active]>.xmimo-tts-character-control::after,
+.xmimo-tts-character-toggle>input:focus-visible+.xmimo-tts-character-control::after,
+.xmimo-tts-provider-toggle:focus-visible>.xmimo-tts-character-control::after {
+  opacity: .8
 }
 
 .xmimo-tts-character-portrait {
+  position: relative;
+  z-index: 2;
   display: block !important;
   max-width: 100%;
   flex: none;
@@ -82,6 +137,8 @@
 }
 
 .xmimo-tts-character-copy {
+  position: relative;
+  z-index: 2;
   display: flex !important;
   min-width: 0;
   flex-direction: column;
@@ -105,6 +162,7 @@
 
 .xmimo-tts-character-state {
   position: absolute;
+  z-index: 2;
   top: 9px;
   right: 9px;
   display: inline-flex !important;
@@ -129,6 +187,7 @@
 }
 
 .xmimo-tts-character-toggle-on .xmimo-tts-character-control {
+  --xmimo-holo-strength: .38;
   border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 55%, var(--dsw-alias-border-l2, #d7dbe2));
   background: linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 15%, var(--dsw-alias-bg-layer-1, #fff)), var(--dsw-alias-bg-layer-1, #fff));
   box-shadow: 0 5px 18px color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 16%, transparent)
@@ -147,16 +206,6 @@
 .xmimo-tts-character-toggle-on .xmimo-tts-character-state>span {
   background: var(--dsw-alias-brand-primary, #4f6ef7);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 14%, transparent)
-}
-
-.xmimo-tts-character-toggle:hover>input:not(:disabled)+.xmimo-tts-character-control {
-  transform: translateY(-2px);
-  border-color: var(--dsw-alias-brand-primary, #4f6ef7);
-  box-shadow: 0 8px 22px rgba(47, 74, 145, .16)
-}
-
-.xmimo-tts-character-toggle:hover>input:not(:disabled)+.xmimo-tts-character-control .xmimo-tts-character-portrait {
-  transform: scale(1.025)
 }
 
 .xmimo-tts-character-toggle>input:focus-visible+.xmimo-tts-character-control {
@@ -182,10 +231,6 @@
   background: transparent;
   font: inherit;
   text-align: inherit
-}
-
-.xmimo-tts-provider-toggle:hover:not(:disabled)>.xmimo-tts-character-control {
-  transform: translateY(-2px)
 }
 
 .xmimo-tts-provider-toggle:focus-visible {
