@@ -37,7 +37,9 @@ foreach ($packageName in $packageNames) {
   if ($null -eq $item) { continue }
   if ($item.LinkType -in @('Junction', 'SymbolicLink')) {
     Write-Host "[INFO] Removing stale $($item.LinkType): $($item.FullName)"
-    Remove-Item -LiteralPath $item.FullName -Force
+    # Remove only the link; Windows PowerShell's Remove-Item can prompt on junction contents.
+    if ($item.PSIsContainer) { [IO.Directory]::Delete($item.FullName) }
+    else { [IO.File]::Delete($item.FullName) }
   } else {
     Write-Host "[INFO] Removing residual package directory: $($item.FullName)"
     Remove-Item -LiteralPath $item.FullName -Recurse -Force
