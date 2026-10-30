@@ -1,32 +1,18 @@
 import type { ReactElement } from 'react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { DocumentPage } from './document-page.js'
+import type { ManualCopy } from './document-page.js'
 
 export type ManualLocale = 'zh' | 'en'
-
-interface ManualCopy {
-  title: string
-  intro: string
-  toc: string
-  sections: Array<{
-    id: string
-    title: string
-    summary: string
-    items: Array<{ label: string, detail: string }>
-    steps?: Array<{ title: string, detail: string, command?: string }>
-    table?: { caption: string, headers: string[], rows: string[][] }
-    links?: Array<{ label: string, href: string }>
-  }>
-  notes: Array<{ title: string, body: string }>
-}
 
 const COPY: Record<ManualLocale, ManualCopy> = {
   zh: {
     title: '把鲸鱼娘调成你喜欢的样子',
-    intro: '按使用顺序了解语音配置、自动朗读与 QQ Bot 联动。下文安装和连接步骤在真实 DSH 中执行；本页设置、云端音频和组件开关均为演示，不会修改 DSH 或向 QQ 发送消息。',
+    intro: '按使用顺序了解语音配置、自动朗读与播放操作。QQBot 与豆包接入教程可从侧栏单独打开。所有安装和连接操作均在真实 DSH 中执行；本预览不修改 DSH，也不向 QQ 发送消息。',
     toc: '目录',
     sections: [
       {
         id: 'manual-start',
+        links: [{ label: 'QQBot 接入教程', href: '#qqbot' }, { label: '豆包语音接入教程', href: '#doubao' }],
         title: '01 · 开始使用',
         summary: '先选择小米 MiMo 或豆包语音并保存密钥，再选择模型和音色试听。',
         items: [
@@ -102,43 +88,11 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         summary: '位于音效库下方的可折叠播报台，支持文字试听与来源设置。',
         items: [
           { label: '宿主播报来源', detail: '提问卡片标题默认开启并跟随自动播报，只读当前题目标题；翻题、提交、关闭或切换会话时取消。首次开启不补播已有卡片，忙碌时跳过。审批提醒和后台任务结果默认关闭、独立于自动播报，只观察当前会话；审批处理或撤回后停止语音，后台任务仅播报观察到运行过程后的结束、失败或取消。宿主需提供相应服务。' },
-          { label: '插件联动', detail: 'dsh-pet 默认关闭，dsh-whale-musume 语音接口默认开启，来源名称可跳转项目主页。QQ Bot 默认关闭：开启并保存后自动发送完整语音；关闭后保留按需语音。QQ 需要另行启用 QQ Bot 传声组件并在 QQ 中选择对应预设，完整流程见下方 QQ Bot 章节。' },
+          { label: '插件联动', detail: 'dsh-pet 默认关闭，dsh-whale-musume 语音接口默认开启，来源名称可跳转项目主页。QQ Bot 默认关闭：开启并保存后自动发送完整语音；关闭后保留按需语音。QQ 需要另行启用 QQ Bot 传声组件并在 QQ 中选择对应预设，完整流程见独立的 QQBot 接入教程。' },
           { label: '试听文本框', detail: '点击文本框输入或替换试听内容，最多 100 个字符。文本为空时，试听按钮会禁用；试听文本本身不会写入 DSH。模型、声音、音量和速度可直接使用草稿，但新 API Key 必须先保存。' },
           { label: '播放 / 停止按钮', detail: '点击摘要首个“试听”标签即可直接播放当前文案，无需展开；面板内的“播放试听”按钮使用同一播放器。准备中或播放中再次点击可中断。状态提示会显示当前语音来源，并针对未配置密钥、密钥被拒绝、限流、超时、本地音色不可用和自动播放限制给出对应提示。' },
         ],
-        links: [{ label: 'QQ Bot 接入流程', href: '#manual-qqbot' }],
-      },
-      {
-        id: 'manual-qqbot',
-        title: 'QQ Bot · 从安装到语音测试',
-        summary: '在同一个 DSH 实例／profile 安装两个插件，使用 QQ 鲸鱼娘预设，把回复直接发送成 QQ 语音消息。以下步骤在真实 DSH 与 QQ 中操作。',
-        steps: [
-          { title: '安装并连接 QQBot', detail: '在 DSH“插件 → 添加插件”安装并启动 @tencent-connect/dsh-qqbot@latest；进入“设置 → QQ 机器人”，用手机 QQ 扫码连接。先发送普通消息，确认机器人能够回复文字。' },
-          { title: '开启 QQ Bot 传声组件', detail: '在“设置 → 插件 → 本插件 → 包含的组件”开启“QQ Bot 传声”。这一个组件已包含发送适配和 QQ 鲸鱼娘预设。选择小米或豆包，保存密钥、模型和音色，在真实 DSH 中确认云端试听正常。' },
-          { title: '开启并保存播报来源', detail: '在本插件“播报台 → 插件联动”打开“QQ Bot”，点击底部“保存”。开启后每轮自动发送完整回复，不受浏览器自动播放开关或朗读范围影响。' },
-          { title: '用 QQBot 官方指令选择预设', detail: '在 QQ 向机器人发送 /preset，确认列表中有 QQ 鲸鱼娘（qq-speech-assistant），再单独发送下面的命令。使用预设 ID；私聊和各群聊分别选择。', command: '/preset qq-speech-assistant' },
-          { title: '在同一 QQ 会话开启新对话', detail: '预设选择只对新会话生效，当前对话保留旧预设。必须在刚才切换预设的同一个私聊或群聊中单独发送 /new，启用人设、语音和表情包能力。', command: '/new' },
-          { title: '发消息并播放 QQ 语音', detail: '发送“你好，介绍一下自己”，确认 QQ 收到文字和可点击播放的语音消息，并播放核对内容与音色。群聊按 QQBot 设置要求 @机器人，命令和测试消息均在目标群发送。' },
-        ],
-        table: {
-          caption: '组件与来源开关的三种发送规则',
-          headers: ['QQ Bot 传声组件', 'QQ Bot 来源', '语音发送规则'],
-          rows: [
-            ['开启', '开启并保存', '普通消息自动发送完整语音；长回复按合成上限顺序分段，不按 300 字或 60 秒截断。'],
-            ['开启', '关闭并保存', '仅按用户要求发送。可发送“请用语音说一句你好”验证。'],
-            ['关闭', '任意', '本插件无法发送自动或按需语音。'],
-          ],
-        },
-        items: [
-          { label: '预设列表找不到 QQ 鲸鱼娘', detail: '检查 QQ Bot 传声组件是否已加载，以及本插件和 QQBot 是否安装在同一个 DSH 实例／profile。普通鲸鱼娘 Agent 预设是另一组件，不替代 QQ 鲸鱼娘。' },
-          { label: '有文字但没有语音', detail: '依次检查组件、来源是否开启并保存、是否执行了预设切换与 /new、真实 DSH 云端试听是否正常。来源关闭时，需明确提出语音要求；仍失败时查看本插件和 QQBot 日志。' },
-          { label: '关闭来源、长回复与失败', detail: '关闭来源取消待处理的自动语音，保留按需语音，重新开启不补发旧回复。供应商和 QQ 平台的实际限制仍适用；发送失败会停止后续分段，不自动重试。网页可关闭，DSH 宿主需继续运行。' },
-          { label: '人设与表情包', detail: 'QQ 鲸鱼娘默认简短口语回复，可按语境发送随包附带的表情包；明确要求详细解释时展开。来源开关只控制自动语音，表情包不受它控制。' },
-        ],
-        links: [
-          { label: 'QQBot 官方安装与命令说明', href: 'https://github.com/tencent-connect/dsh-qqbot' },
-          { label: '仓库完整手册与通用渠道接口', href: 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/blob/main/handbook.md' },
-        ],
+        links: [{ label: 'QQ Bot 接入流程', href: '#qqbot' }],
       },
       {
         id: 'manual-actions',
@@ -152,28 +106,11 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         ],
       },
       {
-        id: 'manual-doubao',
-        title: '08 · 豆包模型与音色',
-        summary: '标准音色、专属音色和流式回复使用同一套豆包服务配置。',
-        links: [
-          { label: '创建一个音色', href: 'https://console.volcengine.com/speech/new/experience/clone?projectName=default' },
-          { label: '豆包双向流式合成文档', href: 'https://docs.volcengine.com/docs/DoubaoVoice/WebSocketBidirectionalStreaming-V3?lang=zh' },
-          { label: '豆包音色设计文档', href: 'https://docs.volcengine.com/docs/DoubaoVoice/SoundDesignAPI?lang=zh' },
-        ],
-        items: [
-          { label: '开通与密钥', detail: '在火山引擎豆包语音控制台开通需要的模型服务，获取 API Key。回到设置切换到“豆包语音”，填写密钥并保存；密钥已保存不代表服务权限或音色已经可用，请用播报台确认。' },
-          { label: '标准合成（seed-tts-2.0）', detail: '选择内置标准音色，或通过自定义选项填写其他标准音色 ID。语音指令可描述情绪、语气、方言或表达风格；可以选用预设，也可以手动编辑，留空使用默认表达，效果随音色而异。' },
-          { label: '声音复刻（seed-icl-2.0）', detail: '在豆包控制台创建专属音色后，将音色 ID 填入“复刻音色 ID”。输入框下会保留最近使用的 ID，标准音色与复刻音色分别保存；复刻 ID 为空时不能保存或试听。音色创建在控制台完成，插件使用已有 ID 进行合成。' },
-          { label: '边生成边播放', detail: '自动播报时，同一条回复的文本会持续追加到豆包双向流式会话，音频生成后即可播放。停止朗读会取消当前会话；切换服务商或修改已保存的语音指令后，当前朗读会停止，新设置用于后续回复。' },
-          { label: '语速与音频历史', detail: '豆包在每次合成开始时应用语速。生成的历史录音已包含该语速，重听时按 1× 播放，避免重复加速；之后调整设置不会改变这份录音。' },
-        ],
-      },
-      {
         id: 'manual-troubleshooting',
         title: '试听与故障排查',
         summary: '先区分预览演示、浏览器语音和真实云端合成，再检查对应配置。',
         items: [
-          { label: '预览页能验证什么', detail: '本页模拟保存、组件状态和云端合成，播放的是演示音频，不校验真实供应商权限或 QQ 连通性。真实云端和 QQ 发送请按接入流程在 DSH 中验证；浏览器本地语音可用于检查本机声音权限。' },
+          { label: '预览页能验证什么', detail: '本页模拟保存、组件状态和云端合成，播放的是演示音频，不校验真实供应商权限或 QQ 连通性。真实云端和 QQ 发送请按独立接入教程在 DSH 中验证；浏览器本地语音可用于检查本机声音权限。' },
           { label: '密钥格式正确，云端仍失败', detail: '格式识别只检查密钥形式。在真实 DSH 保存密钥，选择“关闭本地语音”再试听，避免浏览器兜底掩盖云端失败。豆包还需开通对应模型、资源与音色；Agent Plan 使用专属 Key，Coding Plan 不含语音模型。' },
           { label: '浏览器不自动播放', detail: '先点击播放按钮确认权限、系统音量与输出设备，再检查语音播放和自动播放开关。自动播放策略可能阻止页面发声；QQ 语音由宿主发送，应单独在 QQ 验证。' },
           { label: '豆包实时朗读异常', detail: '真实 DSH 宿主需支持 WebSocket upgrade，反向代理需转发 Upgrade。仅最终回答模式会等待回合完成；停止当前朗读或切换会话后，不补播旧内容。' },
@@ -198,11 +135,12 @@ const COPY: Record<ManualLocale, ManualCopy> = {
   },
   en: {
     title: 'Tune Whale Maid your way',
-    intro: 'Set up speech, understand automatic reading, and connect QQ Bot. Follow installation and connection steps in your real DSH instance. Settings, cloud audio, and component switches here are simulated; they do not change DSH or send QQ messages.',
+    intro: 'Set up speech and understand automatic reading and playback controls. QQBot and Doubao setup guides have their own sidebar pages. Perform installation and connection steps in real DSH; this preview does not change DSH or send QQ messages.',
     toc: 'Contents',
     sections: [
       {
         id: 'manual-start',
+        links: [{ label: 'QQBot setup guide', href: '#qqbot' }, { label: 'Doubao voice setup guide', href: '#doubao' }],
         title: '01 · Getting started',
         summary: 'Choose Xiaomi MiMo or Doubao, save its key, then select a model and voice to preview.',
         items: [
@@ -278,43 +216,11 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         summary: 'A collapsible panel below Sound Effects for text previews and announcement sources.',
         items: [
           { label: 'Host announcements', detail: 'Question titles are enabled by default and follow autoplay. Only the current title is read; changing, submitting, closing, or switching sessions cancels speech. Existing cards are not replayed on activation, and busy speech is respected. Approval reminders and Background job results are off by default, independent of autoplay, and limited to the current conversation. Answered or withdrawn approvals stop speech. Jobs announce settlement only after their live state was observed. The corresponding host services must be available.' },
-          { label: 'Plugin integrations', detail: 'dsh-pet is off by default; the dsh-whale-musume speech API is on. Source names link to their projects. QQ Bot starts off: enable and save it for automatic full voice replies; leave it off for voice on request. Enable QQ Bot Voice Relay and select its QQ preset using the walkthrough below.' },
+          { label: 'Plugin integrations', detail: 'dsh-pet is off by default; the dsh-whale-musume speech API is on. Source names link to their projects. QQ Bot starts off: enable and save it for automatic full voice replies; leave it off for voice on request. Enable QQ Bot Voice Relay and select its QQ preset using the dedicated setup guide.' },
           { label: 'Preview text field', detail: 'Click and replace the preview text, up to 100 characters. An empty field disables the preview button. Model, voice, volume, and speed drafts apply immediately, but a new API key must be saved first.' },
           { label: 'Play / stop button', detail: 'Click the first Preview chip in the summary to play the current text without expanding the panel. The Play preview button inside uses the same player. Click again while preparing or playing to stop. The status identifies the speech source and distinguishes missing or rejected keys, rate limits, timeouts, unavailable local voices, and autoplay restrictions.' },
         ],
-        links: [{ label: 'Set up QQ Bot', href: '#manual-qqbot' }],
-      },
-      {
-        id: 'manual-qqbot',
-        title: 'QQ Bot · Setup and voice test',
-        summary: 'Install both plugins in the same DSH instance/profile and use the QQ 鲸鱼娘 preset to send replies as QQ voice messages. Follow these steps in real DSH and QQ.',
-        steps: [
-          { title: 'Install and connect QQBot', detail: 'In DSH, open Plugins → Add plugin and install/start @tencent-connect/dsh-qqbot@latest. Open Settings → QQ 机器人 and scan with mobile QQ. Send a normal message first to confirm text replies work.' },
-          { title: 'Enable QQ Bot Voice Relay', detail: 'Open Settings → Plugins → this plugin → Included components and enable QQ Bot Voice Relay. This single component includes delivery and the QQ 鲸鱼娘 preset. Choose Xiaomi or Doubao, save the key, model, and voice, and verify real cloud synthesis in DSH.' },
-          { title: 'Enable and save the QQ Bot source', detail: 'In Broadcast Desk → Plugin integrations, turn QQ Bot on and click Save. Each turn now sends the full reply as voice, independently of browser autoplay and read scope.' },
-          { title: 'Select the preset with QQBot’s official command', detail: 'Send /preset in QQ and find QQ 鲸鱼娘 (qq-speech-assistant), then send the command below separately. Use the preset ID. Private chats and each group select their presets independently.', command: '/preset qq-speech-assistant' },
-          { title: 'Start a new conversation in the same QQ chat', detail: 'The selected preset applies to new conversations; the current conversation retains its old preset. Send /new separately in the same private chat or group to activate the persona, voice, and meme tools.', command: '/new' },
-          { title: 'Send a message and play the QQ voice reply', detail: 'Ask “Hello, introduce yourself.” Confirm that QQ receives text and a playable voice message, then check its content and voice. In groups, @mention the bot when required by QQBot settings. Send commands and the test message in the target group.' },
-        ],
-        table: {
-          caption: 'Three delivery rules for the component and source switches',
-          headers: ['Voice Relay component', 'QQ Bot source', 'Voice delivery'],
-          rows: [
-            ['On', 'On and saved', 'Ordinary messages receive full voice replies. Long replies are split in order at synthesis limits, without a 300-character or 60-second cutoff.'],
-            ['On', 'Off and saved', 'Voice is sent only on request. Test with “Please say hello in a voice message.”'],
-            ['Off', 'Either', 'This plugin cannot send automatic or requested voice messages.'],
-          ],
-        },
-        items: [
-          { label: 'The preset is missing', detail: 'Check that QQ Bot Voice Relay is loaded and both plugins run in the same DSH instance/profile. The regular Whale Girl Agent preset is a separate component and does not replace the QQ preset.' },
-          { label: 'Text arrives but voice does not', detail: 'Check the component, the saved source switch, preset selection followed by /new, and real cloud synthesis in DSH. With the source off, explicitly ask for voice. Inspect the plugin and QQBot logs if delivery still fails.' },
-          { label: 'Disabling the source, long replies, and failures', detail: 'Turning the source off cancels pending automatic speech and keeps requested speech available. Re-enabling does not resend old replies. Provider and QQ limits still apply; a failure stops later segments without automatic retry. The web page can close, but the DSH host must keep running.' },
-          { label: 'Persona and memes', detail: 'QQ 鲸鱼娘 prefers short conversational replies, expands when asked for detail, and can send bundled memes when appropriate. The source switch controls automatic speech only; it does not control memes.' },
-        ],
-        links: [
-          { label: 'Official QQBot installation and commands', href: 'https://github.com/tencent-connect/dsh-qqbot' },
-          { label: 'Full repository handbook and channel APIs', href: 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/blob/main/handbook.md' },
-        ],
+        links: [{ label: 'Set up QQ Bot', href: '#qqbot' }],
       },
       {
         id: 'manual-actions',
@@ -325,23 +231,6 @@ const COPY: Record<ManualLocale, ManualCopy> = {
           { label: 'Audio history · count', detail: 'The Audio history button in the plugin settings footer opens a compact subpage shared by default and minimal modes, available even when speech is off. Search summaries, filter by source, or expand text. Each recording has playback controls with pause and seeking; storage information sits at the bottom. Downloads do not call MiMo. Deletion requires confirmation; clearing removes all entries, including filtered-out records. Use the back button beside the title to return to settings with unsaved changes preserved. Returning or leaving the page stops replay. This browser retains up to 100 entries / 100 MB; a warning appears when only temporary storage is available.' },
           { label: 'Discard changes', detail: 'Click to drop every unsaved draft and restore the last accepted settings-layer values. It writes no new configuration and is disabled when clean or read-only.' },
           { label: 'Save', detail: 'Click to submit all changed fields and collapse the Console and Sound Effects panels first. Success shows Saved; failure shows an error so you can retry. Save is the persistence boundary for API keys, voice, and sound settings.' },
-        ],
-      },
-      {
-        id: 'manual-doubao',
-        title: '08 · Doubao models and voices',
-        summary: 'Use one Doubao configuration for standard voices, personal voices, and streaming replies.',
-        links: [
-          { label: 'Create a voice', href: 'https://console.volcengine.com/speech/new/experience/clone?projectName=default' },
-          { label: 'Doubao bidirectional synthesis documentation', href: 'https://docs.volcengine.com/docs/DoubaoVoice/WebSocketBidirectionalStreaming-V3?lang=zh' },
-          { label: 'Doubao voice design documentation', href: 'https://docs.volcengine.com/docs/DoubaoVoice/SoundDesignAPI?lang=zh' },
-        ],
-        items: [
-          { label: 'Service and key', detail: 'Enable the required model service in the Volcano Engine Doubao console and obtain an API key. Select Doubao in settings, enter the key, and save. A saved key does not verify service permissions or voice availability; test it in Broadcast Desk.' },
-          { label: 'Standard TTS (seed-tts-2.0)', detail: 'Choose a built-in standard voice, or select Custom and enter another standard voice ID. Speech instructions describe emotion, tone, dialect, or delivery. Choose a preset or edit the instruction; leave it blank for default delivery. Results vary by voice.' },
-          { label: 'Voice cloning (seed-icl-2.0)', detail: 'Create a personal voice in the Doubao console, then paste its ID into Cloned voice ID. Recent IDs appear below the field. Standard and cloned voice selections are saved separately; an empty clone ID blocks saving and previewing. The plugin synthesizes with existing IDs; voice creation happens in the console.' },
-          { label: 'Streaming replies', detail: 'During automatic reading, reply text is appended to a Doubao bidirectional session and audio can play as it arrives. Stopping cancels the session. Switching providers or changing saved speech instructions stops the current reading; new settings apply to subsequent replies.' },
-          { label: 'Speed and history', detail: 'Doubao applies speed when synthesis starts. Saved recordings already contain that speed and replay at 1× to avoid applying it twice. Later settings changes do not alter the recording.' },
         ],
       },
       {
@@ -375,54 +264,5 @@ const COPY: Record<ManualLocale, ManualCopy> = {
 }
 
 export function UserManual({ locale }: { locale: ManualLocale }): ReactElement {
-  const copy = COPY[locale]
-  const manualRef = useRef<HTMLElement | null>(null)
-  const [activeSection, setActiveSection] = useState(() => copy.sections.find(section => window.location.hash === `#${section.id}`)?.id ?? copy.sections[0]?.id ?? '')
-  const title = (value: string): string => value.replace(/^\d+\s*·\s*/, '')
-
-  useLayoutEffect(() => {
-    const section = copy.sections.find(section => window.location.hash === `#${section.id}`)
-    if (section) manualRef.current?.querySelector<HTMLElement>(`#${section.id}`)?.scrollIntoView()
-  }, [copy.sections])
-
-  useEffect(() => {
-    const root = manualRef.current
-    if (root === null || typeof IntersectionObserver === 'undefined') return
-    const observer = new IntersectionObserver(entries => {
-      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-      const section = visible[0]?.target
-      if (section instanceof HTMLElement) setActiveSection(section.id)
-    }, { rootMargin: '-100px 0px -55% 0px', threshold: 0 })
-    root.querySelectorAll('.preview-manual-section').forEach(section => observer.observe(section))
-    return () => observer.disconnect()
-  }, [copy.sections])
-
-  return <article className="preview-manual" ref={manualRef} aria-label={copy.title}>
-    <nav className="preview-manual-toc" aria-label={copy.toc}>
-      <strong>{copy.toc}</strong>
-      {copy.sections.map(section => <a key={section.id} href={`#${section.id}`}
-        aria-current={activeSection === section.id ? 'location' : undefined}>{title(section.title)}</a>)}
-    </nav>
-    <div className="preview-manual-article">
-      <header className="preview-manual-intro"><h2>{copy.title}</h2><p>{copy.intro}</p></header>
-      {copy.sections.map(section => <section className="preview-manual-section" id={section.id} key={section.id}>
-        <h2>{title(section.title)}</h2><p className="preview-manual-summary">{section.summary}</p>
-        {section.steps ? <ol className="preview-manual-steps">{section.steps.map(step => <li key={step.title}>
-          <h3>{step.title}</h3><p>{step.detail}</p>
-          {step.command ? <pre tabIndex={0}><code>{step.command}</code></pre> : null}
-        </li>)}</ol> : null}
-        {section.table ? <div className="preview-manual-table"><table>
-          <caption>{section.table.caption}</caption>
-          <thead><tr>{section.table.headers.map(header => <th scope="col" key={header}>{header}</th>)}</tr></thead>
-          <tbody>{section.table.rows.map(row => <tr key={row[0] + row[1]}>{row.map((cell, index) => <td key={index}>{cell}</td>)}</tr>)}</tbody>
-        </table></div> : null}
-        <dl>{section.items.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.detail}</dd></div>)}</dl>
-        {section.links ? <ul>{section.links.map(link => <li key={link.href}><a href={link.href}
-          target={link.href.startsWith('#') ? undefined : '_blank'} rel={link.href.startsWith('#') ? undefined : 'noopener noreferrer'}>{link.label}</a></li>)}</ul> : null}
-      </section>)}
-      <div className="preview-manual-notes">{copy.notes.map(note => <div key={note.title}>
-        <strong>{note.title}</strong><p>{note.body}</p>
-      </div>)}</div>
-    </div>
-  </article>
+  return <DocumentPage copy={COPY[locale]} />
 }

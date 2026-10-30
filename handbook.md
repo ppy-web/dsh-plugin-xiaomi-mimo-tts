@@ -1,5 +1,7 @@
 # 用户手册
 
+在线预览中的[用户手册](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual)、[QQBot 接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#qqbot)与[豆包语音接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#doubao)为侧栏同级页面。两份接入教程分别提供准备条件、配置步骤、验收方法与故障排查，支持中文和英文；日语、法语界面显示英文正文。在线预览使用模拟配置和演示音频，真实接入请在 DSH 与对应服务控制台完成。
+
 ## 开始使用
 
 在宿主插件列表显式启用本插件后，会显示居中的启动引导弹窗。按 Esc、点击遮罩、右上角关闭按钮或「稍后再说」均可关闭，并停止试听。可以先「试听浏览器语音」，或打开插件设置选择小米 / 豆包并保存 API Key；也可以选择「稍后再说」关闭引导。试听只使用浏览器语音，失败时不会请求云端。自动播报和 UI 音效默认关闭。
@@ -21,6 +23,28 @@
 豆包语音指令仅适用于支持指令的 TTS 2.0 标准音色；自定义 ID 也需确认是该系列音色，声音复刻不发送指令。指令按 `req_params.additions` 中的 `context_texts` 数组发送，建会话和每次文本请求均携带相同配置。方言预设目前发送自然语言指令，并未设置接口的 `explicit_dialect` 参数；固定方言能力还取决于音色支持。云端试听请选择「关闭本地语音」，以免浏览器语音兜底掩盖云端失败；听到浏览器语音不代表豆包指令已生效。
 
 官方文档：[小米风格控制](https://mimo.mi.com/docs/zh-CN/quick-start/usage-guide/audio/speech-synthesis-v2.5) · [豆包音色](https://docs.volcengine.com/docs/DoubaoVoice/Tonelist-1?lang=zh) · [豆包语音指令](https://docs.volcengine.com/docs/DoubaoVoice/DoubaoTextToSpeech20CapabilityIntroduction?lang=zh) · [Agent Plan 语音](https://docs.volcengine.com/docs/6561/2532486?lang=zh)。
+
+## 豆包语音接入
+
+完整分步教程见独立的[豆包语音接入页](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#doubao)。首次接入建议先验证标准音色，再尝试复刻和实时朗读。
+
+1. **准备资源与正确的 Key。** 标准服务使用[豆包语音新版控制台 API Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default)，并开通所需模型资源。Agent Plan 使用套餐专属 Key，插件自动选择线路，无需手填地址；Coding Plan 不包含语音模型，区别见[官方说明](https://docs.volcengine.com/docs/ark/agent-plan-personal-faq?lang=zh)。旧版 AppID、Access Token、Secret Key 不能直接替代这里的 API Key。
+2. **在真实 DSH 保存密钥。** 打开本插件设置，切换到「豆包语音」，粘贴 Key 并点击底部「保存」。新密钥草稿不会被试听使用；「格式已识别」不代表权限或连接已经验证。
+3. **用标准音色建立基线。** 在「调音台」选择标准合成 `seed-tts-2.0`、一个内置音色、1× 语速，语音指令留空。需要自定义标准音色时，从[音色库](https://console.volcengine.com/speech/new/voices?projectName=default)复制完整 TTS 2.0 音色 ID，而非显示名称。
+4. **关闭本地兜底后验收。** 本地语音策略选「关闭本地语音」并保存，在「播报台」输入一句短话手动试听，确认状态显示豆包且音频播放完成。最多使用 100 字符的试听文本。启用引导中的浏览器语音和在线 preview 的演示音频都不能证明云端可用。
+5. **保存试听满意的配置。** 模型、音色、语速和指令可以用草稿试听，但 QQ 等宿主渠道只使用已保存配置。确认后点击「保存」；验证完成可按需要恢复本地兜底策略并再次保存。
+6. **可选：接入复刻音色。** 在控制台完成音色创建并确认可合成，切到声音复刻 `seed-icl-2.0`，填入完整「复刻音色 ID」并保存、试听。不要填写任务 ID 或昵称，且当前 Key 必须有该音色的使用权限。标准音色与复刻 ID 分别保留，复刻不应用标准合成的语音指令。
+7. **可选：启用实时朗读。** 保存语音播放、自动播放开关，用新的对话消息测试。宿主「全部回复」支持增量朗读，「仅最终回答」等待轮次完成。持续文本输入要求宿主支持 WebSocket upgrade，反向代理需转发 Upgrade；停止或切换会话不会补播旧内容。QQ 发送另按下文的 QQBot 流程配置，不由浏览器自动播放控制。
+
+| 现象 | 优先检查 |
+| --- | --- |
+| 密钥未配置或被拒绝 | 是否选择豆包、Key 是否保存与有效、标准或 Agent Plan 凭据是否匹配，以及账号／项目权限。 |
+| 资源未开通、音色不可用 | 模型资源与音色系列是否对应；复刻是否创建完成、ID 是否完整、当前 Key 是否有权限。可用内置标准音色作对比。 |
+| 限流、额度不足、超时 | 控制台用量和并发；停止并发试听后用单条短句重试。超时检查 DSH 所在机器到供应商的网络和日志。 |
+| 能发声但音色或指令不对 | 关闭本地兜底并确认实际来源；检查模型、指令支持与保存状态。旧历史录音不会随设置更新，需重新合成。 |
+| 手动正常，实时朗读失败 | 自动播放权限、宿主回复偏好、WebSocket 支持，以及直连与代理访问的差异。 |
+
+分享问题时保留版本、服务路线、模型、音色、错误类型和脱敏请求标识，并说明代理与兜底状态；移除密钥、账号凭据和私人文本。
 
 ## 自动朗读与宿主回复偏好
 
@@ -53,6 +77,8 @@
 通用渠道的会话模式保存在 `~/.dsh-xiaomi-tts/sessions`，重启后恢复；QQ 忽略此前保存的会话自动模式，只读取来源开关。文件导出保存在 `~/.dsh-xiaomi-tts/audio`，至少保留到 24 小时过期，宿主每小时清理一次。导出的音频不会自动进入浏览器音频历史；`speech/delivered` 事件会报告导出路径或渠道交付结果，其他插件可据此展示附件。
 
 ### QQBot 接入
+
+在线完整教程已独立为 [QQBot 接入页](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#qqbot)，与用户手册同级，可按目录查看连接、预设、验收和分层排错。
 
 先确认本插件已安装并启用，在插件设置中选择小米或豆包，填写并保存 API Key、模型和音色，并确认**云端试听**正常。浏览器本地语音试听成功不能代替云端验证。以下配置需在同一个 DSH 实例／profile 中完成。
 

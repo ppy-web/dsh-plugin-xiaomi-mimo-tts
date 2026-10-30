@@ -11,6 +11,9 @@ import pluginIcon from '../../assets/plugin-icons/avatar.webp'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
 import { installPreviewHostIcons } from './host-icons.js'
 import { UserManual } from './user-manual.js'
+import { DocumentPage } from './document-page.js'
+import { QQBOT_GUIDE } from './qqbot-guide.js'
+import { DOUBAO_GUIDE } from './doubao-guide.js'
 import { BundleComponents } from './bundle-components.js'
 import { FilterLab } from './filter-lab.js'
 import { TTS_VERSION } from '../../src/shared.js'
@@ -21,7 +24,7 @@ import { ConversationPreview } from './conversation-preview.js'
 import { VoiceReadingPreview } from './voice-reading-preview.js'
 import { bindApiKeyStatus } from '../../src/client/settings/api-key-status-store.js'
 import { PluginDetailPreview, previewPluginChanges } from './plugin-detail-preview.js'
-import { PREVIEW_COPY, previewViewFromHash } from './preview-copy.js'
+import { PREVIEW_COPY, previewDocumentSectionId, previewViewFromHash } from './preview-copy.js'
 import type { PreviewLocale, PreviewView } from './preview-copy.js'
 import { PreviewSidebar } from './preview-sidebar.js'
 import './preview.css'
@@ -74,7 +77,7 @@ function PreviewApp() {
   useEffect(() => { history.stopReplay() }, [activeView])
 
   useLayoutEffect(() => {
-    if (window.location.hash.startsWith('#manual-')) return
+    if (previewDocumentSectionId(window.location.hash)) return
     window.scrollTo({ top: 0 })
     headingRef.current?.focus({ preventScroll: true })
   }, [activeView])
@@ -143,6 +146,8 @@ function PreviewApp() {
               : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} />
               : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} />
+              : activeView === 'qqbot' ? <DocumentPage key="qqbot" copy={QQBOT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
+              : activeView === 'doubao' ? <DocumentPage key="doubao" copy={DOUBAO_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
               : <UserManual locale={locale === 'zh' ? 'zh' : 'en'} />}
           </div>
         </div>
