@@ -10,7 +10,7 @@
   <a href="https://awesome-dsh-plugin.com"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="awesome · DSH plugin"></a>
 </p>
 
-<p align="center">为 DSH 添加 Xiaomi MiMo 与豆包语音朗读、浏览器本地语音兜底和可选 UI 音效。</p>
+> 为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS，浏览器语音；音频下载、 UI 音效、桌宠联动、QQBot 语音；
 
 ## 🎨 预览
 
@@ -36,7 +36,7 @@
 
 ## 🚀 安装与使用
 
-需要 DSH `0.1.7-x` 至 `0.2.x`、Node.js 24.9+，当前适配目标为 DSH `0.2.2-alpha.2`。
+需要 DSH `0.2.2` 以上、Node.js 24.9+，当前适配目标为 DSH `0.2.2-alpha.2`。
 
 在 DSH 插件管理面板搜索 `dsh-xiaomi-tts` 安装，或使用 Web 端命令：
 
@@ -90,16 +90,15 @@ pnpm dev:build    # 构建预览
 pnpm pack:check   # 检查打包内容
 ```
 
-预览入口为 `src/client/settings/card.tsx`，同时提供独立“语音朗读”页。`pnpm profile:check` 检查本机 DSH Web profile。
-
 ## 🤝 推荐
 
 - [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme) · 鲸鱼娘主题皮肤系列。
-- [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) · 元气鲸鱼娘桌宠，支持语音联动。
-- [dsh-pet](https://github.com/PC2005-cloud/dsh-pet#readme) · 蓝色大肥鱼桌宠，支持播报联动。
-- [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme) · 语义化 UI 音效。本项目已内置。
+- [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) · 元气鲸鱼娘桌宠。`已联动`
+- [dsh-pet](https://github.com/PC2005-cloud/dsh-pet#readme) · 蓝色大肥鱼桌宠，支持联动。`已联动`
+- [dsh-qqbot](https://github.com/tencent-connect/dsh-qqbot#readme) · 腾讯官方QQ机器人插件。`已联动`
+- [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme) · 语义化 UI 音效。`已内置`
 - [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme) · 原生换肤、背景壁纸、强调色和主题包。
-- [DeepSeek-chan Meme Pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack) · 鲸鱼娘Agent预设 - 人设参考 
+- [deepseek-chan-meme-pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack) · 鲸鱼娘Agent预设 - 人设参考 
 - [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy) · 一个稳定的🪜
 
 <a href="https://www.star-history.com/?repos=ppy-web%2Fdsh-plugin-xiaomi-mimo-tts&type=timeline&logscale=&legend=bottom-right">

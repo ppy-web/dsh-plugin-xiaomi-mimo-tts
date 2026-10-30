@@ -1,7 +1,7 @@
 {
   "name": "dsh-xiaomi-tts",
   "version": "4.3.0-alpha.2",
-  "description": "为 DSH 添加 Xiaomi MiMo 与豆包语音朗读、浏览器本地语音兜底和可选 UI 音效。",
+  "description": "为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS，浏览器语音；音频下载、 UI 音效、桌宠联动、QQBot 语音；",
   "icon": "./assets/plugin-icons/avatar.webp",
   "license": "MIT",
   "type": "module",
@@ -126,9 +126,15 @@
     "react": "^18.2.0"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-agent": { "optional": true },
-    "@deepseek-ai/dsh-llm": { "optional": true },
-    "@deepseek-ai/dsh-tools": { "optional": true },
+    "@deepseek-ai/dsh-agent": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-llm": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
     "@deepseek-ai/dsh-agent-preset": {
       "optional": true
     },

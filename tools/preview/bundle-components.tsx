@@ -13,7 +13,7 @@ const COPY = {
     stopped: '已关闭',
     toggle: (name: string) => `切换${name}组件`,
     ttsTitle: 'MiMo & Seed TTS',
-    ttsDescription: '为 DSH 添加 Xiaomi MiMo 与豆包语音朗读，支持豆包标准合成 2.0、声音复刻 2.0 和流式播放，并提供浏览器本地语音兜底和可选 UI 音效。',
+    ttsDescription: '为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS，浏览器语音；音频下载、 UI 音效、桌宠联动、QQBot 语音；',
     agentTitle: '鲸鱼娘 Agent 预设',
     agentDescription: '白饭续航、机灵嘴硬，会一本正经接梗，也会温柔陪伴和可靠办事。',
     qqbotTitle: 'QQ Bot 传声',
