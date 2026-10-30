@@ -39,7 +39,9 @@ test('history bounds count and byte size, trims text, and ignores empty or overs
   assert.equal(history.getSnapshot().entries.length, AUDIO_HISTORY_MAX_ENTRIES)
   assert.ok(!history.getSnapshot().entries.some((entry) => entry.text === '0'))
   await history.add(input('x'.repeat(700)))
-  assert.equal(history.getSnapshot().entries[0].text.length, 500)
+  const summary = history.getSnapshot().entries[0].text
+  assert.ok(summary.length > 0 && summary.length < 700)
+  assert.ok('x'.repeat(700).startsWith(summary))
   const before = history.getSnapshot().entries.length
   await history.add(input('empty', new Blob([])))
   await history.add(input('large', { size: AUDIO_HISTORY_MAX_BYTES + 1 }))

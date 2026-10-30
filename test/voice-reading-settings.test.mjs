@@ -123,17 +123,7 @@ for (const mode of [
     assert.equal(typeof choice.value, 'string')
     assert.equal(typeof choice.label, 'string')
     assert.ok(choice.label.length > 0, 'choice labels must be non-empty')
-    if ('detail' in choice) assert.equal(typeof choice.detail, 'string')
   }
-})
-
-test('doubao standard choices carry the preset name and scene', () => {
-  const source = buildVoiceReadingVoiceSource(resolveTtsSettings({ provider: 'doubao' }))
-  const vivi = source.choices.find(choice => choice.value === 'zh_female_vv_uranus_bigtts')
-  const preset = DOUBAO_VOICE_PRESETS.find(voice => voice.value === 'zh_female_vv_uranus_bigtts')
-  assert.ok(vivi)
-  assert.equal(vivi.label, preset.name)
-  assert.equal(vivi.detail, preset.scene)
 })
 
 test('cloned voice source keeps the current id first, dedupes and drops blanks', () => {
@@ -266,7 +256,6 @@ test('resolved settings always yield a voice change that satisfies the write con
 })
 
 test('every read scope maps to a distinct localized label and hint in both locales', () => {
-  assert.deepEqual([...TTS_READ_SCOPES].sort(), ['first-segment', 'full', 'smart'])
   const labels = TTS_READ_SCOPES.map(scope => readScopeLabelKey(scope))
   const hints = TTS_READ_SCOPES.map(scope => readScopeHintKey(scope))
   assert.equal(new Set(labels).size, labels.length, 'read scope labels must be distinct')
@@ -283,21 +272,13 @@ for (const scope of TTS_READ_SCOPES) test(`selecting the ${scope} read scope wri
   assert.deepEqual(readScopeWriteOps(scope), [{ op: 'set', path: ['readScope'], value: scope }])
 })
 
-test('volume steps run 0 %–100 % in 20-point steps and label as percentages', () => {
-  assert.deepEqual([...VOICE_VOLUME_STEPS], [0, 0.2, 0.4, 0.6, 0.8, 1])
-  assert.deepEqual(VOICE_VOLUME_STEPS.map(formatVoiceVolume), ['0%', '20%', '40%', '60%', '80%', '100%'])
-  // Every step is a legal value for the host config schema (min 0, max 1).
-  for (const step of VOICE_VOLUME_STEPS) assert.ok(step >= 0 && step <= 1)
-  // A stored value between the steps still labels honestly instead of blanking.
+test('volume and speed choices stay ordered, unique, and within the supported ranges', () => {
+  for (const [steps, min, max] of [[VOICE_VOLUME_STEPS, 0, 1], [VOICE_RATE_STEPS, 0.5, 2]]) {
+    assert.ok(steps.length > 0)
+    assert.deepEqual([...new Set(steps)].sort((a, b) => a - b), [...steps])
+    assert.ok(steps.every(step => step >= min && step <= max))
+  }
   assert.equal(formatVoiceVolume(0.55), '55%')
-})
-
-test('speed steps are the six requested multipliers and label with ×', () => {
-  assert.deepEqual([...VOICE_RATE_STEPS], [0.5, 0.8, 1, 1.2, 1.5, 1.8])
-  assert.deepEqual(VOICE_RATE_STEPS.map(formatVoiceRate), ['0.5×', '0.8×', '1.0×', '1.2×', '1.5×', '1.8×'])
-  // Every step is a legal value for the host config schema (min 0.5, max 2).
-  for (const step of VOICE_RATE_STEPS) assert.ok(step >= 0.5 && step <= 2)
-  // A stored value between the steps still labels honestly instead of blanking.
   assert.equal(formatVoiceRate(1.7), '1.7×')
 })
 

@@ -64,8 +64,9 @@ test('pet collector baselines, deduplicates by pet and counter, filters cues and
   const run = mockPet(t, frames, [config([['a.b'], ['desktop', 'desktop'], ['hidden', 'none']])])
   await settle()
   assert.deepEqual(run.emitted.map(event => event.text), ['你好', '你好', '你好', '正常'])
-  assert.deepEqual(run.emitted.map(event => JSON.parse(event.id)), [['desktop', 12], ['a.b', 14], ['desktop', 18], ['desktop', 21]])
-  assert.match(run.requests.find(request => request.url.includes('since='))?.url, /since=10&timeout=10000/)
+  assert.equal(new Set(run.emitted.map(event => event.id)).size, run.emitted.length)
+  const poll = new URL(run.requests.find(request => new URL(request.url, 'http://host.test').searchParams.has('since'))?.url, 'http://host.test')
+  assert.equal(poll.searchParams.get('since'), '10')
   run.controller.abort()
   await run.done
   assert.ok(run.requests.at(-1).signal.aborted)

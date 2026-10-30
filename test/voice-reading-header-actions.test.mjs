@@ -13,14 +13,9 @@ test('settings link to the project repository', () => {
   assert.equal(source.pathname, '/ppy-web/dsh-plugin-xiaomi-mimo-tts')
 })
 
-test('the QQ invite route serves a shipped WebP asset in the host and preview', async () => {
+test('the QQ invite route references a shipped WebP asset', async () => {
   const filename = TTS_QQ_GROUP_ASSET_ROUTE.split('/').at(-1)
   const asset = await readFile(new URL(`../assets/ui/${filename}`, import.meta.url))
   assert.equal(asset.toString('ascii', 0, 4), 'RIFF')
   assert.equal(asset.toString('ascii', 8, 12), 'WEBP')
-  const host = await readFile(new URL('../src/index.ts', import.meta.url), 'utf8')
-  const preview = await readFile(new URL('../tools/preview/vite.config.ts', import.meta.url), 'utf8')
-  assert.match(host, /path: TTS_QQ_GROUP_ASSET_ROUTE/)
-  assert.ok(host.includes(`../assets/ui/${filename}`))
-  assert.ok(preview.includes(`['${filename}', path.join(repositoryRoot, 'assets', 'ui', '${filename}')]`))
 })

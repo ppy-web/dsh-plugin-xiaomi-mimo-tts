@@ -38,6 +38,16 @@ Assert observable behavior and stable contracts, not exact README prose, transla
 
 Do not write “傻逼断言”: never assert optional metadata, removed features, exact copy, or internal implementation details merely because they are easy to match. If a test fails after an intentional product change, delete or rewrite the stale assertion around the behavior that still matters instead of restoring dead compatibility just to satisfy the test.
 
+### Assertion scope and maintenance
+
+- Keep assertions that protect a concrete user outcome or stable external contract: playable audio, correct provider and credentials, settings persistence and isolation, protocol compatibility, permission checks, cancellation, fallback, cleanup, and preventing duplicate delivery. Exact bytes, values, or call counts are appropriate when that contract requires them.
+- Before adding or retaining an assertion, identify the real regression it would catch. If changing wording, reorganizing source, adding an optional field, or adjusting presentation would fail the test without breaking behavior, remove the assertion or rewrite it against the behavior. Do not target an assertion count or preserve duplicate checks just to keep coverage numbers.
+- Do not snapshot source text, JSX spelling/order, helper names, CSS declarations, spacing, colors, dimensions, SVG paths, dependency source, or generated bundle text. Exercise the exported API, rendered control semantics, real requests, registration lifecycle, or temporary filesystem instead. Pure appearance belongs in browser review, not regex tests over source.
+- Documentation tests validate links and commands that are actually present. Do not require a README section, internal source path, keyword, exact sentence, or translation wording. Do not require removed symbols or dependencies to remain absent unless a current security or compatibility contract specifically requires it.
+- Validate required runtime resources and fields, not optional descriptions, historical image dimensions/byte counts, a specific preset name, a fixed catalog size, or an exact directory listing. Adding unused assets or metadata must not break unrelated tests. Parse JSON/YAML and URLs structurally instead of matching their formatting or query parameter order.
+- Assert stable error codes or error classes rather than explanatory error prose when available. Preserve negative-path tests for rejected input, secret leakage, cross-origin access, restricted sends, aborts, and cleanup; never replace them with a bare success check to make CI pass.
+- When deleting a brittle test that was the only coverage of a critical behavior, replace it with a focused behavior test. Use isolated temporary data for destructive-script tests and verify unrelated files, linked sources, and other profiles survive. Run the changed test files, then the full suite, and report actual failures without changing product behavior to satisfy stale expectations.
+
 ## Documentation Maintenance
 
 - `handbook.md` is the user manual. Add new configuration details, feature instructions, and detailed usage guidance there.

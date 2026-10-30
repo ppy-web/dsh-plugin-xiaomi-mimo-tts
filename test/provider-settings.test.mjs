@@ -52,7 +52,7 @@ test('rejected writes preserve the selected provider and leave caller-owned draf
   const draft = resolveTtsSettings({ provider: 'doubao', doubaoVoice: 'new-voice' })
   const keys = { xiaomi: '', doubao: 'new-doubao' }
   const changes = { provider: { kind: 'set' }, doubaoVoice: { kind: 'set' }, doubaoApiKey: { kind: 'set' } }
-  await assert.rejects(saveSettingsDraft(scope, draft, changes, keys), /rejected/)
+  await assert.rejects(saveSettingsDraft(scope, draft, changes, keys), Error)
   assert.equal(scope.user.provider, 'xiaomi')
   assert.deepEqual(scope.user, { provider: 'xiaomi' })
   assert.equal(scope.writes.length, 1)

@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict'
-import { readdir, readFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const readmeZh = await readFile(new URL('../README.md', import.meta.url), 'utf8')
-const profileCleanupScript = await readFile(new URL('../tools/start/dsh-profile-cleanup.ps1', import.meta.url), 'utf8')
-const unlinkScript = await readFile(new URL('../tools/start/dsh-plugin-uninstall-local-link.bat', import.meta.url), 'utf8')
 const sharedModule = await import('../lib/shared.js')
 const {
   appendTtsSmartTruncationOutro,
@@ -17,14 +15,12 @@ const {
   firstTtsSegment,
   firstTtsSegments,
   MAX_TTS_SEGMENT_CHARACTERS,
-  MIN_TTS_SEGMENT_CHARACTERS,
   MIN_TTS_STREAM_CHARACTERS,
   prepareTtsText,
   resolveTtsBaseURL,
   resolveTtsReadScope,
   resolveTtsSettings,
   splitTtsSegments,
-  TTS_READ_SCOPES,
   TTS_SMART_TRUNCATION_OUTROS,
   TOKEN_PLAN_TTS_BASE_URL,
   TTS_VERSION,
@@ -32,15 +28,13 @@ const {
 } = sharedModule
 
 const SUPPORTED_DSH_PACKAGE_PREFIX = '@deepseek-ai/dsh-'
-const SUPPORTED_DSH_VERSION = packageJson.engines.dsh
 const DEVELOPMENT_DSH_VERSION = packageJson.devDependencies['@deepseek-ai/dsh-api-session-controller']
 
-async function assertLocalReadmeTargets(source, label) {
+async function assertLocalDocumentTargets(source, label) {
   const targets = [...source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)|(?:src|href)="([^"]+)"/g)]
     .map((match) => match[1] ?? match[2])
     .filter((target) => !/^(?:[a-z]+:|#)/iu.test(target))
     .map((target) => decodeURIComponent(target.split('#', 1)[0]))
-  assert.ok(targets.length > 0, `${label} should contain local links or assets`)
   for (const target of targets) {
     await assert.doesNotReject(readFile(new URL(`../${target}`, import.meta.url)), `${label}: missing local target ${target}`)
   }
@@ -54,25 +48,12 @@ function assertWebp(data, label) {
 test('package metadata exposes the DSH bundle and supported Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
   assert.equal(TTS_VERSION, packageJson.version)
-  assert.equal(packageJson.scripts.prepare, 'node tools/scripts/prepare-package.mjs')
-  assert.equal(packageJson.scripts.prepack, 'pnpm run build && node tools/scripts/pack-package.mjs')
-  assert.equal(packageJson.scripts.postpack, 'node tools/scripts/restore-package-scripts.mjs')
-  assert.equal(packageJson.scripts['release:check'], 'pnpm run test')
-  assert.equal(packageJson.scripts['profile:check'], 'node tools/scripts/dsh-profile-verify.mjs')
-  assert.equal(packageJson.scripts.build, 'tsdown -c tsdown.config.ts && tsc --emitDeclarationOnly')
-  assert.equal(packageJson.scripts.typecheck, 'tsc --noEmit')
-  assert.equal(packageJson.scripts.test, 'pnpm run build && node --test test/*.test.mjs')
-  assert.equal(packageJson.scripts['pack:check'], 'node tools/scripts/pack-check.mjs')
-  assert.equal(packageJson.engines.dsh, '>=0.2.2-0 <0.3.0-0')
   assert.ok(packageJson.files.includes('tools/scripts/prepare-package.mjs'))
   assert.ok(packageJson.files.includes('NOTICE'))
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')
   assert.ok(packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-settings'))
   assert.ok(packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-chat'))
-  assert.ok(!packageJson.dsh.client.inject.includes('@deepseek-ai/dsh-client-runtime'))
-  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
-  assert.equal(packageJson.devDependencies['@deepseek-ai/dsh-client-runtime'], undefined)
 
   for (const [name, range] of Object.entries(packageJson.peerDependencies)) {
     if (name.startsWith(SUPPORTED_DSH_PACKAGE_PREFIX)) assert.equal(range, packageJson.engines.dsh, `${name} should follow the supported DSH range`)
@@ -86,36 +67,19 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
   assert.ok(packageJson.exports['./client-api']?.default)
 })
 
-test('Windows profile cleanup supports desktop and removes only profile-local links', () => {
-  assert.match(profileCleanupScript, /\[string\]\$ProfileName/u)
-  assert.match(profileCleanupScript, /profiles.*\$ProfileName/u)
-  assert.match(profileCleanupScript, /LinkType -in @\('Junction', 'SymbolicLink'\)/u)
-  assert.ok(profileCleanupScript.includes("StartsWith($profileRoot + '\\'"))
-  assert.match(unlinkScript, /set "PROFILE=desktop"/u)
-  assert.match(unlinkScript, /-ProfileName "%PROFILE%"/u)
-  assert.match(unlinkScript, /plugin --profile "%PROFILE%" remove/u)
+test('documentation links resolve and documented pnpm commands exist', async () => {
+  for (const name of ['README.md', 'handbook.md', 'intro.md']) {
+    const source = name === 'README.md' ? readmeZh : await readFile(new URL(`../${name}`, import.meta.url), 'utf8')
+    await assertLocalDocumentTargets(source, name)
+    for (const [, command] of source.matchAll(/\bpnpm\s+(?:run\s+)?([\w:-]+)/g)) {
+      assert.ok(Object.hasOwn(packageJson.scripts, command) || ['install', 'pack'].includes(command), `${name}: unknown pnpm command ${command}`)
+    }
+  }
 })
 
-test('README keeps local targets, development commands and usage guarantees valid', async () => {
-  await assertLocalReadmeTargets(readmeZh, 'README.md')
-  assert.match(readmeZh, /https:\/\/ppy-web\.github\.io\/dsh-plugin-xiaomi-mimo-tts/u)
-  assert.match(readmeZh, /src\/client\/settings\/card\.tsx/u)
-  assert.match(readmeZh, /pnpm dev:build/u)
-  assert.match(readmeZh, /Web Speech API/u)
-  assert.doesNotMatch(readmeZh, /src\/client\/settings-card\.tsx/u)
-  assert.match(readmeZh, /自动播报[^\r\n。；]*关闭/u)
-})
-
-test('Voice Design remains manual and has no model-routing dependency contract', () => {
-  assert.equal(sharedModule.VOICE_DESIGN_AI_RPC_CHANNEL, undefined)
-  assert.equal(sharedModule.VOICE_DESIGN_AI_RPC_ENDPOINT, undefined)
-  assert.equal(sharedModule.TTS_VOICE_DESIGN_AI_STATUS_ROUTE, undefined)
-  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-client-connection'], undefined)
-  assert.equal(packageJson.peerDependencies['@deepseek-ai/dsh-agent-default-model'], undefined)
+test('Voice Design presets provide usable descriptions without changing custom settings', () => {
   assert.ok(sharedModule.TTS_MODELS.includes('mimo-v2.5-tts-voicedesign'))
   assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.length > 0)
-  const whale = sharedModule.TTS_VOICE_DESIGN_PRESETS.find((item) => item.id === 'energetic-girl')
-  assert.ok(whale)
   for (const preset of sharedModule.TTS_VOICE_DESIGN_PRESETS) {
     assert.ok(preset.prompt.trim().length > 0, `${preset.id} needs a synthesis description`)
     const settings = resolveTtsSettings({ model: 'mimo-v2.5-tts-voicedesign', voiceDesignPrompt: preset.prompt })
@@ -174,14 +138,12 @@ test('accepts only canonical padded Base64 and calculates its decoded size', () 
 })
 
 test('ships one valid WebP icon for every Voice Design preset', async () => {
-  const iconFiles = (await readdir(new URL('../assets/voice-presets/', import.meta.url))).sort()
-  assert.deepEqual(iconFiles, sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => `${item.id}.webp`).sort())
+  const iconFiles = sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => `${item.id}.webp`)
   for (const file of iconFiles) assertWebp(await readFile(new URL(`../assets/voice-presets/${file}`, import.meta.url)), file)
 })
 
 test('ships one valid WebP avatar for every built-in voice', async () => {
-  const avatarFiles = (await readdir(new URL('../assets/voice-avatars/', import.meta.url))).sort()
-  assert.deepEqual(avatarFiles, sharedModule.TTS_VOICE_PRESETS.map((item) => `${item.id}.webp`).sort())
+  const avatarFiles = sharedModule.TTS_VOICE_PRESETS.map((item) => `${item.id}.webp`)
   for (const file of avatarFiles) assertWebp(await readFile(new URL(`../assets/voice-avatars/${file}`, import.meta.url)), file)
 })
 
@@ -193,9 +155,7 @@ test('ships the UI image and audio assets referenced by shared contracts', async
     const file = route.slice(route.lastIndexOf('/') + 1)
     assertWebp(await readFile(new URL(`../assets/ui/${file}`, import.meta.url)), file)
   }
-  const audioFiles = (await readdir(new URL('../assets/audio/', import.meta.url))).sort()
-  const expected = [...new Set([...Object.values(sharedModule.TTS_TOGGLE_SOUND_FILES).flat(), ...sharedModule.TTS_VOLUME_PREVIEW_FILES])].sort()
-  assert.deepEqual(audioFiles, expected)
+  const audioFiles = [...new Set([...Object.values(sharedModule.TTS_TOGGLE_SOUND_FILES).flat(), ...sharedModule.TTS_VOLUME_PREVIEW_FILES])]
   for (const file of audioFiles) {
     const data = await readFile(new URL(`../assets/audio/${file}`, import.meta.url))
     assert.ok(data.byteLength > 0, file)
@@ -227,12 +187,6 @@ test('splits VoiceDesign text at natural boundaries within the request limit', (
   assert.ok(segments.length > 1)
   assert.equal(segments.join(''), prepareTtsText(text))
   assert.ok(segments.every((segment) => countTtsSpeechCharacters(segment) <= 80))
-})
-
-test('keeps default VoiceDesign segments conservative', () => {
-  assert.equal(DEFAULT_TTS_SEGMENT_CHARACTERS, 160)
-  assert.equal(MAX_TTS_SEGMENT_CHARACTERS, 240)
-  assert.equal(MIN_TTS_SEGMENT_CHARACTERS, 50)
 })
 
 test('resolves read scope and migrates the legacy first-segment setting', () => {

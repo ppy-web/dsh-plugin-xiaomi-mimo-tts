@@ -33,7 +33,7 @@ test('Doubao sends multiple text inputs in one session and delivers audio before
     assert.equal(start.speaker, 'zh_female_vv_uranus_bigtts')
     assert.equal(start.model, undefined)
     assert.deepEqual(start.audio_params, { format: 'pcm', sample_rate: 24000, speech_rate: 0 })
-    assert.throws(() => session.append('too late'), /not accepting/)
+    assert.throws(() => session.append('too late'), { code: 'invalid-session-state' })
   })
 })
 
@@ -144,7 +144,7 @@ test('cloned voice uses its own resource and explicit inference model without co
     assert.equal(wav.toString('ascii', 0, 4), 'RIFF')
     assert.equal(wav.readUInt32LE(24), 24000)
     assert.equal(wav.readUInt32LE(40), 4)
-    assert.throws(() => wrapPcmWav(Buffer.from([1])), /invalid-audio-format/)
+    assert.throws(() => wrapPcmWav(Buffer.from([1])), { code: 'invalid-audio-format' })
   })
 })
 
@@ -275,7 +275,7 @@ test('provider selection preserves legacy defaults and isolates credentials and 
   assert.equal(preview.doubaoVoice, 'preview-voice')
   assert.equal(preview.voice, '茉莉')
   assert.equal(base.doubaoVoice, 'custom-standard')
-  assert.throws(() => synthesisOptions(base, { provider: 'doubao', model: 'mimo-v2.5-tts' }), /Doubao model/)
+  assert.throws(() => synthesisOptions(base, { provider: 'doubao', model: 'mimo-v2.5-tts' }), { code: 'invalid-model' })
   assert.throws(() => validateSynthesisSettings(settings({ doubaoModel: 'seed-icl-2.0' })), error => error.code === 'voice-required')
   assert.throws(() => validateSynthesisSettings(settings({ doubaoApiKey: '' })), error => error.code === 'api-key-not-configured')
 })

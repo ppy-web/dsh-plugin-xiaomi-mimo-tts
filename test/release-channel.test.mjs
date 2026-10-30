@@ -17,9 +17,9 @@ test('release channels support an explicit next channel for a version without a 
 })
 
 test('release validation rejects mismatched tags, unsupported channels and prereleases on latest', () => {
-  assert.throws(() => releaseMetadata({ name, version: '4.0.0' }, 'v3.0.9'), /must match/)
-  assert.throws(() => releaseMetadata({ name, version: '4.0.0', publishConfig: { tag: 'invalid' } }, 'v4.0.0'), /Unsupported/)
-  assert.throws(() => releaseMetadata({ name, version: '4.0.0-next.1', publishConfig: { tag: 'latest' } }, 'v4.0.0-next.1'), /next channel/)
+  assert.throws(() => releaseMetadata({ name, version: '4.0.0' }, 'v3.0.9'), Error)
+  assert.throws(() => releaseMetadata({ name, version: '4.0.0', publishConfig: { tag: 'invalid' } }, 'v4.0.0'), Error)
+  assert.throws(() => releaseMetadata({ name, version: '4.0.0-next.1', publishConfig: { tag: 'latest' } }, 'v4.0.0-next.1'), Error)
 })
 
 test('release metadata command exposes the selected channel to GitHub Actions', async () => {

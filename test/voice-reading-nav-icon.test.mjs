@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
@@ -141,28 +140,4 @@ test('marks the open panel, re-marks host re-renders, and cleans up on dispose',
     delete globalThis.document
     delete globalThis.MutationObserver
   }
-})
-
-test('stylesheet paints the plugin RiVoiceAiFill icon on the marker', async () => {
-  const css = await readFile(new URL('../src/client/style/voice-reading.css', import.meta.url), 'utf8')
-  const icons = await readFile(new URL('../node_modules/react-icons/ri/index.mjs', import.meta.url), 'utf8')
-
-  assert.match(css, new RegExp(`\\[${VOICE_READING_NAV_ATTRIBUTE}\\] > svg\\s*\\{\\s*display:\\s*none;`))
-  assert.match(css, /::before\s*\{[^}]*mask-image:\s*url\("data:image\/svg\+xml,/)
-  assert.match(css, /-webkit-mask-image:\s*url\("data:image\/svg\+xml,/)
-  assert.match(css, /mask-size:\s*16px 16px;/)
-
-  // The glyph must stay the exact path shipped as `RiVoiceAiFill` by react-icons.
-  const icon = /export function RiVoiceAiFill[\s\S]*?"d":"([^"]+)"/.exec(icons)
-  assert.ok(icon, 'react-icons/ri must ship RiVoiceAiFill')
-  const dataUri = /mask-image:\s*url\("data:image\/svg\+xml,([^"]+)"\)/.exec(css)
-  assert.ok(dataUri, 'the nav glyph mask carries an inline SVG')
-  const svg = decodeURIComponent(dataUri[1])
-  assert.match(svg, /viewBox='0 0 24 24'/)
-  assert.ok(svg.includes(`d='${icon[1]}'`), 'the nav glyph path must match RiVoiceAiFill')
-})
-
-test('client entry installs the nav patch alongside the styles', async () => {
-  const entry = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
-  assert.match(entry, /ctx\.effect\(\(\) => installVoiceReadingNavIcon\(\),/)
 })
