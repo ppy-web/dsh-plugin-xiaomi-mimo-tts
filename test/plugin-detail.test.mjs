@@ -6,7 +6,7 @@ import { loadClientModule, settle } from './helpers/client-modules.mjs'
 
 const { ApiKeyStatusStore, apiKeyStatusStore, bindApiKeyStatus } = await loadClientModule('src/client/settings/api-key-status-store.ts')
 const { PluginDetailActions, PluginDetailBadge } = await loadClientModule('src/client/settings/plugin-detail.tsx')
-const { MANUAL_URL } = await loadClientModule('src/client/settings/plugin-links.ts')
+const { MANUAL_URL, SOURCE_URL } = await loadClientModule('src/client/settings/plugin-links.ts')
 
 function source(initial) {
   let value = initial
@@ -167,7 +167,7 @@ test('all detail contributions ignore other packages, component rows and officia
   }
 })
 
-test('manual action opens the preview website separately and remains available during plugin changes', t => {
+test('detail actions open the project and manual separately and remain available during plugin changes', t => {
   const html = renderToStaticMarkup(createElement(PluginDetailActions, { subject, t: key => key }))
   const url = new URL(MANUAL_URL)
   assert.equal(url.protocol, 'https:')
@@ -183,9 +183,12 @@ test('manual action opens the preview website separately and remains available d
     if (previous) Object.defineProperty(globalThis, 'window', previous)
     else delete globalThis.window
   })
-  PluginDetailActions({ subject, t: key => key }).props.onClick()
-  assert.equal(open.mock.callCount(), 1)
-  assert.deepEqual(open.mock.calls[0].arguments, [MANUAL_URL, '_blank', 'noopener,noreferrer'])
+  const actions = PluginDetailActions({ subject, t: key => key }).props.children
+  for (const action of actions) action.props.onClick()
+  assert.deepEqual(open.mock.calls.map(call => call.arguments), [
+    [SOURCE_URL, '_blank', 'noopener,noreferrer'],
+    [MANUAL_URL, '_blank', 'noopener,noreferrer'],
+  ])
 })
 
 test('detail badge reads the saved provider, offers retry on failure, and suspends during bundle changes', async t => {

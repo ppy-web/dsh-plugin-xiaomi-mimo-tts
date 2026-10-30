@@ -172,7 +172,7 @@ export async function apply(ctx: Context) {
 
 ## 插件详情页
 
-在宿主中打开本插件的组合包详情，可通过「用户手册」直接打开[在线使用手册](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual)。该按钮沿用宿主按钮样式；详情同时显示当前已保存服务商的密钥格式状态。组件详情、其他插件和官方条目不显示这些扩展。
+在宿主中打开本插件的组合包详情，可通过「用户手册」直接打开[在线使用手册](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual)，其左侧的「赏个Star」可打开项目仓库。两个按钮均沿用宿主按钮样式，「赏个Star」保留悬停扫光效果；详情同时显示当前已保存服务商的密钥格式状态。组件详情、其他插件和官方条目不显示这些扩展。
 
 在线手册包含[自动朗读与回复偏好](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual-reading)、[QQ Bot 接入流程](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual-qqbot)及[试听与故障排查](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual-troubleshooting)，目录可直接定位章节。预览站点的保存、组件状态和云端合成均为演示，不会修改真实 DSH 配置，也不会向 QQ 发送消息；供应商权限、真实音色和 QQ 语音送达需在 DSH 与 QQ 中验证。
 

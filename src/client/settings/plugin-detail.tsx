@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { ReactElement } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { AiFillGithub } from 'react-icons/ai'
 import type { PluginDetailProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { resolveTtsSettings } from '../../shared.js'
@@ -10,7 +11,7 @@ import { useApiKeyStatus } from '../conversation/api-key-status.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { ApiKeyStatus } from './api-key-state.js'
 import { apiKeyStatusStore } from './api-key-status-store.js'
-import { MANUAL_URL } from './plugin-links.js'
+import { MANUAL_URL, SOURCE_URL } from './plugin-links.js'
 import { useSettingsSnapshot } from './scope.js'
 
 interface DetailProps extends PluginDetailProps {
@@ -28,7 +29,13 @@ function isTtsBundle({ subject }: PluginDetailProps): boolean {
 
 export function PluginDetailActions(props: DetailProps): ReactElement | null {
   if (!isTtsBundle(props)) return null
-  return <Button variant="outline" size="sm" onClick={() => window.open(MANUAL_URL, '_blank', 'noopener,noreferrer')}>{props.t('detail.manual')}</Button>
+  return <div className="xmimo-ui-scope xmimo-tts-detail-actions">
+    <Button variant="outline" size="sm" className="xmimo-tts-star" onClick={() => window.open(SOURCE_URL, '_blank', 'noopener,noreferrer')}>
+      <AiFillGithub size={14} aria-hidden="true" focusable="false" />
+      {props.t('settings.source')}
+    </Button>
+    <Button variant="outline" size="sm" onClick={() => window.open(MANUAL_URL, '_blank', 'noopener,noreferrer')}>{props.t('detail.manual')}</Button>
+  </div>
 }
 
 const STATUS_KEYS: Record<ApiKeyStatus, LocaleKey> = {

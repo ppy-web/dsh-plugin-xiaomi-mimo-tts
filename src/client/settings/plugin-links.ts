@@ -1,7 +1,7 @@
 /**
  * Public destinations the plugin's settings surfaces link to.
  *
- * The plugin settings footer and the Voice reading page header both point at
+ * The plugin detail actions and the Voice reading page header both point at
  * the project, so the URLs live here instead of being repeated per surface.
  */
 

@@ -1,7 +1,6 @@
 import type { ReactElement, RefObject } from 'react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { AiFillGithub } from 'react-icons/ai'
 import { GoHistory } from 'react-icons/go'
 import { RiSwitchFill } from 'react-icons/ri'
 import {
@@ -19,7 +18,6 @@ import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PreviewPlayer } from '../playback/preview-player.js'
 import type { PreviewView } from '../playback/preview-player.js'
 import { isRecord, useSettingsSnapshot } from './scope.js'
-import { SOURCE_URL } from './plugin-links.js'
 import { ToggleSoundPlayer } from '../sound-effects/toggle-sound-player.js'
 import type { SoundEffectsController } from '../sound-effects/types.js'
 import { ApiKeyModule } from './api-key-module.js'
@@ -525,15 +523,6 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
         <div className="xmimo-tts-card-footer">
           <div className="xmimo-tts-card-actions">
             <div className="xmimo-tts-card-action-links">
-              <a
-                className="xmimo-tts-star"
-                href={SOURCE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <AiFillGithub size={14} aria-hidden="true" focusable="false" />
-                <span className="xmimo-tts-action-label">{t('settings.source')}</span>
-              </a>
               {history ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
                 previewPlayer.stop()
                 toggleSoundPlayer.dispose()

@@ -29,3 +29,37 @@
 @media (pointer: coarse) {
   .xmimo-tts-detail-status button { min-height: 44px; }
 }
+
+.xmimo-tts-detail-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.xmimo-tts-detail-actions .xmimo-tts-star {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.xmimo-tts-detail-actions .xmimo-tts-star::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 15%, color-mix(in srgb, var(--xmimo-ui-brand) 12%, transparent) 35%, color-mix(in srgb, var(--xmimo-ui-brand) 28%, transparent) 50%, color-mix(in srgb, var(--xmimo-ui-brand) 12%, transparent) 65%, transparent 85%);
+  content: '';
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-110%);
+}
+
+.xmimo-tts-detail-actions .xmimo-tts-star:is(:hover, :focus-visible)::before {
+  opacity: 1;
+  animation: xmimo-tts-star-shine 1s ease-in-out infinite;
+}
+
+@keyframes xmimo-tts-star-shine {
+  0% { transform: translateX(-110%) }
+  65%, 100% { transform: translateX(110%) }
+}

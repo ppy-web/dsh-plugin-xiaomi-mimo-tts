@@ -1,5 +1,5 @@
 /*
- * Settings card action bar: source, history, appearance, discard, and save.
+ * Settings card action bar: history, appearance, discard, and save.
  */
 
 .xmimo-tts-card-footer {
@@ -102,61 +102,8 @@
   background: color-mix(in srgb, var(--xmimo-ui-brand) 12%, var(--xmimo-ui-surface))
 }
 
-.xmimo-tts-card-actions .xmimo-tts-star {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease
-}
-
-.xmimo-tts-card-actions .xmimo-tts-star {
-  border: 1px solid color-mix(in srgb, var(--xmimo-ui-brand) 30%, var(--xmimo-ui-border));
-  color: var(--xmimo-ui-brand);
-  background: transparent;
-  font-weight: 600
-}
-
-.xmimo-tts-card-actions .xmimo-tts-star::before {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  background: linear-gradient(110deg, transparent 15%, color-mix(in srgb, var(--xmimo-ui-brand) 12%, transparent) 35%, color-mix(in srgb, var(--xmimo-ui-brand) 28%, transparent) 50%, color-mix(in srgb, var(--xmimo-ui-brand) 12%, transparent) 65%, transparent 85%);
-  content: '';
-  pointer-events: none;
-  opacity: 0;
-  transform: translateX(-110%)
-}
-
-.xmimo-tts-card-actions .xmimo-tts-star:is(:hover, :focus-visible) {
-  border-color: var(--xmimo-ui-brand);
-  background: color-mix(in srgb, var(--xmimo-ui-brand) 6%, transparent);
-  box-shadow: 0 3px 10px color-mix(in srgb, var(--xmimo-ui-brand) 16%, transparent);
-  text-decoration: none;
-  transform: translateY(-1px)
-}
-
-.xmimo-tts-card-actions .xmimo-tts-star:is(:hover, :focus-visible)::before {
-  opacity: 1;
-  animation: xmimo-tts-star-shine 1s ease-in-out infinite
-}
-
-.xmimo-tts-card-actions .xmimo-tts-star:focus-visible {
-  outline: var(--xmimo-ui-focus);
-  outline-offset: 3px
-}
-
-.xmimo-tts-card-actions .xmimo-tts-star:active {
-  box-shadow: none;
-  transform: translateY(0)
-}
-
-@keyframes xmimo-tts-star-shine {
-  0% { transform: translateX(-110%) }
-  65%, 100% { transform: translateX(110%) }
-}
-
 @container xmimo-actions (max-width: 520px) {
-  .xmimo-tts-card-actions :is(.xmimo-tts-star, .xmimo-tts-history-link, .xmimo-tts-mode-toggle) {
+  .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle) {
     position: relative;
     padding-inline: 8px
   }
@@ -179,7 +126,7 @@
     gap: 6px
   }
 
-  .xmimo-tts-card-actions :is(.xmimo-tts-star, .xmimo-tts-history-link, .xmimo-tts-mode-toggle) {
+  .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle) {
     padding-inline: 6px
   }
 }
