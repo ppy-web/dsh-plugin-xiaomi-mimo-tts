@@ -83,21 +83,21 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
   return <section ref={pageRef} tabIndex={-1} className="xmimo-ui-scope xmimo-tts-history-page" aria-label={t('history.title')}>
     <header className="xmimo-tts-history-header">
       <h2 aria-label={t('history.title')}>
-        <button ref={backRef} type="button" className="xmimo-tts-history-title-back"
+        <Button ref={backRef} type="button" variant="ghost" size="sm" className="xmimo-tts-history-title-back"
           aria-label={t('history.backToSettings')} title={t('history.backToSettings')} onClick={onBack}>
           <RiArrowLeftSLine size={18} aria-hidden="true" focusable="false" />
           <span>{t('history.title')}</span>
-        </button>
+        </Button>
         <span className="xmimo-tts-history-count">{view.entries.length}</span>
       </h2>
       {hasEntries ? <div className="xmimo-tts-history-toolbar">
         <Input ref={searchRef} type="search" className="xmimo-tts-history-search" aria-label={t('history.search')} placeholder={t('history.search')} value={query} onChange={(event) => { setQuery(event.target.value); setDeleting(null) }} />
         <div className="xmimo-tts-history-source">
-          <VoiceReadingSelect label={t('history.source')} value={source} disabled={pending}
+          <VoiceReadingSelect label={t('history.source')} value={source} disabled={pending} buttonVariant="outline"
             options={(['all', 'conversation', 'preview', 'service'] as const).map(id => ({ id, label: t(`history.${id}`) }))}
             onSelect={(id) => { setSource(id as HistorySource); setDeleting(null) }} />
         </div>
-        <Button type="button" variant="outline" disabled={pending || view.status === 'loading'} className={`xmimo-tts-history-action${clearing ? ' xmimo-tts-history-confirm-delete' : ''}`}
+        <Button type="button" variant="outline" size="sm" disabled={pending || view.status === 'loading'} className={`xmimo-tts-history-action${clearing ? ' xmimo-tts-history-confirm-delete' : ''}`}
           aria-label={t(clearing ? 'history.confirmClear' : 'history.clear')}
           title={t(clearing ? 'history.clearConfirm' : 'history.clear')}
           onBlur={() => { if (!pending) setClearing(false) }}
@@ -117,15 +117,17 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
           {!minimalMode ? <img className="xmimo-tts-history-empty-whale" src={hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)} width={144} height={144} alt="" aria-hidden="true" /> : null}
           <p>{t('history.empty')}</p>
         </div>
-          : entries.length === 0 ? <div className="xmimo-tts-history-empty" role="status"><p>{t('history.noResults')}</p><Button type="button" onClick={() => { setQuery(''); setSource('all') }}>{t('history.resetFilters')}</Button></div>
+          : entries.length === 0 ? <div className="xmimo-tts-history-empty" role="status"><p>{t('history.noResults')}</p><Button type="button" variant="outline" size="sm" onClick={() => { setQuery(''); setSource('all') }}>{t('history.resetFilters')}</Button></div>
             : <ul className="xmimo-tts-history-list">
               {entries.map((entry) => <li key={entry.id} className={`xmimo-tts-history-row${entry.id === playback.entryId ? ' xmimo-tts-history-row-selected' : ''}`}>
-                <Button type="button" variant="primary" className="xmimo-tts-history-player-toggle" title={entry.id === playback.entryId ? playbackLabel : t('history.listen')} aria-label={`${entry.id === playback.entryId ? playbackLabel : t('history.listen')}: ${title(entry).slice(0, 60)}`} onClick={() => {
+                <Button type="button" variant="primary" size="sm" className="xmimo-tts-history-player-toggle" title={entry.id === playback.entryId ? playbackLabel : t('history.listen')} aria-label={`${entry.id === playback.entryId ? playbackLabel : t('history.listen')}: ${title(entry).slice(0, 60)}`} onClick={() => {
                   if (entry.id === playback.entryId && busy) replay.pause()
                   else void replay.play(entry)
                 }}>{entry.id === playback.entryId && playback.status === 'error' ? <IconRefreshOutlineMedium size={16} aria-hidden="true" /> : <PlaybackIcon state={entry.id !== playback.entryId || !busy ? 'play' : 'pause'} />}</Button>
                 <div className="xmimo-tts-history-copy">
-                  <button type="button" className={`xmimo-tts-history-text${expanded === entry.id ? ' xmimo-tts-history-text-expanded' : ''}`} aria-expanded={expanded === entry.id} aria-label={`${t('history.expand')}: ${title(entry).slice(0, 60)}`} onClick={() => { setExpanded(expanded === entry.id ? null : entry.id) }}>{title(entry)}</button>
+                  <Button type="button" variant="ghost" className="xmimo-tts-history-text-toggle" aria-expanded={expanded === entry.id} aria-label={`${t('history.expand')}: ${title(entry).slice(0, 60)}`} onClick={() => { setExpanded(expanded === entry.id ? null : entry.id) }}>
+                    <span className={`xmimo-tts-history-text${expanded === entry.id ? ' xmimo-tts-history-text-expanded' : ''}`}>{title(entry)}</span>
+                  </Button>
                   <div className="xmimo-tts-history-meta">
                     <span>{t(`history.${entry.source}`)}</span>
                     <span>{Array.from(title(entry)).length} {t('history.characters')}</span>
@@ -141,8 +143,8 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
                   </div> : null}
                 </div>
                 <div className="xmimo-tts-history-actions">
-                  <Button type="button" variant="outline" className="xmimo-tts-history-action" title={t('history.download')} aria-label={`${t('history.download')}: ${title(entry).slice(0, 60)}`} onClick={() => { download(entry) }}><RiDownloadLine aria-hidden="true" /><span>{t('history.download')}</span></Button>
-                  <Button type="button" variant="outline" disabled={pending} className={`xmimo-tts-history-action${deleting === entry.id ? ' xmimo-tts-history-confirm-delete' : ''}`}
+                  <Button type="button" variant="outline" size="sm" className="xmimo-tts-history-action" title={t('history.download')} aria-label={`${t('history.download')}: ${title(entry).slice(0, 60)}`} onClick={() => { download(entry) }}><RiDownloadLine aria-hidden="true" /><span>{t('history.download')}</span></Button>
+                  <Button type="button" variant="outline" size="sm" disabled={pending} className={`xmimo-tts-history-action${deleting === entry.id ? ' xmimo-tts-history-confirm-delete' : ''}`}
                     title={t(deleting === entry.id ? 'history.confirmDelete' : 'history.delete')}
                     aria-label={`${t(deleting === entry.id ? 'history.confirmDelete' : 'history.delete')}: ${title(entry).slice(0, 60)}`}
                     onBlur={() => { if (!pending) setDeleting((current) => current === entry.id ? null : current) }}
@@ -160,6 +162,10 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
         <span>{t(view.status === 'memory' ? 'history.temporary' : 'history.savedHere')} · {view.entries.length} · {historyFileSize(view.entries.reduce((sum, entry) => sum + entry.blob.size, 0))}</span>
         <span className="xmimo-tts-history-limit">{t('history.hint')}</span>
       </div> : null}
+      <Button type="button" variant="outline" size="sm" className="xmimo-tts-history-back" onClick={onBack}>
+        <RiArrowLeftSLine size={16} aria-hidden="true" focusable="false" />
+        {t('history.backToSettings')}
+      </Button>
     </footer>
   </section>
 }

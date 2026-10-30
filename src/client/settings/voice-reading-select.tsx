@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { useRef, useState } from 'react'
-import { IconChevronDownOutlineRegular, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconChevronDownOutlineRegular, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ButtonVariant } from '@deepseek-ai/dsh-client-ui-primitives'
 
 interface VoiceReadingSelectProps {
   /** Accessible name of the control (the row title). */
@@ -11,6 +12,8 @@ interface VoiceReadingSelectProps {
   fallbackLabel?: string
   options: readonly { id: string; label: string }[]
   disabled: boolean
+  /** Use a standard Host button instead of the settings-row capsule. */
+  buttonVariant?: ButtonVariant
   onSelect: (id: string) => void
 }
 
@@ -22,7 +25,7 @@ interface VoiceReadingSelectProps {
  * a check on the selected row. Choosing returns focus to the pill before the
  * value is published, exactly like the Host rows.
  */
-export function VoiceReadingSelect({ label, value, fallbackLabel, options, disabled, onSelect }: VoiceReadingSelectProps): ReactElement {
+export function VoiceReadingSelect({ label, value, fallbackLabel, options, disabled, buttonVariant, onSelect }: VoiceReadingSelectProps): ReactElement {
   const [open, setOpen] = useState(false)
   const selectorRef = useRef<HTMLButtonElement>(null)
   const closeMenu = (): void => {
@@ -34,10 +37,12 @@ export function VoiceReadingSelect({ label, value, fallbackLabel, options, disab
     onSelect(id)
   }
   const selectedLabel = options.find((option) => option.id === value)?.label ?? fallbackLabel ?? value
-  const selector = <button
+  const Trigger = buttonVariant ? Button : 'button'
+  const selector = <Trigger
     ref={selectorRef}
     type="button"
-    className="xmimo-voice-reading-selector"
+    {...(buttonVariant ? { variant: buttonVariant, size: 'sm' as const } : {})}
+    className={buttonVariant ? 'xmimo-voice-reading-button-selector' : 'xmimo-voice-reading-selector'}
     aria-label={label}
     aria-haspopup="menu"
     aria-expanded={open}
@@ -48,7 +53,7 @@ export function VoiceReadingSelect({ label, value, fallbackLabel, options, disab
   >
     <span className="xmimo-voice-reading-selector-label">{selectedLabel}</span>
     <IconChevronDownOutlineRegular className="xmimo-voice-reading-chevron" />
-  </button>
+  </Trigger>
 
   return <Menu
     open={open && !disabled}
