@@ -1,6 +1,6 @@
 {
   "name": "dsh-xiaomi-tts",
-  "version": "4.3.0-alpha.2",
+  "version": "4.2.8",
   "description": "为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS，浏览器语音；音频下载、 UI 音效、桌宠联动、QQBot 语音；",
   "icon": "./assets/plugin-icons/avatar.webp",
   "license": "MIT",
@@ -246,7 +246,7 @@
   },
   "publishConfig": {
     "access": "public",
-    "tag": "next"
+    "tag": "latest"
   },
   "dependencies": {
     "motion": "^14.1.0",
