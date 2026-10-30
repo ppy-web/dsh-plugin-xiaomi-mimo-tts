@@ -28,6 +28,8 @@
 
 完整分步教程见独立的[豆包语音接入页](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#doubao)。首次接入建议先验证标准音色，再尝试复刻和实时朗读。
 
+自定义标准音色 ID 和复刻音色 ID 在失焦或按 Enter 后会记入下方最近使用的标签。已收录的标准音色自动显示名称；其他音色可填写「备注名称」，清空备注后恢复显示 ID。备注和历史仅保存在当前浏览器，标准音色与复刻音色分别记录；点击标签始终填回原始 ID，不会把名称作为合成参数。标签最大宽度为 120px，超出部分省略，悬停可查看完整名称及 ID。当前不查询控制台昵称：官方 `ListSpeakers` 需要独立的 AK/SK 签名，`get_voice` 仅提供复刻状态等信息，没有名称字段。
+
 1. **准备资源与正确的 Key。** 标准服务使用[豆包语音新版控制台 API Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default)，并开通所需模型资源。Agent Plan 使用套餐专属 Key，插件自动选择线路，无需手填地址；Coding Plan 不包含语音模型，区别见[官方说明](https://docs.volcengine.com/docs/ark/agent-plan-personal-faq?lang=zh)。旧版 AppID、Access Token、Secret Key 不能直接替代这里的 API Key。
 2. **在真实 DSH 保存密钥。** 打开本插件设置，切换到「豆包语音」，粘贴 Key 并点击底部「保存」。新密钥草稿不会被试听使用；「格式已识别」不代表权限或连接已经验证。
 3. **用标准音色建立基线。** 在「调音台」选择标准合成 `seed-tts-2.0`、一个内置音色、1× 语速，语音指令留空。需要自定义标准音色时，从[音色库](https://console.volcengine.com/speech/new/voices?projectName=default)复制完整 TTS 2.0 音色 ID，而非显示名称。

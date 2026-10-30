@@ -118,6 +118,8 @@ export const ja: Record<LocaleKey, string> = {
   'settings.doubaoClonedVoiceLabel': 'クローン音色',
   'settings.doubaoStandardVoiceHistory': '標準音色 ID の履歴',
   'settings.doubaoClonedVoiceHistory': 'クローン音色 ID の履歴',
+  'settings.voiceRemark': '音色のメモ名（任意）',
+  'settings.voiceRemarkHint': 'タグ表示用にこのブラウザーに保存します。空欄なら音色 ID を表示します',
   'settings.doubaoCloneHint': 'Doubao コンソールで作成したクローン音色 ID を入力してください',
   'settings.doubaoVoiceLibrary': '音色ライブラリを開く',
   'settings.doubaoCreateVoice': '音色を作成',

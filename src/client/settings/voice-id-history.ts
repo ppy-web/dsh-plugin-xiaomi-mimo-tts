@@ -38,3 +38,26 @@ export function writeVoiceIdHistory(kind: VoiceIdHistoryKind, history: string[],
     // Keep the in-memory history usable when browser storage is unavailable.
   }
 }
+
+function normalizeNames(value: unknown): Record<string, string> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return {}
+  return Object.fromEntries(Object.entries(value)
+    .filter(([id, name]) => id.trim() && typeof name === 'string' && name.trim())
+    .map(([id, name]) => [id.trim(), (name as string).trim()]))
+}
+
+export function readVoiceIdNames(kind: VoiceIdHistoryKind, storage = browserStorage()): Record<string, string> {
+  try {
+    return normalizeNames(JSON.parse(storage?.getItem(`${STORAGE_KEYS[kind]}:names`) ?? '{}'))
+  } catch {
+    return {}
+  }
+}
+
+export function writeVoiceIdNames(kind: VoiceIdHistoryKind, names: Record<string, string>, storage = browserStorage()): void {
+  try {
+    storage?.setItem(`${STORAGE_KEYS[kind]}:names`, JSON.stringify(normalizeNames(names)))
+  } catch {
+    // Keep the in-memory names usable when browser storage is unavailable.
+  }
+}

@@ -173,7 +173,7 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
           disabled={!writable}
           onReset={() => resetField(doubaoModel === 'seed-icl-2.0' ? 'doubaoClonedVoice' : 'doubaoVoice')}
         />
-        {doubaoModel === 'seed-icl-2.0' ? <VoiceIdInput kind="cloned" value={doubaoClonedVoice} disabled={!writable} label={t('settings.doubaoClonedVoice')} historyLabel={t('settings.doubaoClonedVoiceHistory')} onChange={onDoubaoClonedVoiceChange} /> : <DoubaoVoicePicker value={doubaoVoice} disabled={!writable} minimal={minimal} onChange={onDoubaoVoiceChange} t={t} />}
+        {doubaoModel === 'seed-icl-2.0' ? <VoiceIdInput kind="cloned" value={doubaoClonedVoice} disabled={!writable} label={t('settings.doubaoClonedVoice')} historyLabel={t('settings.doubaoClonedVoiceHistory')} t={t} onChange={onDoubaoClonedVoiceChange} /> : <DoubaoVoicePicker value={doubaoVoice} disabled={!writable} minimal={minimal} onChange={onDoubaoVoiceChange} t={t} />}
       </div> : null}
       {provider === 'xiaomi' && model === 'mimo-v2.5-tts-voicedesign' ? <div className="xmimo-tts-voice-design-prompt">
         <SettingFieldHeading

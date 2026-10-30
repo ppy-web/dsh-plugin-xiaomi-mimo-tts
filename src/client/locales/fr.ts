@@ -118,6 +118,8 @@ export const fr: Record<LocaleKey, string> = {
   'settings.doubaoClonedVoiceLabel': 'Voix clonée',
   'settings.doubaoStandardVoiceHistory': 'Historique des identifiants standard',
   'settings.doubaoClonedVoiceHistory': 'Historique des identifiants clonés',
+  'settings.voiceRemark': 'Nom de la voix (facultatif)',
+  'settings.voiceRemarkHint': 'Enregistré dans ce navigateur pour les étiquettes ; laissez vide pour afficher l’identifiant',
   'settings.doubaoCloneHint': 'Saisissez un identifiant de voix clonée depuis la console Doubao',
   'settings.doubaoVoiceLibrary': 'Ouvrir la bibliothèque de voix',
   'settings.doubaoCreateVoice': 'Créer une voix',

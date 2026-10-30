@@ -37,6 +37,6 @@ export function DoubaoVoicePicker({ value, disabled, minimal = false, onChange, 
       if (next === CUSTOM_VOICE) setCustom(true)
       else { setCustom(false); onChange(next) }
     }} />
-    {custom || !known ? <VoiceIdInput kind="standard" value={value} disabled={disabled} label={t('settings.doubaoVoiceId')} historyLabel={t('settings.doubaoStandardVoiceHistory')} rememberInitialValue={!DOUBAO_VOICE_PRESETS.some(voice => voice.value === value)} onChange={onChange} /> : <small>{value}</small>}
+    {custom || !known ? <VoiceIdInput kind="standard" value={value} disabled={disabled} label={t('settings.doubaoVoiceId')} historyLabel={t('settings.doubaoStandardVoiceHistory')} t={t} rememberInitialValue={!DOUBAO_VOICE_PRESETS.some(voice => voice.value === value)} onChange={onChange} /> : <small>{value}</small>}
   </div>
 }

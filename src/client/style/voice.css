@@ -272,6 +272,21 @@
   white-space: nowrap
 }
 
+.xmimo-tts-voice-id-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0
+}
+
+.xmimo-tts-voice-id-inputs > input {
+  min-width: 0
+}
+
+.xmimo-tts-voice-id-inputs > input:only-child {
+  grid-column: 1 / -1
+}
+
 .xmimo-tts-voice-id-history,
 .xmimo-tts-instruction-presets {
   display: flex;
@@ -296,6 +311,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer
+}
+
+.xmimo-tts-voice-id-tag {
+  box-sizing: border-box;
+  max-width: min(120px, 100%)
 }
 
 .xmimo-tts-voice-id-tag:hover:not(:disabled),
