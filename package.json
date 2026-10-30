@@ -13,6 +13,7 @@
     "tts",
     "text-to-speech"
   ],
+  "homepage": "https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts.git"
