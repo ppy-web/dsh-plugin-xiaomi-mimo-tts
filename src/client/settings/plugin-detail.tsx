@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import type { ReactElement } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AiFillGithub } from 'react-icons/ai'
+import { LuBookOpen } from 'react-icons/lu'
 import type { PluginDetailProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { resolveTtsSettings } from '../../shared.js'
@@ -34,7 +35,10 @@ export function PluginDetailActions(props: DetailProps): ReactElement | null {
       <AiFillGithub size={14} aria-hidden="true" focusable="false" />
       {props.t('settings.source')}
     </Button>
-    <Button variant="outline" size="sm" onClick={() => window.open(MANUAL_URL, '_blank', 'noopener,noreferrer')}>{props.t('detail.manual')}</Button>
+    <Button variant="outline" size="sm" onClick={() => window.open(MANUAL_URL, '_blank', 'noopener,noreferrer')}>
+      <LuBookOpen size={14} aria-hidden="true" focusable="false" />
+      {props.t('detail.manual')}
+    </Button>
   </div>
 }
 
