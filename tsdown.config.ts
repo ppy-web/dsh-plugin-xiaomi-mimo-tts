@@ -51,6 +51,7 @@ export function createClientConfig() {
     platform: 'browser',
     dts: false,
     sourcemap: true,
+    minify: true,
     clean: false,
     external: [...CLIENT_EXTERNALS],
     noExternal: (id: string) => (CLIENT_EXTERNALS.includes(id) ? undefined : true),
@@ -72,6 +73,8 @@ export function createClientConfig() {
       },
     }],
     outputOptions: {
+      keepNames: true,
+      legalComments: 'inline',
       entryFileNames: 'client.js',
       banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(PACKAGE_ID)}, factory: (require) => {`,
       footer: 'return module.exports; } });',
@@ -101,5 +104,7 @@ export default defineConfig([{
   target: 'es2024',
   fixedExtension: false,
   dts: false,
+  minify: true,
+  outputOptions: { keepNames: true, legalComments: 'inline' },
   clean: true,
 }, createClientConfig()])

@@ -3,29 +3,25 @@
 <h1 align="center">dsh-xiaomi-tts</h1>
 
 <p align="center">
+  <a href="https://awesome-dsh-plugin.com"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="awesome · DSH plugin"></a>
   <a href="https://www.npmjs.com/package/dsh-xiaomi-tts"><img src="https://img.shields.io/npm/v/dsh-xiaomi-tts.svg" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/dsh-xiaomi-tts"><img src="https://img.shields.io/npm/dt/dsh-xiaomi-tts.svg" alt="npm total downloads"></a>
   <img src="https://img.shields.io/badge/Xiaomi-MiMo-ff6900?logo=xiaomi&amp;logoColor=white" alt="Xiaomi MiMo">
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&amp;logo=deepseek&amp;logoColor=white" alt="deepseek-harness"></a>
-  <a href="https://awesome-dsh-plugin.com"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="awesome · DSH plugin"></a>
 </p>
 
 > 为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS，浏览器语音；音频下载、 UI 音效、桌宠联动、QQBot 语音；
 
-## 🎨 预览
+## 🎨 [在线预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 
 <p align="center">
   <a href="https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts"><img src="assets/preview-button-zh.svg" alt="在线预览插件效果" width="300" height="64"></a>
 </p>
 
-<p align="center">QQ 群 交流·建议：<code>1104616387</code> · 扫描海报二维码</p>
-
-<table width="100%">
-  <tr>
-    <td align="center" valign="middle" width="50%"><img src="assets/setting.png" alt="插件设置界面" width="100%"></td>
-    <td align="center" valign="middle" width="50%"><img src="assets/image.webp" alt="功能简介与 QQ 群二维码" width="100%"></td>
-  </tr>
-</table>
+> QQ 群 交流·建议：
+>
+> ```text
+> 1104616387
+> ```
 
 ## ✨ 功能
 
@@ -56,7 +52,7 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 
 ## 📖 用户手册
 
-配置要点与详细使用说明见[用户手册](handbook.md)。
+配置要点与详细使用说明见[用户手册](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual)。
 
 ## 🔌 插件联动
 

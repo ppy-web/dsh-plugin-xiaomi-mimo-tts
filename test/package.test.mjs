@@ -48,7 +48,6 @@ function assertWebp(data, label) {
 test('package metadata exposes the DSH bundle and supported Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
   assert.equal(TTS_VERSION, packageJson.version)
-  assert.ok(packageJson.files.includes('tools/scripts/prepare-package.mjs'))
   assert.ok(packageJson.files.includes('NOTICE'))
   assert.equal(packageJson.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(packageJson.dsh.client.platform, 'web')

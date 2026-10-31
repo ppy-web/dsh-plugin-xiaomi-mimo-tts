@@ -12,7 +12,7 @@
     "skipLibCheck": true,
     "declaration": true,
     "sourceMap": true,
-    "declarationMap": true,
+    "declarationMap": false,
     "outDir": "lib",
     "rootDir": "src",
     "types": ["node"]
