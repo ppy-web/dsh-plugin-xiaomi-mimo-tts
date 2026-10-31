@@ -1,8 +1,21 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { defineConfig } from 'tsdown'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 const PACKAGE_ID = 'dsh-xiaomi-tts'
+
+function bundleVisualizer(target: 'client' | 'host') {
+  return visualizer({
+    filename: path.resolve('output/bundle-analysis', `${target}.html`),
+    title: `${PACKAGE_ID} / ${target}`,
+    template: 'treemap',
+    gzipSize: true,
+    brotliSize: true,
+    sourcemap: target === 'client',
+    open: target === 'client' && process.env.DSH_BUNDLE_ANALYZE === '1',
+  })
+}
 
 const CLIENT_EXTERNALS: readonly string[] = [
   'react',
@@ -71,7 +84,7 @@ export function createClientConfig() {
           `client bundle purity: "${source}" is not an allowed DSH client external or inline-safe package`,
         )
       },
-    }],
+    }, bundleVisualizer('client')],
     outputOptions: {
       keepNames: true,
       legalComments: 'inline',
@@ -105,6 +118,7 @@ export default defineConfig([{
   fixedExtension: false,
   dts: false,
   minify: true,
+  plugins: [bundleVisualizer('host')],
   outputOptions: { keepNames: true, legalComments: 'inline' },
   clean: true,
 }, createClientConfig()])
