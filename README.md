@@ -38,7 +38,11 @@
 
 ```bash
 dsh plugin --profile web add dsh-xiaomi-tts@latest
-# 卸载
+```
+
+卸载插件：
+
+```bash
 dsh plugin --profile web remove dsh-xiaomi-tts
 ```
 
