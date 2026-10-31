@@ -31,6 +31,14 @@ export function rememberVoiceId(history: string[], value: string): string[] {
   return normalizeHistory([value, ...history])
 }
 
+export function forgetVoiceId(history: string[], names: Record<string, string>, value: string): { history: string[]; names: Record<string, string> } {
+  const id = value.trim()
+  return {
+    history: history.filter(voice => voice !== id),
+    names: Object.fromEntries(Object.entries(names).filter(([voice]) => voice !== id)),
+  }
+}
+
 export function writeVoiceIdHistory(kind: VoiceIdHistoryKind, history: string[], storage = browserStorage()): void {
   try {
     storage?.setItem(STORAGE_KEYS[kind], JSON.stringify(normalizeHistory(history)))

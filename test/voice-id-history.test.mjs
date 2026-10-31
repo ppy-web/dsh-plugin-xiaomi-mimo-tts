@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
-const { readVoiceIdHistory, readVoiceIdNames, rememberVoiceId, writeVoiceIdHistory, writeVoiceIdNames } = await loadClientModule('src/client/settings/voice-id-history.ts')
+const { forgetVoiceId, readVoiceIdHistory, readVoiceIdNames, rememberVoiceId, writeVoiceIdHistory, writeVoiceIdNames } = await loadClientModule('src/client/settings/voice-id-history.ts')
 
 test('voice ID history retains the ten most recent unique nonempty IDs', () => {
   let history = []
@@ -68,4 +68,26 @@ for (const kind of ['standard', 'cloned']) test(`${kind} labels tolerate invalid
   const unavailable = { getItem() { throw new Error('blocked') }, setItem() { throw new Error('full') } }
   assert.deepEqual(readVoiceIdNames(kind, unavailable), {})
   assert.doesNotThrow(() => writeVoiceIdNames(kind, { id: 'name' }, unavailable))
+})
+
+test('removing a voice forgets its history and remark, survives reload and allows explicit re-addition', () => {
+  const stored = new Map()
+  const storage = { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value) }
+  writeVoiceIdHistory('standard', ['same-id'], storage)
+  writeVoiceIdNames('standard', { 'same-id': 'Standard' }, storage)
+  const history = ['same-id', 'other-id']
+  const names = { 'same-id': 'Clone', 'other-id': 'Other' }
+  const removed = forgetVoiceId(history, names, ' same-id ')
+  writeVoiceIdHistory('cloned', removed.history, storage)
+  writeVoiceIdNames('cloned', removed.names, storage)
+  assert.deepEqual(readVoiceIdHistory('cloned', storage), ['other-id'])
+  assert.deepEqual(readVoiceIdNames('cloned', storage), { 'other-id': 'Other' })
+  assert.deepEqual(readVoiceIdHistory('standard', storage), ['same-id'])
+  assert.deepEqual(readVoiceIdNames('standard', storage), { 'same-id': 'Standard' })
+  assert.deepEqual(history, ['same-id', 'other-id'])
+  assert.equal(names['same-id'], 'Clone')
+  const readded = rememberVoiceId(readVoiceIdHistory('cloned', storage), 'same-id')
+  assert.deepEqual(readded, ['same-id', 'other-id'])
+  assert.equal(Object.hasOwn(readVoiceIdNames('cloned', storage), 'same-id'), false)
+  assert.deepEqual(forgetVoiceId(['only'], { only: 'Label' }, 'only'), { history: [], names: {} })
 })

@@ -220,7 +220,7 @@
 }
 
 /* ---------- Shared fields and controls ---------- */
-.xmimo-ui-module input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.xmimo-ui-module input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.xmimo-tts-voice-id-edit),
 .xmimo-ui-module select,
 .xmimo-ui-module textarea {
   border-color: var(--xmimo-ui-border);
@@ -229,12 +229,12 @@
   background: var(--xmimo-ui-control-surface);
 }
 
-.xmimo-ui-module input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.xmimo-ui-module input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.xmimo-tts-voice-id-edit),
 .xmimo-ui-module select {
   min-height: var(--xmimo-ui-control-height);
 }
 
-.xmimo-ui-module input:focus-visible,
+.xmimo-ui-module input:not(.xmimo-tts-voice-id-edit):focus-visible,
 .xmimo-ui-module select:focus-visible,
 .xmimo-ui-module textarea:focus-visible {
   outline: var(--xmimo-ui-focus);

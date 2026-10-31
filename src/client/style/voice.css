@@ -272,21 +272,6 @@
   white-space: nowrap
 }
 
-.xmimo-tts-voice-id-inputs {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 8px;
-  min-width: 0
-}
-
-.xmimo-tts-voice-id-inputs > input {
-  min-width: 0
-}
-
-.xmimo-tts-voice-id-inputs > input:only-child {
-  grid-column: 1 / -1
-}
-
 .xmimo-tts-voice-id-history,
 .xmimo-tts-instruction-presets {
   display: flex;
@@ -314,26 +299,131 @@
 }
 
 .xmimo-tts-voice-id-tag {
+  position: relative;
+  display: inline-grid;
   box-sizing: border-box;
-  max-width: min(120px, 100%)
+  max-width: min(120px, 100%);
+  min-width: min(72px, 100%);
+  padding: 0;
+  transition: border-color 140ms ease-out
 }
 
-.xmimo-tts-voice-id-tag:hover:not(:disabled),
-.xmimo-tts-voice-id-tag[aria-pressed=true],
+.xmimo-tts-voice-id-size {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
+  padding: 4px 8px;
+  visibility: hidden
+}
+
+.xmimo-tts-voice-id-select,
+.xmimo-tts-voice-id-action {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer
+}
+
+.xmimo-tts-voice-id-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  text-align: start;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 4px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.xmimo-tts-voice-id-action {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  flex: 0 0 24px;
+  padding: 0
+}
+
+.xmimo-tts-voice-id-actions {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: flex;
+  flex: 0 0 auto;
+  width: 48px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--xmimo-ui-control-surface);
+  transition: opacity 140ms ease-out
+}
+
+.xmimo-tts-voice-id-tag:is(:hover, :focus-within, [data-mode=edit], [data-mode=confirm]):not([data-disabled=true]) .xmimo-tts-voice-id-actions {
+  opacity: 1;
+  pointer-events: auto
+}
+
+.xmimo-tts-voice-id-tag:is(:hover, :focus-within):not([data-disabled=true]) .xmimo-tts-voice-id-select { padding-inline-end: 52px; }
+
+.xmimo-tts-voice-id-action:hover:not(:disabled) { background: var(--xmimo-ui-hover); }
+.xmimo-tts-voice-id-tag .xmimo-tts-voice-id-delete { color: var(--dsw-alias-status-error, #c73535); }
+.xmimo-tts-voice-id-tag:not([data-mode=edit]):has(:focus-visible) { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
+.xmimo-tts-voice-id-tag:has(:disabled) { opacity: .55; }
+.xmimo-tts-voice-id-tag button:disabled { cursor: not-allowed; }
+
+.xmimo-tts-voice-id-tag[data-selected=true],
 .xmimo-tts-instruction-tag:hover:not(:disabled),
 .xmimo-tts-instruction-tag[aria-pressed=true] {
   color: var(--dsw-alias-brand-primary, #4f6ef7);
   border-color: currentColor
 }
 
-.xmimo-tts-voice-id-tag:focus-visible,
 .xmimo-tts-instruction-tag:focus-visible {
   outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
   outline-offset: 2px
 }
 
-.xmimo-tts-voice-id-tag:disabled,
 .xmimo-tts-instruction-tag:disabled {
   cursor: not-allowed;
   opacity: .55
+}
+
+.xmimo-tts-voice-id-tag:is([data-mode=edit], [data-mode=confirm]) .xmimo-tts-voice-id-actions { width: 24px; }
+.xmimo-tts-voice-id-tag[data-mode=edit] { border-color: var(--xmimo-ui-brand); }
+.xmimo-tts-voice-id-tag[data-mode=confirm] .xmimo-tts-voice-id-size { padding-inline-end: 32px; }
+
+.xmimo-tts-grid .xmimo-tts-voice-id-edit {
+  position: absolute;
+  inset: 0 24px 0 0;
+  width: calc(100% - 24px);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+  box-shadow: none
+}
+
+.xmimo-tts-voice-id-tag[data-mode=confirm] {
+  color: var(--dsw-alias-status-error, #c73535);
+  border-color: currentColor
+}
+
+.xmimo-tts-voice-id-confirm { position: absolute; inset: 0 24px 0 0; padding: 4px 8px; cursor: default; }
+
+@media (hover: none) {
+  .xmimo-tts-voice-id-tag:not([data-disabled=true]) .xmimo-tts-voice-id-actions { opacity: 1; pointer-events: auto; }
+  .xmimo-tts-voice-id-tag:not([data-disabled=true]) .xmimo-tts-voice-id-select { padding-inline-end: 52px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-voice-id-tag, .xmimo-tts-voice-id-actions { transition: none; }
 }
