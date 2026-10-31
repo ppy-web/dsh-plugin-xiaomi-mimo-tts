@@ -50,6 +50,8 @@ export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = TTS_SETTINGS_NAMESPACE
 /** Validated Host settings schema. */
 export const Config = z.object({
   qqbotEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.qqbotEnabled).volatile(),
+  qqbotMaxAutoCharacters: z.number().step(1).min(0).max(12000).default(0).volatile(),
+  qqbotMaxDurationSeconds: z.number().step(1).min(0).max(6000).default(0).volatile(),
   announcementSources: z.array(z.union(ANNOUNCEMENT_SOURCES)).default(DEFAULT_TTS_SETTINGS.announcementSources).volatile(),
   provider: z.union(TTS_PROVIDERS).default(DEFAULT_TTS_SETTINGS.provider).volatile(),
   doubaoApiKey: z.string().role('secret').default('').volatile(),

@@ -17,7 +17,7 @@ const COPY = {
     agentTitle: '鲸鱼娘 Agent 预设',
     agentDescription: '白饭续航、机灵嘴硬，会一本正经接梗，也会温柔陪伴和可靠办事。',
     qqbotTitle: 'QQ Bot 传声',
-    qqbotDescription: '包含 QQ 语音发送适配和 QQ 鲸鱼娘预设。开启组件后，在播报台保存 QQ Bot 来源开关，并在 QQ 中发送 /preset qq-speech-assistant、/new 完成接入。',
+    qqbotDescription: '提供 QQ 传声与语音转换，复用「鲸鱼娘」统一人设。启用两个组件后，在播报台保存 QQ Bot 来源开关，并在 QQ 中发送 /preset whale-girl、/new 完成接入。',
   },
   en: {
     heading: 'Included components',
@@ -30,7 +30,7 @@ const COPY = {
     agentTitle: 'Whale Girl Agent preset',
     agentDescription: 'A rice-powered whale maid with deadpan wit, a soft heart, and reliable practical help.',
     qqbotTitle: 'QQ Bot Voice Relay',
-    qqbotDescription: 'QQ voice delivery and the QQ 鲸鱼娘 preset in one component. Save the QQ Bot source switch in Broadcast Desk, then send /preset qq-speech-assistant and /new in QQ.',
+    qqbotDescription: 'QQ voice delivery and conversion using the shared Whale Girl persona. Save the QQ Bot source switch in Broadcast Desk, then send /preset whale-girl and /new in QQ.',
   },
 } as const
 

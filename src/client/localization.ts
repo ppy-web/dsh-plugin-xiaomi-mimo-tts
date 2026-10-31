@@ -1,8 +1,10 @@
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import { whaleZh, whaleEn } from './settings/whale-copy.js'
 
 export const NS = 'xiaomi-mimo-tts'
 
 export const zh = {
+  ...whaleZh,
   'detail.manual': '用户手册',
   'detail.keyLoading': '正在检查密钥',
   'detail.keyMissing': '未配置密钥',
@@ -414,6 +416,7 @@ export const zh = {
 } as const;
 
 export const en: Record<keyof typeof zh, string> = {
+  ...whaleEn,
   'detail.manual': 'User manual',
   'detail.keyLoading': 'Checking key',
   'detail.keyMissing': 'Key not configured',

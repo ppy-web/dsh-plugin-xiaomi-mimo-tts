@@ -18,6 +18,7 @@ import { LiveSpeechController, LocalSpeechController, PlaybackController } from 
 import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
 import { onTtsCredentialsSaved } from './conversation/api-key-status.js'
 import { SettingsCard } from './settings/card.js'
+import { registerWhalePersonaSettings, registerQqbotSpeechSettings } from './settings/qqbot-registration.js'
 import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
 import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
 import { ActivationGuide } from './settings/activation-guide.js'
@@ -57,7 +58,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: Context,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.detail.actions' | 'plugins.detail.badge',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'plugins.row.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.detail.actions' | 'plugins.detail.badge',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -268,6 +269,8 @@ export function apply(ctx: Context): void {
     locale: NS,
     inject: () => ({ scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback }),
   }, SettingsCard))
+
+  registerSlotContribution(ctx, 'plugins.row.config', () => [registerWhalePersonaSettings(ctx, t, changes), registerQqbotSpeechSettings(ctx, t, changes)])
 
   registerSlotContribution(ctx, 'plugins.bundle.activation', () => ctx.slots.register({
     name: 'plugins.bundle.activation',

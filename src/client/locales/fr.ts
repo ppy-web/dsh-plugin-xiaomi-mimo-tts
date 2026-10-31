@@ -1,6 +1,8 @@
 import type { LocaleKey } from '../localization.js'
+import { whaleEn } from '../settings/whale-copy.js'
 
 export const fr: Record<LocaleKey, string> = {
+  ...whaleEn,
   'detail.manual': 'Manuel utilisateur',
   'detail.keyLoading': 'Vérification de la clé',
   'detail.keyMissing': 'Clé non configurée',

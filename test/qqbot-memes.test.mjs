@@ -18,6 +18,8 @@ async function setup(run) {
   const directory = await mkdtemp(join(tmpdir(), 'dsh-qq-memes '))
   const ctx = new Context()
   ctx.provide('systemPrompt', { tools() {} })
+  ctx.provide('whaleConversations', { resolve: async () => ({ kind: 'qqbot' }) })
+  ctx.provide('qqbotCompanion', { prepare: async () => {} })
   ctx.plugin(ToolsService)
   await settle()
   const component = ctx.plugin({
@@ -34,8 +36,11 @@ async function setup(run) {
   await settle()
   const pipeline = new ToolExecutionPipeline(ctx)
   const call = async (args, signal = new AbortController().signal) => {
-    const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'qqbot_send_meme', arguments: args, agent, signal })
-    return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+    const toolSet = await ctx.tools.resolve({ agent, modelSelection: {}, signal })
+    try {
+      const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'qqbot_send_meme', arguments: args, agent, signal, toolSet })
+      return await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+    } finally { toolSet.dispose() }
   }
   const sender = execute => ctx.tools.register({
     name: 'qqbot_send_file', description: 'test QQ file sender',
@@ -147,12 +152,11 @@ test('cancellation and preset disposal drain pending QQ image sends and remove t
 test('damaged optional catalog resources retain the QQ persona and skip unusable entries', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'dsh-qq catalog '))
   try {
-    const skillDir = join(directory, 'skills', 'qqbot-whale-girl')
+    const skillDir = join(directory, 'skills', 'whale-girl')
     const imageDir = join(directory, 'skills', 'whale-girl')
     await mkdir(skillDir, { recursive: true })
     await mkdir(join(imageDir, 'meme'), { recursive: true })
-    const skill = await readFile(new URL('../skills/qqbot-whale-girl/SKILL.md', import.meta.url), 'utf8')
-    await writeFile(join(skillDir, 'SKILL.md'), skill)
+    for (const file of ['SKILL.md', 'persona.cjs', 'qq.md']) await writeFile(join(skillDir, file), await readFile(new URL(`../skills/whale-girl/${file}`, import.meta.url)))
     const base = buildQqbotPersona(directory)
     assert.ok(base.length > 0)
     assert.deepEqual(loadWhaleMemes(directory), [])

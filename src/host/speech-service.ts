@@ -9,6 +9,12 @@ import { completeAudioFormat, CompleteAudioResponseError } from './validation.js
 import { TtsProviderError, safeProviderError } from './provider-error.js'
 import { cleanupSpeechArtifacts, writeSpeechArtifact } from './speech-files.js'
 
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    qqbotSpeechRules: { current(): { maxAutoCharacters: number; maxDurationMs: number } }
+  }
+}
+
 /** Host-only synthesis, with transport registration independent of the Web player. */
 export class HostSpeechService implements SpeechSynthesisService {
   private readonly adapters = new Map<string, SpeechDeliveryAdapter>()
@@ -184,6 +190,10 @@ export default class SpeechHost {
   constructor(ctx: Context, config: { current: () => ResolvedTtsSettings; updates?: (listener: () => void) => (() => void) }) {
     const service = new HostSpeechService(config.current)
     ctx.provide('speechSynthesis', service)
+    ctx.provide('qqbotSpeechRules', { current: () => ({
+      maxAutoCharacters: config.current().qqbotMaxAutoCharacters ?? 0,
+      maxDurationMs: (config.current().qqbotMaxDurationSeconds ?? 0) * 1000,
+    }) })
     const update = () => service.setAutomaticDeliveryEnabled('qqbot', config.current().qqbotEnabled === true)
     update()
     if (config.updates) ctx.effect(() => config.updates!(update))

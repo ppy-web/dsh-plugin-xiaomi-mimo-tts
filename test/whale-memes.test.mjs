@@ -49,7 +49,7 @@ test('catalog entries reference unique, readable WebP images', async () => {
 
 test('persona exposes every bundled meme for automatic selection', () => {
   const persona = buildPersona(root)
-  assert.ok(persona.startsWith(skill))
+  assert.ok(persona.includes('鲸鱼娘'))
   for (const entry of catalog.memes.filter(entry => entry.automatic)) {
     const path = join(root, 'skills', 'whale-girl', 'meme', entry.file).replace(/\\/g, '/')
     assert.equal(persona.includes(`](<${path}>)`), true, entry.file)
@@ -62,13 +62,14 @@ test('installation paths with spaces work and damaged optional resources keep th
     const skillDir = join(directory, 'skills', 'whale-girl')
     await mkdir(join(skillDir, 'meme'), { recursive: true })
     await writeFile(join(skillDir, 'SKILL.md'), skill)
-    assert.equal(buildPersona(directory), skill)
+    const base = buildPersona(directory)
+    assert.ok(base.includes('鲸鱼娘'))
     await writeFile(join(skillDir, 'memes.json'), '{broken')
-    assert.equal(buildPersona(directory), skill)
+    assert.equal(buildPersona(directory), base)
     const entry = { file: 'example-happy.webp', mood: 'happy', description: '例图', context: '庆祝', automatic: true }
     const manifest = join(skillDir, 'memes.json')
     await writeFile(manifest, JSON.stringify({ memes: [entry] }))
-    assert.equal(buildPersona(directory), skill)
+    assert.equal(buildPersona(directory), base)
     await writeFile(join(skillDir, 'meme', entry.file), 'fixture')
     await writeFile(manifest, JSON.stringify({ memes: [entry, entry, { ...entry, file: '../outside-happy.webp' }, { ...entry, file: 'wrong-sad.webp' }] }))
     const persona = buildPersona(directory)
@@ -77,20 +78,22 @@ test('installation paths with spaces work and damaged optional resources keep th
     assert.equal(persona.includes('outside-happy.webp'), false)
     assert.equal(persona.includes('wrong-sad.webp'), false)
     await writeFile(manifest, JSON.stringify({ memes: {} }))
-    assert.equal(buildPersona(directory), skill)
+    assert.equal(buildPersona(directory), base)
   } finally {
     assert.ok(resolve(directory).startsWith(`${resolve(root)}${sep}tmp-whale memes-`))
     await rm(directory, { recursive: true, force: true })
   }
 })
 
-test('preset configuration resolves its installed persona loader', async () => {
-  const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
-  const rows = applyEntryPatches([], load(patch, { schema: entryListSchema }), message => assert.fail(message))
-  const preset = rows.find(row => row.name === 'dsh-xiaomi-tts/whale-girl')
-  const persona = preset.config.plugins.find(row => row.name === '@deepseek-ai/dsh-persona')
-  const expression = persona.config.prefix.__jsExpr
-  const baseUrl = new URL('../', import.meta.url).href
-  const result = Function('baseUrl', `return (${expression})`)(baseUrl)
-  assert.equal(result, buildPersona(root))
+test('DSH and QQ share configurable character fields while exposing only their own image delivery format', () => {
+  const persona = { name: '同一个小鲸', selfReference: '我', userAddress: '朋友', relationship: '可靠助手', personality: '机灵', replyStyle: '简短', likes: '绘画', boundaries: '不嘲笑' }
+  const dsh = buildPersona(root, { persona, channel: 'dsh' })
+  const qq = buildPersona(root, { persona, channel: 'qq' })
+  for (const text of [dsh, qq]) {
+    for (const value of Object.values(persona)) assert.ok(text.includes(value))
+  }
+  const file = catalog.memes.find(entry => entry.automatic).file
+  assert.ok(dsh.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
+  assert.ok(!qq.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
+  assert.ok(qq.includes(file.slice(0, -5)))
 })

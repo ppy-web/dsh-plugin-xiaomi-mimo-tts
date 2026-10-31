@@ -95,32 +95,21 @@ test('missing, restricted or canceled QQ senders never produce a delivery', asyn
   })
 })
 
-test('one QQ component owns both its delivery adapter and built-in preset, and removes both on unload', async () => {
-  const ctx = new Context(), presets = new Map(), adapters = new Map()
+test('QQ relay owns its delivery adapter and works without a persona registry', async () => {
+  const ctx = new Context(), adapters = new Map()
   ctx.provide('systemPrompt', { tools() {} })
   ctx.provide('speechSynthesis', { registerDelivery(adapter) { adapters.set(adapter.id, adapter); return () => adapters.delete(adapter.id) } })
-  ctx.provide('agentPresets', { async register(preset) { presets.set(preset.id, preset); return () => presets.delete(preset.id) } })
   ctx.plugin(ToolsService)
   await settle()
   const plugin = ctx.plugin(qqbotSpeech)
   try {
-    await settle()
+    await plugin.await()
     assert.ok(adapters.has('qqbot'))
-    const preset = presets.get('qq-speech-assistant')
-    const speech = preset.plugins.find(row => row.name === 'dsh-xiaomi-tts/speech-agent')
-    assert.equal(speech.config.delivery, 'qqbot')
-    assert.ok(preset.plugins.some(row => row.name === 'dsh-xiaomi-tts/qqbot-agent'))
-    const persona = preset.plugins.find(row => row.name === '@deepseek-ai/dsh-persona')
-    assert.equal(typeof persona.config.prefix, 'string')
-    assert.ok(persona.config.prefix.length > 0)
     await plugin.dispose()
-    assert.equal(presets.size, 0)
     assert.equal(adapters.size, 0)
-    // The installable bundle contributes one opt-in speech integration component.
     const schema = yaml.JSON_SCHEMA.extend([new yaml.Type('tag:yaml.org,2002:js', { kind: 'scalar', construct: value => value })])
     const patch = yaml.load(readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8'), { schema })
     const entries = patch.flatMap(row => row.insert ?? [])
-    const speechEntries = entries.filter(entry => entry.name === 'dsh-xiaomi-tts/qqbot' || entry.name === 'dsh-xiaomi-tts/speech-preset')
-    assert.deepEqual(speechEntries.map(entry => [entry.name, entry.disabled]), [['dsh-xiaomi-tts/qqbot', true]])
+    assert.deepEqual(entries.filter(entry => entry.name === 'dsh-xiaomi-tts/qqbot').map(entry => entry.disabled), [true])
   } finally { await ctx.fiber.dispose() }
 })

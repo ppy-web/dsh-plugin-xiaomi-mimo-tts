@@ -34,8 +34,8 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         steps: [
           { title: '开启 QQ Bot 传声组件', detail: '在“设置 → 插件 → 本插件 → 包含的组件”开启“QQ Bot 传声”。这一个组件同时提供 QQ 发送适配和“QQ 鲸鱼娘”预设，无需另开普通“鲸鱼娘 Agent 预设”来代替它。' },
           { title: '开启自动发送来源并保存', detail: '打开本插件“播报台 → 插件联动”，打开“QQ Bot”来源开关，再点击底部“保存”。来源默认关闭；希望每轮普通回复都带语音时才打开。浏览器“语音播放”“自动播放”和音效开关不控制 QQ 发送。' },
-          { title: '在目标 QQ 私聊或群查看预设', detail: '向机器人单独发送下面的命令，确认列表中出现“QQ 鲸鱼娘（qq-speech-assistant）”。只查看列表不会切换预设；如果未出现，先检查传声组件是否运行，以及两个插件是否处于同一 profile。', command: '/preset' },
-          { title: '按 ID 选择 QQ 鲸鱼娘', detail: '单独发送下面的完整命令，等待机器人确认预设已切换。使用 ID qq-speech-assistant，沿用旧版“QQ 语音助手”的 ID；不需要把中文显示名称填入命令。', command: '/preset qq-speech-assistant' },
+          { title: '在目标 QQ 私聊或群查看预设', detail: '向机器人单独发送下面的命令，确认列表中出现“鲸鱼娘（whale-girl）”。只查看列表不会切换预设；如果未出现，先检查鲸鱼娘和传声组件是否运行，以及两个插件是否处于同一 profile。', command: '/preset' },
+          { title: '按 ID 选择统一鲸鱼娘', detail: '单独发送下面的完整命令，等待机器人确认预设已切换。使用 ID whale-girl，DSH 与 QQ 共用此预设；不需要把中文显示名称填入命令。', command: '/preset whale-girl' },
           { title: '新建对话让预设生效', detail: '在刚才选择预设的同一个 QQ 私聊或群中单独发送 /new。它会开启新对话并清空原对话上下文；当前对话不会因 /preset 自动换预设。私聊和每个群各自选择，需在每个目标会话重复选择与新建步骤。', command: '/new' },
         ],
         items: [],
@@ -113,8 +113,8 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         steps: [
           { title: 'Enable QQ Bot Voice Relay', detail: 'Open Settings → Plugins → this plugin → Included components. Enable QQ Bot Voice Relay (QQ Bot 传声). It includes both delivery and the QQ 鲸鱼娘 preset. The regular Whale Girl Agent component is not a substitute.' },
           { title: 'Enable and save automatic delivery', detail: 'In Broadcast Desk → Plugin integrations, turn QQ Bot on and click Save. It starts off. Browser speech, autoplay, and sound effect switches do not control QQ delivery.' },
-          { title: 'List presets in the target QQ chat', detail: 'Send this command separately and find QQ 鲸鱼娘 (qq-speech-assistant). Listing presets alone does not select one. If missing, check the relay component and ensure both plugins share one profile.', command: '/preset' },
-          { title: 'Select by preset ID', detail: 'Send the full command and wait for confirmation. Use qq-speech-assistant rather than the Chinese display name. The ID is unchanged from the earlier QQ Speech Assistant preset.', command: '/preset qq-speech-assistant' },
+          { title: 'List presets in the target QQ chat', detail: 'Send this command separately and find Whale Girl (whale-girl). Listing presets alone does not select one. If missing, check the relay component and ensure both plugins share one profile.', command: '/preset' },
+          { title: 'Select by preset ID', detail: 'Send the full command and wait for confirmation. Use whale-girl rather than the Chinese display name. DSH and QQ share this single preset.', command: '/preset whale-girl' },
           { title: 'Apply it to a new conversation', detail: 'Send /new separately in that same private chat or group. This clears the old conversation context and starts with the selected preset. The existing conversation keeps its old preset. Repeat preset selection and /new for every target group or private chat.', command: '/new' },
         ], items: [],
         links: [{ label: 'Official preset command', href: 'https://github.com/tencent-connect/dsh-qqbot/blob/main/src/commands/preset.ts' }],

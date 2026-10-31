@@ -35,6 +35,7 @@ import global from './global.css?raw'
 import minimal from './minimal.css?raw'
 import history from './history.css?raw'
 import pluginSurfaces from './plugin-surfaces.css?raw'
+import qqbotSettings from './qqbot-settings.css?raw'
 
 export const CLIENT_STYLES = [
   action,
@@ -53,6 +54,7 @@ export const CLIENT_STYLES = [
   voiceReading,
   history,
   pluginSurfaces,
+  qqbotSettings,
   responsive,
   motion,
   global,

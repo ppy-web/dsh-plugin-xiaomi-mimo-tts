@@ -27,9 +27,9 @@ test('companion preset provides file access, web lookup, questions, and conversa
     'agent-instructions', 'time-context', 'tool-fs', 'tool-ask-user', 'tool-web',
     'compaction-basic', 'command-compact', 'compaction-tool-result-pruner',
   ]) assert.ok(modules.has(`@deepseek-ai/dsh-${name}`), `missing ${name}`)
-  assert.equal(rows.filter(row => row.name === '@deepseek-ai/dsh-persona').length, 1)
+  assert.equal(rows.filter(row => row.name === 'dsh-xiaomi-tts/whale-agent').length, 1)
   assert.equal(new Set(rows.map(row => row.id)).size, rows.length)
-  assert.equal(rows.find(row => row.name === '@deepseek-ai/dsh-persona').config.includeRuntimeContext, true)
+  assert.equal(rows.find(row => row.name === 'dsh-xiaomi-tts/speech-agent').config.delivery, 'conversation')
 })
 
 function useChild(ctx) {
@@ -131,4 +131,25 @@ test('component resources resolve independently through package exports', async 
   const bytes = await readFile(iconURL)
   assert.equal(bytes.toString('ascii', 0, 4), 'RIFF')
   assert.equal(bytes.toString('ascii', 8, 12), 'WEBP')
+})
+
+test('live persona and memory edits keep the single preset and its active conversations intact', async () => {
+  const ctx = new Context(), active = new Map()
+  ctx.provide('agentPresets', { async register(config) { active.set(config.id, config); return () => active.delete(config.id) } })
+  await ctx.plugin(Loader).await()
+  useChild(ctx)
+  const config = { ...presetRow.config, plugins: [] }
+  try {
+    await ctx.loader.root.update([{ ...presetRow, disabled: false, config }])
+    await ctx.loader.await()
+    const entry = ctx.loader.resolve(presetRow.id), fiber = entry.fiber
+    const preset = active.get('whale-girl'), companion = ctx.qqbotCompanion
+    await entry.update({ config: { ...config, persona: { name: '小鲸', replyStyle: '简短回答' }, memory: { enabled: false } } })
+    await ctx.loader.await()
+    assert.equal(entry.fiber, fiber)
+    assert.equal(active.get('whale-girl'), preset)
+    assert.equal(ctx.qqbotCompanion, companion)
+    assert.equal(ctx.whaleSettings.current().persona.name, '小鲸')
+    assert.equal(ctx.whaleSettings.current().memory.enabled, false)
+  } finally { await ctx.fiber.dispose() }
 })

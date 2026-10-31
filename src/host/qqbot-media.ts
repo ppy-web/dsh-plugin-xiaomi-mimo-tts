@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url'
 import type { SpeechDeliveryContext, SpeechDeliveryResult } from '../host-api.js'
 import { TtsProviderError } from './provider-error.js'
 import { SPEECH_FILE_TTL_MS } from './speech-files.js'
+import { DEFAULT_WHALE_SETTINGS, type WhalePersona } from '../types/whale.js'
+import { buildWhalePersona } from './whale-persona.js'
 
 export const QQBOT_MEDIA_ROOT = join(homedir(), '.dsh-qqbot', 'media')
 const packageRoot = () => dirname(fileURLToPath(import.meta.resolve('dsh-xiaomi-tts/package.json')))
@@ -50,11 +52,8 @@ export function loadWhaleMemes(root = packageRoot()): WhaleMeme[] {
   } catch { return [] }
 }
 
-export function buildQqbotPersona(root = packageRoot()): string {
-  const skill = readFileSync(join(root, 'skills', 'qqbot-whale-girl', 'SKILL.md'), 'utf8')
-    .replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, '')
-  const rows = loadWhaleMemes(root).map(meme => `- ${meme.id} / ${meme.mood} / ${meme.description} / ${meme.context}`)
-  return `${skill}\n\n## 本次安装可发送的表情包\n\n${rows.length ? rows.join('\n') : '当前没有可用素材，使用文字回复。'}\n`
+export function buildQqbotPersona(root = packageRoot(), persona: WhalePersona = DEFAULT_WHALE_SETTINGS.persona): string {
+  return buildWhalePersona('qq', { persona, memory: { enabled: true } }, root)
 }
 
 /** Use the same Agent and tool pipeline as ordinary QQ file sends, including scoped policy. */

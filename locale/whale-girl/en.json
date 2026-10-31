@@ -1,6 +1,23 @@
 {
   "meta": {
     "title": "Whale Girl",
-    "description": "A playful whale-maid assistant for warm companionship, practical help, and local memory tools."
+    "description": "One configurable Whale Girl persona for DSH and QQ, with memory isolated by channel."
+  },
+  "config": {
+    "persona": {
+      "$description": "Whale Girl persona (shared by DSH and QQ, applied on the next turn)",
+      "name": "Character name",
+      "selfReference": "Self reference",
+      "userAddress": "Default user address (may be empty)",
+      "relationship": "Relationship and background",
+      "personality": "Additional personality",
+      "replyStyle": "Additional reply style",
+      "likes": "Character interests",
+      "boundaries": "Boundaries and topics to avoid"
+    },
+    "memory": {
+      "$description": "Memory (isolated DSH workspaces and QQ peers)",
+      "enabled": "Allow memory tools in ordinary QQ conversations. No background extraction calls; groups store shared information only."
+    }
   }
 }

@@ -101,6 +101,7 @@ export default defineConfig([{
   entry: {
     index: 'src/index.ts',
     'whale-girl': 'src/whale-girl.ts',
+    'whale-agent': 'src/whale-agent.ts',
     'client-api': 'src/client-api.ts',
     'host-api': 'src/host-api.ts',
     'speech-host': 'src/speech-host.ts',
@@ -113,7 +114,7 @@ export default defineConfig([{
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',
-  external: ['@deepseek-ai/dsh-agent-preset', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-tools/pipeline', '@deepseek-ai/dsh-llm', 'silk-wasm'],
+  external: ['@deepseek-ai/cordis-plugin-loader', '@deepseek-ai/dsh-agent-preset', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-tools/pipeline', '@deepseek-ai/dsh-llm', 'silk-wasm'],
   target: 'es2024',
   fixedExtension: false,
   dts: false,

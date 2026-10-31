@@ -1,0 +1,53 @@
+.xmimo-qq-settings {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 760px;
+  color: var(--xmimo-ui-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.xmimo-qq-settings section,
+.xmimo-qq-field { min-width: 0; }
+
+.xmimo-qq-settings section + section {
+  padding-top: 20px;
+  border-top: 1px solid var(--xmimo-ui-border-soft);
+}
+
+.xmimo-qq-settings h4 { margin: 0; font-size: 15px; font-weight: 650; }
+.xmimo-qq-hint { margin: 8px 0 14px; color: var(--xmimo-ui-text-muted); }
+.xmimo-qq-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.xmimo-qq-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.xmimo-qq-field { display: flex; flex-direction: column; gap: 6px; }
+.xmimo-qq-field > span { font-weight: 550; }
+.xmimo-qq-field small { color: var(--xmimo-ui-text-muted); }
+
+.xmimo-qq-field input, .xmimo-qq-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--xmimo-ui-control-height);
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: var(--xmimo-ui-control-radius);
+  padding: 8px 10px;
+  background: var(--xmimo-ui-control-surface);
+  color: var(--xmimo-ui-text);
+  caret-color: var(--xmimo-ui-brand);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color-scheme: light dark;
+}
+.xmimo-qq-field textarea { resize: vertical; min-height: 64px; }
+.xmimo-qq-field :is(input, textarea)::placeholder { color: var(--xmimo-ui-text-muted); }
+.xmimo-qq-field :is(input, textarea):focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
+.xmimo-qq-field :is(input, textarea):disabled { opacity: .65; cursor: not-allowed; }
+.xmimo-qq-field :is(input, textarea)::selection { background: var(--xmimo-ui-brand); color: var(--dsw-alias-label-primary-foreground, #fff); }
+.xmimo-qq-footer { position: sticky; bottom: 0; padding: 12px 0; border-top: 1px solid var(--xmimo-ui-border-soft); }
+.xmimo-qq-footer .xmimo-tts-card-action-buttons { grid-column: 2; }
+.xmimo-qq-footer [role="status"] { text-align: start; }
+
+@container (max-width: 480px) {
+  .xmimo-qq-grid { grid-template-columns: minmax(0, 1fr); }
+}

@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "QQ Bot Voice Relay",
-    "description": "Includes the QQ Whale Girl preset for brief, natural chats and reaction images. The source switch enables automatic speech; when off, speech is on demand."
+    "description": "QQ voice delivery and SILK conversion using the shared Whale Girl persona. No scheduled messages."
   }
 }

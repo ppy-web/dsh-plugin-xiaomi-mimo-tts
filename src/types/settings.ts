@@ -14,6 +14,8 @@ export type AnnouncementSourceId = typeof ANNOUNCEMENT_SOURCES[number]
 
 export interface TtsSettings {
   qqbotEnabled?: boolean
+  qqbotMaxAutoCharacters?: number
+  qqbotMaxDurationSeconds?: number
   announcementSources?: AnnouncementSourceId[]
   provider?: TtsProvider
   doubaoApiKey?: string
@@ -54,6 +56,8 @@ export interface TtsSettings {
 
 export interface ResolvedTtsSettings {
   qqbotEnabled: boolean
+  qqbotMaxAutoCharacters: number
+  qqbotMaxDurationSeconds: number
   announcementSources: AnnouncementSourceId[]
   provider: TtsProvider
   doubaoApiKey: string
@@ -93,6 +97,8 @@ export interface ResolvedTtsSettings {
 /** Defaults shared by the Schemastery config and the Web settings form. */
 export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   qqbotEnabled: false,
+  qqbotMaxAutoCharacters: 0,
+  qqbotMaxDurationSeconds: 0,
   announcementSources: ['dsh-whale-musume', 'question-titles'],
   provider: 'xiaomi',
   doubaoApiKey: '',

@@ -1,6 +1,23 @@
 {
   "meta": {
     "title": "鲸鱼娘",
-    "description": "白饭续航、机灵嘴硬，会一本正经接梗，也会温柔陪伴和可靠办事的鲸鱼娘女仆助手。"
+    "description": "DSH 与 QQ 共用的可配置鲸鱼娘人设，按渠道隔离记忆。"
+  },
+  "config": {
+    "persona": {
+      "$description": "鲸鱼娘人设（DSH 与 QQ 共用，保存后下一轮生效）",
+      "name": "角色名",
+      "selfReference": "自称",
+      "userAddress": "默认用户称呼（可留空）",
+      "relationship": "关系与背景",
+      "personality": "性格补充",
+      "replyStyle": "回复风格补充",
+      "likes": "角色喜好",
+      "boundaries": "避雷与禁忌"
+    },
+    "memory": {
+      "$description": "记忆开关（DSH 工作区和各 QQ 对象隔离）",
+      "enabled": "允许记忆。由正常 QQ 对话调用工具读写，不做后台模型提炼；群内仅保存公共记忆。"
+    }
   }
 }

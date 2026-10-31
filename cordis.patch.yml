@@ -41,13 +41,13 @@
         description: '白饭续航、机灵嘴硬，会一本正经接梗，也会温柔陪伴和可靠办事的鲸鱼娘女仆助手。'
         order: 40
         plugins:
-          - id: persona
-            name: '@deepseek-ai/dsh-persona'
+          - id: whale-persona
+            name: 'dsh-xiaomi-tts/whale-agent'
+
+          - id: conversation-speech
+            name: 'dsh-xiaomi-tts/speech-agent'
             config:
-              prefix: !!js >-
-                (() => { const require = process.getBuiltinModule('node:module').createRequire(new URL('index.js', baseUrl)); const path = process.getBuiltinModule('node:path'); const root = path.dirname(require.resolve('dsh-xiaomi-tts/package.json')); return require(path.join(root, 'skills', 'whale-girl', 'persona.cjs'))(root); })()
-              complete: true
-              includeRuntimeContext: true
+              delivery: conversation
 
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
