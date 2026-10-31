@@ -19,7 +19,7 @@ export const zh = {
   "onboarding.configure": "打开插件设置",
   "onboarding.preview": "试听浏览器语音",
   "onboarding.dismiss": "稍后再说",
-  "onboarding.sample": "你好，我是鲸鱼娘。语音已经准备好了，很高兴陪你一起探索。",
+  "onboarding.sample": "你好，语音已经准备好了，很高兴陪你一起探索声音的世界。",
   'settings.announcementsApprovals': '审批提醒',
   'settings.announcementsApprovalsHint': '提醒当前会话的待审批操作；处理或撤回后停止',
   'settings.announcementsJobs': '后台任务结果',
