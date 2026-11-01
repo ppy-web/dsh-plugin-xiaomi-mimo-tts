@@ -1,5 +1,6 @@
 import type { TtsSettings, ResolvedTtsSettings } from '../types/index.js'
-import { DEFAULT_TTS_SETTINGS, TTS_READ_SCOPES, TTS_VOICE_DESIGN_PRESETS, SOUND_PACKS, DOUBAO_TTS_MODELS, ANNOUNCEMENT_SOURCES } from '../types/index.js'
+import { DEFAULT_TTS_SETTINGS, TTS_LOCAL_VOICE_ENGINES, TTS_READ_SCOPES, TTS_VOICE_DESIGN_PRESETS, SOUND_PACKS, DOUBAO_TTS_MODELS, ANNOUNCEMENT_SOURCES } from '../types/index.js'
+import { DEFAULT_MOSS_BASE_URL } from '../constants.js'
 import { normalizeVoiceRate } from './encoding.js'
 
 export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsSettings {
@@ -22,6 +23,12 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     : TTS_VOICE_DESIGN_PRESETS.some((item) => item.prompt === resolved.voiceDesignPrompt)
       ? DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt
       : resolved.voiceDesignPrompt
+  const localVoiceEngine = TTS_LOCAL_VOICE_ENGINES.includes(resolved.localVoiceEngine)
+    ? resolved.localVoiceEngine
+    : 'browser'
+  const mossBaseURL = typeof resolved.mossBaseURL === 'string' && resolved.mossBaseURL.trim().length > 0
+    ? resolved.mossBaseURL.trim().replace(/\/+$/u, '')
+    : DEFAULT_MOSS_BASE_URL
   return {
     ...resolved,
     qqbotEnabled: resolved.qqbotEnabled === true,
@@ -32,6 +39,10 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     doubaoModel: DOUBAO_TTS_MODELS.includes(resolved.doubaoModel) ? resolved.doubaoModel : 'seed-tts-2.0',
     model,
     voiceDesignCustomPrompt,
+    localVoiceEngine,
+    mossBaseURL,
+    mossVoice: typeof resolved.mossVoice === 'string' ? resolved.mossVoice : '',
+    mossVoiceName: typeof resolved.mossVoiceName === 'string' ? resolved.mossVoiceName : '',
     autoPlay: resolved.enabled ? resolved.autoPlay : false,
     soundVolume,
     voiceVolume,

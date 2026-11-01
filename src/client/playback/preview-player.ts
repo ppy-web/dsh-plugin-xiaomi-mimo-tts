@@ -5,7 +5,7 @@ import {
   parseSseRecords,
   splitTtsSegments,
 } from '../../shared.js'
-import type { TtsLocalSpeechMode, TtsModel } from '../../shared.js'
+import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel } from '../../shared.js'
 import { hostRoute } from '../host-route.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 import { applyMediaVoiceRate, applySpeechVoiceRate } from './voice-rate.js'
@@ -15,6 +15,9 @@ import { ttsSelection } from '../../types/providers.js'
 import { resolveTtsSettings } from '../../utils/settings.js'
 import type { TtsProvider, DoubaoTtsModel } from '../../types/providers.js'
 import { DuplexPcmStream, DuplexPcmError } from './duplex-pcm.js'
+import { fetchMossAudio } from '../moss-service.js'
+import { playMossAudio } from './moss-playback.js'
+import type { MossAudioHandle } from './moss-playback.js'
 
 export type PreviewStatus = 'idle' | 'loading' | 'playing' | 'error'
 export type PreviewSource = 'mimo' | 'doubao' | 'local' | null
@@ -36,6 +39,9 @@ export interface PreviewSettings {
   model: TtsModel
   localSpeechMode: TtsLocalSpeechMode
   localVoiceURI: string
+  localVoiceEngine: TtsLocalVoiceEngine
+  mossBaseURL: string
+  mossVoice: string
   voice: string
   voiceDesignPrompt: string
   voiceVolume: number
@@ -127,6 +133,7 @@ export class PreviewPlayer {
   private finishAudio: (() => void) | null = null
   private utterance: SpeechSynthesisUtterance | null = null
   private finishUtterance: (() => void) | null = null
+  private mossHandle: MossAudioHandle | null = null
   private requestBusy = false
   private pcmBusy = false
   private status: PreviewStatus = 'idle'
@@ -161,7 +168,7 @@ export class PreviewPlayer {
     try {
       if (settings.localSpeechMode === 'local-first') {
         try {
-          await this.playLocal(normalized, settings.localVoiceURI, generation)
+          await this.playLocal(normalized, settings, generation)
         } catch {
           if (generation === this.generation) await this.playRemote(normalized, settings, generation)
         }
@@ -175,7 +182,7 @@ export class PreviewPlayer {
           this.pcmBusy = false
           this.pcm.stop()
           try {
-            await this.playLocal(normalized, settings.localVoiceURI, generation)
+            await this.playLocal(normalized, settings, generation)
           } catch {
             throw remoteError
           }
@@ -200,7 +207,14 @@ export class PreviewPlayer {
     this.voiceRate = normalizeVoiceRate(settings.voiceRate)
     const generation = this.generation
     try {
-      await this.playLocal(text, settings.localVoiceURI, generation)
+      await this.playLocal(text, {
+        localVoiceURI: settings.localVoiceURI,
+        localVoiceEngine: 'browser',
+        mossBaseURL: '',
+        mossVoice: '',
+        voiceVolume: settings.voiceVolume,
+        voiceRate: settings.voiceRate,
+      }, generation)
       if (generation === this.generation) this.publish('idle', 'local')
     } catch (error) {
       if (generation === this.generation) this.publish('error', 'local', previewError(error))
@@ -229,6 +243,8 @@ export class PreviewPlayer {
     const utterance = this.utterance
     this.finishUtterance?.()
     this.finishUtterance = null
+    this.mossHandle?.stop()
+    this.mossHandle = null
     if (utterance !== null && typeof window !== 'undefined' && window.speechSynthesis !== undefined) {
       window.speechSynthesis.cancel()
       this.utterance = null
@@ -394,10 +410,11 @@ export class PreviewPlayer {
     if (!received && generation === this.generation) throw new Error('preview-stream-audio-empty')
   }
 
-  private playLocal(text: string, voiceURI: string, generation: number): Promise<void> {
+  private playLocal(text: string, settings: Pick<PreviewSettings, 'localVoiceURI' | 'localVoiceEngine' | 'mossBaseURL' | 'mossVoice' | 'voiceVolume' | 'voiceRate'>, generation: number): Promise<void> {
     this.publish('loading', 'local')
+    if (settings.localVoiceEngine === 'moss') return this.playMossLocal(text, settings, generation)
     if (typeof window === 'undefined' || window.speechSynthesis === undefined) return Promise.reject(new PreviewPlaybackError('local-voice-unavailable', 'local-speech-unavailable'))
-    const voice = browserVoice(voiceURI)
+    const voice = browserVoice(settings.localVoiceURI)
     if (voice === undefined) return Promise.reject(new PreviewPlaybackError('local-voice-unavailable'))
     return new Promise<void>((resolve, reject) => {
       const utterance = new SpeechSynthesisUtterance(text)
@@ -432,6 +449,37 @@ export class PreviewPlayer {
       }
       window.speechSynthesis.speak(utterance)
     })
+  }
+
+  /** Play one local MOSS utterance while keeping cancellation and playback state aligned. */
+  private async playMossLocal(text: string, settings: Pick<PreviewSettings, 'mossBaseURL' | 'mossVoice' | 'voiceVolume' | 'voiceRate'>, generation: number): Promise<void> {
+    if (settings.mossBaseURL.trim().length === 0 || settings.mossVoice.trim().length === 0) throw new PreviewPlaybackError('local-voice-unavailable')
+    const controller = new AbortController()
+    this.request = controller
+    const handleAbort = (): void => { this.mossHandle?.stop() }
+    controller.signal.addEventListener('abort', handleAbort, { once: true })
+    try {
+      const blob = await fetchMossAudio(text, { baseURL: settings.mossBaseURL, voice: settings.mossVoice }, controller.signal)
+      if (generation !== this.generation || controller.signal.aborted) return
+      const handle = playMossAudio(blob, {
+        volume: this.volume,
+        rate: this.voiceRate,
+        timeoutMs: 120_000,
+        onStart: () => { if (generation === this.generation) this.publish('playing', 'local') },
+      })
+      this.mossHandle = handle
+      try {
+        await handle.done
+      } catch (error) {
+        const code = error instanceof Error ? error.message : ''
+        throw new PreviewPlaybackError(code === 'autoplay-blocked' ? 'autoplay-blocked' : code === 'local-speech-timeout' ? 'timeout' : 'local-voice-unavailable', code)
+      } finally {
+        if (this.mossHandle === handle) this.mossHandle = null
+      }
+    } finally {
+      controller.signal.removeEventListener('abort', handleAbort)
+      if (this.request === controller) this.request = null
+    }
   }
 
   private releaseAudio(audio: HTMLAudioElement): void {

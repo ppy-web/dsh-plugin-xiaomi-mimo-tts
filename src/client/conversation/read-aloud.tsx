@@ -37,6 +37,16 @@ const PLAYBACK_ERROR_KEYS: Record<string, Parameters<Translate>[0]> = {
   'local-speech-audio-device': 'error.localAudioDevice',
   'local-speech-failed': 'error.localSynthesis',
   'local-speech-unavailable': 'error.localSynthesis',
+  'moss-unreachable': 'error.localMossUnreachable',
+  'moss-voice-required': 'error.localMossVoiceMissing',
+  'moss-invalid-url': 'error.localMossInvalidUrl',
+  'moss-timeout': 'error.localMossTimeout',
+  'moss-api-error': 'error.localMossFailed',
+  'moss-audio-failed': 'error.localMossFailed',
+  'moss-request-failed': 'error.localMossFailed',
+  'moss-invalid-response': 'error.localMossFailed',
+  'moss-response-too-large': 'error.localMossFailed',
+  'moss-audio-too-large': 'error.localMossFailed',
   'autoplay-blocked': 'error.play',
   'play-failed': 'error.play',
 }
@@ -73,6 +83,7 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
   const apiKeySupported = useApiKeySupported(ownsAudio && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider)
   local.setVoiceURI(resolvedSettings.localVoiceURI)
+  local.setMossVoice(resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice)
   local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
 
@@ -88,7 +99,7 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
       if (audioFocus.canPlay() && !live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity) && automaticReading.allowed(sessionId) && playback.claimAutomaticPlayback(sessionId, messageId)) { automaticReading.markAutomatic(); playCompletedReply(request, true) }
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [automaticReading, foldedReplies, finalMessageId, audioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.latestMessageId, message.time, messageId, playback, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [automaticReading, foldedReplies, finalMessageId, audioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.latestMessageId, message.time, messageId, playback, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 

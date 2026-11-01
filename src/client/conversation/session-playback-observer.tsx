@@ -37,6 +37,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   const apiKeySupported = useApiKeySupported(ownsAudio && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider)
   live.setMaxPausedPcmBytes(resolvedSettings.maxPausedPcmBytes)
   local.setVoiceURI(resolvedSettings.localVoiceURI)
+  local.setMossVoice(resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice)
   local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
 
   const sessionSnapshot = useSession(snapshot => snapshot)
@@ -147,7 +148,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       }
       // Keep the cursor across a gap between the partial and durable message snapshots.
     }
-  }, [automaticReading, foldedReplies, audioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
+  }, [automaticReading, foldedReplies, audioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
 
   return null
 }

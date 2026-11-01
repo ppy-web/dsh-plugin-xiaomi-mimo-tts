@@ -1,8 +1,11 @@
 import { prepareSpeechText } from './speech-text.js'
 import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, normalizeVoiceRate, splitCompletedTtsSentences, splitTtsSegments } from '../../shared.js'
-import type { LiveSpeechCursor } from '../../shared.js'
+import type { LiveSpeechCursor, TtsLocalVoiceEngine } from '../../shared.js'
 import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
 import { applySpeechVoiceRate } from './voice-rate.js'
+import { fetchMossAudio, MossRequestError } from '../moss-service.js'
+import { playMossAudio } from './moss-playback.js'
+import type { MossAudioHandle } from './moss-playback.js'
 
 function browserVoices(): SpeechSynthesisVoice[] {
   if (typeof window === 'undefined' || window.speechSynthesis === undefined) return []
@@ -36,6 +39,10 @@ export class LocalSpeechController {
   private checkpointed = false
   private current: SpeechSynthesisUtterance | null = null
   private voiceURI = ''
+  private localVoiceEngine: TtsLocalVoiceEngine = 'browser'
+  private mossBaseURL = ''
+  private mossVoice = ''
+  private mossHandle: MossAudioHandle | null = null
   private timeoutMs = 120_000
   private onStateChange: ((sessionId: string, messageId: string, status: PlaybackStatus, error: string | null) => void) | null = null
   private error: string | null = null
@@ -50,6 +57,12 @@ export class LocalSpeechController {
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus, error: string | null) => void): void { this.onStateChange = listener }
 
   setVoiceURI(value: string): void { this.voiceURI = value }
+
+  setMossVoice(engine: TtsLocalVoiceEngine, baseURL: string, voice: string): void {
+    this.localVoiceEngine = engine
+    this.mossBaseURL = baseURL
+    this.mossVoice = voice
+  }
 
   setTimeoutMs(value: number): void { this.timeoutMs = value }
 
@@ -138,14 +151,26 @@ export class LocalSpeechController {
   }
 
   async pause(sessionId: string): Promise<boolean> {
-    if (this.sessionId !== sessionId || this.status !== 'playing' || window.speechSynthesis === undefined) return false
+    if (this.sessionId !== sessionId || this.status !== 'playing') return false
+    if (this.localVoiceEngine === 'moss' && this.mossHandle !== null) {
+      this.mossHandle.pause()
+      this.setStatus('paused')
+      return true
+    }
+    if (window.speechSynthesis === undefined) return false
     window.speechSynthesis.pause()
     this.setStatus('paused')
     return true
   }
 
   async resume(sessionId: string): Promise<boolean> {
-    if (this.sessionId !== sessionId || this.status !== 'paused' || window.speechSynthesis === undefined) return false
+    if (this.sessionId !== sessionId || this.status !== 'paused') return false
+    if (this.localVoiceEngine === 'moss' && this.mossHandle !== null) {
+      await this.mossHandle.resume()
+      if (this.status === 'paused') this.setStatus('playing')
+      return true
+    }
+    if (window.speechSynthesis === undefined) return false
     window.speechSynthesis.resume()
     this.setStatus('playing')
     return true
@@ -210,6 +235,8 @@ export class LocalSpeechController {
     this.checkpointed = false
     this.generation += 1
     this.queue.cancel()
+    this.mossHandle?.stop()
+    this.mossHandle = null
     if (this.current !== null && typeof window !== 'undefined' && window.speechSynthesis !== undefined) window.speechSynthesis.cancel()
     this.current = null
     this.queue = this.createQueue()
@@ -288,6 +315,7 @@ export class LocalSpeechController {
 
   private speak(text: string, signal: AbortSignal, generation: number): Promise<void> {
     if (generation !== this.generation || signal.aborted) return Promise.resolve()
+    if (this.localVoiceEngine === 'moss') return this.speakMoss(text, signal, generation)
     if (typeof window === 'undefined' || window.speechSynthesis === undefined) return Promise.reject(new Error('local-speech-unavailable'))
     const voice = chooseVoice(this.voiceURI)
     if (voice === undefined) return Promise.reject(new Error('local-voice-unavailable'))
@@ -338,6 +366,40 @@ export class LocalSpeechController {
       }, this.timeoutMs)
       window.speechSynthesis.speak(utterance)
     })
+  }
+
+  /** Speak one sentence through the local MOSS server and play the returned WAV. */
+  private async speakMoss(text: string, signal: AbortSignal, generation: number): Promise<void> {
+    if (this.mossBaseURL.trim().length === 0) throw new Error('moss-invalid-url')
+    if (this.mossVoice.trim().length === 0) throw new Error('moss-voice-required')
+    let blob: Blob
+    try {
+      blob = await fetchMossAudio(text, { baseURL: this.mossBaseURL, voice: this.mossVoice }, signal)
+    } catch (error) {
+      if (signal.aborted || generation !== this.generation) return
+      if (error instanceof MossRequestError) throw new Error(error.code)
+      throw error
+    }
+    if (signal.aborted || generation !== this.generation) return
+    const handle = playMossAudio(blob, {
+      volume: this.volume,
+      rate: this.activeVoiceRate,
+      timeoutMs: this.timeoutMs,
+      onStart: () => {
+        if (generation !== this.generation || signal.aborted) return
+        this.audioStarted = true
+        this.setStatus('playing')
+      },
+    })
+    this.mossHandle = handle
+    const abort = (): void => { handle.stop() }
+    signal.addEventListener('abort', abort, { once: true })
+    try {
+      await handle.done
+    } finally {
+      signal.removeEventListener('abort', abort)
+      if (this.mossHandle === handle) this.mossHandle = null
+    }
   }
 
   private setStatus(status: PlaybackStatus, error: string | null = null): void {

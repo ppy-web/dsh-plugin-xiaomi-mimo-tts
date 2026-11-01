@@ -17,6 +17,15 @@ export const DOUBAO_AGENT_PLAN_TTS_ENDPOINT = 'wss://openspeech.bytedance.com/ap
 /** Same-origin route that reports API key configuration status without exposing the key. */
 export const TTS_API_KEY_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-status'
 
+/** Same-origin route used by the Web client to probe a local MOSS-TTS-Nano service. */
+export const TTS_MOSS_PROBE_ROUTE = '/plugins/xiaomi-mimo-tts/moss/probe'
+
+/** Same-origin route used by the Web client to synthesize one local MOSS utterance. */
+export const TTS_MOSS_SYNTH_ROUTE = '/plugins/xiaomi-mimo-tts/moss/synthesize'
+
+/** Default address of the locally deployed MOSS-TTS-Nano demo server. */
+export const DEFAULT_MOSS_BASE_URL = 'http://127.0.0.1:18083'
+
 /** Same-origin route used by the QQ relay settings to inspect and edit QQ memory. */
 export const TTS_QQ_MEMORY_ROUTE = '/plugins/xiaomi-mimo-tts/qq-memory'
 

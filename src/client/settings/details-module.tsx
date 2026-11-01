@@ -9,12 +9,12 @@ import {
   TTS_READ_SCOPES,
   TTS_VOICE_DESIGN_PRESETS,
 } from '../../shared.js'
-import type { TtsLocalSpeechMode, TtsModel, TtsReadScope } from '../../shared.js'
+import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { BuiltInVoicePicker } from './controls/built-in-voice-picker.js'
 import { EnergyVolumeSlider } from './controls/energy-volume-slider.js'
 import { FieldInfo } from './controls/field-info.js'
-import { LocalVoicePicker } from './controls/local-voice-picker.js'
+import { LocalVoiceModule } from './local-voice-module.js'
 import { DoubaoVoicePicker } from './controls/doubao-voice-picker.js'
 import { VoiceIdInput } from './controls/voice-id-input.js'
 import { SpeechInstructionPicker } from './controls/speech-instruction-picker.js'
@@ -97,6 +97,10 @@ export interface DetailsModuleProps {
   model: TtsModel
   localSpeechMode: TtsLocalSpeechMode
   localVoiceURI: string
+  localVoiceEngine: TtsLocalVoiceEngine
+  mossBaseURL: string
+  mossVoice: string
+  mossVoiceName: string
   voice: string
   voiceDesignPrompt: string
   voiceDesignCustomPrompt: string
@@ -112,15 +116,19 @@ export interface DetailsModuleProps {
   onVoiceDesignPromptChange: (value: string) => void
   onVoiceChange: (value: string) => void
   onLocalVoiceURIChange: (value: string) => void
+  onLocalVoiceEngineChange: (value: TtsLocalVoiceEngine) => void
+  onMossBaseURLChange: (value: string) => void
+  onMossVoiceChange: (voiceId: string, voiceName: string) => void
   onLocalSpeechModeChange: (value: TtsLocalSpeechMode) => void
 }
 
-export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, speechInstruction, onSpeechInstructionChange, onDoubaoModelChange, onDoubaoVoiceChange, onDoubaoClonedVoiceChange, open, minimal, writable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalSpeechModeChange }: DetailsModuleProps): ReactElement {
+export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, speechInstruction, onSpeechInstructionChange, onDoubaoModelChange, onDoubaoVoiceChange, onDoubaoClonedVoiceChange, open, minimal, writable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalVoiceEngineChange, onMossBaseURLChange, onMossVoiceChange, onLocalSpeechModeChange }: DetailsModuleProps): ReactElement {
   const [localVoicesAvailable, setLocalVoicesAvailable] = useState<boolean | null>(null)
   const onLocalVoicesAvailabilityChange = useCallback((available: boolean): void => { setLocalVoicesAvailable(available) }, [])
+  const localVoiceAvailable = localVoiceEngine === 'browser' ? localVoicesAvailable !== false : true
   useEffect(() => {
-    if (localVoicesAvailable === false && localSpeechMode !== 'auto') onLocalSpeechModeChange('auto')
-  }, [localSpeechMode, localVoicesAvailable, onLocalSpeechModeChange])
+    if (!localVoiceAvailable && localSpeechMode !== 'auto') onLocalSpeechModeChange('auto')
+  }, [localSpeechMode, localVoiceAvailable, onLocalSpeechModeChange])
   const summaryModel = provider === 'doubao' ? t(doubaoModel === 'seed-icl-2.0' ? 'settings.doubaoCloneModel' : 'settings.doubaoStandardModel') : t(model === 'mimo-v2.5-tts-voicedesign' ? 'settings.summaryVoiceDesignModel' : 'settings.summaryPresetModel')
   const voiceDesignPreset = TTS_VOICE_DESIGN_PRESETS.find((item) => item.prompt === voiceDesignPrompt)
   const summaryVoice = provider === 'doubao' ? (doubaoModel === 'seed-icl-2.0' ? doubaoClonedVoice || t('settings.doubaoVoiceId') : DOUBAO_VOICE_PRESETS.find(voice => voice.value === doubaoVoice)?.name ?? doubaoVoice) : model === 'mimo-v2.5-tts-voicedesign'
@@ -213,10 +221,24 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
         <SettingFieldHeading label={t('settings.speechInstruction')} suffix={<FieldInfo label={t('settings.speechInstructionInfo')} text={t('settings.speechInstructionLimitations')} />} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden(instructionField)} resettable disabled={!writable} onReset={() => resetField(instructionField)} />
         <SpeechInstructionPicker provider={provider} value={speechInstruction} disabled={!writable} minimal={minimal} onChange={onSpeechInstructionChange} t={t} />
       </div> : null}
-      {!minimal ? <div className="xmimo-tts-voice">
-        <SettingFieldHeading label={t('settings.localVoice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localVoiceURI')} resettable disabled={!writable} onReset={() => { resetField('localVoiceURI') }} suffix={<small className="xmimo-tts-hint" style={{ fontSize: '11px' }}>Microsoft Edge – Better</small>} />
-        <LocalVoicePicker value={localVoiceURI} disabled={!writable || localSpeechMode === 'disabled'} label={t('settings.localVoice')} minimal={minimal} loadingLabel={t('settings.localVoiceLoading')} unavailableLabel={t('settings.localVoiceUnavailable')} offlineLabel={t('settings.localVoiceOffline')} onlineLabel={t('settings.localVoiceOnline')} onChange={onLocalVoiceURIChange} onAvailabilityChange={onLocalVoicesAvailabilityChange} />
-      </div> : null}
+      {!minimal ? <LocalVoiceModule
+        t={t}
+        minimal={minimal}
+        writable={writable}
+        localSpeechMode={localSpeechMode}
+        engine={localVoiceEngine}
+        browserVoiceURI={localVoiceURI}
+        mossBaseURL={mossBaseURL}
+        mossVoice={mossVoice}
+        mossVoiceName={mossVoiceName}
+        fieldOverridden={fieldOverridden}
+        resetField={resetField}
+        onEngineChange={onLocalVoiceEngineChange}
+        onBrowserVoiceChange={onLocalVoiceURIChange}
+        onMossBaseURLChange={onMossBaseURLChange}
+        onMossVoiceChange={onMossVoiceChange}
+        onBrowserAvailabilityChange={onLocalVoicesAvailabilityChange}
+      /> : null}
       <div className="xmimo-tts-format">
         <SettingFieldHeading label={t('settings.readScope')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('readScope')} resettable disabled={!writable} onReset={() => { resetField('readScope') }} />
         <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
@@ -241,7 +263,7 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
             options={TTS_LOCAL_SPEECH_MODES.map((item) => ({
               value: item,
               label: t(item === 'auto' ? 'settings.localSpeechAuto' : item === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled'),
-              disabled: localVoicesAvailable === false && item !== 'auto',
+              disabled: !localVoiceAvailable && item !== 'auto',
             }))}
             label={t('settings.localSpeechMode')}
             disabled={!writable}
@@ -249,7 +271,7 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
             className="xmimo-tts-settings-segmented"
           />
         </div>
-        <small>{t(localVoicesAvailable === false ? 'settings.localSpeechUnavailableHint' : localSpeechMode === 'auto' ? 'settings.localSpeechAutoHint' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirstHint' : 'settings.localSpeechDisabledHint')}</small>
+        <small>{t(!localVoiceAvailable ? 'settings.localSpeechUnavailableHint' : localSpeechMode === 'auto' ? 'settings.localSpeechAutoHint' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirstHint' : 'settings.localSpeechDisabledHint')}</small>
       </div> : null}
     </div>
   </CollapsibleModule>

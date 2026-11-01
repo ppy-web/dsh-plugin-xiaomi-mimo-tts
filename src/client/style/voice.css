@@ -233,6 +233,181 @@
   grid-column: 1/-1
 }
 
+/* Local voice engine tabs and the MOSS server panel. */
+.xmimo-tts-local-voice-tabs {
+  display: flex;
+  min-width: 0
+}
+
+.xmimo-tts-local-voice-segmented {
+  width: 100%
+}
+
+.xmimo-tts-moss-local {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px
+}
+
+.xmimo-tts-moss-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px
+}
+
+.xmimo-tts-moss-field-heading {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px
+}
+
+.xmimo-tts-moss-field-title {
+  color: var(--dsw-alias-label-secondary, #5f6875);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px
+}
+
+.xmimo-tts-grid .xmimo-tts-moss-baseurl {
+  width: 100%;
+  min-width: 0
+}
+
+.xmimo-tts-moss-text-button {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--dsw-alias-brand-primary, #4f6ef7);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 17px;
+  white-space: nowrap;
+  cursor: pointer
+}
+
+.xmimo-tts-moss-text-button:hover:not(:disabled) {
+  text-decoration: underline
+}
+
+.xmimo-tts-moss-text-button:focus-visible {
+  outline: var(--xmimo-ui-focus);
+  outline-offset: 2px
+}
+
+.xmimo-tts-moss-text-button:disabled {
+  cursor: not-allowed;
+  opacity: .5
+}
+
+.xmimo-tts-moss-deploy-hint {
+  display: inline;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--dsw-alias-label-tertiary, #8b93a1);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 17px;
+  text-align: left;
+  vertical-align: baseline;
+  white-space: normal;
+  cursor: pointer
+}
+
+.xmimo-tts-moss-deploy-action {
+  color: var(--dsw-alias-brand-primary, #4f6ef7);
+  text-decoration: underline;
+  text-underline-offset: 2px
+}
+
+.xmimo-tts-moss-deploy-hint:hover .xmimo-tts-moss-deploy-action {
+  text-decoration-thickness: 2px
+}
+
+.xmimo-tts-moss-deploy-hint:focus-visible {
+  outline: var(--xmimo-ui-focus);
+  outline-offset: 2px
+}
+
+.xmimo-tts-moss-deploy-hint[data-state=copied] {
+  color: var(--dsw-alias-status-success, #2f9e6e)
+}
+
+.xmimo-tts-moss-deploy-hint[data-state=failed] {
+  color: var(--dsw-alias-status-error, #c73535)
+}
+
+.xmimo-tts-moss-status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--dsw-alias-label-tertiary, #8b93a1);
+  font-size: 12px;
+  line-height: 17px
+}
+
+.xmimo-tts-moss-status > span:not(.xmimo-tts-moss-status-dot) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.xmimo-tts-moss-status small {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--dsw-alias-label-secondary, #5f6875);
+  background: var(--dsw-alias-bg-module-platform, #eef0f3);
+  font-size: 11px;
+  line-height: 17px
+}
+
+.xmimo-tts-moss-status-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-tertiary, #8b93a1)
+}
+
+.xmimo-tts-moss-status[data-state=online] .xmimo-tts-moss-status-dot {
+  background: var(--dsw-alias-status-success, #2f9e6e)
+}
+
+.xmimo-tts-moss-status[data-state=offline] .xmimo-tts-moss-status-dot {
+  background: var(--dsw-alias-status-error, #c73535)
+}
+
+.xmimo-tts-moss-status[data-state=loading] .xmimo-tts-moss-status-dot {
+  background: var(--dsw-alias-status-warning, #d9911f);
+  animation: xmimo-tts-moss-pulse 1s ease-in-out infinite
+}
+
+@keyframes xmimo-tts-moss-pulse {
+  50% { opacity: .35 }
+}
+
+.xmimo-tts-moss-voice-avatar {
+  color: var(--dsw-alias-brand-primary, #4f6ef7);
+  font-size: 15px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 14%, var(--dsw-alias-bg-layer-1, #fff))
+}
+
+.xmimo-tts-moss-voice-placeholder {
+  justify-content: center;
+  color: var(--dsw-alias-label-tertiary, #8b93a1);
+  font-size: 12px;
+  cursor: default
+}
+
 .xmimo-tts-doubao-voice-picker { display: grid; gap: var(--xmimo-ui-space-2, 8px); min-width: 0; }
 .xmimo-tts-doubao-voice-picker small, .xmimo-tts-details-summary > span { overflow-wrap: anywhere; }
 .xmimo-tts-doubao-voice-avatar {
@@ -426,4 +601,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .xmimo-tts-voice-id-tag, .xmimo-tts-voice-id-actions { transition: none; }
+  .xmimo-tts-moss-status[data-state=loading] .xmimo-tts-moss-status-dot { animation: none; }
 }
