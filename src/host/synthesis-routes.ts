@@ -11,11 +11,12 @@ import { TtsProviderError, safeProviderError } from './provider-error.js'
 import { DoubaoSession, synthesizeDoubao } from './doubao.js'
 import type { DoubaoSessionOptions } from './doubao.js'
 import { streamXiaomi } from './xiaomi.js'
+import { streamBreeze, evenPcmChunks } from './breeze.js'
 import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
 
 function responseError(res: ServerResponse, error: unknown, settings: ResolvedTtsSettings): void {
   if (res.destroyed || res.writableEnded) return
-  const detail = error instanceof CompleteAudioResponseError ? { error: error.code, message: error.code } : safeProviderError(error, [settings.apiKey, settings.doubaoApiKey])
+  const detail = error instanceof CompleteAudioResponseError ? { error: error.code, message: error.code } : safeProviderError(error, [settings.apiKey, settings.doubaoApiKey, settings.breezeApiKey])
   if (res.headersSent) {
     res.end(`data: ${JSON.stringify({ error: detail.message })}\n\n`)
   } else json(res, error instanceof TtsProviderError ? error.status : 502, { ...detail, provider: settings.provider })
@@ -44,7 +45,7 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
         const text = prepared.text
         if (!stream && body.format !== undefined && body.format !== 'mp3' && body.format !== 'wav') throw new TtsProviderError('invalid-audio-format', 'Select MP3 or WAV.', 400)
         // Doubao owns an activity-based timeout; Xiaomi retains its total request timeout.
-        if (settings.provider === 'xiaomi') timeout = setTimeout(() => controller.abort(), settings.requestTimeoutMs)
+        if (settings.provider !== 'doubao') timeout = setTimeout(() => controller.abort(), settings.requestTimeoutMs)
         if (stream) {
           const begin = () => {
             res.statusCode = 200
@@ -64,16 +65,22 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
             } })
             forward('data: [DONE]\n\n')
           } else {
-            const upstream = await streamXiaomi(settings, text, controller.signal)
+            const upstream = settings.provider === 'breeze' ? await streamBreeze(settings, text, controller.signal) : await streamXiaomi(settings, text, controller.signal)
             begin()
-            const reader = upstream.body!.getReader()
-            try {
-              while (!controller.signal.aborted) {
-                const chunk = await reader.read()
-                if (chunk.done) break
-                forward(chunk.value)
+            if (settings.provider === 'breeze') {
+              for await (const chunk of evenPcmChunks(upstream.body!)) {
+                forward(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: chunk.toString('base64') } } }] })}\n\n`)
               }
-            } finally { if (!controller.signal.aborted) controller.abort(); reader.releaseLock() }
+            } else {
+              const reader = upstream.body!.getReader()
+              try {
+                while (!controller.signal.aborted) {
+                  const chunk = await reader.read()
+                  if (chunk.done) break
+                  forward(chunk.value)
+                }
+              } finally { if (!controller.signal.aborted) controller.abort(); reader.releaseLock() }
+            }
           }
           if (!res.destroyed) res.end()
         } else {
@@ -122,7 +129,7 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
         const fail = (error: unknown) => {
           if (state === 'ended') return
           state = 'ended'
-          send({ type: 'error', provider: settings.provider, ...safeProviderError(error, [settings.apiKey, settings.doubaoApiKey]) })
+          send({ type: 'error', provider: settings.provider, ...safeProviderError(error, [settings.apiKey, settings.doubaoApiKey, settings.breezeApiKey]) })
           close()
         }
         ws.on('error', () => { controller.abort() })

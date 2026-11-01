@@ -1,4 +1,4 @@
-import { applyTtsPlaybackScope, splitTtsSegments, supportsRealtimeTts } from '../../shared.js'
+import { applyBreezeTtsPlaybackScope, applyTtsPlaybackScope, splitTtsSegments, stripBreezeAudioTags, supportsRealtimeTts } from '../../shared.js'
 import type { ResolvedTtsSettings } from '../../shared.js'
 import type { LiveSpeechController } from './live-speech-controller.js'
 import type { LocalSpeechController } from './local-speech-controller.js'
@@ -17,13 +17,25 @@ export interface ReadAloudRequest {
   local: LocalSpeechController
 }
 
+function readAloudText(text: string, settings: ResolvedTtsSettings, automatic: boolean): string {
+  return settings.provider === 'breeze'
+    ? applyBreezeTtsPlaybackScope(text, settings.readScope, automatic)
+    : applyTtsPlaybackScope(text, settings.readScope, automatic)
+}
+
+/** Browser speech cannot synthesize Breeze tags, so strip them instead of reading tag words aloud. */
+function fallbackText(text: string, settings: ResolvedTtsSettings): string {
+  return settings.provider === 'breeze' ? stripBreezeAudioTags(text) : text
+}
+
 /** Start a completed reply with one directed fallback, using the selected playback range. */
 export function playCompletedReply(request: ReadAloudRequest, automatic: boolean): void {
   const { sessionId, messageId, text, settings, apiKeySupported, playback, live, local } = request
   live.configure(settings)
   playback.configure(settings)
-  const scopedText = applyTtsPlaybackScope(text, settings.readScope, automatic)
-  const localFallback = settings.localSpeechMode === 'auto' ? () => local.playCompleted(sessionId, messageId, scopedText) : undefined
+  const scopedText = readAloudText(text, settings, automatic)
+  const localText = fallbackText(scopedText, settings)
+  const localFallback = settings.localSpeechMode === 'auto' ? () => local.playCompleted(sessionId, messageId, localText) : undefined
   const playRemote = (): void => {
     local.cancelSession(sessionId)
     if (!supportsRealtimeTts(settings)) {
@@ -41,7 +53,7 @@ export function playCompletedReply(request: ReadAloudRequest, automatic: boolean
   if (settings.localSpeechMode === 'local-first' || (settings.localSpeechMode === 'auto' && apiKeySupported === false)) {
     live.cancelSession(sessionId)
     playback.cancelPlayback(sessionId)
-    local.playCompleted(sessionId, messageId, scopedText, settings.localSpeechMode === 'local-first' ? playRemote : undefined)
+    local.playCompleted(sessionId, messageId, localText, settings.localSpeechMode === 'local-first' ? playRemote : undefined)
   } else playRemote()
 }
 
@@ -69,9 +81,10 @@ export function handleReadAloudClick(request: ReadAloudRequest, view: PlaybackVi
   if (mine && view.source === 'segmented') {
     if (view.status === 'playing' || view.status === 'loading') playback.pauseSegmented(sessionId, messageId)
     else {
-      const scopedText = applyTtsPlaybackScope(text, settings.readScope, false)
+      const scopedText = readAloudText(text, settings, false)
+      const localText = fallbackText(scopedText, settings)
       void playback.segmented(sessionId, messageId, scopedText, false, settings.localSpeechMode === 'auto'
-        ? () => local.playCompleted(sessionId, messageId, scopedText)
+        ? () => local.playCompleted(sessionId, messageId, localText)
         : undefined)
     }
     return

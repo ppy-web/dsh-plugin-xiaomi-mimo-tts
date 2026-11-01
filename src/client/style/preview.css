@@ -86,3 +86,9 @@
 .xmimo-tts-announcement-source a { align-self: flex-start; color: var(--xmimo-ui-brand); }
 .xmimo-tts-announcement-source > button { flex-shrink: 0; }
 .xmimo-tts-preview-input > textarea:focus-visible { outline: var(--xmimo-ui-focus); }
+.xmimo-tts-breeze-audio-tags { margin-top: 8px; }
+.xmimo-tts-breeze-audio-tags > summary { cursor: pointer; color: var(--xmimo-ui-text-muted); font-size: 12px; }
+.xmimo-tts-breeze-audio-tags > small { display: block; margin: 6px 0; color: var(--xmimo-ui-text-muted); }
+.xmimo-tts-breeze-audio-tag-group { margin-top: 8px; }
+.xmimo-tts-breeze-audio-tag-group > strong { display: block; margin-bottom: 4px; font-size: 12px; }
+.xmimo-tts-breeze-audio-tag-group button { margin: 0 4px 4px 0; }

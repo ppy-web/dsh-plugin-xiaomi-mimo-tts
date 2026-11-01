@@ -1,12 +1,13 @@
 import type { ReactElement } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { DOUBAO_VOICE_PRESETS } from '../../../doubao-voices.js'
+import { BREEZE_VOICE_PRESETS } from '../../../types/providers.js'
 import { forgetVoiceId, readVoiceIdHistory, readVoiceIdNames, rememberVoiceId, writeVoiceIdHistory, writeVoiceIdNames } from '../voice-id-history.js'
 import type { VoiceIdHistoryKind } from '../voice-id-history.js'
 import type { Translate } from '../../localization.js'
 import { VoiceIdTag } from './voice-id-tag.js'
 
-const STANDARD_VOICE_NAMES = new Map<string, string>(DOUBAO_VOICE_PRESETS.map(voice => [voice.value, voice.name]))
+const STANDARD_VOICE_NAMES = new Map<string, string>([...DOUBAO_VOICE_PRESETS.map(voice => [voice.value, voice.name] as const), ...BREEZE_VOICE_PRESETS.map(voice => [voice.value, voice.name] as const)])
 
 export function VoiceIdInput({ value, disabled, onChange, kind, label, historyLabel, t }: { value: string; disabled: boolean; onChange: (value: string) => void; kind: VoiceIdHistoryKind; label: string; historyLabel: string; t: Translate }): ReactElement {
   const [history, setHistory] = useState(() => readVoiceIdHistory(kind))

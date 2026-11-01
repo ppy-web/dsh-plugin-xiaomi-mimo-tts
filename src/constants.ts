@@ -4,6 +4,9 @@ export const TTS_SETTINGS_NAMESPACE = 'xiaomi-mimo-tts'
 /** Keep the UI version visible without making the browser bundle load package.json. */
 export const TTS_VERSION = '4.3.0-alpha.2'
 
+/** Breeze accepts at most 1000 characters in one synthesis request. */
+export const BREEZE_MAX_TEXT_LENGTH = 1000
+
 /** Same-origin route used by the Web client to request synthesized audio. */
 export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 

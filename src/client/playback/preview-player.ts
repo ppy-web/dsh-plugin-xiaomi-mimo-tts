@@ -3,7 +3,8 @@ import {
   TTS_STREAM_ROUTE,
   normalizeVoiceRate,
   parseSseRecords,
-  splitTtsSegments,
+  splitBreezeTtsSegments, splitTtsSegments,
+  stripBreezeAudioTags,
 } from '../../shared.js'
 import type { TtsLocalSpeechMode, TtsModel } from '../../shared.js'
 import { hostRoute } from '../host-route.js'
@@ -11,13 +12,13 @@ import { PcmAudioQueue } from './pcm-audio-queue.js'
 import { applyMediaVoiceRate, applySpeechVoiceRate } from './voice-rate.js'
 import type { AudioHistory } from '../history/audio-history.js'
 import { PcmRecording } from '../history/pcm-recording.js'
-import { ttsSelection } from '../../types/providers.js'
+import { ttsSelection, BREEZE_TTS_MODEL } from '../../types/providers.js'
 import { resolveTtsSettings } from '../../utils/settings.js'
 import type { TtsProvider, DoubaoTtsModel } from '../../types/providers.js'
 import { DuplexPcmStream, DuplexPcmError } from './duplex-pcm.js'
 
 export type PreviewStatus = 'idle' | 'loading' | 'playing' | 'error'
-export type PreviewSource = 'mimo' | 'doubao' | 'local' | null
+export type PreviewSource = 'mimo' | 'doubao' | 'breeze' | 'local' | null
 export type PreviewError = 'api-key-not-configured' | 'api-key-rejected' | 'rate-limited' | 'timeout' | 'local-voice-unavailable' | 'autoplay-blocked' | 'request-failed' | 'save-key-first' | 'voice-required' | 'voice-unavailable' | 'resource-unavailable' | 'stream-buffer-limit'
 
 export interface PreviewView {
@@ -32,6 +33,8 @@ export interface PreviewSettings {
   doubaoVoice?: string
   doubaoClonedVoice?: string
   doubaoInstruction?: string
+  breezeVoice?: string
+  breezeInstruction?: string
   instruction?: string
   model: TtsModel
   localSpeechMode: TtsLocalSpeechMode
@@ -45,7 +48,7 @@ export interface PreviewSettings {
 interface PreviewRequestBody {
   provider?: TtsProvider
   text: string
-  model: TtsModel
+  model: TtsModel | typeof BREEZE_TTS_MODEL
   voice: string
   voiceDesignPrompt: string
   format?: 'mp3' | 'wav'
@@ -158,10 +161,11 @@ export class PreviewPlayer {
       return
     }
     const generation = this.generation
+    const localText = settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : normalized
     try {
       if (settings.localSpeechMode === 'local-first') {
         try {
-          await this.playLocal(normalized, settings.localVoiceURI, generation)
+          await this.playLocal(localText, settings.localVoiceURI, generation)
         } catch {
           if (generation === this.generation) await this.playRemote(normalized, settings, generation)
         }
@@ -175,7 +179,7 @@ export class PreviewPlayer {
           this.pcmBusy = false
           this.pcm.stop()
           try {
-            await this.playLocal(normalized, settings.localVoiceURI, generation)
+            await this.playLocal(localText, settings.localVoiceURI, generation)
           } catch {
             throw remoteError
           }
@@ -242,13 +246,15 @@ export class PreviewPlayer {
   }
 
   private requestBody(text: string, settings: PreviewSettings, format?: 'mp3' | 'wav'): PreviewRequestBody {
+    const breeze = settings.provider === 'breeze'
+    const instruction = breeze ? settings.breezeInstruction : settings.instruction
     return {
       text,
       provider: settings.provider ?? 'xiaomi',
-      model: settings.model,
-      voice: settings.voice,
+      model: breeze ? BREEZE_TTS_MODEL : settings.model,
+      voice: breeze ? settings.breezeVoice ?? '' : settings.voice,
       voiceDesignPrompt: settings.voiceDesignPrompt,
-      ...(settings.instruction === undefined ? {} : { speechInstruction: settings.instruction }),
+      ...(instruction === undefined ? {} : { speechInstruction: instruction }),
       ...(format === undefined ? {} : { format }),
     }
   }
@@ -276,6 +282,13 @@ export class PreviewPlayer {
       }
       return
     }
+    if (settings.provider === 'breeze') {
+      this.pcm.setPlaybackRate(1)
+      this.publish('loading', 'breeze')
+      if (splitBreezeTtsSegments(text).length > 1) await this.playSegmented(text, settings, generation)
+      else await this.playComplete(text, settings, generation, 'mp3', 'breeze')
+      return
+    }
     if (settings.model === 'mimo-v2.5-tts-voicedesign') {
       if (splitTtsSegments(text).length > 1) await this.playSegmented(text, settings, generation)
       else await this.playComplete(text, settings, generation, 'mp3')
@@ -284,8 +297,8 @@ export class PreviewPlayer {
     await this.playPcm(text, settings, generation)
   }
 
-  private async playComplete(text: string, settings: PreviewSettings, generation: number, format: 'mp3' | 'wav'): Promise<void> {
-    this.publish('loading', 'mimo')
+  private async playComplete(text: string, settings: PreviewSettings, generation: number, format: 'mp3' | 'wav', source: PreviewSource = 'mimo'): Promise<void> {
+    this.publish('loading', source)
     const controller = new AbortController()
     this.request = controller
     const response = await fetch(hostRoute(TTS_ROUTE), {
@@ -318,8 +331,8 @@ export class PreviewPlayer {
         cleanup()
         this.releaseAudio(audio)
         if (generation === this.generation) {
-          if (error === undefined) this.publish('idle', 'mimo')
-          else this.publish('error', 'mimo', previewError(error))
+          if (error === undefined) this.publish('idle', source)
+          else this.publish('error', source, previewError(error))
         }
         if (error === undefined) resolve()
         else reject(error)
@@ -328,15 +341,17 @@ export class PreviewPlayer {
       audio.onended = () => finish()
       audio.onerror = () => finish(new PreviewPlaybackError('request-failed', 'preview-audio-failed'))
       void audio.play().then(() => {
-        if (generation === this.generation) this.publish('playing', 'mimo')
+        if (generation === this.generation) this.publish('playing', source)
       }).catch(() => finish(new PreviewPlaybackError('autoplay-blocked', 'preview-audio-blocked')))
     })
   }
 
   private async playSegmented(text: string, settings: PreviewSettings, generation: number): Promise<void> {
-    for (const segment of splitTtsSegments(text)) {
+    const breeze = settings.provider === 'breeze'
+    const segments = breeze ? splitBreezeTtsSegments(text) : splitTtsSegments(text)
+    for (const segment of segments) {
       if (generation !== this.generation) return
-      await this.playComplete(segment, settings, generation, 'wav')
+      await this.playComplete(segment, settings, generation, 'wav', breeze ? 'breeze' : 'mimo')
     }
   }
 

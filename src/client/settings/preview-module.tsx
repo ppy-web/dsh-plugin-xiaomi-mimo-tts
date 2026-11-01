@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useRef, type ReactElement } from 'react'
 import { RiRadio2Line } from 'react-icons/ri'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PreviewError, PreviewSource, PreviewStatus } from '../playback/preview-player.js'
@@ -6,6 +6,7 @@ import { CollapsibleModule } from './collapsible-module.js'
 import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS } from './announcement-settings.js'
 import type { AnnouncementSettingsProps } from './announcement-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
+import { BreezeAudioTagPicker } from './controls/breeze-audio-tag-picker.js'
 
 export interface PreviewModuleProps extends AnnouncementSettingsProps {
   enabled: boolean
@@ -17,9 +18,21 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps {
   onTextChange: (value: string) => void
   open: boolean
   onToggleOpen: () => void
+  breezeAudioTags?: boolean
 }
 
-export function PreviewModule({ t, enabled, status, source, error, text, onToggle, onTextChange, open, onToggleOpen, ...settings }: PreviewModuleProps): ReactElement {
+export function PreviewModule({ t, enabled, status, source, error, text, onToggle, onTextChange, open, onToggleOpen, breezeAudioTags = false, ...settings }: PreviewModuleProps): ReactElement {
+  const textRef = useRef<HTMLTextAreaElement>(null)
+  const insertTag = (tag: string): void => {
+    const textarea = textRef.current
+    if (textarea === null) return
+    const start = textarea.selectionStart ?? text.length
+    const end = textarea.selectionEnd ?? start
+    const spacer = start > 0 && !/\s$/u.test(text.slice(0, start)) ? ' ' : ''
+    const next = `${text.slice(0, start)}${spacer}${tag}${text.slice(end)}`
+    onTextChange(next)
+    requestAnimationFrame(() => { textarea.focus(); const position = start + spacer.length + tag.length; textarea.setSelectionRange(position, position) })
+  }
   const busy = status === 'loading' || status === 'playing'
   const errorKey = error === 'save-key-first' ? 'settings.previewSaveKeyFirst'
     : error === 'voice-required' ? 'settings.doubaoVoiceRequired'
@@ -42,10 +55,10 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
   const messageKey = status === 'error'
     ? errorKey
     : status === 'loading'
-      ? source === 'doubao' ? 'settings.previewLoadingDoubao' : source === 'local' ? 'settings.previewLoadingLocal' : 'settings.previewLoadingMimo'
+      ? source === 'doubao' ? 'settings.previewLoadingDoubao' : source === 'breeze' ? 'settings.previewLoadingBreeze' : source === 'local' ? 'settings.previewLoadingLocal' : 'settings.previewLoadingMimo'
       : status === 'playing'
-        ? source === 'doubao' ? 'settings.previewPlayingDoubao' : source === 'local' ? 'settings.previewPlayingLocal' : 'settings.previewPlayingMimo'
-        : source === 'doubao' ? 'settings.previewCompletedDoubao' : source === 'local'
+        ? source === 'doubao' ? 'settings.previewPlayingDoubao' : source === 'breeze' ? 'settings.previewPlayingBreeze' : source === 'local' ? 'settings.previewPlayingLocal' : 'settings.previewPlayingMimo'
+        : source === 'doubao' ? 'settings.previewCompletedDoubao' : source === 'breeze' ? 'settings.previewCompletedBreeze' : source === 'local'
           ? 'settings.previewCompletedLocal'
           : source === 'mimo'
             ? 'settings.previewCompletedMimo'
@@ -78,6 +91,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
       <div className="xmimo-tts-format">
         <div className="xmimo-tts-preview-input">
           <textarea
+            ref={textRef}
             value={text}
             rows={2}
             maxLength={100}
@@ -96,6 +110,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
             onClick={onToggle}
           ><PlaybackIcon state={busy ? 'stop' : 'play'} /></Button>
         </div>
+        {breezeAudioTags ? <BreezeAudioTagPicker disabled={!enabled} onInsert={insertTag} t={t} /> : null}
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
       </div>
       <AnnouncementSettings t={t} sources={settings.sources} writable={settings.writable} overridden={settings.overridden}

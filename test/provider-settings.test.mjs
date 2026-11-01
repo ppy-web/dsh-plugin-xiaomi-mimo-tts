@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { DEFAULT_TTS_SETTINGS, resolveTtsSettings, ttsSelection } from '../lib/shared.js'
+import { DEFAULT_TTS_SETTINGS, resolveTtsSettings, supportsRealtimeTts, ttsSelection } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { saveSettingsDraft, validateSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
@@ -45,6 +45,29 @@ test('replacing one credential preserves the other provider credential', async (
   assert.deepEqual(scope.writes, [[{ op: 'set', path: ['doubaoApiKey'], value: 'replacement' }]])
   assert.equal(scope.user.apiKey, 'sk-one')
   assert.equal(scope.user.doubaoApiKey, 'replacement')
+})
+
+test('Breeze reads completed replies instead of incremental realtime speech', () => {
+  assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'breeze' })), false)
+  assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'doubao' })), true)
+  assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'xiaomi', model: 'mimo-v2.5-tts' })), true)
+  assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'xiaomi', model: 'mimo-v2.5-tts-voicedesign' })), false)
+})
+
+test('Breeze API keys persist to the Breeze secret field and leave other provider keys unchanged', async () => {
+  const scope = form({ apiKey: 'sk-xiaomi', doubaoApiKey: 'doubao-key', provider: 'breeze' })
+  const breezeKey = 'brz_test-key_for-save'
+  await saveSettingsDraft(scope, resolveTtsSettings(scope.user), { breezeApiKey: { kind: 'set' } }, { xiaomi: '', doubao: '', breeze: breezeKey })
+  assert.deepEqual(scope.writes, [[{ op: 'set', path: ['breezeApiKey'], value: breezeKey }]])
+  assert.equal(scope.user.breezeApiKey, breezeKey)
+  assert.equal(scope.user.apiKey, 'sk-xiaomi')
+  assert.equal(scope.user.doubaoApiKey, 'doubao-key')
+})
+
+test('Breeze key validation rejects embedded line breaks without attempting a write', async () => {
+  const scope = form({ provider: 'breeze' })
+  await assert.rejects(saveSettingsDraft(scope, resolveTtsSettings(scope.user), { breezeApiKey: { kind: 'set' } }, { xiaomi: '', doubao: '', breeze: 'brz_test\nkey' }), /api-key-rejected/)
+  assert.deepEqual(scope.writes, [])
 })
 
 test('rejected writes preserve the selected provider and leave caller-owned drafts intact for retry', async () => {

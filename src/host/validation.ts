@@ -5,7 +5,7 @@ import type { SynthesizeBody } from './synthesis.js'
 
 export function synthesisOptions(options: ResolvedTtsSettings, body: SynthesizeBody): ResolvedTtsSettings {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) throw new TtsProviderError('invalid-request', 'Expected an object.', 400)
-  if (body.provider !== undefined && body.provider !== 'xiaomi' && body.provider !== 'doubao') throw new TtsProviderError('invalid-provider', 'Unknown speech provider.', 400)
+  if (body.provider !== undefined && body.provider !== 'xiaomi' && body.provider !== 'doubao' && body.provider !== 'breeze') throw new TtsProviderError('invalid-provider', 'Unknown speech provider.', 400)
   const provider = body.provider ?? options.provider
   if (body.speechInstruction !== undefined && typeof body.speechInstruction !== 'string') throw new TtsProviderError('invalid-speech-instruction', 'Speech instruction must be a string.', 400)
   if (provider === 'doubao') {
@@ -14,6 +14,11 @@ export function synthesisOptions(options: ResolvedTtsSettings, body: SynthesizeB
     if (body.voice !== undefined && (typeof body.voice !== 'string' || body.voice.trim().length === 0)) throw new TtsProviderError('voice-required', 'Enter a voice ID.', 400)
     const doubaoModel = (body.model ?? options.doubaoModel) as typeof DOUBAO_TTS_MODELS[number]
     return { ...options, provider, doubaoModel, ...(typeof body.voiceRate === 'number' ? { voiceRate: normalizeVoiceRate(body.voiceRate) } : {}), ...(typeof body.speechInstruction === 'string' ? { doubaoInstruction: body.speechInstruction.trim() } : {}), ...(typeof body.voice === 'string' ? { [doubaoModel === 'seed-icl-2.0' ? 'doubaoClonedVoice' : 'doubaoVoice']: body.voice.trim() } : {}) }
+  }
+  if (provider === 'breeze') {
+    if (body.voiceRate !== undefined && (typeof body.voiceRate !== 'number' || !Number.isFinite(body.voiceRate) || body.voiceRate < 0.5 || body.voiceRate > 2)) throw new TtsProviderError('invalid-voice-rate', 'Speech speed must be between 0.5 and 2.', 400)
+    if (body.voice !== undefined && (typeof body.voice !== 'string' || body.voice.trim().length === 0)) throw new TtsProviderError('voice-required', 'Enter a voice ID.', 400)
+    return { ...options, provider: 'breeze', ...(typeof body.voiceRate === 'number' ? { voiceRate: normalizeVoiceRate(body.voiceRate) } : {}), ...(typeof body.speechInstruction === 'string' ? { breezeInstruction: body.speechInstruction.trim() } : {}), ...(typeof body.voice === 'string' ? { breezeVoice: body.voice.trim() } : {}) }
   }
   if (body.model !== undefined && !TTS_MODELS.includes(body.model as typeof TTS_MODELS[number])) throw new TtsProviderError('invalid-model', 'Select a Xiaomi model.', 400)
   const model = TTS_MODELS.includes(body.model as typeof TTS_MODELS[number])

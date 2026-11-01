@@ -1,7 +1,7 @@
 import type { TtsEffectiveReadScope, TtsReadScope } from '../types/index.js'
 import { countTtsSpeechCharacters } from './segment.js'
-import { firstTtsSegment, firstTtsSegments, TtsFirstSegmentLimiter } from './segment.js'
-import { prepareTtsText } from './normalize.js'
+import { firstTtsSegment, firstTtsSegments, splitBreezeTtsSentences, TtsFirstSegmentLimiter } from './segment.js'
+import { prepareBreezeTtsText, prepareTtsText } from './normalize.js'
 
 /** Resolve Smart into a concrete range for this playback invocation. */
 export function resolveTtsReadScope(scope: TtsReadScope, automatic: boolean): TtsEffectiveReadScope {
@@ -37,7 +37,7 @@ export function appendTtsSmartTruncationOutro(fullText: string, spokenText: stri
   return `${trimmed}${separator}${TTS_SMART_TRUNCATION_OUTROS[index]}`
 }
 
-/** Apply the configured playback range and Smart automatic closing cue to a completed reply. */
+/** Apply the configured playback range to a completed reply. */
 export function applyTtsPlaybackScope(value: string, scope: TtsReadScope, automatic: boolean, random: () => number = Math.random): string {
   const scoped = scope === 'smart' && automatic
     ? firstTtsSegments(value, 2)
@@ -45,6 +45,20 @@ export function applyTtsPlaybackScope(value: string, scope: TtsReadScope, automa
   return scope === 'smart' && automatic
     ? appendTtsSmartTruncationOutro(value, scoped, random)
     : scoped
+}
+
+/**
+ * Apply the configured playback range to Breeze text without dropping its
+ * documented audio tags. Breeze tags are part of the spoken text, so the
+ * regular scope helpers (which normalize punctuation away) cannot be used.
+ */
+export function applyBreezeTtsPlaybackScope(value: string, scope: TtsReadScope, automatic: boolean, random: () => number = Math.random): string {
+  const prepared = prepareBreezeTtsText(value)
+  if (prepared.length === 0) return ''
+  if (scope === 'full' || (scope === 'smart' && !automatic)) return prepared
+  const segments = scope === 'smart' ? 2 : 1
+  const scoped = splitBreezeTtsSentences(prepared).slice(0, segments).join('')
+  return scope === 'smart' && automatic ? appendTtsSmartTruncationOutro(prepared, scoped, random) : scoped
 }
 
 /** Apply the configured automatic range while a reply grows, adding Smart's cue only on completion. */

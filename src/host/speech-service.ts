@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { encode, getDuration, getWavFileInfo } from 'silk-wasm'
-import { prepareTtsText, resolveTtsSettings } from '../shared.js'
+import { BREEZE_MAX_TEXT_LENGTH, prepareBreezeTtsText, prepareTtsText, resolveTtsSettings, splitBreezeTtsSegments } from '../shared.js'
 import type { ResolvedTtsSettings } from '../shared.js'
 import type { SpeechAudio, SpeechArtifact, SpeechDeliveryAdapter, SpeechDeliveryContext, SpeechDeliveryResult, SpeechRequest, SpeechSynthesisService } from '../host-api.js'
 import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
@@ -51,7 +51,7 @@ export class HostSpeechService implements SpeechSynthesisService {
       settings = prepared.settings
       const format = request.format ?? completeAudioFormat(settings)
       if (!['mp3', 'wav', 'silk'].includes(format)) throw new TtsProviderError('invalid-audio-format', 'Select MP3, WAV or SILK.', 400)
-      if (settings.provider === 'xiaomi') timeout = setTimeout(() => controller.abort(new TtsProviderError('tts-timeout', 'Synthesis timed out.', 504)), settings.requestTimeoutMs)
+      if (settings.provider !== 'doubao') timeout = setTimeout(() => controller.abort(new TtsProviderError('tts-timeout', 'Synthesis timed out.', 504)), settings.requestTimeoutMs)
       const data = await synthesizeCompleteAudio(settings, prepared.text, format === 'silk' ? 'wav' : format, controller, this.runtime)
       controller.signal.throwIfAborted()
       let durationMs: number | undefined
@@ -78,7 +78,7 @@ export class HostSpeechService implements SpeechSynthesisService {
       if (request.signal?.aborted) throw new TtsProviderError('tts-canceled', 'Speech synthesis canceled.', 499)
       if (error instanceof CompleteAudioResponseError) throw new TtsProviderError(error.code)
       if (controller.signal.aborted) throw new TtsProviderError(this.disposed ? 'speech-service-disposed' : 'tts-timeout', 'Speech synthesis stopped.', 504)
-      const detail = safeProviderError(error, [settings.apiKey, settings.doubaoApiKey])
+      const detail = safeProviderError(error, [settings.apiKey, settings.doubaoApiKey, settings.breezeApiKey])
       throw new TtsProviderError(detail.error, detail.message, error instanceof TtsProviderError ? error.status : 502)
     } finally {
       clearTimeout(timeout)
@@ -153,10 +153,12 @@ export class HostSpeechService implements SpeechSynthesisService {
       signal.throwIfAborted()
       await adapter.check?.({ ...context, signal })
       signal.throwIfAborted()
-      const text = request.splitLongText ? prepareTtsText(request.text) : request.text
-      const limit = Math.floor(this.current().maxTextLength)
+      const settings = this.current()
+      const text = request.splitLongText ? (settings.provider === 'breeze' ? prepareBreezeTtsText(request.text) : prepareTtsText(request.text)) : request.text
+      const configuredLimit = Math.floor(settings.maxTextLength)
+      const limit = settings.provider === 'breeze' ? Math.min(configuredLimit, BREEZE_MAX_TEXT_LENGTH) : configuredLimit
       if (request.splitLongText && (!Number.isFinite(limit) || limit < 1)) throw new TtsProviderError('invalid-text-limit')
-      const chunks = request.splitLongText ? splitDeliveryText(text, limit) : [text]
+      const chunks = request.splitLongText ? (settings.provider === 'breeze' ? splitBreezeTtsSegments(text, limit) : splitDeliveryText(text, limit)) : [text]
       let result: SpeechDeliveryResult | undefined
       for (const chunk of chunks) {
         signal.throwIfAborted()

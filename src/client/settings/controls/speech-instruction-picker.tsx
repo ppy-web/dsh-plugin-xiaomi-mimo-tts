@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { Translate } from '../../localization.js'
+import type { LocaleKey, Translate } from '../../localization.js'
 import type { TtsProvider } from '../../../types/providers.js'
 
 /** MiMo user-message style descriptions; dialects follow its documented recommendations.
@@ -19,12 +19,16 @@ const DOUBAO_PRESETS = [
   'Cantonese', 'Shanghai', 'Henan', 'Beijing', 'Tianjin', 'Sichuan', 'Shaanxi', 'Dongbei',
 ] as const
 
+const BREEZE_PRESETS = ['WhisperFear', 'ExcitedSurprise', 'SarcasticDisbelief', 'NervousHumor', 'RestrainedGrief', 'CalmNarration'] as const
+
 export function SpeechInstructionPicker({ provider, value, disabled, minimal = false, onChange, t }: { provider: TtsProvider; value: string; disabled: boolean; minimal?: boolean; onChange: (value: string) => void; t: Translate }): ReactElement {
   const allPresets = provider === 'xiaomi'
     ? XIAOMI_PRESETS.map(preset => ({ preset, prompt: preset === 'Natural' ? '' : t(`settings.mimoInstruction${preset}Prompt`) }))
-    : DOUBAO_PRESETS.map(preset => ({ preset, prompt: preset === 'Natural' ? '' : t(`settings.speechInstruction${preset}Prompt`) }))
+    : provider === 'breeze'
+      ? BREEZE_PRESETS.map(preset => ({ preset, prompt: t(`settings.breezeInstructionText${preset}`) }))
+      : DOUBAO_PRESETS.map(preset => ({ preset, prompt: preset === 'Natural' ? '' : t(`settings.speechInstruction${preset}Prompt`) }))
   const presets = minimal ? allPresets.slice(0, 8) : allPresets
-  const hint = t(provider === 'xiaomi' ? 'settings.mimoInstructionHint' : 'settings.doubaoInstructionHint')
+  const hint = t(provider === 'xiaomi' ? 'settings.mimoInstructionHint' : provider === 'breeze' ? 'settings.breezeInstructionHint' : 'settings.doubaoInstructionHint')
   return <>
     <div className="xmimo-tts-instruction-presets" role="group" aria-label={t('settings.speechInstructionPresets')}>
       {presets.map(({ preset, prompt }) => {
@@ -36,7 +40,7 @@ export function SpeechInstructionPicker({ provider, value, disabled, minimal = f
           aria-pressed={value.trim() === prompt}
           title={prompt || hint}
           onClick={() => onChange(prompt)}
-        >{t(`settings.speechInstruction${preset}`)}</button>
+        >{provider === 'breeze' ? t(`settings.breezeInstructionLabel${preset}` as LocaleKey) : t(`settings.speechInstruction${preset}` as LocaleKey)}</button>
       })}
     </div>
     {minimal ? null : <>

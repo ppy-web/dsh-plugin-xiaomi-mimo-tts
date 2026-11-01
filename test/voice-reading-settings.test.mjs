@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  BREEZE_VOICE_PRESETS,
   DOUBAO_VOICE_PRESETS,
   TTS_READ_SCOPES,
   TTS_VOICE_DESIGN_PRESETS,
@@ -111,6 +112,13 @@ for (const mode of [
     field: 'doubaoClonedVoice',
     hintKey: 'settings.voiceReadingHintDoubaoCloned',
     presetValues: ['clone-current'],
+  },
+  {
+    name: 'breeze voices',
+    settings: { provider: 'breeze' },
+    field: 'breezeVoice',
+    hintKey: 'settings.voiceReadingHintBreeze',
+    presetValues: BREEZE_VOICE_PRESETS.map(preset => preset.value),
   },
 ]) test(`${mode.name} select the matching voice field and hint`, () => {
   const resolved = resolveTtsSettings(mode.settings)

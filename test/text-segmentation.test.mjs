@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  applyBreezeTtsPlaybackScope,
   applyTtsLivePlaybackScope,
   applyTtsPlaybackScope,
   DEFAULT_TTS_SEGMENT_CHARACTERS,
@@ -9,10 +10,52 @@ import {
   firstTtsSegments,
   MAX_TTS_SEGMENT_CHARACTERS,
   prepareTtsText,
+  prepareBreezeTtsText,
+  splitBreezeTtsSegments,
+  splitBreezeTtsSentences,
   splitTtsSegments,
+  stripBreezeAudioTags,
   TtsFirstSegmentLimiter,
   TTS_SMART_TRUNCATION_OUTROS,
 } from '../lib/shared.js'
+
+test('preserves documented Breeze audio tags while cleaning text', () => {
+  assert.equal(prepareBreezeTtsText('你好，[轻笑]世界！(sighs)继续。'), '你好,[轻笑]世界!(sighs)继续.')
+  assert.equal(prepareBreezeTtsText('你好，[未知标签]世界'), '你好,未知标签世界')
+})
+
+test('keeps Breeze tags intact across provider-sized chunks', () => {
+  const text = `${'甲'.repeat(995)}[轻笑]乙`
+  const chunks = splitBreezeTtsSegments(text)
+  assert.equal(chunks.join(''), prepareBreezeTtsText(text))
+  assert.ok(chunks.every(chunk => !chunk.includes('[轻') || chunk.includes('[轻笑]')))
+})
+
+test('reads Breeze scopes by semantic sentence and keeps audio tags attached', () => {
+  const sentences = [
+    `[轻笑]${'甲'.repeat(180)}。`,
+    `${'乙'.repeat(180)}。`,
+    `${'丙'.repeat(180)}。`,
+    `${'丁'.repeat(60)}。`,
+  ]
+  const text = sentences.join('')
+  const preparedSentences = sentences.map(prepareBreezeTtsText)
+  assert.deepEqual(splitBreezeTtsSentences(text), preparedSentences)
+  const firstSegment = applyBreezeTtsPlaybackScope(text, 'first-segment', true)
+  assert.equal(firstSegment, preparedSentences[0])
+  assert.ok(firstSegment.startsWith('[轻笑]'))
+  const smart = applyBreezeTtsPlaybackScope(text, 'smart', true, () => 0)
+  assert.equal(smart, `${preparedSentences[0]}${preparedSentences[1]}`)
+  assert.equal(applyBreezeTtsPlaybackScope(text, 'smart', false), prepareBreezeTtsText(text))
+})
+
+test('strips documented Breeze tags for browser speech without eating other brackets', () => {
+  const text = stripBreezeAudioTags('你好，[轻笑]世界！[未知](sighs)')
+  assert.ok(!text.includes('轻笑'))
+  assert.ok(!text.includes('sighs'))
+  assert.ok(text.includes('世界'))
+  assert.ok(text.includes('[未知]'))
+})
 
 test('keeps long sentences whole across synthesis chunks and opening playback', () => {
   const sentences = [

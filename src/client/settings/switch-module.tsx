@@ -53,9 +53,9 @@ function ProviderToggle({ t, provider, minimal, writable, onChange }: {
   writable: boolean
   onChange: (provider: TtsProvider) => void
 }): ReactElement {
-  const nextProvider = provider === 'xiaomi' ? 'doubao' : 'xiaomi'
-  const label = t(provider === 'xiaomi' ? 'settings.providerXiaomi' : 'settings.providerDoubao')
-  const nextLabel = t(nextProvider === 'xiaomi' ? 'settings.providerXiaomi' : 'settings.providerDoubao')
+  const nextProvider = provider === 'xiaomi' ? 'doubao' : provider === 'doubao' ? 'breeze' : 'xiaomi'
+  const label = t(provider === 'xiaomi' ? 'settings.providerXiaomi' : provider === 'doubao' ? 'settings.providerDoubao' : 'settings.providerBreeze')
+  const nextLabel = t(nextProvider === 'xiaomi' ? 'settings.providerXiaomi' : nextProvider === 'doubao' ? 'settings.providerDoubao' : 'settings.providerBreeze')
   const switchLabel = `${t('settings.provider')}: ${label} · ${t('settings.switchProvider')}: ${nextLabel}`
   const switchIcon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M3 7h18m-4-4 4 4-4 4M21 17H3m4-4-4 4 4 4" />

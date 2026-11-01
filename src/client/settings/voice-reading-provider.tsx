@@ -8,6 +8,7 @@ import { hostRoute } from '../host-route.js'
 const PROVIDER_NAMES: Record<TtsProvider, string> = {
   xiaomi: 'Xiaomi-MiMo',
   doubao: 'Doubao-Seed',
+  breeze: 'Breeze Blue',
 }
 
 interface VoiceReadingProviderProps {
@@ -25,7 +26,9 @@ export function VoiceReadingProvider({ value, disabled, t, onChange }: VoiceRead
       {TTS_PROVIDERS.map(provider => <label key={provider} className="xmimo-voice-reading-provider-option">
         <input type="radio" name={name} value={provider} checked={value === provider} onChange={() => { onChange(provider) }} />
         <span className="xmimo-voice-reading-provider-face">
-          <img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES[provider])} width={32} height={32} alt="" />
+          {provider === 'breeze'
+            ? <span className="xmimo-voice-reading-provider-text-logo" aria-hidden="true">B</span>
+            : <img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES[provider])} width={32} height={32} alt="" />}
           <span>{PROVIDER_NAMES[provider]}</span>
         </span>
       </label>)}

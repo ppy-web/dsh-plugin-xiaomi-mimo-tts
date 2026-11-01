@@ -1,8 +1,9 @@
-import { prepareTtsText } from '../shared.js'
+import { BREEZE_MAX_TEXT_LENGTH, prepareBreezeTtsText, prepareTtsText } from '../shared.js'
 import type { ResolvedTtsSettings } from '../shared.js'
 import { synthesizeDoubao, wrapPcmWav } from './doubao.js'
 import type { DoubaoSessionOptions } from './doubao.js'
 import { synthesizeXiaomi } from './xiaomi.js'
+import { synthesizeBreeze } from './breeze.js'
 import { TtsProviderError } from './provider-error.js'
 import { completeAudioLimit, synthesisOptions, validateSynthesisSettings } from './validation.js'
 import type { CompleteAudioFormat } from './validation.js'
@@ -14,9 +15,10 @@ export interface SynthesisRuntime {
 
 export function prepareSpeechRequest(current: ResolvedTtsSettings, body: SynthesizeBody): { settings: ResolvedTtsSettings; text: string } {
   const settings = synthesisOptions(current, body)
-  const text = typeof body.text === 'string' ? prepareTtsText(body.text) : ''
+  const text = typeof body.text === 'string' ? (settings.provider === 'breeze' ? prepareBreezeTtsText(body.text) : prepareTtsText(body.text)) : ''
   if (!text) throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)
-  if (text.length > settings.maxTextLength) throw new TtsProviderError('text-too-long', 'Text exceeds the configured limit.', 413)
+  const providerLimit = settings.provider === 'breeze' ? Math.min(settings.maxTextLength, BREEZE_MAX_TEXT_LENGTH) : settings.maxTextLength
+  if (text.length > providerLimit) throw new TtsProviderError('text-too-long', 'Text exceeds the configured limit.', 413)
   validateSynthesisSettings(settings)
   return { settings, text }
 }
@@ -26,6 +28,7 @@ export async function synthesizeCompleteAudio(settings: ResolvedTtsSettings, tex
   controller.signal.throwIfAborted()
   const limit = completeAudioLimit(settings, format)
   if (settings.provider === 'xiaomi') return synthesizeXiaomi(settings, text, format, limit, controller)
+  if (settings.provider === 'breeze') return synthesizeBreeze(settings, text, format, limit, controller.signal)
   const chunks: Buffer[] = []
   let size = 0
   await synthesizeDoubao(text, {

@@ -370,6 +370,20 @@
   object-fit: contain;
 }
 
+.xmimo-voice-reading-provider-text-logo {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #fff;
+  background: #1877f2;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .xmimo-voice-reading-provider-option input:checked + .xmimo-voice-reading-provider-face {
   border-color: var(--dsw-alias-brand-primary, #4f6ef7);
 }

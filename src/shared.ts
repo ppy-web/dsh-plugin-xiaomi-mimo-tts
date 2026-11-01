@@ -8,4 +8,5 @@ export * from './doubao-voices.js'
 // Export commonly used items at the top level for convenience
 export { TTS_SETTINGS_NAMESPACE } from './constants.js'
 export { prepareTtsText, splitCompletedTtsSentences } from './text/index.js'
+export { prepareBreezeTtsText, splitBreezeTtsSegments } from './text/index.js'
 export { resolveTtsSettings } from './utils/index.js'

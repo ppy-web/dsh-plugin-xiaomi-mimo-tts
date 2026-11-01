@@ -59,6 +59,9 @@ export const Config = z.object({
   doubaoVoice: z.string().default(DEFAULT_TTS_SETTINGS.doubaoVoice).volatile(),
   doubaoClonedVoice: z.string().default('').volatile(),
   doubaoInstruction: z.string().default(DEFAULT_TTS_SETTINGS.doubaoInstruction).volatile(),
+  breezeApiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.breezeApiKey).volatile(),
+  breezeVoice: z.string().default(DEFAULT_TTS_SETTINGS.breezeVoice).volatile(),
+  breezeInstruction: z.string().default(DEFAULT_TTS_SETTINGS.breezeInstruction).volatile(),
   enabled: z.boolean().default(DEFAULT_TTS_SETTINGS.enabled).volatile(),
   apiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.apiKey).volatile(),
   baseURL: z.string().pattern(/^https?:\/\/\S+$/iu).default(DEFAULT_TTS_SETTINGS.baseURL).volatile(),
@@ -222,8 +225,8 @@ export function apply(ctx: Context, config: Config): void {
 
       const settings = current()
       const query = new URL(req.url ?? '/', 'http://localhost').searchParams.get('provider')
-      if (query !== null && query !== 'xiaomi' && query !== 'doubao') { json(res, 400, { error: 'invalid-provider' }); return }
-      const provider = query ?? settings.provider
+      if (query !== null && !TTS_PROVIDERS.includes(query as typeof TTS_PROVIDERS[number])) { json(res, 400, { error: 'invalid-provider' }); return }
+      const provider = (query ?? settings.provider) as typeof TTS_PROVIDERS[number]
       const apiKey = ttsApiKey({ ...settings, provider })
       json(res, 200, {
         provider,

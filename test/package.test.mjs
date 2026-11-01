@@ -121,6 +121,16 @@ test('shared route and settings contracts are internally consistent', () => {
   assert.equal(new Set(sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => item.id)).size, sharedModule.TTS_VOICE_DESIGN_PRESETS.length)
 })
 
+test('provider image routes are unique and only declared image providers own routes', () => {
+  const routes = [
+    ...Object.values(sharedModule.TTS_PROVIDER_CHARACTER_ASSET_ROUTES),
+    ...Object.values(sharedModule.TTS_PROVIDER_LOGO_ASSET_ROUTES),
+  ]
+  assert.equal(new Set(routes).size, routes.length)
+  assert.equal(Object.hasOwn(sharedModule.TTS_PROVIDER_CHARACTER_ASSET_ROUTES, 'breeze'), false)
+  assert.equal(Object.hasOwn(sharedModule.TTS_PROVIDER_LOGO_ASSET_ROUTES, 'breeze'), false)
+})
+
 test('selects the Token Plan endpoint from tp-prefixed API keys', () => {
   assert.equal(resolveTtsBaseURL('tp-example', 'https://api.xiaomimimo.com/v1'), TOKEN_PLAN_TTS_BASE_URL)
   assert.equal(resolveTtsBaseURL('  tp-example  ', 'https://api.xiaomimimo.com/v1'), TOKEN_PLAN_TTS_BASE_URL)

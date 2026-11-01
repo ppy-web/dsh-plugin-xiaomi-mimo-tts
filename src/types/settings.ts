@@ -23,6 +23,9 @@ export interface TtsSettings {
   doubaoVoice?: string
   doubaoClonedVoice?: string
   doubaoInstruction?: string
+  breezeApiKey?: string
+  breezeVoice?: string
+  breezeInstruction?: string
   enabled?: boolean
   apiKey?: string
   baseURL?: string
@@ -65,6 +68,9 @@ export interface ResolvedTtsSettings {
   doubaoVoice: string
   doubaoClonedVoice: string
   doubaoInstruction: string
+  breezeApiKey: string
+  breezeVoice: string
+  breezeInstruction: string
   enabled: boolean
   apiKey: string
   baseURL: string
@@ -106,6 +112,9 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   doubaoVoice: 'zh_female_vv_uranus_bigtts',
   doubaoClonedVoice: '',
   doubaoInstruction: '',
+  breezeApiKey: '',
+  breezeVoice: 'voc_rh6e8hdbraz6',
+  breezeInstruction: '',
   enabled: true,
   apiKey: '',
   baseURL: 'https://api.xiaomimimo.com/v1',
@@ -141,6 +150,6 @@ export function resolveTtsBaseURL(apiKey: string, configuredBaseURL: string): st
 /** Whether an API key selects one of the Xiaomi endpoints supported by this plugin. */
 export function isSupportedTtsApiKey(apiKey: string, provider: TtsProvider = 'xiaomi'): boolean {
   const normalized = apiKey.trim()
-  if (provider === 'doubao') return normalized.length > 0 && !/[\r\n]/u.test(normalized)
+  if (provider === 'doubao' || provider === 'breeze') return normalized.length > 0 && !/[\r\n]/u.test(normalized)
   return normalized.startsWith('sk-') || normalized.startsWith('tp-')
 }

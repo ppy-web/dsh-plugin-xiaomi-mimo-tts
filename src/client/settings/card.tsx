@@ -10,7 +10,7 @@ import {
   resolveSoundEffectsScope,
   resolveTtsSettings,
 } from '../../shared.js'
-import { saveSettingsDraft, validateSettingsDraft, EDITABLE_SETTING_FIELDS } from './save-settings.js'
+import { saveSettingsDraft, validateSettingsDraft, EDITABLE_SETTING_FIELDS, SaveSettingsError } from './save-settings.js'
 import { invalidateApiKeyStatus, useApiKeyStatus } from '../conversation/api-key-status.js'
 import type { TtsSettings, SoundEffectsScope } from '../../shared.js'
 import type { Translate } from '../localization.js'
@@ -60,6 +60,23 @@ const PREVIEW_TEXT_KEYS = [
   'settings.previewDefaultTextHumor',
 ] as const
 
+/** Secret fields map one-to-one to the provider whose key they hold. */
+const API_KEY_STATE = {
+  apiKey: 'xiaomi',
+  doubaoApiKey: 'doubao',
+  breezeApiKey: 'breeze',
+} as const
+type ApiKeyField = keyof typeof API_KEY_STATE
+const API_KEY_BY_PROVIDER = {
+  xiaomi: 'apiKey',
+  doubao: 'doubaoApiKey',
+  breeze: 'breezeApiKey',
+} as const satisfies Record<typeof API_KEY_STATE[ApiKeyField], ApiKeyField>
+
+function isApiKeyField(field: SettingField): field is ApiKeyField {
+  return field in API_KEY_STATE
+}
+
 function layerSettings(value: unknown): TtsSettings | undefined {
   return isRecord(value) ? value as TtsSettings : undefined
 }
@@ -87,15 +104,17 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const writable = snapshot.writable && !changing
   const value = snapshot.value
   const initial = resolveTtsSettings(value)
-  const [apiKeys, setApiKeys] = useState({ xiaomi: '', doubao: '' })
+  const [apiKeys, setApiKeys] = useState({ xiaomi: '', doubao: '', breeze: '' })
   const [provider, setProvider] = useState(initial.provider)
   const [doubaoModel, setDoubaoModel] = useState(initial.doubaoModel)
   const [doubaoVoice, setDoubaoVoice] = useState(initial.doubaoVoice)
   const [doubaoClonedVoice, setDoubaoClonedVoice] = useState(initial.doubaoClonedVoice)
   const [doubaoInstruction, setDoubaoInstruction] = useState(initial.doubaoInstruction)
+  const [breezeVoice, setBreezeVoice] = useState(initial.breezeVoice)
+  const [breezeInstruction, setBreezeInstruction] = useState(initial.breezeInstruction)
   const [instruction, setInstruction] = useState(initial.instruction)
   const apiKey = apiKeys[provider]
-  const apiKeyField = provider === 'doubao' ? 'doubaoApiKey' : 'apiKey'
+  const apiKeyField = API_KEY_BY_PROVIDER[provider]
   const setApiKey = (next: string): void => { setApiKeys(current => ({ ...current, [provider]: next })) }
   const [announcementSources, setAnnouncementSources] = useState(initial.announcementSources)
   const [qqbotEnabled, setQqbotEnabled] = useState(initial.qqbotEnabled)
@@ -117,6 +136,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [clickSounds, setClickSounds] = useState(initial.clickSounds)
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const [saveError, setSaveError] = useState<'api-key-rejected' | 'host-rejected' | 'unknown' | null>(null)
   const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | null>(null)
   const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast'): void => setOpenPanel(current => current === panel ? null : panel)
   const [previewDefaultText] = useState(() => t(PREVIEW_TEXT_KEYS[Math.floor(Math.random() * PREVIEW_TEXT_KEYS.length)]))
@@ -138,7 +158,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -147,7 +167,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const fieldOverridden = (field: SettingField): boolean => {
     const change = changes[field]
     if (change?.kind === 'clear') return false
-    if (change?.kind === 'set') return field === 'apiKey' ? apiKeys.xiaomi.trim().length > 0 : field === 'doubaoApiKey' ? apiKeys.doubao.trim().length > 0 : true
+    if (change?.kind === 'set') return isApiKeyField(field) ? apiKeys[API_KEY_STATE[field]].trim().length > 0 : true
     return hasOverride(field)
   }
   const fieldDirty = (field: EditableSettingField): boolean => {
@@ -156,7 +176,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (change.kind === 'clear') return hasOverride(field)
     return field === 'announcementSources' ? JSON.stringify(draft[field]) !== JSON.stringify(acceptedValue(field)) : !Object.is(draft[field], acceptedValue(field))
   }
-  const apiKeyDirty = (['apiKey', 'doubaoApiKey'] as const).some(field => changes[field]?.kind === 'set' && apiKeys[field === 'apiKey' ? 'xiaomi' : 'doubao'].trim().length > 0)
+  const apiKeyDirty = (Object.keys(API_KEY_STATE) as ApiKeyField[]).some(field => changes[field]?.kind === 'set' && apiKeys[API_KEY_STATE[field]].trim().length > 0)
   const dirty = EDITABLE_SETTING_FIELDS.some(fieldDirty) || apiKeyDirty
   const validationError = validateSettingsDraft(draft)
   const apiKeyViewState = resolveApiKeyViewState(apiKey, isSupportedTtsApiKey(apiKey, provider), apiKeyStatus, changes[apiKeyField]?.kind)
@@ -183,6 +203,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setDoubaoVoice(next.doubaoVoice)
     setDoubaoClonedVoice(next.doubaoClonedVoice)
     setDoubaoInstruction(next.doubaoInstruction)
+    setBreezeVoice(next.breezeVoice)
+    setBreezeInstruction(next.breezeInstruction)
     setInstruction(next.instruction)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
@@ -228,6 +250,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const markChange = (field: SettingField): void => {
     setChanges((current) => ({ ...current, [field]: { kind: 'set' } }))
     setState('idle')
+    setSaveError(null)
   }
 
   const resetField = (field: EditableSettingField): void => {
@@ -239,6 +262,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'doubaoVoice') setDoubaoVoice(base.doubaoVoice)
     if (field === 'doubaoClonedVoice') setDoubaoClonedVoice(base.doubaoClonedVoice)
     if (field === 'doubaoInstruction') setDoubaoInstruction(base.doubaoInstruction)
+    if (field === 'breezeVoice') setBreezeVoice(base.breezeVoice)
+    if (field === 'breezeInstruction') setBreezeInstruction(base.breezeInstruction)
     if (field === 'instruction') setInstruction(base.instruction)
     if (field === 'announcementSources') setAnnouncementSources(base.announcementSources)
     if (field === 'qqbotEnabled') setQqbotEnabled(base.qqbotEnabled)
@@ -267,6 +292,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setDoubaoVoice(next.doubaoVoice)
     setDoubaoClonedVoice(next.doubaoClonedVoice)
     setDoubaoInstruction(next.doubaoInstruction)
+    setBreezeVoice(next.breezeVoice)
+    setBreezeInstruction(next.breezeInstruction)
     setInstruction(next.instruction)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
@@ -286,7 +313,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setSoundPack(next.soundPack)
     setTaskSounds(next.taskSounds)
     setClickSounds(next.clickSounds)
-    setApiKeys({ xiaomi: '', doubao: '' })
+    setApiKeys({ xiaomi: '', doubao: '', breeze: '' })
     previewPlayer.stop()
     setChanges({})
     setState('idle')
@@ -296,13 +323,16 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (!writable || pluginChanges.getSnapshot()) return
     setOpenPanel(null)
     setState('saving')
+    setSaveError(null)
     try {
       await saveSettingsDraft(scope, draft, changes, apiKeys)
-      if (changes.apiKey !== undefined || changes.doubaoApiKey !== undefined) invalidateApiKeyStatus()
-      setApiKeys({ xiaomi: '', doubao: '' })
+      if (changes.apiKey !== undefined || changes.doubaoApiKey !== undefined || changes.breezeApiKey !== undefined) invalidateApiKeyStatus()
+      setApiKeys({ xiaomi: '', doubao: '', breeze: '' })
       setChanges({})
       setState('saved')
-    } catch {
+    } catch (error) {
+      const code = error instanceof SaveSettingsError ? error.code : null
+      setSaveError(code === 'api-key-rejected' ? 'api-key-rejected' : code === 'host-rejected' ? 'host-rejected' : 'unknown')
       setState('failed')
     }
   }
@@ -317,12 +347,12 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       return
     }
     if (validationError !== null || changes[apiKeyField] !== undefined) {
-      setPreviewView({ status: 'error', source: provider === 'doubao' ? 'doubao' : 'mimo', error: validationError !== null ? 'voice-required' : 'save-key-first' })
+      setPreviewView({ status: 'error', source: provider === 'doubao' ? 'doubao' : provider === 'breeze' ? 'breeze' : 'mimo', error: validationError !== null ? 'voice-required' : 'save-key-first' })
       return
     }
     beforePreview?.()
     void previewPlayer.play(text, {
-      provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, instruction,
+      provider, doubaoModel, doubaoVoice, doubaoClonedVoice, breezeVoice, breezeInstruction, instruction,
       model,
       localSpeechMode,
       localVoiceURI,
@@ -444,6 +474,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           doubaoModel={doubaoModel}
           doubaoVoice={doubaoVoice}
           doubaoClonedVoice={doubaoClonedVoice}
+          breezeVoice={breezeVoice}
+          breezeInstruction={breezeInstruction}
           speechInstruction={provider === 'doubao' ? doubaoInstruction : instruction}
           onSpeechInstructionChange={next => {
             previewPlayer.stop()
@@ -453,6 +485,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onDoubaoModelChange={next => { previewPlayer.stop(); setDoubaoModel(next); markChange('doubaoModel') }}
           onDoubaoVoiceChange={next => { previewPlayer.stop(); setDoubaoVoice(next); markChange('doubaoVoice') }}
           onDoubaoClonedVoiceChange={next => { previewPlayer.stop(); setDoubaoClonedVoice(next); markChange('doubaoClonedVoice') }}
+          onBreezeVoiceChange={(next: string) => { previewPlayer.stop(); setBreezeVoice(next); markChange('breezeVoice') }}
+          onBreezeInstructionChange={(next: string) => { previewPlayer.stop(); setBreezeInstruction(next); markChange('breezeInstruction') }}
           open={openPanel === 'mixer'}
           minimal={minimalMode}
           writable={writable}
@@ -510,6 +544,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           source={previewView.source}
           error={previewView.error}
           text={previewText}
+          breezeAudioTags={provider === 'breeze'}
           onToggle={toggleSettingsPreview}
           onTextChange={setPreviewText}
           sources={announcementSources}
@@ -543,7 +578,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
             </div>
             {!snapshot.writable ? <span>{t('settings.readOnly')}</span> : null}
             {validationError !== null ? <span role="alert" className="xmimo-tts-failed">{t('settings.doubaoVoiceRequired')}</span> : null}
-            {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t('settings.failed')}</span> : null}
+            {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t(saveError === 'api-key-rejected' ? 'settings.apiKeyUnsupported' : saveError === 'host-rejected' ? 'settings.saveRejected' : 'settings.failed')}</span> : null}
             <div className="xmimo-tts-card-action-buttons">
               {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
               <Button type="button" variant="outline" size="sm" className="xmimo-tts-discard" disabled={!writable || !dirty || state === 'saving'} onClick={discard}>

@@ -6,7 +6,7 @@
  * unit tests, so it only depends on shared preset data and the locale key type.
  */
 
-import { DOUBAO_VOICE_PRESETS, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, ttsSelection } from '../../shared.js'
+import { BREEZE_VOICE_PRESETS, DOUBAO_VOICE_PRESETS, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, ttsSelection } from '../../shared.js'
 import type { ResolvedTtsSettings, TtsReadScope } from '../../shared.js'
 import type { LocaleKey } from '../localization.js'
 import type { ApiKeyStatus } from './api-key-state.js'
@@ -21,7 +21,7 @@ export function voiceReadingWarningKey(settings: ResolvedTtsSettings, apiKeyStat
   return null
 }
 
-export type VoiceReadingField = 'voice' | 'voiceDesignPrompt' | 'doubaoVoice' | 'doubaoClonedVoice'
+export type VoiceReadingField = 'voice' | 'voiceDesignPrompt' | 'doubaoVoice' | 'doubaoClonedVoice' | 'breezeVoice'
 
 export interface VoiceReadingChoice {
   value: string
@@ -56,6 +56,12 @@ export function buildVoiceReadingVoiceSource(
   settings: ResolvedTtsSettings,
   clonedVoiceHistory: readonly string[] = [],
 ): VoiceReadingVoiceSource {
+  if (settings.provider === 'breeze') return {
+    field: 'breezeVoice',
+    value: settings.breezeVoice,
+    choices: BREEZE_VOICE_PRESETS.map(voice => ({ value: voice.value, label: voice.name })),
+    hintKey: 'settings.voiceReadingHintBreeze',
+  }
   if (settings.provider === 'doubao') {
     if (settings.doubaoModel === DOUBAO_CLONED_MODEL) {
       return {

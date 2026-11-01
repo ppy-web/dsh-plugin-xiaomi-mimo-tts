@@ -19,7 +19,8 @@ for (const provider of TTS_PROVIDERS) test(`provider selector reflects ${provide
     assert.ok(input)
     assert.match(input, /type="radio"/)
     assert.equal(input.includes('checked=""'), value === provider)
-    assert.ok(html.includes(TTS_PROVIDER_LOGO_ASSET_ROUTES[value]))
+    if (value === 'breeze') assert.match(html, />B<\/span>/)
+    else assert.ok(html.includes(TTS_PROVIDER_LOGO_ASSET_ROUTES[value]))
   }
   const groups = inputs.map(input => /name="([^"]+)"/.exec(input)?.[1])
   assert.ok(groups[0])

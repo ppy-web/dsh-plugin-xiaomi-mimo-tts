@@ -108,6 +108,37 @@ export function prepareTtsText(value: string): string {
   return text.replace(/\s+/g, ' ').trim()
 }
 
+const BREEZE_AUDIO_TAGS = new Set([
+  '[笑]', '[轻笑]', '[咯咯笑]', '[哭声]', '[抽泣]', '[呜咽]', '[呻吟]', '[哀号]',
+  '[叹气]', '[惊呼]', '[吸气]', '[呼气]', '[喘息]', '[耳语]', '[喊叫]', '[惨叫]',
+  '[唱歌]', '[哼歌]', '[结巴]', '[停顿]', '[清嗓]', '[咳嗽]', '[吸鼻子]', '[咂嘴]',
+  '[啧嘴]', '[打哈欠]', '[打喷嚏]', '[打嗝]', '[打饱嗝]', '[吞咽]', '[干呕]',
+  '[闷哼]', '[冷笑]', '[哼鼻子]', '(laughs)', '(chuckles)', '(giggles)', '(cries)',
+  '(sobs)', '(whimpers)', '(groans)', '(moans)', '(sighs)', '(gasps)', '(inhales)',
+  '(exhales)', '(breathes heavily)', '(whispers)', '(shouts)', '(screams)', '(sings)',
+  '(hums)', '(stutters)', '(pauses)', '(clears throat)', '(coughs)', '(sniffles)',
+  '(lip smacks)', '(clicks tongue)', '(yawns)', '(sneezes)', '(hiccups)', '(burps)',
+  '(gulps)', '(gags)', '(grunts)', '(scoffs)', '(snorts)',
+])
+
+/** Prepare Breeze text while preserving only the documented audio-tag vocabulary. */
+export function prepareBreezeTtsText(value: string): string {
+  const tags: string[] = []
+  // User text must never forge the private markers used to protect tags.
+  const protectedText = value.replace(/[\uE000-\uE002]/gu, ' ').replace(/\[[^\]\r\n]+\]|\([^()\r\n]+\)/gu, tag => {
+    if (!BREEZE_AUDIO_TAGS.has(tag)) return tag
+    const token = `${tags.length}`
+    tags.push(tag)
+    return token
+  })
+  return prepareTtsText(protectedText).replace(/(\d+)/gu, (_match, index: string) => tags[Number(index)] ?? '')
+}
+
+/** Remove documented Breeze audio tags for surfaces that cannot synthesize them, such as browser speech. */
+export function stripBreezeAudioTags(value: string): string {
+  return value.replace(/\[[^\]\r\n]+\]|\([^()\r\n]+\)/gu, tag => BREEZE_AUDIO_TAGS.has(tag) ? ' ' : tag)
+}
+
 export interface TtsSentenceSplit {
   sentences: string[]
   remainder: string

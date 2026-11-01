@@ -1,9 +1,10 @@
-import { prepareTtsText } from './normalize.js'
+import { prepareBreezeTtsText, prepareTtsText } from './normalize.js'
 import {
   DEFAULT_TTS_SEGMENT_CHARACTERS,
   MAX_TTS_SEGMENT_CHARACTERS,
   MIN_TTS_SEGMENT_CHARACTERS,
   MIN_TTS_STREAM_CHARACTERS,
+  BREEZE_MAX_TEXT_LENGTH,
 } from '../constants.js'
 
 // Re-export for tests
@@ -59,10 +60,8 @@ function groupTtsSentences(pieces: readonly string[], preferred: number, maximum
   return { segments, pending }
 }
 
-/** Group whole sentences into short requests; a single long sentence may exceed the preferred maximum. */
-export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHARACTERS, maximum = MAX_TTS_SEGMENT_CHARACTERS): string[] {
-  const text = prepareTtsText(value)
-  if (text.length === 0) return []
+/** Group prepared text into short semantic requests; a long sentence may exceed the preferred maximum. */
+function segmentsFromPreparedText(text: string, target: number, maximum: number): string[] {
   const preferred = Math.max(MIN_TTS_SEGMENT_CHARACTERS, Math.min(target, maximum))
   const { sentences, remainder } = splitPreparedTtsSentences(text)
   const pieces = remainder.length > 0 ? [...sentences, remainder] : sentences
@@ -73,6 +72,36 @@ export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHA
     else segments.push(pending)
   }
   return segments
+}
+
+/** Group whole sentences into short requests; a single long sentence may exceed the preferred maximum. */
+export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHARACTERS, maximum = MAX_TTS_SEGMENT_CHARACTERS): string[] {
+  const text = prepareTtsText(value)
+  return text.length === 0 ? [] : segmentsFromPreparedText(text, target, maximum)
+}
+
+/** Split Breeze text without deleting or separating documented audio tags for provider-sized requests. */
+export function splitBreezeTtsSegments(value: string, maximum = BREEZE_MAX_TEXT_LENGTH): string[] {
+  const text = prepareBreezeTtsText(value)
+  if (text.length === 0) return []
+  const tokens = text.match(/\[[^\]\r\n]+\]|\([^()\r\n]+\)|./gu) ?? []
+  const segments: string[] = []
+  let current = ''
+  for (const token of tokens) {
+    if (current && current.length + token.length > maximum) {
+      segments.push(current)
+      current = ''
+    }
+    current += token
+  }
+  if (current.trim()) segments.push(current)
+  return segments
+}
+
+/** Split Breeze text at semantic sentence boundaries while keeping its audio tags attached to the text. */
+export function splitBreezeTtsSentences(value: string, target = DEFAULT_TTS_SEGMENT_CHARACTERS, maximum = MAX_TTS_SEGMENT_CHARACTERS): string[] {
+  const text = prepareBreezeTtsText(value)
+  return text.length === 0 ? [] : segmentsFromPreparedText(text, target, maximum)
 }
 
 /** Return only the first semantic segment for low-latency VoiceDesign playback. */

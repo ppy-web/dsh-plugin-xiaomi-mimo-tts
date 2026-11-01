@@ -22,11 +22,11 @@ test('key status selects each provider without exposing saved secrets', () => {
       registerUpgrade() { return () => {} },
     },
   }
-  const values = resolveTtsSettings({ apiKey: 'sk-private-xiaomi', doubaoApiKey: 'private-doubao', provider: 'doubao' })
+  const values = resolveTtsSettings({ apiKey: 'sk-private-xiaomi', doubaoApiKey: 'private-doubao', breezeApiKey: 'private-breeze', provider: 'doubao' })
   apply(ctx, Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { get: () => value }])))
   try {
     const handler = routes.get('/plugins/xiaomi-mimo-tts/api-key-status')
-    for (const provider of ['xiaomi', 'doubao', undefined, 'invalid']) {
+    for (const provider of ['xiaomi', 'doubao', 'breeze', undefined, 'invalid']) {
       const response = { statusCode: 0, setHeader() {}, end(value) { this.body = JSON.parse(value) } }
       handler({ method: 'GET', url: `/plugins/xiaomi-mimo-tts/api-key-status${provider ? `?provider=${provider}` : ''}` }, response)
       assert.equal(response.statusCode, provider === 'invalid' ? 400 : 200)

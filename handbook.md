@@ -12,8 +12,10 @@
 
 - **小米**：内置音色 `mimo-v2.5-tts`；音色设计 `mimo-v2.5-tts-voicedesign` 支持预设或描述。
 - **豆包**：标准合成 `seed-tts-2.0`；声音复刻 `seed-icl-2.0` 需先[创建音色](https://console.volcengine.com/speech/new/experience/clone?projectName=default)并填写 ID。需开通对应资源，Agent Plan 使用专属 Key，Coding Plan 不含语音模型。
+- **Breeze**：使用 Breeze Developer API 的 `breeze-tts-2`，填写 `brz_` API Key 和 `voc_` Voice ID；支持预置音色、自定义 Voice ID、语音指令和 0.5–2× 语速。Breeze 单次文本按 1000 字分段，API Key 在 [Breeze Developer](https://breezeblue.ai/app/developer/api-keys) 创建。Breeze 不在生成过程中增量朗读，回复完成后按朗读范围播放，声音标签会随正文保留。
 - **服务商**：各自保留密钥、模型和音色；豆包按 Key 自动选择标准或 Agent Plan 线路。
 - **语音指令**：小米与豆包标准合成分别提供情绪、风格和方言预设，也可自行输入；两家的指令独立保存，切换服务商不会覆盖。本地语音和豆包复刻不应用指令。
+- **Breeze 声音标签**：在 Breeze 的「播报台」展开「声音标签」，按中文或英文选择标签；点击后会插入试听文本光标处，例如 `你好，[轻笑]今天过得怎么样？`。标签属于正文，不是语音指令；中文使用方括号，英语使用圆括号。官方完整 51 语言标签集属于 multilingual 模型，本插件固定使用 `breeze-tts-2`，不保证其它语言标签可用。
 - **本地语音**：可选云端优先、本地优先或关闭；云端已开始播放后失败不会自动兜底或重播。
 - **朗读范围**：智能模式自动读前两个语义段、手动读全文；全文模式始终读全文；首段模式只读首个语义段。
 - **连接**：豆包持续文本输入需 Host 支持 WebSocket upgrade，反向代理需转发 Upgrade。

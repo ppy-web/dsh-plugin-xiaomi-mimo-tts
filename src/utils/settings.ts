@@ -26,7 +26,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     ...resolved,
     qqbotEnabled: resolved.qqbotEnabled === true,
     announcementSources: ANNOUNCEMENT_SOURCES.filter(source => (Array.isArray(value?.announcementSources) ? value.announcementSources : DEFAULT_TTS_SETTINGS.announcementSources).includes(source)),
-    provider: resolved.provider === 'doubao' ? 'doubao' : 'xiaomi',
+    provider: resolved.provider === 'doubao' || resolved.provider === 'breeze' ? resolved.provider : 'xiaomi',
     instruction: typeof resolved.instruction === 'string' ? resolved.instruction : DEFAULT_TTS_SETTINGS.instruction,
     doubaoInstruction: typeof resolved.doubaoInstruction === 'string' ? resolved.doubaoInstruction : '',
     doubaoModel: DOUBAO_TTS_MODELS.includes(resolved.doubaoModel) ? resolved.doubaoModel : 'seed-tts-2.0',

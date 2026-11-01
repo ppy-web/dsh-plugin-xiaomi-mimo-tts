@@ -1,6 +1,7 @@
 const STORAGE_KEYS = {
   standard: 'dsh-xiaomi-mimo-tts:standard-voice-history',
   cloned: 'dsh-xiaomi-mimo-tts:cloned-voice-history',
+  breeze: 'dsh-xiaomi-mimo-tts:breeze-voice-history',
 } as const
 const HISTORY_LIMIT = 10
 export type VoiceIdHistoryKind = keyof typeof STORAGE_KEYS
