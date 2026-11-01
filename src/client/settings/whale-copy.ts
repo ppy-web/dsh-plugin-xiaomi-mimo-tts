@@ -20,6 +20,10 @@ export const whaleZh = {
   'qq.duration': '每段语音时长上限（秒）',
   'qq.limitsHint': '0 表示不限。超出自动语音字数上限时保留文字；显式语音请求仍可用。',
   'qq.ruleHint': '仅响应已核验的 QQ 会话；不会向 QQ 转发 DSH 对话，也不会在空闲时主动发送。',
+  'qq.memory': 'QQ 记忆回显与修改', 'qq.memoryHint': '显示 QQBot 已记录的私聊和群记忆。修改或删除会立即写入对应对象，群记忆对群内成员公开。',
+  'qq.memoryLoading': '正在读取 QQ 记忆…', 'qq.memoryUnavailable': 'QQBot 未运行或暂无可读取的会话记忆。', 'qq.memoryEmpty': '暂无已保存的 QQ 记忆。', 'qq.memorySaved': 'QQ 记忆已更新。', 'qq.memoryError': 'QQ 记忆更新失败，请重试。',
+  'qq.group': '群', 'qq.private': '私聊', 'qq.pauseMemory': '暂停保存', 'qq.resumeMemory': '恢复保存', 'qq.clearMemory': '清空', 'qq.editMemory': '保存修改', 'qq.deleteMemory': '删除',
+  'qq.memoryKind.preference': '偏好', 'qq.memoryKind.requirement': '要求', 'qq.memoryKind.topic': '话题',
   'qq.unavailable': '请先启用本插件的语音服务。',
   'qq.error': '字数须为 0–12000 的整数，时长须为 0–6000 秒的整数。',
 }
@@ -45,6 +49,10 @@ export const whaleEn: Record<keyof typeof whaleZh, string> = {
   'qq.duration': 'Maximum audio segment duration (seconds)',
   'qq.limitsHint': '0 means unlimited. Replies above the character limit remain text; explicit voice requests remain available.',
   'qq.ruleHint': 'Only verified QQ conversations can deliver to QQ. DSH chats are never forwarded, and idle chats never trigger messages.',
+  'qq.memory': 'QQ memory review and editing', 'qq.memoryHint': 'Review saved private-chat and group memory from QQBot. Edits and deletions are written to that object immediately; group memory is visible to the group.',
+  'qq.memoryLoading': 'Loading QQ memory…', 'qq.memoryUnavailable': 'QQBot is not running or no readable session memory is available.', 'qq.memoryEmpty': 'No saved QQ memory.', 'qq.memorySaved': 'QQ memory updated.', 'qq.memoryError': 'Could not update QQ memory. Try again.',
+  'qq.group': 'Group', 'qq.private': 'Private', 'qq.pauseMemory': 'Pause saving', 'qq.resumeMemory': 'Resume saving', 'qq.clearMemory': 'Clear', 'qq.editMemory': 'Save edit', 'qq.deleteMemory': 'Delete',
+  'qq.memoryKind.preference': 'Preference', 'qq.memoryKind.requirement': 'Requirement', 'qq.memoryKind.topic': 'Topic',
   'qq.unavailable': 'Enable this plugin’s speech service first.',
   'qq.error': 'Use integer limits of 0–12000 characters and 0–6000 seconds.',
 }

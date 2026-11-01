@@ -44,10 +44,18 @@
 .xmimo-qq-field :is(input, textarea):focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
 .xmimo-qq-field :is(input, textarea):disabled { opacity: .65; cursor: not-allowed; }
 .xmimo-qq-field :is(input, textarea)::selection { background: var(--xmimo-ui-brand); color: var(--dsw-alias-label-primary-foreground, #fff); }
+.xmimo-qq-memory-list { display: flex; flex-direction: column; gap: 12px; }
+.xmimo-qq-memory-peer { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--xmimo-ui-border-soft); border-radius: var(--xmimo-ui-control-radius); }
+.xmimo-qq-memory-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.xmimo-qq-memory-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.xmimo-qq-memory-row input { min-width: 0; }
+.xmimo-qq-memory-kind { color: var(--xmimo-ui-text-muted); font-size: 12px; }
 .xmimo-qq-footer { position: sticky; bottom: 0; padding: 12px 0; border-top: 1px solid var(--xmimo-ui-border-soft); }
 .xmimo-qq-footer .xmimo-tts-card-action-buttons { grid-column: 2; }
 .xmimo-qq-footer [role="status"] { text-align: start; }
 
 @container (max-width: 480px) {
   .xmimo-qq-grid { grid-template-columns: minmax(0, 1fr); }
+  .xmimo-qq-memory-row { grid-template-columns: auto minmax(0, 1fr); }
+  .xmimo-qq-memory-row button { width: 100%; }
 }

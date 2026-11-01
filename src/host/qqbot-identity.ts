@@ -16,6 +16,21 @@ export type QqConversation = { kind: 'qqbot'; identity: QqIdentity } | { kind: '
 /** QQbot 0.5.x compatibility bridge. This file is read-only and contains no credentials. */
 export class QqIdentityReader {
   constructor(readonly path = join(homedir(), '.dsh-qqbot', 'model-prefs.json')) {}
+  async list(): Promise<QqIdentity[]> {
+    try {
+      const data = await readFile(this.path, 'utf8')
+      if (Buffer.byteLength(data) > 8 * 1024 * 1024) return []
+      const value = JSON.parse(data) as { sessionIds?: Record<string, unknown> }
+      if (!value.sessionIds || typeof value.sessionIds !== 'object' || Array.isArray(value.sessionIds)) return []
+      const result = new Map<string, QqIdentity>()
+      for (const [key, sessionId] of Object.entries(value.sessionIds)) {
+        if (typeof sessionId !== 'string' || !sessionId) continue
+        const identity = parseQqIdentity(key)
+        if (identity) result.set(identity.key, identity)
+      }
+      return [...result.values()]
+    } catch { return [] }
+  }
   async inspect(sessionId: string): Promise<QqConversation> {
     try {
       const data = await readFile(this.path, 'utf8')

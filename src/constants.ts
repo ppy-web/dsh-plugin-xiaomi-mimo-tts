@@ -17,6 +17,9 @@ export const DOUBAO_AGENT_PLAN_TTS_ENDPOINT = 'wss://openspeech.bytedance.com/ap
 /** Same-origin route that reports API key configuration status without exposing the key. */
 export const TTS_API_KEY_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-status'
 
+/** Same-origin route used by the QQ relay settings to inspect and edit QQ memory. */
+export const TTS_QQ_MEMORY_ROUTE = '/plugins/xiaomi-mimo-tts/qq-memory'
+
 /** Same-origin route used by the Web client to load the MiMo brand logo. */
 export const TTS_MIMO_LOGO_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/mimo.svg'
 
