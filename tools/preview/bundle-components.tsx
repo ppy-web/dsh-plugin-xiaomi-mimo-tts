@@ -17,7 +17,7 @@ const COPY = {
     agentTitle: '鲸鱼娘 Agent 预设',
     agentDescription: '白饭续航、机灵嘴硬，会一本正经接梗，也会温柔陪伴和可靠办事。',
     qqbotTitle: 'QQ Bot 传声',
-    qqbotDescription: '提供 QQ 传声与语音转换，复用「鲸鱼娘」统一人设。启用两个组件后，在播报台保存 QQ Bot 来源开关，并在 QQ 中发送 /preset whale-girl、/new 完成接入。',
+    qqbotDescription: '向 QQ 发送转换后的语音；启用「鲸鱼娘」预设。播报台打开 QQ Bot，在 QQ 中发送 /preset whale-girl 接入。',
   },
   en: {
     heading: 'Included components',

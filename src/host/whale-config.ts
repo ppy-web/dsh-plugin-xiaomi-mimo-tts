@@ -15,7 +15,7 @@ const Persona = z.object({
   userAddress: z.string().max(40).default(DEFAULT_WHALE_PERSONA.userAddress),
   relationship: z.string().max(1000).default(DEFAULT_WHALE_PERSONA.relationship),
   personality: z.string().max(1200).default(''),
-  replyStyle: z.string().max(1200).default(''),
+  replyStyle: z.string().max(1200).default(DEFAULT_WHALE_PERSONA.replyStyle),
   likes: z.string().max(1000).default(DEFAULT_WHALE_PERSONA.likes),
   boundaries: z.string().max(1200).default(''),
 }).i18n({ zh: messages('zh').persona, en: messages('en').persona })

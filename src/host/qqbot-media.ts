@@ -60,18 +60,24 @@ export function buildQqbotPersona(root = packageRoot(), persona: WhalePersona = 
 export async function sendQqbotFile(ctx: Context, path: string, context: SpeechDeliveryContext): Promise<SpeechDeliveryResult> {
   const { agent, signal } = context
   signal.throwIfAborted()
+  ctx.logger.debug(`dsh-xiaomi-tts: QQ file delivery start agent=${agent.id} file=${path}`)
   if (!ctx.tools.executable('qqbot_send_file', agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending files.', 409)
   const pipeline = new ToolExecutionPipeline(ctx)
   const prepared = await pipeline.prepare({ callId: ToolCallId(randomUUID()), name: 'qqbot_send_file', arguments: { file_path: path }, agent, signal })
   const outcome = prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared
   const result = await pipeline.complete(prepared.exec, outcome)
-  if (result.isError) throw new TtsProviderError('qqbot-send-failed', 'QQ delivery failed. Check QQBot logs before retrying.')
+  if (result.isError) {
+    ctx.logger.warn(`dsh-xiaomi-tts: QQ file delivery failed agent=${agent.id}`)
+    throw new TtsProviderError('qqbot-send-failed', 'QQ delivery failed. Check QQBot logs before retrying.')
+  }
   const value = result.value as { messageId?: unknown; target?: unknown }
-  return {
+  const delivery = {
     adapter: 'qqbot',
     ...(typeof value?.messageId === 'string' ? { messageId: value.messageId } : {}),
     ...(typeof value?.target === 'string' ? { target: value.target } : {}),
   }
+  ctx.logger.debug(`dsh-xiaomi-tts: QQ file delivery sent agent=${agent.id} target=${delivery.target ?? 'unknown'}`)
+  return delivery
 }
 
 /** Only a catalog entry chosen by ID is copied; callers never supply source paths or targets. */

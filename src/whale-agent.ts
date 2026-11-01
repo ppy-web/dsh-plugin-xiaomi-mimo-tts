@@ -10,6 +10,10 @@ export { WhaleConversations } from './host/whale-conversations.js'
 
 export function apply(ctx: Context): void {
   const qqTools = new Set(['speak', 'synthesize_speech', 'qqbot_memory', 'qqbot_send_meme', 'qqbot_send_file'])
+  // These tools resolve the channel asynchronously. The guard can run before
+  // the pre-execute resolver on a first QQ turn, so do not reject them solely
+  // because the weak route cache is still empty.
+  const deferredChannelTools = new Set(['speak', 'synthesize_speech', 'qqbot_send_file'])
   ctx.on('tools/pre-execute', async (exec, next) => {
     if (exec.agent) await ctx.whaleConversations.resolve(exec.agent)
     return next()
@@ -17,7 +21,7 @@ export function apply(ctx: Context): void {
   ctx.tools.guard(exec => {
     if (!exec.agent) return 'A verified conversation is required.'
     const route = ctx.whaleConversations.get(exec.agent)
-    if (route.kind === 'unknown') return 'Conversation channel is unavailable.'
+    if (route.kind === 'unknown' && !deferredChannelTools.has(exec.name)) return 'Conversation channel is unavailable.'
     if (route.kind === 'qqbot' && !qqTools.has(exec.name)) return 'Desktop workspace tools are unavailable in QQ.'
     if (route.kind === 'dsh' && exec.name.startsWith('qqbot_')) return 'QQ delivery tools are unavailable in DSH conversations.'
     return undefined

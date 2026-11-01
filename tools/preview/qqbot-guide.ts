@@ -4,7 +4,7 @@ import type { ManualLocale } from './user-manual.js'
 export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
   zh: {
     title: '让 QQ 里的回复也有声音',
-    intro: '先让机器人正常回复文字，再接通云端语音，最后启用 QQ 鲸鱼娘预设。以下操作在真实 DSH 与手机 QQ 中完成；本预览不连接机器人，也不会发送消息。',
+    intro: '先让机器人正常回复文字，再接通云端语音，最后同时启用鲸鱼娘与 QQ Bot 传声并选择统一鲸鱼娘预设。以下操作在真实 DSH 与手机 QQ 中完成；本预览不连接机器人，也不会发送消息。',
     toc: '本页目录',
     sections: [
       {
@@ -32,7 +32,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         id: 'qqbot-configure', title: '开启传声与选择预设',
         summary: '组件、来源开关、会话预设各管一件事，需要逐项完成。',
         steps: [
-          { title: '开启 QQ Bot 传声组件', detail: '在“设置 → 插件 → 本插件 → 包含的组件”开启“QQ Bot 传声”。这一个组件同时提供 QQ 发送适配和“QQ 鲸鱼娘”预设，无需另开普通“鲸鱼娘 Agent 预设”来代替它。' },
+          { title: '同时开启鲸鱼娘与 QQ Bot 传声组件', detail: '在“设置 → 插件 → 本插件 → 包含的组件”同时开启“鲸鱼娘”和“QQ Bot 传声”。统一鲸鱼娘预设（whale-girl）由“鲸鱼娘”组件注册，DSH 与 QQ 共用；“QQ Bot 传声”只提供 QQ 语音发送和转换规则，两者需同时启用才能使用。' },
           { title: '开启自动发送来源并保存', detail: '打开本插件“播报台 → 插件联动”，打开“QQ Bot”来源开关，再点击底部“保存”。来源默认关闭；希望每轮普通回复都带语音时才打开。浏览器“语音播放”“自动播放”和音效开关不控制 QQ 发送。' },
           { title: '在目标 QQ 私聊或群查看预设', detail: '向机器人单独发送下面的命令，确认列表中出现“鲸鱼娘（whale-girl）”。只查看列表不会切换预设；如果未出现，先检查鲸鱼娘和传声组件是否运行，以及两个插件是否处于同一 profile。', command: '/preset' },
           { title: '按 ID 选择统一鲸鱼娘', detail: '单独发送下面的完整命令，等待机器人确认预设已切换。使用 ID whale-girl，DSH 与 QQ 共用此预设；不需要把中文显示名称填入命令。', command: '/preset whale-girl' },
@@ -46,7 +46,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         summary: '请在 QQ 中实际点击语音消息播放；网页试听成功只验证了合成，没有验证 QQ 交付。',
         steps: [
           { title: '测试自动语音', detail: '来源开启并保存后，在新对话中发送“你好，介绍一下自己”，无需额外要求语音。等本轮成功结束，确认收到文字和可点击播放的语音消息，播放核对内容与已保存音色。文字与语音的到达先后没有严格保证。' },
-          { title: '测试仅按需发送', detail: '关闭 QQ Bot 来源并保存，再发一条普通消息，确认不会自动附带语音。接着发送“请用语音说一句你好”，由模型调用语音工具完成按需发送；前提是传声组件与 QQ 预设仍启用、工具权限允许。' },
+          { title: '测试仅按需发送', detail: '关闭 QQ Bot 来源并保存，再发一条普通消息，确认不会自动附带语音。接着发送“请用语音说一句你好”，由模型调用语音工具完成按需发送；前提是鲸鱼娘与传声组件及 QQ 预设仍启用、工具权限允许。' },
           { title: '恢复你需要的模式', detail: '希望每轮都带语音就重新打开来源并保存；只想偶尔听语音则保持来源关闭。更换云端服务商、模型或音色后也要保存，再用新的 QQ 消息验证。已发出的语音不会随设置改变。' },
         ],
         table: {
@@ -74,7 +74,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         summary: '按文字连接 → 云端合成 → 组件与预设 → QQ 交付的顺序检查，每次只改一处并重新测试。',
         items: [
           { label: '文字和语音都没有', detail: '先回到 QQBot 连接页确认在线，再核对目标私聊／群、群内 @要求和对话模型。连普通文字都收不到时，问题通常还没有进入语音链路。' },
-          { label: '预设缺失或切换后无变化', detail: '确认“QQ Bot 传声”已运行、两个插件在同一实例。看到预设仍不够，需收到切换确认并在同一 QQ 目标执行 /new。不要用普通鲸鱼娘预设替代 QQ 鲸鱼娘。' },
+          { label: '预设缺失或切换后无变化', detail: '确认“鲸鱼娘”与“QQ Bot 传声”均已开启、两个插件在同一实例。看到预设仍不够，需收到切换确认并在同一 QQ 目标执行 /new。统一鲸鱼娘预设由“鲸鱼娘”组件注册，“QQ Bot 传声”只是 QQ 发送适配，缺一不可。' },
           { label: '能回文字，但普通消息没有语音', detail: '先在真实 DSH 关闭本地语音并试听，确认云端可用；再检查 QQ Bot 来源是否打开并保存，以及 QQ 会话是否应用了新预设。来源关闭时普通回复不发语音属于预期，可用明确的语音请求继续定位。' },
           { label: '明确要求语音也失败', detail: '查看本插件的合成错误及 QQBot 的文件发送日志，区分密钥／资源／音色问题与 qqbot_send_file 工具不可用、工具策略拒绝、路径白名单或 QQ 额度问题。适配器使用 QQBot 默认媒体目录，不需要为正常接入关闭路径限制，也不要手动填写 openid。' },
           { label: '长回复只收到一部分', detail: '检查第一条失败分段的供应商错误、文件发送错误和平台额度。后续分段会停止，不会自动补发；先修复具体错误，再明确请求重发需要的内容。' },
@@ -87,7 +87,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
   },
   en: {
     title: 'Give your QQ replies a voice',
-    intro: 'Verify text replies first, then cloud synthesis, then the QQ Whale Girl preset. Perform these steps in real DSH and QQ. This preview does not connect a bot or send messages.',
+    intro: 'Verify text replies first, then cloud synthesis, then enable both Whale Girl and QQ Bot Voice Relay and select the shared Whale Girl preset. Perform these steps in real DSH and QQ. This preview does not connect a bot or send messages.',
     toc: 'On this page',
     sections: [
       {
@@ -111,9 +111,9 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
       {
         id: 'qqbot-configure', title: 'Enable delivery and select a preset', summary: 'The component, source switch, and conversation preset have separate roles.',
         steps: [
-          { title: 'Enable QQ Bot Voice Relay', detail: 'Open Settings → Plugins → this plugin → Included components. Enable QQ Bot Voice Relay (QQ Bot 传声). It includes both delivery and the QQ 鲸鱼娘 preset. The regular Whale Girl Agent component is not a substitute.' },
+          { title: 'Enable both Whale Girl and QQ Bot Voice Relay', detail: 'Open Settings → Plugins → this plugin → Included components. Turn on both Whale Girl (鲸鱼娘) and QQ Bot Voice Relay (QQ Bot 传声). Whale Girl registers the single shared whale-girl preset for DSH and QQ; QQ Bot Voice Relay only handles QQ delivery and conversion. Both must be enabled to route voice to QQ.' },
           { title: 'Enable and save automatic delivery', detail: 'In Broadcast Desk → Plugin integrations, turn QQ Bot on and click Save. It starts off. Browser speech, autoplay, and sound effect switches do not control QQ delivery.' },
-          { title: 'List presets in the target QQ chat', detail: 'Send this command separately and find Whale Girl (whale-girl). Listing presets alone does not select one. If missing, check the relay component and ensure both plugins share one profile.', command: '/preset' },
+          { title: 'List presets in the target QQ chat', detail: 'Send this command separately and find Whale Girl (whale-girl). Listing presets alone does not select one. If missing, check that both Whale Girl and QQ Bot Voice Relay are enabled and the plugins share one profile.', command: '/preset' },
           { title: 'Select by preset ID', detail: 'Send the full command and wait for confirmation. Use whale-girl rather than the Chinese display name. DSH and QQ share this single preset.', command: '/preset whale-girl' },
           { title: 'Apply it to a new conversation', detail: 'Send /new separately in that same private chat or group. This clears the old conversation context and starts with the selected preset. The existing conversation keeps its old preset. Repeat preset selection and /new for every target group or private chat.', command: '/new' },
         ], items: [],
@@ -145,7 +145,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         id: 'qqbot-troubleshooting', title: 'Locate the failure', summary: 'Check text connectivity, cloud synthesis, component and preset, then QQ delivery. Change one thing at a time.',
         items: [
           { label: 'No text or voice', detail: 'Check QQBot online status, the target chat, group mention requirements, and the conversation model. If plain text does not work, fix the bot connection first.' },
-          { label: 'Missing or ineffective preset', detail: 'Check Voice Relay and the shared profile. Obtain preset selection confirmation, then send /new in the same QQ target. Do not substitute the regular Whale Girl preset.' },
+          { label: 'Missing or ineffective preset', detail: 'Check that both Whale Girl and QQ Bot Voice Relay are enabled and the plugins share one profile. Preset confirmation is not enough: confirm the switch and send /new in the same QQ target. Whale Girl registers the shared preset; QQ Bot Voice Relay only provides QQ delivery.' },
           { label: 'Text without automatic voice', detail: 'Verify real cloud synthesis with local fallback disabled. Then check the saved QQ Bot source and that the new conversation uses the QQ preset. With the source off, ordinary text-only replies are expected; use an explicit voice request to investigate further.' },
           { label: 'Requested voice also fails', detail: 'Inspect synthesis errors and QQBot file delivery logs. Separate key/resource/voice errors from unavailable qqbot_send_file, tool policy rejection, path restrictions, or QQ quota. Normal integration uses QQBot’s default media directory; there is no need to disable path restrictions or supply an openid manually.' },
           { label: 'Only part of a long reply arrives', detail: 'Find the first failed segment and inspect provider, file delivery, and quota errors. Later segments stop rather than retry. Resolve the cause before explicitly requesting the missing content.' },

@@ -66,7 +66,13 @@ export function apply(ctx: Context, config: Config): void {
     if (!adaptive) return sessionFor(config.delivery)
     const route = await ctx.get('whaleConversations')?.resolve(agent)
     if (!route || route.kind === 'unknown') throw new TtsProviderError('speech-channel-unavailable')
-    return sessionFor(route.kind === 'qqbot' ? 'qqbot' : 'file')
+    // A QQ /new can rotate the persisted session id before model-prefs.json is
+    // flushed. The QQ sender remains scoped to the real QQ agent, so prefer it
+    // when that capability is available even if the mapping briefly says DSH.
+    const qqSender = ctx.tools.executable('qqbot_send_file', agent)
+    const delivery = route.kind === 'qqbot' || qqSender ? 'qqbot' : 'file'
+    ctx.logger.debug(`dsh-xiaomi-tts: speech route agent=${agent.id} identity=${route.kind} sender=${qqSender ? 'yes' : 'no'} delivery=${delivery}`)
+    return sessionFor(delivery)
   }
   ctx.effect(() => async () => {
     closed = true

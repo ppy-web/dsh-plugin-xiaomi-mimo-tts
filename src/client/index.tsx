@@ -80,6 +80,7 @@ function registerSlotContribution(
 
 /** Register the Web action, settings card, Voice reading section, locale dictionaries, and styles. */
 export function apply(ctx: Context): void {
+  console.info('[dsh-xiaomi-tts] client loaded')
   const locale = ctx.locale as unknown as {
     bind(namespace: string): Translate
     register(namespace: string, dictionaries: Record<string, typeof en>): () => void

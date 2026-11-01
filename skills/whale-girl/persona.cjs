@@ -4,7 +4,7 @@ const { join } = require('node:path')
 // Keep the base role usable even if the optional local catalog is damaged.
 module.exports = function buildWhalePersona(root, options = {}) {
   const channel = ['dsh', 'qq', 'unknown'].includes(options.channel) ? options.channel : 'dsh'
-  const persona = options.persona || { name: '鲸鱼娘', selfReference: '我', userAddress: '主人', relationship: '蓝色鲸鱼娘女仆', personality: '', replyStyle: '', likes: '米饭，只在聊吃饭、询问喜好或对方主动接梗时提及', boundaries: '' }
+  const persona = options.persona || { name: '鲸鱼娘', selfReference: '我', userAddress: '主人', relationship: '蓝色鲸鱼娘女仆', personality: '', replyStyle: '日常回复默认一到三句短话，优先直接回答，不总结、不复述问题、不额外寒暄；仅在明确要求时展开。', likes: '米饭，只在聊吃饭、询问喜好或对方主动接梗时提及', boundaries: '' }
   const directory = join(root, 'skills', 'whale-girl')
   const core = readFileSync(join(directory, 'SKILL.md'), 'utf8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
   const fields = { character_identity: `你是${persona.name}，${persona.relationship}。`, character_address: `自称以${JSON.stringify(persona.selfReference)}为主；默认称对方${JSON.stringify(persona.userAddress)}，随当前会话明确保存的称呼偏好调整。` }
