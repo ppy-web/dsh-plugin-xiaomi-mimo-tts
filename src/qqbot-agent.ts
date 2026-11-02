@@ -37,7 +37,7 @@ function registerQqbotFeatures(ctx: Context): void {
   ctx.systemPrompt.context({
     name: 'xiaomi:qqbot-speech', order: 310, required: true, interpolate: false,
     text: () => JSON.stringify({ automaticSpeech: ctx.get('speechSynthesis')?.isAutomaticDeliveryEnabled?.('qqbot') === true, delivery: 'qqbot', voice: 'saved-host-settings' })
-      + '\nautomaticSpeech 为 true 时，普通回复直接输出最终正文，宿主在本轮成功结束后自动发送语音，不要另调 speak。为 false 时普通聊天回复文字。用户明确要求语音时调用 speak，只传正文，沿用已保存音色；成功后结束本轮，不再重复发对应文字，除非用户要求语音和文字都要。失败时使用文字回复，不自行切换服务商或音色。',
+      + '\n先按表情包规则判断本轮是否适合调用 qqbot_send_meme；允许按语境主动发图，不必等用户要求。automaticSpeech 只控制正文朗读，不代表用户要求“只要语音”，也不关闭表情包。为 true 时，完成适合的表情发送后输出最终正文，宿主在本轮成功结束后自动发送语音，不要另调 speak。为 false 时普通聊天回复文字。用户明确要求语音时调用 speak，只传正文，沿用已保存音色；成功后结束本轮，不再重复发对应文字，除非用户要求语音和文字都要。失败时使用文字回复，不自行切换服务商或音色。',
   })
   ctx.on('agent/pre-step', async ({ agent }, next) => {
     try { await ctx.qqbotCompanion.prepare(agent) } catch { /* Memory reports its diagnostic; voice and text remain available. */ }
@@ -86,7 +86,7 @@ export function registerQqbotMemeTool(ctx: Context, options: { directory?: strin
   })
   ctx.tools.register({
     name: 'qqbot_send_meme',
-    description: 'Send one bundled Whale Girl reaction image as a real file to the current QQ conversation. Select a meme ID from the persona catalog. Use occasionally when it fits the conversation or on request. A successful call already sent the image; do not send it again.',
+    description: 'Send one bundled Whale Girl reaction image as a real file to the current QQ conversation. Select a meme ID from the persona catalog. Proactively use an appropriate image in casual chat before the final reply; no explicit image request is needed. Use occasionally, not every turn, and respect requests for no images or voice only. Automatic speech does not disable images. A successful call already sent the image; do not send it again.',
     parameters: { type: 'object', properties: { meme: { type: 'string', enum: memes.map(meme => meme.id) } }, required: ['meme'], additionalProperties: false },
     output: {
       schema: { type: 'object', properties: { adapter: { type: 'string' }, meme: { type: 'string' }, messageId: { type: 'string' }, target: { type: 'string' } }, required: ['adapter', 'meme'], additionalProperties: false },
