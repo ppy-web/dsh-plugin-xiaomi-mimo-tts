@@ -91,7 +91,6 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
     </>}>
     <div className="xmimo-tts-broadcast-body">
       <div className="xmimo-tts-format">
-        {breezeAudioTags ? <BreezeAudioTagPicker disabled={!enabled} onInsert={insertTag} t={t} /> : null}
         <div className="xmimo-tts-preview-input">
           <textarea
             ref={textRef}
@@ -113,6 +112,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
             onClick={onToggle}
           ><PlaybackIcon state={busy ? 'stop' : 'play'} /></Button>
         </div>
+        {breezeAudioTags ? <BreezeAudioTagPicker disabled={!enabled} onInsert={insertTag} t={t} /> : null}
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
       </div>
       <ProviderSettings t={t} writable={settings.writable} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} onProviderEnabledChange={onProviderEnabledChange} />
