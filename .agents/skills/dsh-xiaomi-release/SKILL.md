@@ -1,6 +1,6 @@
 ---
 name: dsh-xiaomi-release
-description: 为本仓库 dsh-xiaomi-tts 准备版本、创建或核对 Git tag、撰写和发布 GitHub Release，遵循历史中文发布格式及 tag 触发的 npm 发布流程。适用于准备发版、预发布和发布失败核对；普通代码修改或仅生成 commit message 不触发。
+description: 为本仓库 dsh-xiaomi-tts 准备版本、创建或核对 Git tag、汇总上个 tag 以来的新功能并更新版本引导、撰写和发布 GitHub Release，遵循历史中文发布格式及 tag 触发的 npm 发布流程。适用于准备发版、预发布和发布失败核对；普通代码修改或仅生成 commit message 不触发。
 ---
 
 # 小米 TTS Release 与 Tag 规则
@@ -13,6 +13,16 @@ description: 为本仓库 dsh-xiaomi-tts 准备版本、创建或核对 Git tag�
 - 用户指定版本时优先采用，并检查 SemVer、是否已占用及发布渠道。未指定时，结合现有 `package.json.version`、未发布的变更和用户意图提出版本；不要机械地在旧 Release 上加一，也不要把开发中版本当作已发布版本。
 - 项目历史包含稳定版 `v3.0.8` 和预发布版 `v3.0.4-alpha`。后续递增预发布序号可采用 `-alpha.1`、`-alpha.2`，这是建议，不是已有 tag 必须改名的理由。按变更影响选择 major/minor/patch；历史中 patch 也包含新功能，不能据此推导强制升级规则。
 - 根据目标发布线选择前一个已发布 tag，检查 `git log <previous-tag>..<target-commit>` 和实际 diff，再归纳本次新增、修复、兼容性及安装影响。不要把历史功能重复列为本次新增，也不要仅按提交标题编造行为。
+
+## 版本新功能引导
+
+准备版本时，先从上一个 tag 到当前目标提交的全部提交中提炼新功能，再更新启用弹窗中的「版本新功能」。仅核对已发布版本或恢复失败发布时，不改写既有 tag 对应的源码；只写 Release 草稿时提供引导候选文案，不额外修改产品文件。
+
+- **范围**：使用上节确认的发布线与前一个 tag，目标默认为当前 `HEAD`，用户指定提交时以该提交为准。检查 `git log --reverse --format=fuller <previous-tag>..<target-commit>`、`git diff --stat <previous-tag> <target-commit>` 和相关实际 diff。完整读取范围内提交，不用 `--first-parent`、`--no-merges`、`--grep=feat` 或条数限制代替检查；合并带入的功能也要覆盖。不能按 tag 名字或创建时间直接选一个不属于目标历史的 tag；目标已有发布 tag 时排除该目标 tag，向前选基线。没有可用 tag 时检查目标的全部历史并说明是首次发布。
+- **归纳**：结合提交正文、最终源码和手册，提取用户可感知、当前仍存在的新能力。按功能合并重复提交，剔除已回退或移除的功能，以及上个 tag 已有的能力；不要把提交标题直接复制成文案。工作区未提交内容单独核对，只有明确纳入本次发布且最终进入目标提交的功能才能写入正式引导。
+- **文案**：每项只用一句简短的话介绍一个值得注意的新功能，说明用户现在能做什么；每项前显示一个 🎉。不包含 bug 修复、依赖更新、内部重构、测试、CI 或普通文档维护。优先突出主要功能，不按提交逐条罗列，也不为了固定条数拆分同一功能。若本次没有符合条件的新功能，明确说明，不把修复包装成新增，不沿用上版条目。
+- **落点**：更新 `src/client/settings/activation-guide.tsx` 中的功能列表和 `src/client/localization.ts` 的中英文 `onboarding.feature*` 文案，并同步 `src/client/locales/ja.ts`、`src/client/locales/fr.ts`。新增、替换或删除条目时保持组件与各语言键一致；🎉 由列表组件统一添加，不在译文中重复写入。维护现有实现，不把当前版本的三个示例功能固化为以后每版必填内容。
+- **布局与核验**：保持弹窗最大高度 200px，超出可滚动；沿用 `src/client/style/plugin-surfaces.css`，不要因条目增加放宽高度。检查桌面和窄屏的可读性、滚动及按钮可达性。运行下节发布检查，回报比较基线、目标 SHA 和最终入选的新功能；每项应能追溯到本次提交及实际功能，提交哈希无需展示在弹窗中。GitHub Release 正文仍可按模板包含修复和兼容性说明，不能直接整段复用到新功能引导。
 
 ## Tag 与渠道
 
