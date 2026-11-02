@@ -253,3 +253,13 @@ export async function apply(ctx: Context) {
 [在线预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/)和 `pnpm dev` 提供同一套预览界面。侧栏按语音体验、插件管理、工具与帮助分组，可独立打开插件设置、语音朗读、对话效果、详情、组件、文本过滤和手册；音频历史从插件设置页底部进入二级页面，「启用引导」直接打开弹窗。侧栏各页面支持链接直达和浏览器前进、后退。
 
 顶部可切换语言与深浅主题；侧栏底部提供只读配置模拟和重置。手机端点击顶部侧栏按钮打开导航，预览环境控件收在折叠区。所有配置修改均为本地模拟，不会写入 DSH；预览中的云端试听使用本地演示音频。
+
+## 仓库依赖维护
+
+仓库通过 [Dependency report 工作流](.github/workflows/dependency-report.yml)在每月 1 日北京时间 03:00 检查 npm 直接依赖（运行、开发及可选依赖）和 GitHub Actions，候选版本需发布满 14 天。npm 稳定版不切换到预发布版；已有预发布依赖跟踪同名渠道及稳定版。Actions 的浮动主版本、次版本标签仅提示超出其范围的更新；当前检查器支持版本标签，新增分支或提交 SHA 引用时需要扩展检查器。
+
+检查结果维护在同一条「依赖更新汇总」issue 中，内容未变化时不写入、不追加评论。全部更新完成后自动关闭，有新的变动时复用该 issue；手动关闭后，相同的候选列表不会再次打开。任何依赖查询失败都会使本次工作流失败，保留已有 issue。检查器不修改依赖文件，也不创建升级 PR。
+
+需要立即检查时，可在 GitHub Actions 中手动运行该工作流。安装依赖后，运行 `node tools/scripts/dependency-report.mjs` 可在本地只读预览报告；工作流使用 `--write` 和自带的 `GITHUB_TOKEN` 更新 issue，无需额外密钥。配置合入默认分支后，月度计划和手动入口才会生效。
+
+[Dependabot 配置](.github/dependabot.yml)将普通版本更新 PR 上限设为 0。漏洞告警与安全更新 PR 由仓库设置独立控制；需要保持只提 issue 时，保留 Dependabot Alerts，关闭 Dependabot security updates。
