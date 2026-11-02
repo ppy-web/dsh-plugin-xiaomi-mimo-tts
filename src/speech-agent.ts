@@ -81,14 +81,19 @@ export function apply(ctx: Context, config: Config): void {
     name: 'speak',
     description: 'Read the requested text and deliver audio through this conversation\'s configured speech adapter. Use when asked to answer by voice or read a passage. A successful call already delivered the audio: do not send the file again. When the user explicitly requests an emotion, tone, dialect or delivery style, pass speechInstruction in the same language as the text and keep the saved voice and model. Use speechInstruction instead of bracket tags for providers other than Breeze; supported Breeze audio tags may remain in text.'
       + (sourceControlled
-        ? ' QQ replies use the saved Host provider by default. speechInstruction is allowed for the user\'s requested style and applies only to this call; the saved model, voice and credentials still apply. If synthesis fails before audio delivery, you may retry once with provider set to the other configured provider (xiaomi or doubao), keeping the same speechInstruction. Do not export and resend to bypass speak. Delivery reads all text in order and remains available when automatic speech is off. When automatic speech is on, use speak for an explicitly requested style so the automatic copy is suppressed. After success, end the turn without a text reply, transcript, summary or sent confirmation unless the user explicitly requests both voice and text. If the retry also fails, reply in text and report the failure.'
+        ? ' QQ replies use the saved Host provider by default. speechInstruction is allowed for the user\'s requested style and applies only to this call; the saved model, voice and credentials still apply. If synthesis fails before audio delivery, you may retry once with provider set to the other configured provider (xiaomi or doubao), keeping the same speechInstruction. Do not export and resend to bypass speak. Delivery reads all text in order and remains available when automatic speech is off. When automatic speech is on, use speak for an explicitly requested style so the automatic copy is suppressed. After success, end the turn with no final chat text at all: do not announce delivery, mention the tool result, explain that no transcript was sent, or use a placeholder such as parentheses or an ellipsis. Send the matching text only when the user explicitly requests both voice and text. If the retry also fails, reply in text and report the failure.'
         : ' Use the saved provider and voice unless the user explicitly requests a change. If synthesis fails before audio delivery, you may retry once with the other configured provider; omit model and voice overrides to use that provider\'s saved settings.')
       + BREEZE_AUDIO_TAG_GUIDANCE
       + ' Do not retry a canceled request, denied delivery, partially delivered passage or an uncertain send outcome.',
     parameters: { type: 'object', properties: sourceControlled ? { text: selection.text, provider: selection.provider, speechInstruction: selection.speechInstruction } : selection, required: ['text'], additionalProperties: false },
     output: {
       schema: { type: 'object', properties: { adapter: { type: 'string' }, path: { type: 'string' }, messageId: { type: 'string' }, target: { type: 'string' } }, required: ['adapter'], additionalProperties: false },
-      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+      render: (_args, value) => [{
+        type: 'text',
+        text: JSON.stringify(value) + (sourceControlled
+          ? '\nAudio reply delivered. End this turn now without any final chat text, delivery confirmation, summary, or explanation that the transcript was omitted.'
+          : ''),
+      }],
     },
     execute: (args, exec) => sessionSpeech.say(owner(exec), request(args, exec.signal)),
   })
