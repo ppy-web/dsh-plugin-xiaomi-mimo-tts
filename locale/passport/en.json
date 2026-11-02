@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "AI Passport Voice Terminal",
+    "description": "Connect Qwen Voice Bean devices over Wi-Fi using Host speech recognition, a dedicated DSH conversation and shared TTS."
+  }
+}

@@ -107,6 +107,7 @@ export default defineConfig([{
     'speech-host': 'src/speech-host.ts',
     'speech-agent': 'src/speech-agent.ts',
     qqbot: 'src/qqbot.ts',
+    passport: 'src/passport.ts',
     'qqbot-agent': 'src/qqbot-agent.ts',
     'pcm-stream': 'src/pcm-stream.ts',
     shared: 'src/shared.ts',

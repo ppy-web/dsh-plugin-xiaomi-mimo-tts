@@ -217,6 +217,45 @@ export async function apply(ctx: Context) {
 
 本地回归验证合成、转码、会话隔离、取消、策略拒绝及临时文件清理；QQ 平台权限、实际回复额度和手机端播放需要在真实账号上验证。
 
+## AI Passport 语音终端
+
+可选组件 `dsh-xiaomi-tts/passport` 将 FoloToy AI Passport 接为通过 Wi-Fi 使用的随身语音终端。它复用 DSH 宿主的 `speechToText`、当前默认对话模型、Agent 预设，以及本插件的宿主 TTS；不需要 Qwen Audio Agent 后台、Windows 声卡采集或串口驱动。关闭网页后，只要 DSH 主机仍在运行且设备能访问它，就能继续对话。
+
+### 前提与配置
+
+- 设备使用 [Qwen Voice Bean 固件](https://github.com/liutaocode/esp32demo/tree/main/examples/qwen-voice-bean)，设备端协议为 GCP 7.0.0 的音频子集。AI Passport 官方开发基线和其他玩法固件不能直接接入；本组件不提供完整 Qwen Gateway、任务或权限协议。
+- DSH profile 已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 和识别 provider（如 SenseVoice）。先在宿主语音输入设置里完成模型准备；组件沿用宿主选定的 provider 和语言，不代为下载模型，不自动回退其他识别服务。
+- 本插件的宿主 TTS 已能正常生成 WAV；浏览器系统语音不用于设备回传。Agent 预设和默认对话模型必须可用；工具权限与审批仍由宿主管理，不会自动批准。
+- 设备与主机处于可互通的 Wi-Fi／手机热点网络。此组件是网络语音终端，不提供普通对讲机的射频通信。
+
+在组合包组件列表找到「AI Passport 语音终端」，先填写配置，再启用默认关闭的条目。也可以将下面的条目加入自己的 profile：
+
+```yaml
+- id: speech-delivery-passport
+  name: 'dsh-xiaomi-tts/passport'
+  config:
+    host: '192.168.1.10' # 改为 DSH 主机当前的局域网 IPv4
+    port: 3101
+    accessToken: 'REPLACE_WITH_A_PRIVATE_TOKEN_AT_LEAST_24_CHARACTERS'
+    agentPreset: '' # 空值在首次创建时使用宿主默认预设
+```
+
+`host` 默认 `127.0.0.1`，仅供本机验证；设备使用时必须改为可访问的主机地址，并允许对应端口通过防火墙。参考固件使用固定端口 3101 和路径 `/api/realtime`，因此保留 `port: 3101`。在设备配网页面输入同一主机 IPv4，启用令牌输入并填入同一个 `accessToken`。令牌至少 24 个字符，不能留空；它仅用于设备认证，不是模型 API Key。默认链路是可信局域网内的明文 WebSocket，不应直接暴露到公网。
+
+### 使用与会话
+
+`cwd` 可指定专用会话的工作目录，空值在首次创建时使用 DSH 进程工作目录；恢复已有会话时沿用原目录。
+
+固件启动后麦克风关闭；短按 OK 开始或暂停收音，说完后停顿，等待回复。播放时暂停接收新请求，实际播放完成后恢复；DOWN 按键可取消当前识别、对话或播报，不支持声音自动打断。
+
+组件在第一次有效设备连接时创建专用会话，保存会话 ID 和预设身份；重启后恢复同一个会话，不重播历史回复。模型默认值沿用宿主设置，已记录的会话模型选择遵循 DSH 自身规则。会话身份保存在当前用户的 `.dsh-xiaomi-tts/passport/`，按 Host profile 和组件位置隔离，不包含令牌或录音。组件停用时取消工作并释放连接和 Agent，但保留会话记录。状态文件损坏或已有会话恢复失败时直接报错，不擅自新建会话覆盖历史。
+
+一次只允许一个设备连接。相同设备身份重连会关闭旧连接并取消旧任务；其他设备收到占用状态，不会接管。可填写 `deviceId` 限定固件的 `client.instance_id`（Qwen Voice Bean 形如 `bean_` 加设备 MAC 的十六进制值）。设备不能通过协议选择已有网页或 QQ 会话、预设、模型或供应商凭据。`agentPreset` 只在首次创建时选用；已保存会话不能通过修改该字段静默更换预设。
+
+可调参数：`silenceMs` 默认 700 ms，`minSpeechMs` 默认 200 ms，`speechThreshold` 默认 0.015（归一化 RMS）；环境嘈杂时提高阈值，切句过早时延长静音时间。`maxRecordingSeconds` 默认 30 秒（含预录和尾部静音），超长录音不提交；`maxReplySeconds` 默认 60 秒，超长回复不发声、不截断文字；`requestTimeoutMs` 默认 180000 ms，限制一次识别、对话及播报的总等待时间。音频先完整合成，再转换为固件可播放的 24 kHz 单声道 PCM，按实际时长分包发送，等待设备播放回执，不把网络发送完成当作播放完成。
+
+宿主日志中的 `passport-asr-unavailable`／`passport-session-unavailable` 表示识别或会话未就绪；先检查宿主 ASR 准备、默认模型和预设。认证失败时核对设备令牌、主机地址和端口。掉线会取消当前工作，重连后不自动补发旧回复。模拟设备回归不能代替硬件验收；实际音质、长回复、按键取消和 Wi-Fi 重连需要在真实 AI Passport 上验证。
+
 ## 插件详情页
 
 在宿主中打开本插件的组合包详情，可通过「用户手册」直接打开[在线使用手册](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual)，其左侧的「赏个Star」可打开项目仓库。两个按钮均沿用宿主按钮样式，「赏个Star」保留悬停扫光效果；详情同时显示当前已保存服务商的密钥格式状态。组件详情、其他插件和官方条目不显示这些扩展。
