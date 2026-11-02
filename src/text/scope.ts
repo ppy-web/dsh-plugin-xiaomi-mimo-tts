@@ -68,9 +68,10 @@ export function applyTtsLivePlaybackScope(
   limiter: TtsFirstSegmentLimiter,
   final = false,
   random: () => number = Math.random,
+  prepare = prepareTtsText,
 ): string {
   if (resolveTtsReadScope(scope, true) === 'full') return value
-  const text = prepareTtsText(value)
+  const text = prepare(value)
   const scoped = limiter.limit(text, final)
   return final && scope === 'smart'
     ? appendTtsSmartTruncationOutro(text, scoped, random)

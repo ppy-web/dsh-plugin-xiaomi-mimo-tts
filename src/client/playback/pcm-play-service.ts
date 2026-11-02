@@ -82,7 +82,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       if (interruptConversation) this.interruptConversationPlayback()
       this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
       this.audio.setVolume(settings.voiceVolume)
-      this.audio.setPlaybackRate(settings.provider === 'doubao' ? 1 : settings.voiceRate)
+      this.audio.setPlaybackRate(settings.provider === 'xiaomi' ? settings.voiceRate : 1)
 
       const generation = this.generation
       const controller = new AbortController()

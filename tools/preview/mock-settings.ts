@@ -81,7 +81,7 @@ export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
       supported: this.keyStatusPreview === 'recognized',
       provider,
     }
-    const apiKey = this.snapshot.value?.[provider === 'doubao' ? 'doubaoApiKey' : 'apiKey']?.trim() ?? ''
+    const apiKey = this.snapshot.value?.[provider === 'doubao' ? 'doubaoApiKey' : provider === 'breeze' ? 'breezeApiKey' : 'apiKey']?.trim() ?? ''
     return {
       provider,
       configured: apiKey.length > 0,

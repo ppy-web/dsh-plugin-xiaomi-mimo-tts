@@ -13,6 +13,7 @@ import {
   TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE,
   TTS_PROVIDER_CHARACTER_ASSET_ROUTES,
   TTS_PROVIDER_LOGO_ASSET_ROUTES,
+  TTS_BREEZE_WORDMARK_ASSET_ROUTE,
   TTS_API_KEY_WHALE_ASSET_ROUTE,
   TTS_HISTORY_EMPTY_ASSET_ROUTE,
   TTS_QQ_GROUP_ASSET_ROUTE,
@@ -56,11 +57,13 @@ export const Config = z.object({
   qqbotMaxDurationSeconds: z.number().step(1).min(0).max(6000).default(0).volatile(),
   announcementSources: z.array(z.union(ANNOUNCEMENT_SOURCES)).default(DEFAULT_TTS_SETTINGS.announcementSources).volatile(),
   provider: z.union(TTS_PROVIDERS).default(DEFAULT_TTS_SETTINGS.provider).volatile(),
+  doubaoEnabled: z.boolean().default(true).volatile(),
   doubaoApiKey: z.string().role('secret').default('').volatile(),
   doubaoModel: z.union(DOUBAO_TTS_MODELS).default(DEFAULT_TTS_SETTINGS.doubaoModel).volatile(),
   doubaoVoice: z.string().default(DEFAULT_TTS_SETTINGS.doubaoVoice).volatile(),
   doubaoClonedVoice: z.string().default('').volatile(),
   doubaoInstruction: z.string().default(DEFAULT_TTS_SETTINGS.doubaoInstruction).volatile(),
+  breezeEnabled: z.boolean().default(false).volatile(),
   breezeApiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.breezeApiKey).volatile(),
   breezeVoice: z.string().default(DEFAULT_TTS_SETTINGS.breezeVoice).volatile(),
   breezeInstruction: z.string().default(DEFAULT_TTS_SETTINGS.breezeInstruction).volatile(),
@@ -141,7 +144,7 @@ export function apply(ctx: Context, config: Config): void {
   for (const [provider, path] of Object.entries(TTS_PROVIDER_LOGO_ASSET_ROUTES)) {
     registerStaticAsset(ctx, {
       path,
-      data: readFileSync(new URL(`../assets/ui/provider-${provider === 'xiaomi' ? 'mimo' : 'doubao'}-logo.png`, import.meta.url)),
+      data: readFileSync(new URL(`../assets/ui/provider-${provider === 'xiaomi' ? 'mimo' : provider}-logo.png`, import.meta.url)),
       contentType: 'image/png',
       description: `${provider} provider logo`,
     })
@@ -155,6 +158,13 @@ export function apply(ctx: Context, config: Config): void {
       description: `${provider} provider character asset`,
     })
   }
+
+  registerStaticAsset(ctx, {
+    path: TTS_BREEZE_WORDMARK_ASSET_ROUTE,
+    data: readFileSync(new URL('../assets/ui/provider-breeze-logo-light.png', import.meta.url)),
+    contentType: 'image/png',
+    description: 'Breeze Blue wordmark',
+  })
 
   registerStaticAsset(ctx, {
     path: TTS_HISTORY_EMPTY_ASSET_ROUTE,

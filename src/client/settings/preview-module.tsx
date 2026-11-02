@@ -7,8 +7,10 @@ import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS } from './announcemen
 import type { AnnouncementSettingsProps } from './announcement-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { BreezeAudioTagPicker } from './controls/breeze-audio-tag-picker.js'
+import { ProviderSettings } from './provider-settings.js'
+import type { ProviderSettingsProps } from './provider-settings.js'
 
-export interface PreviewModuleProps extends AnnouncementSettingsProps {
+export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<ProviderSettingsProps, 't' | 'writable'> {
   enabled: boolean
   status: PreviewStatus
   source: PreviewSource
@@ -21,7 +23,7 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps {
   breezeAudioTags?: boolean
 }
 
-export function PreviewModule({ t, enabled, status, source, error, text, onToggle, onTextChange, open, onToggleOpen, breezeAudioTags = false, ...settings }: PreviewModuleProps): ReactElement {
+export function PreviewModule({ t, enabled, status, source, error, text, onToggle, onTextChange, open, onToggleOpen, breezeAudioTags = false, doubaoEnabled, breezeEnabled, onProviderEnabledChange, ...settings }: PreviewModuleProps): ReactElement {
   const textRef = useRef<HTMLTextAreaElement>(null)
   const insertTag = (tag: string): void => {
     const textarea = textRef.current
@@ -89,6 +91,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
     </>}>
     <div className="xmimo-tts-broadcast-body">
       <div className="xmimo-tts-format">
+        {breezeAudioTags ? <BreezeAudioTagPicker disabled={!enabled} onInsert={insertTag} t={t} /> : null}
         <div className="xmimo-tts-preview-input">
           <textarea
             ref={textRef}
@@ -110,9 +113,9 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
             onClick={onToggle}
           ><PlaybackIcon state={busy ? 'stop' : 'play'} /></Button>
         </div>
-        {breezeAudioTags ? <BreezeAudioTagPicker disabled={!enabled} onInsert={insertTag} t={t} /> : null}
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
       </div>
+      <ProviderSettings t={t} writable={settings.writable} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} onProviderEnabledChange={onProviderEnabledChange} />
       <AnnouncementSettings t={t} sources={settings.sources} writable={settings.writable} overridden={settings.overridden}
         qqbotEnabled={settings.qqbotEnabled} onQqbotChange={settings.onQqbotChange}
         onChange={settings.onChange} onReset={settings.onReset} />

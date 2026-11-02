@@ -9,6 +9,7 @@ const { evenPcmChunks } = await loadClientModule('src/host/breeze.ts')
 
 const settings = resolveTtsSettings({
   provider: 'breeze',
+  breezeEnabled: true,
   breezeApiKey: 'brz_test',
   breezeVoice: 'voc_custom',
   breezeInstruction: 'breeze delivery',

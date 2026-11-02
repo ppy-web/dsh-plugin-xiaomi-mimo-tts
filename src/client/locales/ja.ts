@@ -3,6 +3,9 @@ import { whaleEn } from '../settings/whale-copy.js'
 
 export const ja: Record<LocaleKey, string> = {
   ...whaleEn,
+  'settings.moreProviders': 'その他のプロバイダー',
+  'settings.breezeEnabled': 'Breeze Blue を有効にする',
+  'settings.providerMinimum': 'Xiaomi は常に有効です。豆包か Breeze のどちらかを有効にしてください。',
   'settings.breezeAudioTags': 'オーディオタグ',
   'settings.breezeAudioTagsHint': 'タグは試聴テキストに挿入されます。中国語は角括弧、英語は丸括弧を使用します。Breeze TTS 専用です。',
   'settings.breezeAudioTagsChinese': '中文',
@@ -37,8 +40,10 @@ export const ja: Record<LocaleKey, string> = {
   'detail.previewChanging': 'プラグインの変更を再現',
   'detail.previewKey': 'キー状態の再現',
   'plugin.changing': 'プラグインの変更中は、音声再生を一時停止します。',
-  'onboarding.title': 'まずは一文、聴いてみましょう',
-  'onboarding.description': 'ブラウザー音声は API キーなしで試聴できます。Xiaomi または Doubao の音声を使うには、プラグイン設定でサービスを選び、キーを保存してください。自動読み上げと効果音は初期状態ではオフです。',
+  'onboarding.title': '新機能のご紹介',
+  'onboarding.featureBreeze': 'Breeze 音声に対応し、プリセット音声とカスタム Voice ID を使えます。',
+  'onboarding.featureAudioTags': 'Breeze の試聴に音声タグを挿入して、笑い声などを表現できます。',
+  'onboarding.featureRetry': '音声ツールの合成に失敗した場合、設定済みの別プロバイダーで再試行できます。',
   'onboarding.configure': 'プラグイン設定を開く',
   'onboarding.preview': 'ブラウザー音声を試聴',
   'onboarding.dismiss': 'あとで',

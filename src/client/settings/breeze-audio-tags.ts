@@ -13,7 +13,7 @@ export const BREEZE_AUDIO_TAG_GROUPS: Record<BreezeAudioTagLanguage, readonly Br
     { label: '发声方式', tags: ['[耳语]', '[喊叫]', '[惨叫]', '[唱歌]', '[哼歌]', '[结巴]', '[停顿]'] },
     { label: '喉咙与鼻音', tags: ['[清嗓]', '[咳嗽]', '[吸鼻子]', '[咂嘴]', '[啧嘴]'] },
     { label: '身体反应', tags: ['[打哈欠]', '[打喷嚏]', '[打嗝]', '[打饱嗝]', '[吞咽]', '[干呕]'] },
-    { label: '回应声音', tags: ['[闷哼]', '[冷笑]', '[哼鼻子]'] },
+    { label: '情绪反应', tags: ['[闷哼]', '[冷笑]', '[哼鼻子]'] },
   ],
   en: [
     { label: 'Laughter', tags: ['(laughs)', '(chuckles)', '(giggles)'] },
@@ -22,6 +22,6 @@ export const BREEZE_AUDIO_TAG_GROUPS: Record<BreezeAudioTagLanguage, readonly Br
     { label: 'Vocal delivery', tags: ['(whispers)', '(shouts)', '(screams)', '(sings)', '(hums)', '(stutters)', '(pauses)'] },
     { label: 'Throat & nose', tags: ['(clears throat)', '(coughs)', '(sniffles)', '(lip smacks)', '(clicks tongue)'] },
     { label: 'Body reflexes', tags: ['(yawns)', '(sneezes)', '(hiccups)', '(burps)', '(gulps)', '(gags)'] },
-    { label: 'Reaction sounds', tags: ['(grunts)', '(scoffs)', '(snorts)'] },
+    { label: 'Emotional reactions', tags: ['(grunts)', '(scoffs)', '(snorts)'] },
   ],
 }

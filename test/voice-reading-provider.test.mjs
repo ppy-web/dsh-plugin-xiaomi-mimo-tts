@@ -9,7 +9,7 @@ const { VoiceReadingProvider } = await loadClientModule('src/client/settings/voi
 
 for (const provider of TTS_PROVIDERS) test(`provider selector reflects ${provider} as the single selected provider`, () => {
   const html = renderToStaticMarkup(createElement(VoiceReadingProvider, {
-    value: provider, disabled: false, t: key => key, onChange: () => {},
+    value: provider, doubaoEnabled: true, breezeEnabled: true, disabled: false, t: key => key, onChange: () => {},
   }))
   const inputs = [...html.matchAll(/<input\b[^>]*>/g)].map(match => match[0])
   assert.equal(inputs.length, TTS_PROVIDERS.length)
@@ -19,12 +19,30 @@ for (const provider of TTS_PROVIDERS) test(`provider selector reflects ${provide
     assert.ok(input)
     assert.match(input, /type="radio"/)
     assert.equal(input.includes('checked=""'), value === provider)
-    if (value === 'breeze') assert.match(html, />B<\/span>/)
-    else assert.ok(html.includes(TTS_PROVIDER_LOGO_ASSET_ROUTES[value]))
+    assert.ok(html.includes(TTS_PROVIDER_LOGO_ASSET_ROUTES[value]))
   }
   const groups = inputs.map(input => /name="([^"]+)"/.exec(input)?.[1])
   assert.ok(groups[0])
   assert.equal(new Set(groups).size, 1, 'arrow keys must move within one native radio group')
+})
+
+test('Breeze choice is hidden until enabled', () => {
+  const html = renderToStaticMarkup(createElement(VoiceReadingProvider, {
+    value: 'xiaomi', doubaoEnabled: true, breezeEnabled: false, disabled: false, t: key => key, onChange: () => {},
+  }))
+  assert.equal([...html.matchAll(/<input\b[^>]*>/g)].length, 2)
+  assert.doesNotMatch(html, /value="breeze"/)
+  assert.ok(html.includes(TTS_PROVIDER_LOGO_ASSET_ROUTES.xiaomi))
+  assert.ok(html.includes(TTS_PROVIDER_LOGO_ASSET_ROUTES.doubao))
+})
+
+test('Doubao choice is hidden when disabled and Breeze is enabled', () => {
+  const html = renderToStaticMarkup(createElement(VoiceReadingProvider, {
+    value: 'breeze', doubaoEnabled: false, breezeEnabled: true, disabled: false, t: key => key, onChange: () => {},
+  }))
+  assert.match(html, /value="xiaomi"/)
+  assert.match(html, /value="breeze"/)
+  assert.doesNotMatch(html, /value="doubao"/)
 })
 
 test('provider choices are disabled together when settings are not writable', () => {

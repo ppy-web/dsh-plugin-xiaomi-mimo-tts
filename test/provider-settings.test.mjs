@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { DEFAULT_TTS_SETTINGS, resolveTtsSettings, supportsRealtimeTts, ttsSelection } from '../lib/shared.js'
+import { DEFAULT_TTS_SETTINGS, resolveTtsSettings, supportsRealtimeTts, ttsSelection, availableTtsProviders, nextTtsProvider } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { saveSettingsDraft, validateSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
@@ -22,6 +22,46 @@ function form(initial = {}, rejectField) {
     },
   }
 }
+
+test('Breeze must be enabled before it can be selected and the setting persists', async () => {
+  assert.equal(resolveTtsSettings({ provider: 'breeze' }).provider, 'xiaomi')
+  assert.equal(resolveTtsSettings({ provider: 'breeze', breezeEnabled: true }).provider, 'breeze')
+  const scope = form()
+  const draft = resolveTtsSettings({ breezeEnabled: true, provider: 'breeze' })
+  await saveSettingsDraft(scope, draft, { breezeEnabled: { kind: 'set' }, provider: { kind: 'set' } }, { xiaomi: '', doubao: '', breeze: '' })
+  assert.equal(scope.user.breezeEnabled, true)
+  assert.equal(resolveTtsSettings(scope.user).provider, 'breeze')
+  const disabled = resolveTtsSettings({ ...scope.user, breezeEnabled: false })
+  await saveSettingsDraft(scope, disabled, { breezeEnabled: { kind: 'set' }, provider: { kind: 'set' } }, { xiaomi: '', doubao: '', breeze: '' })
+  assert.equal(scope.user.breezeEnabled, false)
+  assert.equal(scope.user.provider, 'xiaomi')
+})
+
+test('provider availability controls selection and always keeps an optional provider available', () => {
+  for (const [doubaoEnabled, breezeEnabled, expected] of [
+    [true, false, ['xiaomi', 'doubao']],
+    [false, true, ['xiaomi', 'breeze']],
+    [true, true, ['xiaomi', 'doubao', 'breeze']],
+  ]) {
+    const resolved = resolveTtsSettings({ doubaoEnabled, breezeEnabled })
+    assert.deepEqual(availableTtsProviders(resolved.doubaoEnabled, resolved.breezeEnabled), expected)
+    for (let i = 0; i < expected.length; i++) assert.equal(nextTtsProvider(expected[i], doubaoEnabled, breezeEnabled), expected[(i + 1) % expected.length])
+  }
+  assert.equal(resolveTtsSettings({ doubaoEnabled: false, breezeEnabled: false }).doubaoEnabled, true)
+  assert.equal(resolveTtsSettings({ doubaoEnabled: false, breezeEnabled: true, provider: 'doubao' }).provider, 'xiaomi')
+  assert.equal(resolveTtsSettings({ doubaoEnabled: true, breezeEnabled: false, provider: 'breeze' }).provider, 'xiaomi')
+})
+
+test('provider availability persists atomically without deleting credentials', async () => {
+  const scope = form({ provider: 'doubao', doubaoApiKey: 'doubao-key', breezeApiKey: 'breeze-key', breezeEnabled: true })
+  const draft = resolveTtsSettings({ ...scope.user, doubaoEnabled: false, provider: 'xiaomi' })
+  await saveSettingsDraft(scope, draft, { doubaoEnabled: { kind: 'set' }, provider: { kind: 'set' } }, { xiaomi: '', doubao: '', breeze: '' })
+  assert.equal(scope.writes.length, 1)
+  assert.equal(scope.user.doubaoEnabled, false)
+  assert.equal(scope.user.provider, 'xiaomi')
+  assert.equal(scope.user.doubaoApiKey, 'doubao-key')
+  assert.equal(scope.user.breezeApiKey, 'breeze-key')
+})
 
 test('provider settings retain separate credentials, models and voices across switches', async () => {
   const scope = form({ apiKey: 'sk-original', voice: '茉莉', model: 'mimo-v2.5-tts-voicedesign' })
@@ -47,8 +87,8 @@ test('replacing one credential preserves the other provider credential', async (
   assert.equal(scope.user.doubaoApiKey, 'replacement')
 })
 
-test('Breeze reads completed replies instead of incremental realtime speech', () => {
-  assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'breeze' })), false)
+test('Breeze, Doubao and Xiaomi preset voices support streaming speech', () => {
+  assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'breeze', breezeEnabled: true })), true)
   assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'doubao' })), true)
   assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'xiaomi', model: 'mimo-v2.5-tts' })), true)
   assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'xiaomi', model: 'mimo-v2.5-tts-voicedesign' })), false)

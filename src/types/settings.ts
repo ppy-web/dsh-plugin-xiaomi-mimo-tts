@@ -19,11 +19,13 @@ export interface TtsSettings {
   qqbotMaxDurationSeconds?: number
   announcementSources?: AnnouncementSourceId[]
   provider?: TtsProvider
+  doubaoEnabled?: boolean
   doubaoApiKey?: string
   doubaoModel?: DoubaoTtsModel
   doubaoVoice?: string
   doubaoClonedVoice?: string
   doubaoInstruction?: string
+  breezeEnabled?: boolean
   breezeApiKey?: string
   breezeVoice?: string
   breezeInstruction?: string
@@ -68,11 +70,13 @@ export interface ResolvedTtsSettings {
   qqbotMaxDurationSeconds: number
   announcementSources: AnnouncementSourceId[]
   provider: TtsProvider
+  doubaoEnabled: boolean
   doubaoApiKey: string
   doubaoModel: DoubaoTtsModel
   doubaoVoice: string
   doubaoClonedVoice: string
   doubaoInstruction: string
+  breezeEnabled: boolean
   breezeApiKey: string
   breezeVoice: string
   breezeInstruction: string
@@ -116,11 +120,13 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   qqbotMaxDurationSeconds: 0,
   announcementSources: ['dsh-whale-musume', 'question-titles'],
   provider: 'xiaomi',
+  doubaoEnabled: true,
   doubaoApiKey: '',
   doubaoModel: 'seed-tts-2.0',
   doubaoVoice: 'zh_female_vv_uranus_bigtts',
   doubaoClonedVoice: '',
   doubaoInstruction: '',
+  breezeEnabled: false,
   breezeApiKey: '',
   breezeVoice: 'voc_rh6e8hdbraz6',
   breezeInstruction: '',

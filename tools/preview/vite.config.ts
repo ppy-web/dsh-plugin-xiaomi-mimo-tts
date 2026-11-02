@@ -31,6 +31,8 @@ const assetFiles = new Map([
   ['qq-group.webp', path.join(repositoryRoot, 'assets', 'ui', 'qq-group.webp')],
   ['provider-mimo-logo.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-mimo-logo.png')],
   ['provider-doubao-logo.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-doubao-logo.png')],
+  ['provider-breeze-logo.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-breeze-logo.png')],
+  ['provider-breeze-logo-light.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-breeze-logo-light.png')],
 ])
 
 function resolvePreviewAsset(url: string | undefined): string | undefined {

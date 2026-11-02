@@ -3,6 +3,9 @@ import { whaleEn } from '../settings/whale-copy.js'
 
 export const fr: Record<LocaleKey, string> = {
   ...whaleEn,
+  'settings.moreProviders': 'Plus de fournisseurs',
+  'settings.breezeEnabled': 'Activer Breeze Blue',
+  'settings.providerMinimum': 'Xiaomi reste activé ; gardez Doubao ou Breeze activé.',
   'settings.breezeAudioTags': 'Balises audio',
   'settings.breezeAudioTagsHint': 'Les balises sont insérées dans le texte d’essai. Crochets pour le chinois, parenthèses pour l’anglais. Breeze TTS uniquement.',
   'settings.breezeAudioTagsChinese': '中文',
@@ -37,8 +40,10 @@ export const fr: Record<LocaleKey, string> = {
   'detail.previewChanging': 'Simuler une modification du plugin',
   'detail.previewKey': 'État de clé simulé',
   'plugin.changing': 'Modification du plugin en cours. La lecture vocale est suspendue.',
-  'onboarding.title': 'Écoutez votre première phrase',
-  'onboarding.description': 'Essayez la voix du navigateur sans clé API. Pour Xiaomi ou Doubao, choisissez un fournisseur et enregistrez sa clé dans les réglages du plugin. La lecture automatique et les effets sonores sont désactivés au départ.',
+  'onboarding.title': 'Les nouveautés',
+  'onboarding.featureBreeze': 'Breeze propose des voix prédéfinies et des Voice ID personnalisés.',
+  'onboarding.featureAudioTags': 'Insérez des balises audio dans les essais Breeze pour ajouter des rires et d’autres expressions.',
+  'onboarding.featureRetry': 'En cas d’échec de synthèse, les outils vocaux peuvent réessayer avec un autre fournisseur configuré.',
   'onboarding.configure': 'Ouvrir les réglages du plugin',
   'onboarding.preview': 'Essayer la voix du navigateur',
   'onboarding.dismiss': 'Plus tard',

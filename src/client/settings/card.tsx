@@ -110,6 +110,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [doubaoVoice, setDoubaoVoice] = useState(initial.doubaoVoice)
   const [doubaoClonedVoice, setDoubaoClonedVoice] = useState(initial.doubaoClonedVoice)
   const [doubaoInstruction, setDoubaoInstruction] = useState(initial.doubaoInstruction)
+  const [doubaoEnabled, setDoubaoEnabled] = useState(initial.doubaoEnabled)
+  const [breezeEnabled, setBreezeEnabled] = useState(initial.breezeEnabled)
   const [breezeVoice, setBreezeVoice] = useState(initial.breezeVoice)
   const [breezeInstruction, setBreezeInstruction] = useState(initial.breezeInstruction)
   const [instruction, setInstruction] = useState(initial.instruction)
@@ -162,7 +164,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -207,6 +209,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setDoubaoVoice(next.doubaoVoice)
     setDoubaoClonedVoice(next.doubaoClonedVoice)
     setDoubaoInstruction(next.doubaoInstruction)
+    setDoubaoEnabled(next.doubaoEnabled)
+    setBreezeEnabled(next.breezeEnabled)
     setBreezeVoice(next.breezeVoice)
     setBreezeInstruction(next.breezeInstruction)
     setInstruction(next.instruction)
@@ -265,7 +269,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     previewPlayer.stop()
     setChanges((current) => ({ ...current, [field]: { kind: 'clear' } }))
     setState('idle')
-    if (field === 'provider') setProvider(base.provider)
+    if (field === 'provider') setProvider((base.provider === 'doubao' && !doubaoEnabled) || (base.provider === 'breeze' && !breezeEnabled) ? 'xiaomi' : base.provider)
     if (field === 'doubaoModel') setDoubaoModel(base.doubaoModel)
     if (field === 'doubaoVoice') setDoubaoVoice(base.doubaoVoice)
     if (field === 'doubaoClonedVoice') setDoubaoClonedVoice(base.doubaoClonedVoice)
@@ -304,6 +308,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setDoubaoVoice(next.doubaoVoice)
     setDoubaoClonedVoice(next.doubaoClonedVoice)
     setDoubaoInstruction(next.doubaoInstruction)
+    setDoubaoEnabled(next.doubaoEnabled)
+    setBreezeEnabled(next.breezeEnabled)
     setBreezeVoice(next.breezeVoice)
     setBreezeInstruction(next.breezeInstruction)
     setInstruction(next.instruction)
@@ -465,6 +471,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       {changing ? <p className="xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p> : null}
       <div className="xmimo-tts-card-body xmimo-ui-stack">
         <SwitchModule
+          doubaoEnabled={doubaoEnabled}
+          breezeEnabled={breezeEnabled}
           t={t}
           provider={provider}
           enabled={enabled}
@@ -551,6 +559,18 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
         /> : null}
         {enabled ? <PreviewModule
+          doubaoEnabled={doubaoEnabled}
+          breezeEnabled={breezeEnabled}
+          onProviderEnabledChange={(target, next) => {
+            if (!next && (target === 'doubao' ? !breezeEnabled : !doubaoEnabled)) return
+            previewPlayer.stop()
+            if (target === 'doubao') setDoubaoEnabled(next)
+            else setBreezeEnabled(next)
+            const switchToXiaomi = !next && provider === target
+            if (switchToXiaomi) setProvider('xiaomi')
+            setChanges(current => ({ ...current, [target === 'doubao' ? 'doubaoEnabled' : 'breezeEnabled']: { kind: 'set' }, ...(switchToXiaomi ? { provider: { kind: 'set' } as const } : {}) }))
+            setState('idle')
+          }}
           t={t}
           enabled={enabled && !changing}
           open={openPanel === 'broadcast'}

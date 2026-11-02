@@ -332,6 +332,21 @@
   gap: 8px;
 }
 
+.xmimo-voice-reading-provider-options-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.xmimo-voice-reading-provider-options-three .xmimo-voice-reading-provider-face {
+  gap: 6px;
+  padding-inline: 6px;
+  font-size: clamp(11px, 2.4vw, 16px);
+}
+
+.xmimo-voice-reading-provider-options-three .xmimo-voice-reading-provider-face img {
+  width: 26px;
+  height: 26px;
+}
+
 .xmimo-voice-reading-provider-option {
   position: relative;
   min-width: 0;

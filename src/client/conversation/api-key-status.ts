@@ -25,5 +25,5 @@ export function useApiKeyStatus(active: boolean, provider: TtsProvider): ApiKeyS
 
 export function useApiKeySupported(active: boolean, provider: TtsProvider = 'xiaomi'): boolean | null {
   const status = useApiKeyStatus(active, provider)
-  return status === 'loading' ? null : status === 'recognized'
+  return status === 'loading' || status === 'unavailable' ? null : status === 'recognized'
 }

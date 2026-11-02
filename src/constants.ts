@@ -58,7 +58,11 @@ export const TTS_PROVIDER_CHARACTER_ASSET_ROUTES = {
 export const TTS_PROVIDER_LOGO_ASSET_ROUTES = {
   xiaomi: '/plugins/xiaomi-mimo-tts/provider-mimo-logo.png',
   doubao: '/plugins/xiaomi-mimo-tts/provider-doubao-logo.png',
+  breeze: '/plugins/xiaomi-mimo-tts/provider-breeze-logo.png',
 } as const
+
+/** Breeze Blue wordmark used by the optional provider setting. */
+export const TTS_BREEZE_WORDMARK_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/provider-breeze-logo-light.png'
 
 /** Same-origin route used by the Web client to load the API-key whale mascot sheet. */
 export const TTS_API_KEY_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-whale.webp'

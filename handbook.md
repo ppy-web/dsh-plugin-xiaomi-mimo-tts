@@ -18,10 +18,12 @@
 
 - **小米**：内置音色 `mimo-v2.5-tts`；音色设计 `mimo-v2.5-tts-voicedesign` 支持预设或描述。
 - **豆包**：标准合成 `seed-tts-2.0`；声音复刻 `seed-icl-2.0` 需先[创建音色](https://console.volcengine.com/speech/new/experience/clone?projectName=default)并填写 ID。需开通对应资源，Agent Plan 使用专属 Key，Coding Plan 不含语音模型。
-- **Breeze**：使用 Breeze Developer API 的 `breeze-tts-2`，填写 `brz_` API Key 和 `voc_` Voice ID；支持预置音色、自定义 Voice ID、语音指令和 0.5–2× 语速。Breeze 单次文本按 1000 字分段，API Key 在 [Breeze Developer](https://breezeblue.ai/app/developer/api-keys) 创建。Breeze 不在生成过程中增量朗读，回复完成后按朗读范围播放，声音标签会随正文保留。
+- **Breeze**：使用 Breeze Developer API 的 `breeze-tts-2`，填写 `brz_` API Key 和 `voc_` Voice ID；支持预置音色、自定义 Voice ID、语音指令和 0.5–2× 语速。Breeze 单次文本按 1000 字分段，API Key 在 [Breeze Developer](https://breezeblue.ai/app/developer/api-keys) 创建。Breeze 自动播报会在回复生成期间按语义分段请求云端 PCM 音频流，收到音频即可播放；手动朗读也使用音频流，并按朗读范围播放，保留正文中的声音标签。语速由 Breeze 云端应用，不会在浏览器重复加速。
+- **Breeze 预置音色**：内置 30 个中文音色，包括原有的哈基米娘、香农小姐、两版大肥鱼和深思先生，以及旁白、播报、少女、少年、陪伴、古风和机器人等声音；调音台与独立的「语音朗读」设置共用此列表。音色名称和 Voice ID 来自 [Breeze 官方音色库](https://breezeblue.ai/zh/voice-library)，于 2026-11-02 核对；也可选择自定义 Voice ID 使用其他公开或个人音色。
+- 在「播报台 → 语音服务商」管理可选供应商并保存：小米始终开启，豆包和 Breeze 至少开启一个。关闭当前使用的供应商时会切回小米，密钥和音色配置保留。升级前已选用 Breeze 的用户需要开启 Breeze 开关。
 - **服务商**：各自保留密钥、模型和音色；豆包按 Key 自动选择标准或 Agent Plan 线路。
 - **语音指令**：小米与豆包标准合成分别提供情绪、风格和方言预设，也可自行输入；两家的指令独立保存，切换服务商不会覆盖。本地语音和豆包复刻不应用指令。
-- **Breeze 声音标签**：在 Breeze 的「播报台」展开「声音标签」，按中文或英文选择标签；点击后会插入试听文本光标处，例如 `你好，[轻笑]今天过得怎么样？`。标签属于正文，不是语音指令；中文使用方括号，英语使用圆括号。官方完整 51 语言标签集属于 multilingual 模型，本插件固定使用 `breeze-tts-2`，不保证其它语言标签可用。
+- **Breeze 声音标签**：在 Breeze 的「播报台」点击输入框上方的「声音标签」，按中文或英文选择标签；点击后会插入试听文本光标处，例如 `你好，[轻笑]今天过得怎么样？`。标签属于正文，不是语音指令；中文使用方括号，英语使用圆括号。官方完整 51 语言标签集属于 multilingual 模型，本插件固定使用 `breeze-tts-2`，不保证其它语言标签可用。
 - **本地语音**：可选云端优先、本地优先或关闭；云端已开始播放后失败不会自动兜底或重播。「本地音色」支持浏览器音色和 MOSS 本地服务两种来源，详见[MOSS 本地音色接入](#moss-本地音色接入)。
 - **朗读范围**：智能模式自动读前两个语义段、手动读全文；全文模式始终读全文；首段模式只读首个语义段。
 - **连接**：豆包持续文本输入需 Host 支持 WebSocket upgrade，反向代理需转发 Upgrade。
@@ -262,7 +264,7 @@ export async function apply(ctx: Context) {
 
 ## 交互预览
 
-[在线预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/)和 `pnpm dev` 提供同一套预览界面。侧栏按语音体验、插件管理、工具与帮助分组，可独立打开插件设置、语音朗读、对话效果、详情、组件、文本过滤和手册；音频历史从插件设置页底部进入二级页面，「启用引导」直接打开弹窗。侧栏各页面支持链接直达和浏览器前进、后退。
+[在线预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/)和 `pnpm dev` 提供同一套预览界面。侧栏按语音体验、插件管理、工具与帮助分组，可独立打开插件设置、语音朗读、对话效果、详情、组件、文本过滤和手册；音频历史从插件设置页底部进入二级页面，「版本新功能」直接打开弹窗，以 🎉 列表逐项简述值得注意的新功能，不包含 bug 修复；弹窗最高 200px，内容超出时可滚动查看。侧栏各页面支持链接直达和浏览器前进、后退。
 
 顶部可切换语言与深浅主题；侧栏底部提供只读配置模拟和重置。手机端点击顶部侧栏按钮打开导航，预览环境控件收在折叠区。所有配置修改均为本地模拟，不会写入 DSH；预览中的云端试听使用本地演示音频。
 

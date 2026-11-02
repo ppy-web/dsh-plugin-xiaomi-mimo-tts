@@ -86,6 +86,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       active.current = null
       if (runningSnapshot) runArmed.current = false
     }
+    live.configure(resolvedSettings)
     speech.configure({ localSpeechMode: resolvedSettings.localSpeechMode, apiKeySupported, readScope: resolvedSettings.readScope })
     const beganRun = runningSnapshot && !wasRunning.current
     wasRunning.current = runningSnapshot

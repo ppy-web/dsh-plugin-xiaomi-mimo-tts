@@ -121,7 +121,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
       </button>
     </p>
     {changing ? <p role="status">{t('plugin.changing')}</p> : null}
-    <VoiceReadingProvider value={settings.provider} disabled={disabled} t={t} onChange={provider => {
+    <VoiceReadingProvider value={settings.provider} doubaoEnabled={settings.doubaoEnabled} breezeEnabled={settings.breezeEnabled} disabled={disabled} t={t} onChange={provider => {
       write([{ op: 'set', path: ['provider'], value: provider }])
     }} />
     {ready ? <VoiceReadingWarning active={!changing} settings={settings} t={t} openPluginSettings={openPluginSettings} /> : null}

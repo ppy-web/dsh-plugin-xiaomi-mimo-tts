@@ -1,4 +1,4 @@
-import { applyTtsLivePlaybackScope, TtsFirstSegmentLimiter, countTtsSpeechCharacters } from '../../shared.js'
+import { applyTtsLivePlaybackScope, TtsFirstSegmentLimiter, countTtsSpeechCharacters, stripBreezeAudioTags } from '../../shared.js'
 import type { LiveSpeechCursor, TtsLocalSpeechMode, TtsReadScope } from '../../shared.js'
 import type { LiveSpeechController } from './live-speech-controller.js'
 import type { LocalSpeechController } from './local-speech-controller.js'
@@ -76,7 +76,7 @@ export class RealtimeSpeechSession {
     if (message === undefined) {
       message = {
         cursor: { sessionId, turn, step },
-        limiter: new TtsFirstSegmentLimiter(current.scope === 'smart' ? 2 : 1),
+        limiter: new TtsFirstSegmentLimiter(current.scope === 'smart' ? 2 : 1, value => this.live.prepareText(value)),
         text: '', checkpoint: null, final: null, inputFinished: false,
       }
       current.steps.set(step, message)
@@ -86,15 +86,15 @@ export class RealtimeSpeechSession {
     const controller = this.controller(current.backend)
     if (prime) {
       message.checkpoint = message.text
-      controller.prime(sessionId, turn, step, message.text)
+      controller.prime(sessionId, turn, step, this.backendText(current.backend, message.text))
     }
-    controller.observe(sessionId, turn, step, message.text)
+    controller.observe(sessionId, turn, step, this.backendText(current.backend, message.text))
     if (current.backend === 'live' && this.live.isDuplex() && message.limiter.complete && current.scope !== 'full') {
       const prepared = prepareSpeechText(markdown)
       const spoken = countTtsSpeechCharacters(message.text)
       if (current.scope === 'first-segment' || countTtsSpeechCharacters(prepared) >= spoken * 2) {
         message.text = this.scopeText(markdown, message, true)
-        controller.observe(sessionId, turn, step, message.text)
+        controller.observe(sessionId, turn, step, this.backendText(current.backend, message.text))
         message.inputFinished = true
         this.live.finishInput(sessionId, turn, step)
       }
@@ -113,7 +113,7 @@ export class RealtimeSpeechSession {
     }
     if (!message.inputFinished) message.text = this.scopeText(final.text, message, true)
     message.final = { ...final, text: message.text }
-    this.controller(this.turn.backend).finish(sessionId, message.final)
+    this.controller(this.turn.backend).finish(sessionId, { ...message.final, text: this.backendText(this.turn.backend, message.final.text) })
   }
 
   private beginTurn(turn: number): void {
@@ -128,12 +128,16 @@ export class RealtimeSpeechSession {
     this.installFallback()
   }
 
+  private backendText(backend: SpeechBackend, text: string): string {
+    return backend === 'system' ? stripBreezeAudioTags(text) : text
+  }
+
   private controller(backend: SpeechBackend): LiveSpeechController | LocalSpeechController {
     return backend === 'live' ? this.live : this.local
   }
 
   private scopeText(markdown: string, message: SpeechStep, final = false): string {
-    return applyTtsLivePlaybackScope(prepareSpeechText(markdown), this.turn!.scope, message.limiter, final)
+    return applyTtsLivePlaybackScope(this.live.prepareText(markdown), this.turn!.scope, message.limiter, final, Math.random, value => this.live.prepareText(value))
   }
 
   private installFallback(): void {
@@ -150,9 +154,9 @@ export class RealtimeSpeechSession {
       const target = this.controller(current.backend)
       for (const message of current.steps.values()) {
         const { sessionId, turn, step } = message.cursor
-        if (message.checkpoint !== null) target.prime(sessionId, turn, step, message.checkpoint)
-        target.observe(sessionId, turn, step, message.text)
-        if (message.final !== null) target.finish(sessionId, message.final)
+        if (message.checkpoint !== null) target.prime(sessionId, turn, step, this.backendText(current.backend, message.checkpoint))
+        target.observe(sessionId, turn, step, this.backendText(current.backend, message.text))
+        if (message.final !== null) target.finish(sessionId, { ...message.final, text: this.backendText(current.backend, message.final.text) })
       }
     })
   }

@@ -121,13 +121,13 @@ export class TtsFirstSegmentLimiter {
 
   get complete(): boolean { return this.locked !== null }
 
-  constructor(private readonly segmentCount = 1) {}
+  constructor(private readonly segmentCount = 1, private readonly prepare = prepareTtsText) {}
 
   limit(value: string, final = false): string {
     if (this.locked !== null) return this.locked
-    const text = prepareTtsText(value)
+    const text = this.prepare(value)
     if (final) {
-      this.locked = firstTtsSegments(text, this.segmentCount)
+      this.locked = segmentsFromPreparedText(text, DEFAULT_TTS_SEGMENT_CHARACTERS, MAX_TTS_SEGMENT_CHARACTERS).slice(0, this.segmentCount).join('')
       return this.locked
     }
     // Prefer completed sentence boundaries, but expose a sufficiently long
@@ -142,11 +142,14 @@ export class TtsFirstSegmentLimiter {
     // A short pending tail still occupies a segment: an unfinished sentence
     // may grow past the maximum and force that tail into a separate group.
     const occupiedSegments = segments.length + (pending.length > 0 ? 1 : 0)
-    return occupiedSegments < this.segmentCount && countTtsSpeechCharacters(remainder) >= DEFAULT_TTS_SEGMENT_CHARACTERS
-      // Keep a trailing period for decimal numbers; commas and other pause
-      // marks can be normalized differently when the next token arrives.
-      ? `${completed}${remainder}`.replace(/[^\p{L}\p{N}.]+$/u, '')
-      : completed
+    if (occupiedSegments < this.segmentCount && countTtsSpeechCharacters(remainder) >= DEFAULT_TTS_SEGMENT_CHARACTERS) {
+      const prefix = `${completed}${remainder}`
+      // Keep complete audio tags and trailing decimal points intact.
+      return /(?:\[[^\]\r\n]+\]|\([^()\r\n]+\))$/u.test(prefix)
+        ? prefix
+        : prefix.replace(/[^\p{L}\p{N}.]+$/u, '')
+    }
+    return completed
   }
 }
 

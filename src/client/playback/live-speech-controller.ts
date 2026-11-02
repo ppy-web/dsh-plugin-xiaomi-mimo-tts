@@ -8,6 +8,7 @@ import {
   normalizeVoiceRate,
   splitCompletedTtsSentences,
   splitTtsSegments,
+  splitBreezeTtsSegments,
 } from '../../shared.js'
 import type { LiveSpeechCursor } from '../../shared.js'
 import { streamPcmAudio } from '../../pcm-stream.js'
@@ -88,6 +89,8 @@ export class LiveSpeechController {
     this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
   }
 
+  prepareText(value: string): string { return prepareSpeechText(value, this.selection.provider === 'breeze') }
+
   isDuplex(): boolean { return this.selection.provider === 'doubao' }
 
   /** Close bounded read scopes before generation ends; final identity can arrive later. */
@@ -111,7 +114,7 @@ export class LiveSpeechController {
 
   setVoiceRate(value: number): void {
     this.voiceRate = normalizeVoiceRate(value)
-    if (this.selection.provider === 'doubao') this.selection = { ...this.selection, voiceRate: this.voiceRate }
+    if (this.selection.provider !== 'xiaomi') this.selection = { ...this.selection, voiceRate: this.voiceRate }
   }
 
   async pause(sessionId: string): Promise<boolean> {
@@ -188,7 +191,7 @@ export class LiveSpeechController {
     if (this.sessionId !== sessionId || text.length === 0) return
     this.beforePlayback?.()
     this.resetState()
-    this.audio.setPlaybackRate(this.isDuplex() ? 1 : this.voiceRate)
+    this.audio.setPlaybackRate(this.selection.provider === 'xiaomi' ? this.voiceRate : 1)
     this.completed = { sessionId, messageId, audioStarted: false, fallback }
     this.audioStarted = false
     this.messageId = messageId
@@ -198,7 +201,7 @@ export class LiveSpeechController {
       this.finishDuplexStep()
       return
     }
-    for (const segment of splitTtsSegments(text)) this.queue.enqueue(segment)
+    for (const segment of (this.selection.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text))) this.queue.enqueue(segment)
   }
 
   finish(sessionId: string, final: LiveMessageIdentity): void {
@@ -266,7 +269,7 @@ export class LiveSpeechController {
   private reset(next: LiveSpeechCursor): void {
     this.replaceQueue()
     this.audio.stop()
-    this.audio.setPlaybackRate(this.isDuplex() ? 1 : this.voiceRate)
+    this.audio.setPlaybackRate(this.selection.provider === 'xiaomi' ? this.voiceRate : 1)
     this.beginSegment(next, false)
     this.setStatus('idle')
   }
@@ -319,10 +322,10 @@ export class LiveSpeechController {
     // the emitted prefix consumed to keep subsequent partial updates from
     // synthesizing the same prefix again.
     if (!flush && !inCode && remainder.trim().length > 0) {
-      const preparedRemainder = prepareSpeechText(remainder)
+      const preparedRemainder = this.prepareText(remainder)
       const needed = DEFAULT_TTS_SEGMENT_CHARACTERS - countTtsSpeechCharacters(this.pendingText)
       if (countTtsSpeechCharacters(preparedRemainder) >= needed) {
-        const provisional = takeStreamChunk(remainder, needed)
+        const provisional = takeStreamChunk(remainder, needed, this.selection.provider === 'breeze')
         if (provisional.length > 0) {
           this.stageSentences([provisional], false)
           this.consumed += provisional.length
@@ -334,7 +337,7 @@ export class LiveSpeechController {
   }
 
   private stageSentences(sentences: readonly string[], flush: boolean): void {
-    const prepared = sentences.map(prepareSpeechText).filter(text => countTtsSpeechCharacters(text) > 0)
+    const prepared = sentences.map(sentence => this.prepareText(sentence)).filter(text => countTtsSpeechCharacters(text) > 0)
     if (this.isDuplex()) {
       if (prepared.length > 0 && this.active !== null) this.handled.add(this.cursorKey(this.active))
       for (const text of prepared) this.enqueueDuplex(text)
@@ -344,7 +347,10 @@ export class LiveSpeechController {
     this.pendingText = batch.pending
     // Claim streamed replies before final settlement so completed autoplay cannot restart them.
     if (batch.requests.length > 0 && this.active !== null) this.handled.add(this.cursorKey(this.active))
-    for (const request of batch.requests) this.queue.enqueue(request)
+    for (const request of batch.requests) {
+      const segments = this.selection.provider === 'breeze' ? splitBreezeTtsSegments(request) : [request]
+      for (const segment of segments) this.queue.enqueue(segment)
+    }
   }
 
   private createQueue(): AbortableSentenceQueue {
@@ -504,7 +510,8 @@ export class LiveSpeechController {
 }
 
 /** Wait for a complete word or number before ending a provisional chunk. */
-function takeStreamChunk(value: string, target: number): string {
+function takeStreamChunk(value: string, target: number, preserveTags = false): string {
+  let tagEnd: string | null = null
   let speechCharacters = 0
   let end = 0
   let previous = ''
@@ -513,7 +520,11 @@ function takeStreamChunk(value: string, target: number): string {
     if (/^[\p{L}\p{N}]$/u.test(character)) speechCharacters += 1
     const nextPoint = value.codePointAt(end)
     const next = nextPoint === undefined ? '' : String.fromCodePoint(nextPoint)
-    if (speechCharacters >= target && !/\p{M}/u.test(next)) {
+    if (preserveTags) {
+      if (tagEnd === null && (character === '[' || character === '(')) tagEnd = character === '[' ? ']' : ')'
+      else if (character === tagEnd) tagEnd = null
+    }
+    if (tagEnd === null && speechCharacters >= target && !/\p{M}/u.test(next)) {
       const inWord = isStreamWordCharacter(character)
         && (next.length === 0 || isStreamWordCharacter(next))
       const beforeDecimal = /\p{N}/u.test(character) && /[.,]/u.test(next)

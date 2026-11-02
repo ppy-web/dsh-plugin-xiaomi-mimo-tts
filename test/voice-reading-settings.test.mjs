@@ -115,7 +115,7 @@ for (const mode of [
   },
   {
     name: 'breeze voices',
-    settings: { provider: 'breeze' },
+    settings: { provider: 'breeze', breezeEnabled: true },
     field: 'breezeVoice',
     hintKey: 'settings.voiceReadingHintBreeze',
     presetValues: BREEZE_VOICE_PRESETS.map(preset => preset.value),

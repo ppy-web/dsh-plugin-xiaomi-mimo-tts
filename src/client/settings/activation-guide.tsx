@@ -45,7 +45,7 @@ export function ActivationGuide({ t, scope, audioFocus, beforePreview, onOpenDet
     onClose={dismiss}
     className="xmimo-ui-scope xmimo-tts-activation-dialog"
   >
-    <Button type="button" variant="ghost" size="sm" className="xmimo-tts-activation-close" aria-label={t('onboarding.dismiss')} onClick={dismiss}>
+    <Button type="button" variant="ghost" size="sm" data-modal-autofocus className="xmimo-tts-activation-close" aria-label={t('onboarding.dismiss')} onClick={dismiss}>
       <IconCloseOutlineRegular size={16} />
     </Button>
     <div className="xmimo-tts-activation-layout">
@@ -54,9 +54,13 @@ export function ActivationGuide({ t, scope, audioFocus, beforePreview, onOpenDet
       </div>
       <div className="xmimo-tts-activation-content">
         <h2>{t('onboarding.title')}</h2>
-        <p>{t('onboarding.description')}</p>
+        <ul className="xmimo-tts-activation-features">
+          {(['onboarding.featureBreeze', 'onboarding.featureAudioTags', 'onboarding.featureRetry'] as const).map((key) => <li key={key}>
+            <span aria-hidden="true">🎉</span><span>{t(key)}</span>
+          </li>)}
+        </ul>
         <div className="xmimo-tts-activation-actions">
-          <Button type="button" variant="primary" data-modal-autofocus onClick={openDetails} disabled={changing}>{t('onboarding.configure')}</Button>
+          <Button type="button" variant="primary" onClick={openDetails} disabled={changing}>{t('onboarding.configure')}</Button>
           <Button type="button" variant="outline" onClick={preview} disabled={changing}>{t(playing ? 'action.stop' : 'onboarding.preview')}</Button>
           <Button type="button" variant="ghost" onClick={dismiss}>{t('onboarding.dismiss')}</Button>
         </div>

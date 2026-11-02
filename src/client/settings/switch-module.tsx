@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
-import { TTS_PROVIDER_CHARACTER_ASSET_ROUTES, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE } from '../../shared.js'
+import { nextTtsProvider, TTS_PROVIDER_CHARACTER_ASSET_ROUTES, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE } from '../../shared.js'
 import type { TtsProvider } from '../../types/providers.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
@@ -46,14 +46,16 @@ function CharacterToggle({ kind, checked, disabled, label, stateLabel, minimal, 
   </label>
 }
 
-function ProviderToggle({ t, provider, minimal, writable, onChange }: {
+function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, writable, onChange }: {
   t: Translate
   provider: TtsProvider
+  doubaoEnabled: boolean
+  breezeEnabled: boolean
   minimal: boolean
   writable: boolean
   onChange: (provider: TtsProvider) => void
 }): ReactElement {
-  const nextProvider = provider === 'xiaomi' ? 'doubao' : provider === 'doubao' ? 'breeze' : 'xiaomi'
+  const nextProvider = nextTtsProvider(provider, doubaoEnabled, breezeEnabled)
   const label = t(provider === 'xiaomi' ? 'settings.providerXiaomi' : provider === 'doubao' ? 'settings.providerDoubao' : 'settings.providerBreeze')
   const nextLabel = t(nextProvider === 'xiaomi' ? 'settings.providerXiaomi' : nextProvider === 'doubao' ? 'settings.providerDoubao' : 'settings.providerBreeze')
   const switchLabel = `${t('settings.provider')}: ${label} · ${t('settings.switchProvider')}: ${nextLabel}`
@@ -100,6 +102,8 @@ function ProviderToggle({ t, provider, minimal, writable, onChange }: {
 }
 
 export interface SwitchModuleProps {
+  doubaoEnabled: boolean
+  breezeEnabled: boolean
   t: Translate
   provider: TtsProvider
   enabled: boolean
@@ -113,7 +117,7 @@ export interface SwitchModuleProps {
   onSoundEnabledChange: (next: boolean) => void
 }
 
-export function SwitchModule({ t, provider, enabled, autoPlay, soundEnabled, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
+export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, enabled, autoPlay, soundEnabled, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
   const rowRef = useHoloHover(!minimal && writable)
 
   return <section className={minimal ? 'xmimo-tts-switch-module xmimo-tts-switch-module-minimal' : 'xmimo-tts-switch-module'}>
@@ -121,7 +125,7 @@ export function SwitchModule({ t, provider, enabled, autoPlay, soundEnabled, min
       <CharacterToggle kind="voice" checked={enabled} disabled={!writable} label={t(minimal ? 'settings.enabled' : enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onEnabledChange} />
       <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!writable} label={t(minimal ? 'settings.autoPlay' : enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onAutoPlayChange} />
       <CharacterToggle kind="sound" checked={soundEnabled} disabled={!writable} label={t(minimal ? 'settings.soundEffectsTitle' : soundEnabled ? 'settings.soundEffectsOnLabel' : 'settings.soundEffectsOffLabel')} stateLabel={t(soundEnabled ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onSoundEnabledChange} />
-      <ProviderToggle t={t} provider={provider} minimal={minimal} writable={writable} onChange={onProviderChange} />
+      <ProviderToggle t={t} provider={provider} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} minimal={minimal} writable={writable} onChange={onProviderChange} />
     </div>
   </section>
 }
