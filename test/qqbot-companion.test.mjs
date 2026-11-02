@@ -12,7 +12,7 @@ import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import { QqCompanion, QqIdentityReader, QqMemoryStore, DEFAULT_WHALE_PERSONA } from '../lib/qqbot.js'
 import * as whaleAgent from '../lib/whale-agent.js'
-import { WhaleConversations } from '../lib/whale-agent.js'
+import * as qqAgent from '../lib/qqbot-agent.js'
 
 const signal = () => new AbortController().signal
 const baseTime = Date.UTC(2026, 9, 31, 4) // noon in Beijing
@@ -188,8 +188,11 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
     ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
     ctx.plugin(ToolsService)
     ctx.provide('qqbotCompanion', companion)
-    ctx.provide('whaleSettings', { current: () => current })
-    ctx.provide('whaleConversations', new WhaleConversations(identity, () => true))
+    const desktopSettings = defaults()
+    desktopSettings.persona.name = '桌面独立角色'
+    ctx.provide('whaleSettings', { current: () => desktopSettings })
+    ctx.provide('qqbotSettings', { current: () => current })
+    ctx.provide('qqbotMemes', [])
     ctx.provide('llm', { prepareCall: () => assert.fail('memory tools do not request a model') })
     await settle()
     ctx.tools.setExecutor({
@@ -198,18 +201,23 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
     })
     const scope = createScope(ctx, peer)
     peer.ctx = scope.ctx
-    const tools = scope.ctx.plugin(whaleAgent)
+    let automaticSpeech = false
+    ctx.provide('speechSynthesis', { isAutomaticDeliveryEnabled: id => id === 'qqbot' && automaticSpeech })
+    const tools = scope.ctx.plugin(qqAgent)
     await tools.await()
     try {
       await ready()
-      await ctx.whaleConversations.resolve(peer)
       current.persona.name = '自定义角色甲'
       current.persona.likes = '自定义喜好乙'
       const first = await ctx.systemPrompt.assemble({ scope: peer, agent: peer })
       assert.ok(first.sections.some(section => section.text.includes('自定义角色甲') && section.text.includes('自定义喜好乙')))
+      const speechStatus = assembly => JSON.parse(assembly.contexts.find(context => context.name === 'xiaomi:qqbot-speech').text.split('\n')[0])
+      assert.equal(speechStatus(first).automaticSpeech, false)
+      automaticSpeech = true
       current.persona.name = '新的角色名丙'
       const next = await ctx.systemPrompt.assemble({ scope: peer, agent: peer })
       assert.ok(next.sections.some(section => section.text.includes('新的角色名丙')))
+      assert.equal(speechStatus(next).automaticSpeech, true, 'the next model request must see the live QQ source switch')
       assert.equal(ctx.tools.executable('qqbot_memory'), undefined)
       const pipeline = new ToolExecutionPipeline(ctx)
       const invoke = async args => {
@@ -231,14 +239,18 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
         async execute() { return {} },
       })
       const qqLocal = await pipeline.prepare({ name: 'local_file_read', callId: randomUUID(), arguments: {}, agent: peer, signal: signal() })
-      assert.equal((await pipeline.complete(qqLocal.exec, qqLocal.kind === 'dispatch' ? await pipeline.dispatch(qqLocal.exec) : qqLocal)).isError, true, 'QQ must not gain desktop filesystem access from the shared preset')
+      assert.equal((await pipeline.complete(qqLocal.exec, qqLocal.kind === 'dispatch' ? await pipeline.dispatch(qqLocal.exec) : qqLocal)).isError, true, 'QQ must not gain desktop filesystem access')
       const desktop = agent('desktop-whale'), desktopScope = createScope(ctx, desktop)
       desktop.ctx = desktopScope.ctx
       try {
         await desktopScope.ctx.plugin(whaleAgent).await()
-        await ctx.whaleConversations.resolve(desktop)
         const desktopPrompt = await ctx.systemPrompt.assemble({ scope: desktop, agent: desktop })
-        assert.ok(desktopPrompt.sections.some(section => section.text.includes('新的角色名丙')))
+        assert.ok(desktopPrompt.sections.some(section => section.text.includes('桌面独立角色')))
+        assert.ok(desktopPrompt.sections.every(section => !section.text.includes('新的角色名丙')))
+        desktopSettings.persona.name = '桌面修改后的名字'
+        const qqAfterDesktopEdit = await ctx.systemPrompt.assemble({ scope: peer, agent: peer })
+        assert.ok(qqAfterDesktopEdit.sections.some(section => section.text.includes('新的角色名丙')))
+        assert.ok(qqAfterDesktopEdit.sections.every(section => !section.text.includes('桌面修改后的名字')))
         assert.ok(desktopPrompt.contexts.every(context => !context.text.includes('测试称呼')), 'DSH must not receive QQ private memory')
         const desktopLocal = await pipeline.prepare({ name: 'local_file_read', callId: randomUUID(), arguments: {}, agent: desktop, signal: signal() })
         assert.equal((await pipeline.complete(desktopLocal.exec, desktopLocal.kind === 'dispatch' ? await pipeline.dispatch(desktopLocal.exec) : desktopLocal)).isError, false)

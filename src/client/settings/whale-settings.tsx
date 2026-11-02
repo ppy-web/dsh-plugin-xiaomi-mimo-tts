@@ -13,6 +13,7 @@ export interface WhaleSettingsProps extends PluginConfigViewProps {
   scope: ConfigForm<WhaleSettings>
   t: Translate
   changes?: SnapshotSource<boolean> | undefined
+  channel?: 'dsh' | 'qq' | undefined
 }
 interface Draft {
   value: WhaleSettings
@@ -39,10 +40,10 @@ function Field({ label, children }: { label: string; children: ReactNode }): Rea
 
 export function WhalePersonaSettings(props: WhaleSettingsProps): ReactElement {
   if (props.view === 'summary') return <>{props.t('whale.description')}</>
-  return <WhaleSettingsPage scope={props.scope} t={props.t} changes={props.changes} />
+  return <WhaleSettingsPage scope={props.scope} t={props.t} changes={props.changes} channel={props.channel} />
 }
 
-function WhaleSettingsPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Omit<WhaleSettingsProps, 'view'>): ReactElement {
+function WhaleSettingsPage({ scope, t, changes = IDLE_PLUGIN_CHANGES, channel = 'dsh' }: Omit<WhaleSettingsProps, 'view'>): ReactElement {
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -69,12 +70,12 @@ function WhaleSettingsPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Omit<Wha
     } catch { setState('failed') }
   }
 
-  if (!ready) return <p role="status">{t(snapshot.status === 'loading' ? 'whale.loading' : 'whale.unavailable')}</p>
-  return <form className="xmimo-ui-scope xmimo-qq-settings" onSubmit={event => { event.preventDefault(); void save() }}>
+  if (!ready) return <p role="status">{t(snapshot.status === 'loading' ? 'whale.loading' : channel === 'qq' ? 'qq.personaUnavailable' : 'whale.unavailable')}</p>
+  return <form className="xmimo-ui-scope xmimo-qq-settings" aria-label={t(channel === 'qq' ? 'qq.persona' : 'whale.persona')} onSubmit={event => { event.preventDefault(); void save() }}>
     {changing ? <p role="status">{t('plugin.changing')}</p> : null}
     <section aria-label={t('whale.persona')}>
-      <h4>{t('whale.persona')}</h4>
-      <p className="xmimo-qq-hint">{t('whale.personaHint')}</p>
+      <h4>{t(channel === 'qq' ? 'qq.persona' : 'whale.persona')}</h4>
+      <p className="xmimo-qq-hint">{t(channel === 'qq' ? 'qq.personaHint' : 'whale.personaHint')}</p>
       <div className="xmimo-qq-grid">
         {PERSONA_FIELDS.map(({ field, label, limit, multiline }) => <Field key={field} label={t(label)}>
           {multiline ? <textarea rows={3} maxLength={limit} value={value.persona[field]} disabled={disabled}
@@ -89,7 +90,7 @@ function WhaleSettingsPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Omit<Wha
         <Switch label={t('whale.memoryEnabled')} checked={value.memory.enabled} disabled={disabled}
           onChange={enabled => edit(current => ({ ...current, memory: { enabled } }))} />
       </div>
-      <p className="xmimo-qq-hint">{t('whale.memoryHint')}</p>
+      <p className="xmimo-qq-hint">{t(channel === 'qq' ? 'qq.personaMemoryHint' : 'whale.memoryHint')}</p>
     </section>
     <div className="xmimo-tts-card-footer xmimo-qq-footer">
       <div className="xmimo-tts-card-actions">

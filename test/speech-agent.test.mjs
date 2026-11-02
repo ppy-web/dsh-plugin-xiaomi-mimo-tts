@@ -5,6 +5,7 @@ import { Context } from '@deepseek-ai/cordis'
 import ToolsService from '@deepseek-ai/dsh-tools'
 import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { createScope, scopeTarget } from '@deepseek-ai/dsh-scope'
+import { SessionStore } from '@deepseek-ai/dsh-session'
 import * as speechAgent from '../lib/speech-agent.js'
 import * as speechHost from '../lib/speech-host.js'
 
@@ -53,11 +54,15 @@ for (const delivery of ['custom-channel', 'qqbot']) test(`${delivery} speech too
     assert.equal(exported.isError, false)
     assert.equal(exported.value.path, '/managed/speech.wav')
     assert.equal(exports[0].text, '文件')
-    const spoken = await call('speak', { text: '说给当前会话' })
+    const spoken = await call('speak', { text: '说给当前会话', ...(delivery === 'qqbot' ? { provider: 'doubao', voice: 'override' } : {}) })
     assert.equal(spoken.isError, false)
     assert.equal(sends[0].context.agent, agent)
     assert.equal(sends[0].adapter, delivery)
     assert.equal(deliveries[0].automatic, false)
+    if (delivery === 'qqbot') {
+      assert.equal(sends[0].request.provider, undefined, 'older model calls must inherit the saved QQ provider')
+      assert.equal(sends[0].request.voice, undefined, 'older model calls must inherit the saved QQ voice')
+    }
     const invalid = await call('speech_mode', { mode: 'not-a-mode' })
     assert.equal(invalid.isError, true)
     const mode = await call('speech_mode', { mode: 'status' })
@@ -80,4 +85,52 @@ for (const delivery of ['custom-channel', 'qqbot']) test(`${delivery} speech too
   } finally {
     await owner.dispose(); await preset.dispose(); await ctx.fiber.dispose()
   }
+})
+
+test('real scoped session events trigger QQ automatic replies without model speech calls', async () => {
+  const ctx = new Context(), agents = new Map(), sends = [], failures = []
+  let automatic = true
+  ctx.provide('systemPrompt', { tools() {} })
+  ctx.provide('agents', { get: id => agents.get(id) })
+  ctx.provide('speechSynthesis', {
+    hasDelivery: () => true,
+    isAutomaticDeliveryEnabled: () => automatic,
+    async deliver(request, adapter, context) { sends.push({ request, adapter, context }); return { adapter } },
+  })
+  await ctx.plugin(ToolsService).await()
+  await ctx.plugin(SessionStore).await()
+  const key = {}, preset = createScope(ctx, key)
+  const agent = { id: randomUUID() }, owner = createScope(ctx, agent, { parent: key })
+  agent.ctx = owner.ctx
+  await owner.ctx.plugin({ inject: ['sessions'], apply(child) {
+    agent.session = child.sessions.create(agent.id, { meta: { agentPreset: 'qq-speech-assistant' } })
+  } }).await()
+  agents.set(agent.id, agent)
+  await preset.ctx.plugin(speechAgent, { delivery: 'qqbot' }).await()
+  ctx.on('speech/failed', failure => failures.push(failure))
+  const turn = (number, text) => {
+    agent.session.append('turn/start', { turn: number })
+    agent.session.append('assistant/message', {
+      turn: number, step: 1, stream: [],
+      message: { id: randomUUID(), role: 'assistant', source: { kind: 'model', provider: 'test', model: 'test' }, content: [{ type: 'text', text }] },
+    }, { surfaceOp: 'append' })
+    agent.session.append('turn/end', { turn: number, reason: { kind: 'completed' } })
+  }
+  try {
+    turn(1, '普通回复自动传声')
+    await settle()
+    assert.equal(sends.length, 1)
+    assert.equal(sends[0].adapter, 'qqbot')
+    assert.equal(sends[0].context.agent, agent)
+    assert.equal(sends[0].context.automatic, true)
+    automatic = false
+    turn(2, '关闭来源后只保留文字')
+    await settle()
+    assert.equal(sends.length, 1)
+    automatic = true
+    turn(3, '重新开启后继续自动发送')
+    await settle()
+    assert.equal(sends.length, 2)
+    assert.deepEqual(failures, [])
+  } finally { await owner.dispose(); await preset.dispose(); await ctx.fiber.dispose() }
 })

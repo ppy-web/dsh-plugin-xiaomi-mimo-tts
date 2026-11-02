@@ -2,14 +2,48 @@ import type { Context } from '@deepseek-ai/cordis'
 import { sendWhaleMeme } from './host/qqbot-media.js'
 import { TtsProviderError } from './host/provider-error.js'
 import type { QqMemoryInput } from './host/qqbot-companion.js'
+import { buildWhalePersona } from './host/whale-persona.js'
+import type {} from './qqbot.js'
 
 export { buildQqbotPersona, cleanupQqbotMemes, loadWhaleMemes } from './host/qqbot-media.js'
 
 export const name = 'qqbot-whale-memes'
-export const inject = ['tools', 'qqbotMemes', 'qqbotCompanion', 'whaleConversations']
+export const inject = ['tools']
 
-/** Channel tools are admitted only for verified QQ conversations in the shared preset. */
+/** The QQ-only preset owns its persona and tools; speech routing never reads memory mappings. */
 export function apply(ctx: Context): void {
+  const allowed = new Set(['speak', 'synthesize_speech', 'qqbot_memory', 'qqbot_send_meme', 'qqbot_send_file'])
+  ctx.tools.guard(exec => !exec.agent || exec.agent.session.header.origin === 'subagent'
+    ? 'A QQ conversation is required.'
+    : allowed.has(exec.name) ? undefined : 'Desktop workspace tools are unavailable in QQ.')
+  // Retained conversations outlive the relay's services; their guard must stay active.
+  ctx.inject(['systemPrompt', 'qqbotMemes', 'qqbotCompanion', 'qqbotSettings'], registerQqbotFeatures)
+}
+
+function registerQqbotFeatures(ctx: Context): void {
+  let cached: { signature: string; text: string } | undefined
+  ctx.systemPrompt.section({
+    name: 'deployment:persona-prefix', order: 0, complete: true, interpolate: false,
+    text: () => {
+      const settings = ctx.qqbotSettings.current(), signature = JSON.stringify(settings)
+      if (cached?.signature !== signature) cached = { signature, text: buildWhalePersona('qq', settings) }
+      return cached.text
+    },
+  })
+  ctx.systemPrompt.context({
+    name: 'xiaomi:qqbot-memory', order: 300, required: true, interpolate: false,
+    text: ({ agent }) => agent ? ctx.qqbotCompanion.context(agent) : '',
+  })
+  ctx.systemPrompt.context({
+    name: 'xiaomi:qqbot-speech', order: 310, required: true, interpolate: false,
+    text: () => JSON.stringify({ automaticSpeech: ctx.get('speechSynthesis')?.isAutomaticDeliveryEnabled?.('qqbot') === true, delivery: 'qqbot', voice: 'saved-host-settings' })
+      + '\nautomaticSpeech 为 true 时，普通回复直接输出最终正文，宿主在本轮成功结束后自动发送语音，不要另调 speak。为 false 时普通聊天回复文字。用户明确要求语音时调用 speak，只传正文，沿用已保存音色；成功后结束本轮，不再重复发对应文字，除非用户要求语音和文字都要。失败时使用文字回复，不自行切换服务商或音色。',
+  })
+  ctx.on('agent/pre-step', async ({ agent }, next) => {
+    try { await ctx.qqbotCompanion.prepare(agent) } catch { /* Memory reports its diagnostic; voice and text remain available. */ }
+    return next()
+  })
+  ctx.on('agent/disposed', ({ agent }) => { ctx.qqbotCompanion.release(agent) })
   registerQqbotMemeTool(ctx)
   registerQqbotCompanionTools(ctx)
 }
@@ -35,7 +69,7 @@ export function registerQqbotCompanionTools(ctx: Context): void {
       return ctx.qqbotCompanion.memory(exec.agent, args as QqMemoryInput, exec.signal)
     },
   }, { when: async ({ agent, signal }) => {
-    const route = await ctx.whaleConversations.resolve(agent)
+    const route = await ctx.qqbotCompanion.identity.inspect(agent.id)
     signal.throwIfAborted()
     return route.kind === 'qqbot'
   } })
@@ -60,7 +94,6 @@ export function registerQqbotMemeTool(ctx: Context, options: { directory?: strin
     },
     async execute(args, exec) {
       if (!exec.agent) throw new TtsProviderError('qqbot-agent-required', 'Send memes from a QQ agent conversation.', 400)
-      await ctx.qqbotCompanion.prepare(exec.agent)
       const meme = memes.find(entry => entry.id === (args as { meme?: unknown } | null)?.meme)
       if (!meme) throw new TtsProviderError('qqbot-meme-unavailable', 'Choose an available meme from the catalog.', 400)
       const signal = AbortSignal.any([exec.signal, lifetime.signal])
@@ -71,9 +104,5 @@ export function registerQqbotMemeTool(ctx: Context, options: { directory?: strin
       void task.then(done, done)
       return task
     },
-  }, { when: async ({ agent, signal }) => {
-    const route = await ctx.whaleConversations.resolve(agent)
-    signal.throwIfAborted()
-    return route.kind === 'qqbot'
-  } })
+  })
 }

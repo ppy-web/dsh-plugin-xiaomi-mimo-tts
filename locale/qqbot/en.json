@@ -1,6 +1,23 @@
 {
   "meta": {
     "title": "QQ Bot Voice Relay",
-    "description": "QQ voice delivery and SILK conversion using the shared Whale Girl persona. No scheduled messages."
+    "description": "Independent QQ Whale Girl with custom persona settings, full automatic voice replies and isolated memory."
+  },
+  "config": {
+    "persona": {
+      "$description": "QQ Whale Girl persona (independent; applies on the next turn)",
+      "name": "Character name",
+      "selfReference": "Self reference",
+      "userAddress": "Default user address (may be empty)",
+      "relationship": "Relationship and background",
+      "personality": "Additional personality",
+      "replyStyle": "Additional reply style",
+      "likes": "Character interests",
+      "boundaries": "Boundaries and topics to avoid"
+    },
+    "memory": {
+      "$description": "QQ local memory",
+      "enabled": "Allow isolated private-chat or group memory without reading DSH workspaces."
+    }
   }
 }

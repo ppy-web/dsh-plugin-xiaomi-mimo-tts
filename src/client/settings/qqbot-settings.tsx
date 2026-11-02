@@ -8,15 +8,21 @@ import type { Translate } from '../localization.js'
 import { useSettingsSnapshot } from './scope.js'
 import { saveQqSpeechDraft, validQqSpeechDraft, type QqSpeechDraft } from './qqbot-speech-draft.js'
 import { loadQqMemory, updateQqMemory, type QqMemoryPeer } from './qqbot-memory.js'
+import type { WhaleSettings } from '../../types/whale.js'
+import { WhalePersonaSettings } from './whale-settings.js'
 
 interface Props extends PluginConfigViewProps {
   scope: ConfigForm<TtsSettings>
+  personaScope: ConfigForm<WhaleSettings>
   t: Translate
   changes?: SnapshotSource<boolean>
 }
 export function QqbotSpeechSettings(props: Props): ReactElement {
   if (props.view === 'summary') return <>{props.t('qq.description')}</>
-  return <QqbotSpeechPage {...props} />
+  return <div>
+    <WhalePersonaSettings view={props.view} scope={props.personaScope} t={props.t} changes={props.changes} channel="qq" />
+    <QqbotSpeechPage {...props} />
+  </div>
 }
 function QqbotSpeechPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Props): ReactElement {
   const snapshot = useSettingsSnapshot(scope)
@@ -57,7 +63,7 @@ function QqbotSpeechPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Props): Re
     catch { setState('failed') }
   }
   if (snapshot.status !== 'ready') return <p role="status">{t('qq.unavailable')}</p>
-  return <form className="xmimo-ui-scope xmimo-qq-settings" onSubmit={event => { event.preventDefault(); void save() }}>
+  return <form className="xmimo-ui-scope xmimo-qq-settings" aria-label={t('qq.voice')} onSubmit={event => { event.preventDefault(); void save() }}>
     <section>
       <div className="xmimo-qq-heading"><h4>{t('qq.voice')}</h4>
         <Switch label={t('qq.automatic')} checked={value.qqbotEnabled} disabled={disabled} onChange={enabled => edit('qqbotEnabled', enabled)} />

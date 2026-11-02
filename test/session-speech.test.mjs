@@ -5,7 +5,7 @@ import { loadClientModule, settle } from './helpers/client-modules.mjs'
 const { SessionSpeech } = await loadClientModule('src/host/session-speech.ts')
 
 function setup(extra = {}, policy = {}) {
-  const sends = [], delivered = [], errors = [], modes = new Map()
+  const sends = [], delivered = [], errors = [], failures = [], modes = new Map()
   const service = {
     hasDelivery: () => true,
     async deliver(request, adapter, context) { sends.push({ request, adapter, context }); return { adapter, messageId: String(sends.length) } },
@@ -13,14 +13,15 @@ function setup(extra = {}, policy = {}) {
   }
   const store = { async load(id, fallback) { return modes.get(id) ?? fallback }, async save(id, mode) { modes.set(id, mode) } }
   const speech = new SessionSpeech(service, store, { delivery: 'example', defaultMode: 'manual', maxAutoCharacters: 10, maxDurationMs: 60000, ...policy },
-    (agent, result, automatic) => delivered.push({ agent, result, automatic }), code => errors.push(code))
+    (agent, result, automatic) => delivered.push({ agent, result, automatic }),
+    (code, agent, automatic) => { errors.push(code); failures.push({ code, agent, automatic }) })
   let seq = 0
   const event = (type, data) => ({ type, data, seq: seq++ })
   const start = (agent, turn = 1) => speech.observe(agent, event('turn/start', { turn }))
   const message = (agent, text, turn = 1, extra = {}) => speech.observe(agent, event('assistant/message', { turn, step: 1, message: { content: [{ type: 'text', text }] }, ...extra }))
   const end = (agent, turn = 1, kind = 'completed') => speech.observe(agent, event('turn/end', { turn, reason: { kind } }))
   const agent = id => ({ id, session: { header: { id } } })
-  return { speech, sends, delivered, errors, modes, event, start, message, end, agent }
+  return { speech, sends, delivered, errors, failures, modes, event, start, message, end, agent }
 }
 
 test('automatic mode is per conversation, final-only, deduplicated and short replies only', async () => {
@@ -166,10 +167,31 @@ test('QQ source switch directly controls automatic full replies and keeps explic
     run.modes.set('qq', 'auto')
     run.start(a, 2); run.message(a, '来源已关闭', 2); run.end(a, 2); await settle()
     assert.equal(run.sends.length, 1, 'a saved auto mode must not bypass the source switch')
-    await run.speech.say(a, { text: '用户要求语音' })
+    await run.speech.say(a, { text: '用户要求语音', provider: 'doubao', model: 'seed-icl-2.0', voice: 'override', voiceRate: 2, speechInstruction: 'override', voiceDesignPrompt: 'override' })
     assert.equal(run.sends.length, 2)
     assert.equal(run.sends[1].context.automatic, undefined)
+    for (const field of ['provider', 'model', 'voice', 'voiceRate', 'speechInstruction', 'voiceDesignPrompt']) assert.equal(run.sends[1].request[field], undefined, 'QQ replies must inherit the saved Host selection')
     assert.equal((await run.speech.mode(a, 'status')).mode, 'manual')
     await assert.rejects(run.speech.mode(a, 'auto'), error => error.code === 'speech-mode-source-controlled')
+  } finally { await run.speech.dispose() }
+})
+
+test('failed automatic speech identifies its owner, does not retry, and allows the next turn', async () => {
+  let fail = true, attempts = 0
+  const run = setup({
+    isAutomaticDeliveryEnabled: () => true,
+    async deliver() { attempts++; if (fail) throw new Error('provider unavailable'); return { adapter: 'qqbot' } },
+  }, { delivery: 'qqbot', sourceControlled: true, maxAutoCharacters: 0, maxDurationMs: 0 })
+  const a = run.agent('qq')
+  try {
+    run.start(a); run.message(a, '第一轮'); run.end(a); await settle()
+    assert.equal(attempts, 1)
+    assert.deepEqual(run.failures, [{ code: 'speech-delivery-failed', agent: a, automatic: true }])
+    assert.equal(run.delivered.length, 0)
+    fail = false
+    run.start(a, 2); run.message(a, '下一轮', 2); run.end(a, 2); await settle()
+    assert.equal(attempts, 2)
+    assert.equal(run.delivered.length, 1)
+    assert.equal(run.failures.length, 1)
   } finally { await run.speech.dispose() }
 })

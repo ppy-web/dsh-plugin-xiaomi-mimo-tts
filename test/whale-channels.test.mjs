@@ -1,93 +1,98 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, writeFile, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import ToolsService from '@deepseek-ai/dsh-tools'
 import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { createScope, scopeTarget } from '@deepseek-ai/dsh-scope'
-import { WhaleConversations } from '../lib/whale-agent.js'
-import { QqIdentityReader } from '../lib/qqbot.js'
 import * as speechAgent from '../lib/speech-agent.js'
+import * as whaleAgent from '../lib/whale-agent.js'
+import * as qqAgent from '../lib/qqbot-agent.js'
+import { DEFAULT_WHALE_PERSONA } from '../lib/qqbot.js'
 
-const signal = () => new AbortController().signal
 const settle = () => new Promise(resolve => setImmediate(resolve))
-const agent = () => ({ id: randomUUID(), session: { header: { agentPreset: 'whale-girl' } } })
+const signal = () => new AbortController().signal
 
-test('session mapping distinguishes DSH and QQ under the same preset and fails closed on unavailable identity', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'whale-channels-'))
-  const path = join(directory, 'mapping.json'), desktop = agent(), qq = agent(), group = agent()
-  const reader = new QqIdentityReader(path), routes = new WhaleConversations(reader, () => true)
-  try {
-    const mapping = { 'qqbot:bot:c2c:peer': qq.id, 'qqbot:bot:group:room': group.id }
-    await writeFile(path, JSON.stringify({ sessionIds: mapping }))
-    assert.equal((await routes.resolve(desktop)).kind, 'dsh')
-    assert.equal((await routes.resolve(qq)).identity.scope, 'c2c')
-    assert.equal((await routes.resolve(group)).identity.scope, 'group')
-    await writeFile(path, JSON.stringify({ sessionIds: { ...mapping, 'qqbot:other:c2c:peer': qq.id } }))
-    assert.equal((await routes.resolve(qq)).kind, 'unknown')
-    await writeFile(path, '{broken')
-    assert.equal((await routes.resolve(desktop)).kind, 'unknown')
-    await rm(path)
-    assert.equal((await routes.resolve(qq)).kind, 'unknown')
-    assert.equal((await new WhaleConversations(reader, () => false).resolve(desktop)).kind, 'dsh')
-    desktop.session.header.origin = 'subagent'
-    assert.equal((await routes.resolve(desktop)).kind, 'unknown')
-  } finally { await rm(directory, { recursive: true, force: true }) }
-})
-
-test('one speech module routes explicit voice by verified channel, preserves first-turn QQ auto voice and blocks unknown channels', { timeout: 5000 }, async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'whale-speech-routing-'))
-  const path = join(directory, 'mapping.json'), desktop = agent(), qq = agent(), sends = []
-  await writeFile(path, JSON.stringify({ sessionIds: { 'qqbot:bot:c2c:peer': qq.id } }))
-  const ctx = new Context(), agents = new Map([[desktop.id, desktop], [qq.id, qq]])
-  ctx.provide('systemPrompt', { tools() {} })
+test('independent presets keep DSH file delivery and QQ full automatic voice isolated from persona and memory', async () => {
+  const ctx = new Context(), sends = [], agents = new Map()
+  let automatic = true
+  ctx.provide('systemPrompt', { tools() {}, section() {}, context() {} })
   ctx.provide('agents', { get: id => agents.get(id) })
-  ctx.provide('whaleConversations', new WhaleConversations(new QqIdentityReader(path), () => true))
-  ctx.provide('qqbotSpeechRules', { current: () => ({ maxAutoCharacters: 0, maxDurationMs: 25000 }) })
-  ctx.provide('llm', { prepareCall: () => assert.fail('routing must not call a model') })
+  ctx.provide('whaleSettings', { current: () => ({ persona: { ...DEFAULT_WHALE_PERSONA, name: 'DSH 独立角色' }, memory: { enabled: true } }) })
+  ctx.provide('qqbotSettings', { current: () => ({ persona: { ...DEFAULT_WHALE_PERSONA, name: 'QQ 独立角色' }, memory: { enabled: true } }) })
+  ctx.provide('qqbotMemes', [])
+  ctx.provide('qqbotCompanion', {
+    identity: { inspect: async () => { throw new Error('memory mapping unavailable') } },
+    prepare: async () => { throw new Error('memory file corrupt') }, context: () => 'memory unavailable', release() {},
+  })
+  ctx.provide('qqbotSpeechRules', { current: () => ({ maxAutoCharacters: 0, maxDurationMs: 0 }) })
   ctx.provide('speechSynthesis', {
-    hasDelivery: () => true, isAutomaticDeliveryEnabled: id => id === 'qqbot',
+    hasDelivery: () => true, isAutomaticDeliveryEnabled: id => id === 'qqbot' && automatic,
     async deliver(request, adapter, context) { sends.push({ request, adapter, context }); return { adapter } },
   })
   ctx.plugin(ToolsService)
   await settle()
-  const key = {}, preset = createScope(ctx, key)
-  const scopes = [desktop, qq].map(owner => { const scope = createScope(ctx, owner, { parent: key }); owner.ctx = scope.ctx; return scope })
-  const plugin = preset.ctx.plugin(speechAgent, { delivery: 'conversation' })
-  await plugin.await()
+  const globalSender = ctx.tools.register({
+    name: 'qqbot_send_file', description: 'globally visible QQ sender', parameters: { type: 'object' },
+    output: { schema: { type: 'object' }, render: () => [] }, execute() { return {} },
+  })
+  const scopes = []
+  const create = async (delivery, persona) => {
+    const key = {}, preset = createScope(ctx, key)
+    const agent = { id: randomUUID(), session: { header: {} } }
+    agents.set(agent.id, agent)
+    const scope = createScope(ctx, agent, { parent: key }); agent.ctx = scope.ctx
+    scopes.push(scope, preset)
+    await preset.ctx.plugin(persona).await()
+    await preset.ctx.plugin(speechAgent, { delivery }).await()
+    return agent
+  }
+  const desktop = await create('file', whaleAgent), qq = await create('qqbot', qqAgent)
   const pipeline = new ToolExecutionPipeline(ctx)
-  const call = async owner => {
-    const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text: '同一个人设的语音' }, agent: owner, signal: signal() })
+  const speak = async agent => {
+    const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text: '显式语音' }, agent, signal: signal() })
     return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
   }
-  try {
-    assert.equal((await call(desktop)).value.adapter, 'file')
-    assert.equal((await call(qq)).value.adapter, 'qqbot')
-    assert.equal(sends[1].request.maxDurationMs, 25000)
-    assert.equal(sends[1].request.splitLongText, true)
-    const delivered = new Promise(resolve => ctx.on('speech/delivered', payload => { if (payload.automatic) resolve() }))
-    const session = { id: qq.id }
+  let seq = 0
+  const turn = (agent, number, text, kind = 'completed') => {
+    const session = { id: agent.id }
     for (const event of [
-      { type: 'turn/start', seq: 0, data: { turn: 1 } },
-      { type: 'assistant/message', seq: 1, data: { turn: 1, message: { content: [{ type: 'text', text: '首次正常回复' }] } } },
-      { type: 'turn/end', seq: 2, data: { turn: 1, reason: { kind: 'completed' } } },
-    ]) ctx.emit(scopeTarget(session, qq), 'session/event', session, event)
-    await delivered
+      { type: 'turn/start', data: { turn: number } },
+      { type: 'assistant/message', data: { turn: number, message: { content: [{ type: 'text', text }] } } },
+      { type: 'turn/end', data: { turn: number, reason: { kind } } },
+    ]) ctx.emit(scopeTarget(session, agent), 'session/event', session, { ...event, seq: seq++ })
+  }
+  try {
+    assert.equal((await speak(desktop)).value.adapter, 'file', 'global QQ sender must not route DSH audio to QQ')
+    assert.equal((await speak(qq)).value.adapter, 'qqbot')
+    const text = '完整回复不受旧的三百字默认限制.'.repeat(100)
+    turn(desktop, 1, '桌面不会自动传声')
+    turn(qq, 1, text)
+    await settle()
     assert.equal(sends.length, 3)
+    assert.equal(sends[2].request.text, text)
+    assert.equal(sends[2].request.splitLongText, true)
     assert.equal(sends[2].context.agent, qq)
     assert.equal(sends[2].context.automatic, true)
-    assert.equal(sends[2].request.text, '首次正常回复')
-    await writeFile(path, '{broken')
-    assert.equal((await call(desktop)).isError, true)
-    assert.equal((await call(qq)).isError, true)
-    assert.equal(sends.length, 3, 'unknown channel must fail before synthesis or delivery')
-  } finally {
-    await plugin.dispose()
+    automatic = false
+    turn(qq, 2, '已关闭自动语音')
+    await settle()
+    assert.equal(sends.length, 3)
+    assert.equal((await speak(qq)).value.adapter, 'qqbot', 'explicit voice remains available')
+    automatic = true
+    turn(qq, 3, '被打断', 'aborted')
+    await settle()
+    assert.equal(sends.length, 4)
+    turn(qq, 4, '恢复自动语音')
+    await settle()
+    assert.equal(sends.length, 5)
     for (const scope of scopes) await scope.dispose()
-    await preset.dispose(); await ctx.fiber.dispose()
-    await rm(directory, { recursive: true, force: true })
+    turn(qq, 5, '卸载后不发送')
+    await settle()
+    assert.equal(sends.length, 5)
+  } finally {
+    globalSender()
+    for (const scope of scopes) await scope.dispose()
+    await ctx.fiber.dispose()
   }
 })

@@ -1,4 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
+import AgentPreset from '@deepseek-ai/dsh-agent-preset'
+import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { ServerResponse } from 'node:http'
 import { TTS_QQ_MEMORY_ROUTE } from './constants.js'
@@ -6,6 +8,10 @@ import { json, readJsonBody } from './host/http.js'
 import { QqMemoryAdmin } from './host/qqbot-memory-admin.js'
 import { QqMemoryStore } from './host/qqbot-memory.js'
 import { QqIdentityReader, qqCompanionNamespace } from './host/qqbot-identity.js'
+import { createQqCompanion } from './host/qqbot-companion-host.js'
+import { whaleConfigFields, readWhaleConfig } from './host/whale-config.js'
+import type { WhaleConfig } from './host/whale-config.js'
+import type { WhaleSettings } from './types/whale.js'
 import type { SpeechDeliveryAdapter } from './host-api.js'
 import { cleanupSpeechArtifacts, writeSpeechArtifact } from './host/speech-files.js'
 import { TtsProviderError } from './host/provider-error.js'
@@ -18,7 +24,15 @@ export { QqMemoryAdmin } from './host/qqbot-memory-admin.js'
 export { DEFAULT_WHALE_PERSONA } from './types/whale.js'
 
 export const name = 'speech-delivery-qqbot'
-export const inject = ['speechSynthesis', 'tools']
+export const inject = ['speechSynthesis', 'tools', 'agentPresets']
+export const Config: z<WhaleConfig> = z.object(whaleConfigFields('qqbot'))
+export type Config = WhaleConfig
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    qqbotSettings: { current(): WhaleSettings }
+  }
+}
 
 /** Reuse qqbot's registered tool and its routing, whitelist and reply limiter. */
 export function createQqbotSpeechDelivery(ctx: Context, directory = QQBOT_MEDIA_ROOT): SpeechDeliveryAdapter {
@@ -40,7 +54,12 @@ export function createQqbotSpeechDelivery(ctx: Context, directory = QQBOT_MEDIA_
   }
 }
 
-export function apply(ctx: Context): void {
+export function apply(ctx: Context, config: Config): void {
+  const current = () => readWhaleConfig(config)
+  ctx.provide('qqbotSettings', { current })
+  const companion = createQqCompanion(ctx, current)
+  ctx.provide('qqbotCompanion', companion)
+  ctx.effect(() => () => companion.dispose())
   const admin = new QqMemoryAdmin(new QqMemoryStore(qqCompanionNamespace(ctx, 'speech-delivery-qqbot')), new QqIdentityReader())
   ctx.provide('qqbotMemoryAdmin', admin)
   const webServer = ctx.get('webServer')
@@ -57,6 +76,15 @@ export function apply(ctx: Context): void {
   }), 'dsh-xiaomi-tts: QQ memory route')
   ctx.provide('qqbotMemes', loadWhaleMemes())
   ctx.effect(() => ctx.speechSynthesis.registerDelivery(createQqbotSpeechDelivery(ctx)))
+  ctx.plugin(AgentPreset, {
+    id: 'qq-speech-assistant', name: 'QQ 鲸鱼娘',
+    description: '独立配置的 QQ 鲸鱼娘，支持自动语音、本地表情与隔离记忆。', order: 42,
+    plugins: [
+      { id: 'qq-persona', name: 'dsh-xiaomi-tts/qqbot-agent' },
+      { id: 'time-context', name: '@deepseek-ai/dsh-time-context' },
+      { id: 'speech-agent', name: 'dsh-xiaomi-tts/speech-agent', config: { delivery: 'qqbot' } },
+    ],
+  })
   ctx.effect(() => {
     const clean = () => Promise.all([cleanupSpeechArtifacts(QQBOT_MEDIA_ROOT), cleanupQqbotMemes()])
       .catch(() => { ctx.logger.warn('QQ media cleanup failed.') })

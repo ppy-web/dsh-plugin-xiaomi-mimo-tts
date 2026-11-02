@@ -47,7 +47,7 @@
           - id: conversation-speech
             name: 'dsh-xiaomi-tts/speech-agent'
             config:
-              delivery: conversation
+              delivery: file
 
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'

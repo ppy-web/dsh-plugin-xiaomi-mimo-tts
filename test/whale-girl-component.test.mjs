@@ -29,7 +29,7 @@ test('companion preset provides file access, web lookup, questions, and conversa
   ]) assert.ok(modules.has(`@deepseek-ai/dsh-${name}`), `missing ${name}`)
   assert.equal(rows.filter(row => row.name === 'dsh-xiaomi-tts/whale-agent').length, 1)
   assert.equal(new Set(rows.map(row => row.id)).size, rows.length)
-  assert.equal(rows.find(row => row.name === 'dsh-xiaomi-tts/speech-agent').config.delivery, 'conversation')
+  assert.equal(rows.find(row => row.name === 'dsh-xiaomi-tts/speech-agent').config.delivery, 'file')
 })
 
 function useChild(ctx) {
@@ -143,12 +143,11 @@ test('live persona and memory edits keep the single preset and its active conver
     await ctx.loader.root.update([{ ...presetRow, disabled: false, config }])
     await ctx.loader.await()
     const entry = ctx.loader.resolve(presetRow.id), fiber = entry.fiber
-    const preset = active.get('whale-girl'), companion = ctx.qqbotCompanion
+    const preset = active.get('whale-girl')
     await entry.update({ config: { ...config, persona: { name: '小鲸', replyStyle: '简短回答' }, memory: { enabled: false } } })
     await ctx.loader.await()
     assert.equal(entry.fiber, fiber)
     assert.equal(active.get('whale-girl'), preset)
-    assert.equal(ctx.qqbotCompanion, companion)
     assert.equal(ctx.whaleSettings.current().persona.name, '小鲸')
     assert.equal(ctx.whaleSettings.current().memory.enabled, false)
   } finally { await ctx.fiber.dispose() }

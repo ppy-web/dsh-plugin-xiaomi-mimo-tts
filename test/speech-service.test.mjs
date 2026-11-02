@@ -14,6 +14,7 @@ import { withDoubaoServer, serverFrame } from './helpers/doubao-server.mjs'
 const { HostSpeechService, default: SpeechHost } = await loadClientModule('src/host/speech-service.ts')
 const { writeSpeechArtifact, cleanupSpeechArtifacts, SPEECH_FILE_TTL_MS } = await loadClientModule('src/host/speech-files.ts')
 const { SpeechModeStore } = await loadClientModule('src/host/speech-mode-store.ts')
+const { SessionSpeech } = await loadClientModule('src/host/session-speech.ts')
 
 function wav(durationMs = 100) {
   const bytes = Buffer.alloc(44 + durationMs * 48)
@@ -82,6 +83,25 @@ test('Host service also synthesizes and encodes Doubao without a browser or HTTP
     ws.send(serverFrame(352, Buffer.alloc(4800), frame.sessionId, 11))
     ws.send(serverFrame(351, {}, frame.sessionId))
     return true
+  })
+})
+
+test('QQ replies use the saved Host provider and voice even when an older caller supplies overrides', async () => {
+  await withXiaomi(async ({ service, requests, settings }) => {
+    const sent = [], agent = { id: 'qq', session: { header: {} } }
+    const unregister = service.registerDelivery({ id: 'qqbot', format: 'wav', async send(audio) {
+      sent.push(audio)
+      return { adapter: 'qqbot' }
+    } })
+    const speech = new SessionSpeech(service, { async load() { return 'manual' }, async save() {} },
+      { delivery: 'qqbot', defaultMode: 'manual', maxAutoCharacters: 0, maxDurationMs: 0, sourceControlled: true }, () => {}, () => {})
+    try {
+      await speech.say(agent, { text: '使用当前保存的音色。', provider: 'doubao', model: 'seed-icl-2.0', voice: 'other-voice' })
+      assert.equal(sent[0].provider, 'xiaomi')
+      assert.equal(sent[0].data.toString('ascii', 8, 12), 'WAVE')
+      assert.equal(requests[0].audio.voice, settings.voice)
+      assert.equal(requests[0].model, settings.model)
+    } finally { await speech.dispose(); unregister() }
   })
 })
 

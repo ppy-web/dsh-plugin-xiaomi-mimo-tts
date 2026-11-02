@@ -39,7 +39,7 @@ export class SessionSpeech {
     private readonly store: Pick<SpeechModeStore, 'load' | 'save'>,
     private readonly options: SessionSpeechOptions,
     private readonly delivered: (agent: Agent, result: SpeechDeliveryResult, automatic: boolean) => void,
-    private readonly failed: (code: string) => void,
+    private readonly failed: (code: string, agent: Agent, automatic: boolean) => void,
   ) {}
 
   private state(agent: Agent): SessionState {
@@ -52,7 +52,7 @@ export class SessionSpeech {
       controller: new AbortController(), pending: new Set(), writes: Promise.resolve(), modeRevision: 0,
     }
     const initial = state
-    if (!this.options.sourceControlled) state.ready = this.store.load(agent.id, state.mode).then(mode => { initial.mode = mode }).catch(() => { this.failed('speech-mode-read-failed') })
+    if (!this.options.sourceControlled) state.ready = this.store.load(agent.id, state.mode).then(mode => { initial.mode = mode }).catch(() => { this.failed('speech-mode-read-failed', agent, false) })
     this.states.set(agent, state)
     return state
   }
@@ -93,10 +93,17 @@ export class SessionSpeech {
     // An explicit attempt suppresses automatic duplicates even if the send outcome is ambiguous.
     state.manual = true
     const signal = request.signal ? AbortSignal.any([request.signal, state.controller.signal]) : state.controller.signal
-    const result = await this.track(state, this.service.deliver({ ...request, format: 'wav', ...this.requestPolicy(), signal }, this.options.delivery, { agent, signal }))
-    signal.throwIfAborted()
-    this.delivered(agent, result, false)
-    return result
+    // A QQ reply uses the saved Host selection even when an older tool call carries overrides.
+    const selection = this.options.sourceControlled ? { text: request.text } : request
+    try {
+      const result = await this.track(state, this.service.deliver({ ...selection, format: 'wav', ...this.requestPolicy(), signal }, this.options.delivery, { agent, signal }))
+      signal.throwIfAborted()
+      this.delivered(agent, result, false)
+      return result
+    } catch (error) {
+      if (!signal.aborted) this.failed(error instanceof TtsProviderError ? error.code : 'speech-delivery-failed', agent, false)
+      throw error
+    }
   }
 
   observe(agent: Agent, event: SessionEvent): void {
@@ -129,7 +136,7 @@ export class SessionSpeech {
         this.delivered(agent, result, true)
       }
       void this.track(state, run()).catch(error => {
-        if (!controller.signal.aborted) this.failed(error instanceof TtsProviderError ? error.code : 'speech-delivery-failed')
+        if (!controller.signal.aborted) this.failed(error instanceof TtsProviderError ? error.code : 'speech-delivery-failed', agent, true)
       })
     }
   }

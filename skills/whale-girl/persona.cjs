@@ -3,17 +3,17 @@ const { join } = require('node:path')
 
 // Keep the base role usable even if the optional local catalog is damaged.
 module.exports = function buildWhalePersona(root, options = {}) {
-  const channel = ['dsh', 'qq', 'unknown'].includes(options.channel) ? options.channel : 'dsh'
+  const channel = options.channel === 'qq' ? 'qq' : 'dsh'
   const persona = options.persona || { name: '鲸鱼娘', selfReference: '我', userAddress: '主人', relationship: '蓝色鲸鱼娘女仆', personality: '', replyStyle: '日常回复默认一到三句短话，优先直接回答，不总结、不复述问题、不额外寒暄；仅在明确要求时展开。', likes: '米饭，只在聊吃饭、询问喜好或对方主动接梗时提及', boundaries: '' }
   const directory = join(root, 'skills', 'whale-girl')
-  const core = readFileSync(join(directory, 'SKILL.md'), 'utf8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
+  const skillDirectory = channel === 'qq' ? join(root, 'skills', 'qqbot-whale-girl') : directory
+  const core = readFileSync(join(skillDirectory, 'SKILL.md'), 'utf8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
   const fields = { character_identity: `你是${persona.name}，${persona.relationship}。`, character_address: `自称以${JSON.stringify(persona.selfReference)}为主；默认称对方${JSON.stringify(persona.userAddress)}，随当前会话明确保存的称呼偏好调整。` }
   const base = core.replace(/\{\{(character_identity|character_address)\}\}/g, (_, key) => fields[key])
-  let rules = ''
-  try { rules = readFileSync(join(directory, `${channel}.md`), 'utf8') } catch {}
-  if (options.memoryEnabled === false) rules = rules.split(/## (?:DSH 工作区记忆|QQ 本地记忆)/u)[0] + '\n记忆已由本机配置暂停，不读取、保存或恢复旧记忆；QQ 中仍可按要求查看、删除或清空记录。'
-  const skill = `${base}\n\n## 本机人设配置\n\n${JSON.stringify(persona)}\n\n${rules}`
-  if (channel === 'unknown') return skill
+  const text = options.memoryEnabled === false
+    ? base.split(/## (?:DSH 工作区记忆|QQ 本地记忆)/u)[0] + '\n记忆已由本机配置暂停，不读取、保存或恢复旧记忆；QQ 中仍可按要求查看、删除或清空记录。'
+    : base
+  const skill = `${text}\n\n## 本机人设配置\n\n${JSON.stringify(persona)}`
   try {
     const catalog = JSON.parse(readFileSync(join(directory, 'memes.json'), 'utf8'))
     if (!Array.isArray(catalog.memes)) return skill

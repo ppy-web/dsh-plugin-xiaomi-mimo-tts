@@ -19,6 +19,6 @@ export function registerWhalePersonaSettings(ctx: Context, t: Translate, changes
 export function registerQqbotSpeechSettings(ctx: Context, t: Translate, changes: SnapshotSource<boolean>): () => void {
   return ctx.slots.register({
     name: 'plugins.row.config', key: 'dsh-xiaomi-tts#speech-delivery-qqbot', locale: NS,
-    inject: () => ({ scope: ctx.configForms.get<TtsSettings>('xiaomi-mimo-tts'), t, changes }),
+    inject: () => ({ scope: ctx.configForms.get<TtsSettings>('xiaomi-mimo-tts'), personaScope: ctx.configForms.get<WhaleSettings>('speech-delivery-qqbot'), t, changes }),
   }, QqbotSpeechSettings)
 }
