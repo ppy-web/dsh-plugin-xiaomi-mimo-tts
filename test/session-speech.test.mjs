@@ -170,7 +170,8 @@ test('QQ source switch directly controls automatic full replies and keeps explic
     await run.speech.say(a, { text: '用户要求语音', provider: 'doubao', model: 'seed-icl-2.0', voice: 'override', voiceRate: 2, speechInstruction: 'override', voiceDesignPrompt: 'override' })
     assert.equal(run.sends.length, 2)
     assert.equal(run.sends[1].context.automatic, undefined)
-    for (const field of ['provider', 'model', 'voice', 'voiceRate', 'speechInstruction', 'voiceDesignPrompt']) assert.equal(run.sends[1].request[field], undefined, 'QQ replies must inherit the saved Host selection')
+    assert.equal(run.sends[1].request.provider, 'doubao')
+    for (const field of ['model', 'voice', 'voiceRate', 'speechInstruction', 'voiceDesignPrompt']) assert.equal(run.sends[1].request[field], undefined, 'QQ replies must inherit the selected provider\'s saved settings')
     assert.equal((await run.speech.mode(a, 'status')).mode, 'manual')
     await assert.rejects(run.speech.mode(a, 'auto'), error => error.code === 'speech-mode-source-controlled')
   } finally { await run.speech.dispose() }

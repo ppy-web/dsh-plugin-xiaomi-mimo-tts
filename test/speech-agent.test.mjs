@@ -60,7 +60,7 @@ for (const delivery of ['custom-channel', 'qqbot']) test(`${delivery} speech too
     assert.equal(sends[0].adapter, delivery)
     assert.equal(deliveries[0].automatic, false)
     if (delivery === 'qqbot') {
-      assert.equal(sends[0].request.provider, undefined, 'older model calls must inherit the saved QQ provider')
+      assert.equal(sends[0].request.provider, 'doubao', 'QQ calls can select another configured provider')
       assert.equal(sends[0].request.voice, undefined, 'older model calls must inherit the saved QQ voice')
     }
     const invalid = await call('speech_mode', { mode: 'not-a-mode' })
@@ -85,6 +85,52 @@ for (const delivery of ['custom-channel', 'qqbot']) test(`${delivery} speech too
   } finally {
     await owner.dispose(); await preset.dispose(); await ctx.fiber.dispose()
   }
+})
+
+test('QQ speech exposes provider selection and lets a failed model call retry without automatic duplicate delivery', async () => {
+  const ctx = new Context(), attempts = [], deliveries = []
+  const agent = { id: randomUUID(), session: { header: {} } }
+  ctx.provide('systemPrompt', { tools() {} })
+  ctx.provide('agents', { get: () => agent })
+  ctx.provide('speechSynthesis', {
+    hasDelivery: () => true,
+    isAutomaticDeliveryEnabled: () => true,
+    async deliver(request, adapter) {
+      attempts.push(request)
+      if (request.provider === undefined) throw new Error('saved provider unavailable')
+      deliveries.push(request)
+      return { adapter, messageId: 'retried' }
+    },
+  })
+  await ctx.plugin(ToolsService).await()
+  const owner = createScope(ctx, agent)
+  agent.ctx = owner.ctx
+  await owner.ctx.plugin(speechAgent, { delivery: 'qqbot' }).await()
+  const pipeline = new ToolExecutionPipeline(ctx)
+  const call = async args => {
+    const signal = new AbortController().signal
+    const toolSet = await ctx.tools.resolve({ agent, modelSelection: {}, signal })
+    try {
+      const schema = ctx.tools.schemas(agent, toolSet).find(tool => tool.name === 'speak')
+      assert.ok(schema.parameters.properties.provider.enum.includes('doubao'), 'the model must be able to select the retry provider')
+      const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: args, agent, signal, toolSet })
+      return await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+    } finally { toolSet.dispose() }
+  }
+  const session = { id: agent.id }
+  const emit = (type, seq, data) => ctx.emit(scopeTarget(session, agent), 'session/event', session, { type, seq, data })
+  try {
+    emit('turn/start', 0, { turn: 1 })
+    assert.equal((await call({ text: '重试这段语音。' })).isError, true)
+    const retried = await call({ text: '重试这段语音。', provider: 'doubao' })
+    assert.equal(retried.isError, false)
+    assert.equal(retried.value.messageId, 'retried')
+    emit('assistant/message', 1, { turn: 1, message: { content: [{ type: 'text', text: '重试这段语音。' }] } })
+    emit('turn/end', 2, { turn: 1, reason: { kind: 'completed' } })
+    await settle()
+    assert.deepEqual(attempts.map(request => request.provider), [undefined, 'doubao'])
+    assert.equal(deliveries.length, 1, 'successful fallback must not be repeated by automatic speech')
+  } finally { await owner.dispose(); await ctx.fiber.dispose() }
 })
 
 test('real scoped session events trigger QQ automatic replies without model speech calls', async () => {

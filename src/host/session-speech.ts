@@ -93,8 +93,8 @@ export class SessionSpeech {
     // An explicit attempt suppresses automatic duplicates even if the send outcome is ambiguous.
     state.manual = true
     const signal = request.signal ? AbortSignal.any([request.signal, state.controller.signal]) : state.controller.signal
-    // A QQ reply uses the saved Host selection even when an older tool call carries overrides.
-    const selection = this.options.sourceControlled ? { text: request.text } : request
+    // QQ may select another provider for a retry, while its model and voice stay Host-owned.
+    const selection = this.options.sourceControlled ? { text: request.text, ...(request.provider === undefined ? {} : { provider: request.provider }) } : request
     try {
       const result = await this.track(state, this.service.deliver({ ...selection, format: 'wav', ...this.requestPolicy(), signal }, this.options.delivery, { agent, signal }))
       signal.throwIfAborted()

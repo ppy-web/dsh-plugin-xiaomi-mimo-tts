@@ -86,7 +86,7 @@ test('Host service also synthesizes and encodes Doubao without a browser or HTTP
   })
 })
 
-test('QQ replies use the saved Host provider and voice even when an older caller supplies overrides', async () => {
+test('QQ replies default to the saved Host provider and ignore model and voice overrides', async () => {
   await withXiaomi(async ({ service, requests, settings }) => {
     const sent = [], agent = { id: 'qq', session: { header: {} } }
     const unregister = service.registerDelivery({ id: 'qqbot', format: 'wav', async send(audio) {
@@ -96,12 +96,72 @@ test('QQ replies use the saved Host provider and voice even when an older caller
     const speech = new SessionSpeech(service, { async load() { return 'manual' }, async save() {} },
       { delivery: 'qqbot', defaultMode: 'manual', maxAutoCharacters: 0, maxDurationMs: 0, sourceControlled: true }, () => {}, () => {})
     try {
-      await speech.say(agent, { text: '使用当前保存的音色。', provider: 'doubao', model: 'seed-icl-2.0', voice: 'other-voice' })
+      await speech.say(agent, { text: '使用当前保存的音色。', model: 'seed-icl-2.0', voice: 'other-voice' })
       assert.equal(sent[0].provider, 'xiaomi')
       assert.equal(sent[0].data.toString('ascii', 8, 12), 'WAVE')
       assert.equal(requests[0].audio.voice, settings.voice)
       assert.equal(requests[0].model, settings.model)
     } finally { await speech.dispose(); unregister() }
+  })
+})
+
+for (const provider of ['xiaomi', 'doubao']) test(`QQ can retry a failed ${provider} synthesis with the other provider and keep saved settings`, async () => {
+  let fail = true
+  await withXiaomi(async ({ settings, requests }) => {
+    settings.provider = provider
+    settings.doubaoApiKey = 'test-retry-doubao-key'
+    settings.doubaoVoice = 'saved-doubao-voice'
+    const saved = { ...settings }
+    await withDoubaoServer(async ({ connect, frames, headers }) => {
+      const service = new HostSpeechService(() => settings, { connectDoubao: connect })
+      const sent = [], agent = { id: 'qq-retry', session: { header: {} } }
+      service.registerDelivery({ id: 'qqbot', format: 'silk', async send(audio, context) {
+        sent.push({ audio, context })
+        return { adapter: 'qqbot', messageId: 'retry-delivered' }
+      } })
+      const speech = new SessionSpeech(service, {},
+        { delivery: 'qqbot', defaultMode: 'manual', maxAutoCharacters: 0, maxDurationMs: 0, sourceControlled: true }, () => {}, () => {})
+      try {
+        await assert.rejects(speech.say(agent, { text: '语音服务故障后切换。' }), error => error.code === (provider === 'xiaomi' ? 'xiaomi-api-error' : 'voice-unavailable'))
+        assert.equal(sent.length, 0)
+        const alternate = provider === 'xiaomi' ? 'doubao' : 'xiaomi'
+        await speech.say(agent, { text: '语音服务故障后切换。', provider: alternate, model: 'invalid-model', voice: 'ignored-voice' })
+        assert.equal(sent.length, 1)
+        assert.equal(sent[0].audio.provider, alternate)
+        assert.equal(isSilk(sent[0].audio.data), true)
+        assert.equal(sent[0].context.agent, agent)
+        await speech.say(agent, { text: '下一次仍使用默认服务。' })
+        assert.equal(sent[1].audio.provider, provider)
+        for (const body of requests) {
+          assert.equal(body.model, saved.model)
+          assert.equal(body.audio.voice, saved.voice)
+        }
+        for (const header of headers) {
+          assert.equal(header['x-api-key'], saved.doubaoApiKey)
+          assert.equal(header['x-api-resource-id'], saved.doubaoModel)
+        }
+        for (const frame of frames.filter(frame => frame.event === 100 || frame.event === 200)) assert.equal(frame.payload.req_params.speaker, saved.doubaoVoice)
+        assert.deepEqual(settings, saved, 'per-call provider switches must not change the saved configuration')
+      } finally { await speech.dispose(); await service.dispose() }
+    }, (ws, frame) => {
+      if (frame.event !== 200) return false
+      if (provider === 'doubao' && fail) {
+        fail = false
+        ws.send(serverFrame(153, { message: 'speaker not available', status_code: 45000001 }, frame.sessionId))
+      } else {
+        ws.send(serverFrame(352, Buffer.alloc(4800), frame.sessionId, 11))
+        ws.send(serverFrame(351, {}, frame.sessionId))
+      }
+      return true
+    })
+  }, (req, res) => {
+    assert.equal(req.headers.authorization, 'Bearer sk-speech-test')
+    res.setHeader('content-type', 'application/json')
+    if (provider === 'xiaomi' && fail) {
+      fail = false
+      res.statusCode = 503
+      res.end(JSON.stringify({ error: 'provider unavailable' }))
+    } else res.end(JSON.stringify({ choices: [{ message: { audio: { data: wav().toString('base64') } } }] }))
   })
 })
 

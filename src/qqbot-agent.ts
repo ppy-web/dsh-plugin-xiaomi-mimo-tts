@@ -37,7 +37,7 @@ function registerQqbotFeatures(ctx: Context): void {
   ctx.systemPrompt.context({
     name: 'xiaomi:qqbot-speech', order: 310, required: true, interpolate: false,
     text: () => JSON.stringify({ automaticSpeech: ctx.get('speechSynthesis')?.isAutomaticDeliveryEnabled?.('qqbot') === true, delivery: 'qqbot', voice: 'saved-host-settings' })
-      + '\n先按表情包规则判断本轮是否适合调用 qqbot_send_meme；允许按语境主动发图，不必等用户要求。automaticSpeech 只控制正文朗读，不代表用户要求“只要语音”，也不关闭表情包。为 true 时，完成适合的表情发送后输出最终正文，宿主在本轮成功结束后自动发送语音，不要另调 speak。为 false 时普通聊天回复文字。用户明确要求语音时调用 speak，只传正文，沿用已保存音色；成功后结束本轮，不再重复发对应文字，除非用户要求语音和文字都要。失败时使用文字回复，不自行切换服务商或音色。',
+      + '\n先按表情包规则判断本轮是否适合调用 qqbot_send_meme；允许按语境主动发图，不必等用户要求。automaticSpeech 只控制正文朗读，不代表用户要求“只要语音”，也不关闭表情包。为 true 时，完成适合的表情发送后输出最终正文，宿主在本轮成功结束后自动发送语音，不要另调 speak。为 false 时普通聊天回复文字。用户明确要求语音时调用 speak，首次只传正文，沿用已保存配置；合成失败且尚未发送音频时，允许增加 provider 参数，在 xiaomi 与 doubao 之间切换服务商重试一次，使用所选服务商已保存的模型和音色。已取消、发送受限、已发送部分音频或发送结果不明时不要自动重发。成功后结束本轮，不再重复发对应文字，除非用户要求语音和文字都要；重试仍失败时使用文字回复。',
   })
   ctx.on('agent/pre-step', async ({ agent }, next) => {
     try { await ctx.qqbotCompanion.prepare(agent) } catch { /* Memory reports its diagnostic; voice and text remain available. */ }
