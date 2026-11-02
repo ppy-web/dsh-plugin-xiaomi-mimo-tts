@@ -48,7 +48,7 @@ export function PersonaSettingsPreview({ locale }: { locale: 'zh' | 'en' }) {
       <WhalePersonaSettings view="page" scope={desktop} t={t} />
     </details>
     <details>
-      <summary>{locale === 'zh' ? 'QQ Bot 传声配置' : 'QQ Bot Voice Relay settings'}</summary>
+      <summary>{locale === 'zh' ? 'QQ Bot 传声筒配置' : 'QQ Bot Megaphone settings'}</summary>
       <QqbotSpeechSettings view="page" scope={speech} personaScope={qq} t={t} />
     </details>
   </div>

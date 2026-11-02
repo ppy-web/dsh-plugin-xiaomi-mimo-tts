@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { CSSProperties, ReactElement } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SegmentedControl } from '@deepseek-ai/dsh-client-ui-primitives'
 import { DEFAULT_MOSS_BASE_URL, mossVoiceChoices } from '../../shared.js'
@@ -186,7 +186,7 @@ export function LocalVoiceModule({
       }}
       suffix={<small className="xmimo-tts-hint xmimo-tts-local-voice-engine-note" style={{ fontSize: '11px' }}>{engine === 'moss' ? 'MOSS' : 'Microsoft Edge – Better'}</small>}
     />
-    <div className="xmimo-tts-local-voice-tabs" data-xmimo-select-option="true">
+    <div className="xmimo-tts-settings-segmented-wrap xmimo-tts-local-voice-tabs" data-xmimo-select-option="true" style={{ '--xmimo-experimental-label': JSON.stringify(t('settings.experimental')) } as CSSProperties}>
       <SegmentedControl
         id="xmimo-tts-local-voice-engine"
         value={engine}

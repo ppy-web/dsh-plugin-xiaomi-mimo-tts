@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { RiEqualizerLine } from 'react-icons/ri'
+import { RiArrowDownSLine, RiEqualizerLine } from 'react-icons/ri'
 import { SegmentedControl } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   TTS_LOCAL_SPEECH_MODES,
@@ -139,6 +139,21 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
   const summaryVoiceVolume = `${Math.round(voiceVolume * 100)}%`
   const summaryVoiceRate = `${voiceRate.toFixed(1)}×`
   const instructionField = provider === 'doubao' ? 'doubaoInstruction' : 'instruction'
+  const readScopeControl = <div className="xmimo-tts-format">
+    <SettingFieldHeading label={t('settings.readScope')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('readScope')} resettable disabled={!writable} onReset={() => { resetField('readScope') }} />
+    <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
+      <SegmentedControl
+        id="xmimo-tts-read-scope"
+        value={readScope}
+        options={TTS_READ_SCOPES.map((item) => ({ value: item, label: t(readScopeLabel(item)) }))}
+        label={t('settings.readScope')}
+        disabled={!writable}
+        onChange={onReadScopeChange}
+        className="xmimo-tts-settings-segmented"
+      />
+    </div>
+    {minimal ? null : <small>{t(readScopeHint(readScope))}</small>}
+  </div>
   return <CollapsibleModule
     className="xmimo-tts-settings-module xmimo-tts-details xmimo-ui-module"
     title={<span className="xmimo-ui-module-title"><RiEqualizerLine size={14} aria-hidden="true" focusable="false" />{t('settings.detailedVoiceConfig')}</span>}
@@ -221,58 +236,53 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
         <SettingFieldHeading label={t('settings.speechInstruction')} suffix={<FieldInfo label={t('settings.speechInstructionInfo')} text={t('settings.speechInstructionLimitations')} />} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden(instructionField)} resettable disabled={!writable} onReset={() => resetField(instructionField)} />
         <SpeechInstructionPicker provider={provider} value={speechInstruction} disabled={!writable} minimal={minimal} onChange={onSpeechInstructionChange} t={t} />
       </div> : null}
-      {!minimal ? <LocalVoiceModule
-        t={t}
-        minimal={minimal}
-        writable={writable}
-        localSpeechMode={localSpeechMode}
-        engine={localVoiceEngine}
-        browserVoiceURI={localVoiceURI}
-        mossBaseURL={mossBaseURL}
-        mossVoice={mossVoice}
-        mossVoiceName={mossVoiceName}
-        fieldOverridden={fieldOverridden}
-        resetField={resetField}
-        onEngineChange={onLocalVoiceEngineChange}
-        onBrowserVoiceChange={onLocalVoiceURIChange}
-        onMossBaseURLChange={onMossBaseURLChange}
-        onMossVoiceChange={onMossVoiceChange}
-        onBrowserAvailabilityChange={onLocalVoicesAvailabilityChange}
-      /> : null}
-      <div className="xmimo-tts-format">
-        <SettingFieldHeading label={t('settings.readScope')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('readScope')} resettable disabled={!writable} onReset={() => { resetField('readScope') }} />
-        <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
-          <SegmentedControl
-            id="xmimo-tts-read-scope"
-            value={readScope}
-            options={TTS_READ_SCOPES.map((item) => ({ value: item, label: t(readScopeLabel(item)) }))}
-            label={t('settings.readScope')}
-            disabled={!writable}
-            onChange={onReadScopeChange}
-            className="xmimo-tts-settings-segmented"
-          />
+      {minimal ? readScopeControl : <details className="xmimo-tts-more-settings">
+        <summary className="xmimo-tts-builtin-voice-trigger">
+          <span>{t('settings.more')}</span>
+          <span className="xmimo-tts-more-settings-hint">{t('settings.moreHint')}</span>
+          <RiArrowDownSLine className="xmimo-tts-voice-picker-chevron" size={16} aria-hidden="true" focusable="false" />
+        </summary>
+        <div className="xmimo-tts-more-settings-body">
+          {!minimal ? <LocalVoiceModule
+            t={t}
+            minimal={minimal}
+            writable={writable}
+            localSpeechMode={localSpeechMode}
+            engine={localVoiceEngine}
+            browserVoiceURI={localVoiceURI}
+            mossBaseURL={mossBaseURL}
+            mossVoice={mossVoice}
+            mossVoiceName={mossVoiceName}
+            fieldOverridden={fieldOverridden}
+            resetField={resetField}
+            onEngineChange={onLocalVoiceEngineChange}
+            onBrowserVoiceChange={onLocalVoiceURIChange}
+            onMossBaseURLChange={onMossBaseURLChange}
+            onMossVoiceChange={onMossVoiceChange}
+            onBrowserAvailabilityChange={onLocalVoicesAvailabilityChange}
+          /> : null}
+          {readScopeControl}
+          {!minimal ? <div className="xmimo-tts-format">
+            <SettingFieldHeading label={t('settings.localSpeechMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localSpeechMode')} resettable disabled={!writable} onReset={() => { resetField('localSpeechMode') }} />
+            <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
+              <SegmentedControl
+                id="xmimo-tts-local-speech-mode"
+                value={localSpeechMode}
+                options={TTS_LOCAL_SPEECH_MODES.map((item) => ({
+                  value: item,
+                  label: t(item === 'auto' ? 'settings.localSpeechAuto' : item === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled'),
+                  disabled: !localVoiceAvailable && item !== 'auto',
+                }))}
+                label={t('settings.localSpeechMode')}
+                disabled={!writable}
+                onChange={onLocalSpeechModeChange}
+                className="xmimo-tts-settings-segmented"
+              />
+            </div>
+            <small>{t(!localVoiceAvailable ? 'settings.localSpeechUnavailableHint' : localSpeechMode === 'auto' ? 'settings.localSpeechAutoHint' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirstHint' : 'settings.localSpeechDisabledHint')}</small>
+          </div> : null}
         </div>
-        {minimal? null : <small>{t(readScopeHint(readScope))}</small>}
-      </div>
-      {!minimal ? <div className="xmimo-tts-format">
-        <SettingFieldHeading label={t('settings.localSpeechMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localSpeechMode')} resettable disabled={!writable} onReset={() => { resetField('localSpeechMode') }} />
-        <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
-          <SegmentedControl
-            id="xmimo-tts-local-speech-mode"
-            value={localSpeechMode}
-            options={TTS_LOCAL_SPEECH_MODES.map((item) => ({
-              value: item,
-              label: t(item === 'auto' ? 'settings.localSpeechAuto' : item === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled'),
-              disabled: !localVoiceAvailable && item !== 'auto',
-            }))}
-            label={t('settings.localSpeechMode')}
-            disabled={!writable}
-            onChange={onLocalSpeechModeChange}
-            className="xmimo-tts-settings-segmented"
-          />
-        </div>
-        <small>{t(!localVoiceAvailable ? 'settings.localSpeechUnavailableHint' : localSpeechMode === 'auto' ? 'settings.localSpeechAutoHint' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirstHint' : 'settings.localSpeechDisabledHint')}</small>
-      </div> : null}
+      </details>}
     </div>
   </CollapsibleModule>
 }

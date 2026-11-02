@@ -516,22 +516,6 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           }}
           onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
         /> : null}
-        {soundEnabled ? <SoundEffectsPanel
-          t={t}
-          controller={controller}
-          enabled={soundEnabled}
-          volume={soundVolume}
-          pack={soundPack}
-          taskSounds={taskSounds}
-          clickSounds={clickSounds}
-          writable={writable}
-          minimal={minimalMode}
-          open={openPanel === 'sound'}
-          onToggle={() => togglePanel('sound')}
-          onScopeChange={changeSoundScope}
-          onVolumeChange={(next) => { setSoundVolume(next); markChange('soundVolume') }}
-          onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
-        /> : null}
         {enabled ? <PreviewModule
           t={t}
           enabled={enabled && !changing}
@@ -550,6 +534,22 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           overridden={fieldOverridden('announcementSources')}
           onReset={() => resetField('announcementSources')}
           onChange={next => { setAnnouncementSources(next); markChange('announcementSources') }}
+        /> : null}
+        {soundEnabled ? <SoundEffectsPanel
+          t={t}
+          controller={controller}
+          enabled={soundEnabled}
+          volume={soundVolume}
+          pack={soundPack}
+          taskSounds={taskSounds}
+          clickSounds={clickSounds}
+          writable={writable}
+          minimal={minimalMode}
+          open={openPanel === 'sound'}
+          onToggle={() => togglePanel('sound')}
+          onScopeChange={changeSoundScope}
+          onVolumeChange={(next) => { setSoundVolume(next); markChange('soundVolume') }}
+          onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
         /> : null}
         <div className="xmimo-tts-card-footer">
           <div className="xmimo-tts-card-actions">

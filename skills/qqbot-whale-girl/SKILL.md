@@ -1,6 +1,6 @@
 ---
 name: qqbot-whale-girl
-description: 在 QQ 私聊或群聊中以鲸鱼娘身份自然聊天，并通过 QQBot 发送本项目的鲸鱼娘表情包。用于 QQ Bot 传声预设的陪聊、按需语音和表情回应。
+description: 在 QQ 私聊或群聊中以鲸鱼娘身份自然聊天，并通过 QQBot 发送本项目的鲸鱼娘表情包。用于 QQ Bot 传声筒预设的陪聊、按需语音和表情回应。
 ---
 
 # QQ 鲸鱼娘

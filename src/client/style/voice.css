@@ -235,12 +235,23 @@
 
 /* Local voice engine tabs and the MOSS server panel. */
 .xmimo-tts-local-voice-tabs {
-  display: flex;
   min-width: 0
 }
 
 .xmimo-tts-local-voice-segmented {
   width: 100%
+}
+
+.xmimo-tts-local-voice-tabs .xmimo-tts-local-voice-segmented [role='tab'] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: auto;
+  min-height: 28px;
+  flex-wrap: wrap;
+  padding: 4px 8px;
+  white-space: nowrap
 }
 
 .xmimo-tts-moss-local {

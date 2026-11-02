@@ -36,6 +36,38 @@
   min-width: 0;
 }
 
+.xmimo-tts-more-settings {
+  min-width: 0;
+}
+
+.xmimo-tts-more-settings > summary {
+  justify-content: space-between;
+  min-height: 42px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  list-style: none;
+}
+
+.xmimo-tts-more-settings > summary::-webkit-details-marker { display: none; }
+.xmimo-tts-more-settings > summary > span:first-child { flex: none; }
+.xmimo-tts-more-settings-hint {
+  flex: 1;
+  min-width: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.xmimo-tts-more-settings[open] > summary svg { transform: rotate(180deg); }
+
+.xmimo-tts-more-settings-body {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+  padding-block-start: 12px;
+}
+
 .xmimo-tts-doubao-models button {
   height: auto;
   min-height: 28px;
