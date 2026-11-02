@@ -26,6 +26,8 @@
 
 官方文档：[小米风格控制](https://mimo.mi.com/docs/zh-CN/quick-start/usage-guide/audio/speech-synthesis-v2.5) · [豆包音色](https://docs.volcengine.com/docs/DoubaoVoice/Tonelist-1?lang=zh) · [豆包语音指令](https://docs.volcengine.com/docs/DoubaoVoice/DoubaoTextToSpeech20CapabilityIntroduction?lang=zh) · [Agent Plan 语音](https://docs.volcengine.com/docs/6561/2532486?lang=zh)。
 
+小米语音与聊天模型共用 `/chat/completions` 地址，但请求中的最后一条 `assistant` 消息是待朗读正文。若宿主的上下文压缩插件接管全局 `fetch` 并将语音当作普通聊天请求重写，可能导致 `Param Incorrect`；豆包使用 WebSocket，因此不一定同时失败。本插件的小米完整音频与实时音频使用独立 HTTP 调用入口，保留宿主的 Undici dispatcher 和代理配置，避免全局聊天请求改写影响语音。升级后需重启宿主，让已加载的语音模块使用新入口。
+
 ## MOSS 本地音色接入
 
 「调音台 → 本地音色」提供「浏览器 / MOSS 本地」切换。选择 MOSS 后，插件会探测本机部署的 [MOSS-TTS-Nano](https://github.com/OpenMOSS/MOSS-TTS-Nano) 服务，读取其内置音色，并通过该服务合成朗读音频。MOSS 只作为本地兜底音色，不改变当前小米 / 豆包服务商、API Key 和云端合成链路，也不需要为 MOSS 配置 API Key。

@@ -1,3 +1,4 @@
+import type { Response } from 'undici'
 import type { XiaomiAudioResponse } from './synthesis.js'
 import type { CompleteAudioFormat } from './validation.js'
 import { CompleteAudioResponseError } from './validation.js'

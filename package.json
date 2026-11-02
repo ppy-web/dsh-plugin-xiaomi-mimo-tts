@@ -276,6 +276,7 @@
     "motion": "^14.1.0",
     "react-icons": "^5.7.0",
     "silk-wasm": "3.7.1",
+    "undici": "7.30.0",
     "ws": "8.21.3"
   },
   "scripts": {
