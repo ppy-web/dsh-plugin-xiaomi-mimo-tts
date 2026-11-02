@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { ReactElement } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AiFillGithub } from 'react-icons/ai'
 import { LuBookOpen } from 'react-icons/lu'
 import type { PluginDetailProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
@@ -51,8 +51,19 @@ const STATUS_KEYS: Record<ApiKeyStatus, LocaleKey> = {
 }
 
 export function PluginDetailBadge(props: DetailBadgeProps): ReactElement | null {
+  if (props.subject.kind === 'row' && props.subject.pkg.name === 'dsh-xiaomi-tts' && props.subject.row.moduleName === 'dsh-xiaomi-tts/qqbot') {
+    return <Tag tone="info" className="xmimo-tts-experimental-tag">{props.t('settings.experimental')}</Tag>
+  }
   if (!isTtsBundle(props)) return null
-  return <KeyBadge scope={props.scope} t={props.t} changes={props.changes} />
+  return <>
+    <KeyBadge scope={props.scope} t={props.t} changes={props.changes} />
+    <QqbotExperimentalListBadge label={props.t('settings.experimental')} />
+  </>
+}
+
+/** The host exposes a detail badge slot but no component-list badge slot. */
+export function QqbotExperimentalListBadge({ label }: { label: string }): ReactElement {
+  return <style>{`[data-plugin-detail="dsh-xiaomi-tts"] { --xmimo-experimental-label: ${JSON.stringify(label)}; }`}</style>
 }
 
 function KeyBadge({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Omit<DetailBadgeProps, 'subject'>): ReactElement {

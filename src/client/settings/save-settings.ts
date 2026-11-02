@@ -4,7 +4,7 @@ import type { TtsSettings } from '../../types/settings.js'
 import { resolveTtsSettings } from '../../utils/settings.js'
 import type { DraftChanges, SettingsValues, EditableSettingField } from './types.js'
 
-export const EDITABLE_SETTING_FIELDS: readonly EditableSettingField[] = ['qqbotEnabled', 'announcementSources', 'provider', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'breezeVoice', 'breezeInstruction', 'instruction', 'enabled', 'autoPlay', 'voiceVolume', 'voiceRate', 'readScope', 'model', 'localSpeechMode', 'localVoiceURI', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
+export const EDITABLE_SETTING_FIELDS: readonly EditableSettingField[] = ['qqbotEnabled', 'announcementSources', 'provider', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'breezeVoice', 'breezeInstruction', 'instruction', 'enabled', 'autoPlay', 'voiceVolume', 'voiceRate', 'readScope', 'model', 'localSpeechMode', 'localVoiceURI', 'localVoiceEngine', 'mossBaseURL', 'mossVoice', 'mossVoiceName', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
 
 export type SaveSettingsErrorCode = 'voice-required' | 'api-key-rejected' | 'host-rejected'
 

@@ -126,6 +126,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [model, setModel] = useState(initial.model)
   const [localSpeechMode, setLocalSpeechMode] = useState(initial.localSpeechMode)
   const [localVoiceURI, setLocalVoiceURI] = useState(initial.localVoiceURI)
+  const [localVoiceEngine, setLocalVoiceEngine] = useState(initial.localVoiceEngine)
+  const [mossBaseURL, setMossBaseURL] = useState(initial.mossBaseURL)
+  const [mossVoice, setMossVoice] = useState(initial.mossVoice)
+  const [mossVoiceName, setMossVoiceName] = useState(initial.mossVoiceName)
   const [voice, setVoice] = useState(initial.voice)
   const [voiceDesignPrompt, setVoiceDesignPrompt] = useState(initial.voiceDesignPrompt)
   const [voiceDesignCustomPrompt, setVoiceDesignCustomPrompt] = useState(initial.voiceDesignCustomPrompt)
@@ -158,7 +162,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -216,6 +220,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
     setLocalVoiceURI(next.localVoiceURI)
+    setLocalVoiceEngine(next.localVoiceEngine)
+    setMossBaseURL(next.mossBaseURL)
+    setMossVoice(next.mossVoice)
+    setMossVoiceName(next.mossVoiceName)
     setVoice(next.voice)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
@@ -275,6 +283,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'model') setModel(base.model)
     if (field === 'localSpeechMode') setLocalSpeechMode(base.localSpeechMode)
     if (field === 'localVoiceURI') setLocalVoiceURI(base.localVoiceURI)
+    if (field === 'localVoiceEngine') setLocalVoiceEngine(base.localVoiceEngine)
+    if (field === 'mossBaseURL') setMossBaseURL(base.mossBaseURL)
+    if (field === 'mossVoice') setMossVoice(base.mossVoice)
+    if (field === 'mossVoiceName') setMossVoiceName(base.mossVoiceName)
     if (field === 'voice') setVoice(base.voice)
     if (field === 'voiceDesignPrompt') setVoiceDesignPrompt(base.voiceDesignPrompt)
     if (field === 'voiceDesignCustomPrompt') setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt)
@@ -305,6 +317,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
     setLocalVoiceURI(next.localVoiceURI)
+    setLocalVoiceEngine(next.localVoiceEngine)
+    setMossBaseURL(next.mossBaseURL)
+    setMossVoice(next.mossVoice)
+    setMossVoiceName(next.mossVoiceName)
     setVoice(next.voice)
     setVoiceDesignPrompt(next.voiceDesignPrompt)
     setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
@@ -356,6 +372,9 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       model,
       localSpeechMode,
       localVoiceURI,
+      localVoiceEngine,
+      mossBaseURL,
+      mossVoice,
       voice,
       voiceDesignPrompt,
       voiceVolume,
@@ -497,6 +516,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           model={model}
           localSpeechMode={localSpeechMode}
           localVoiceURI={localVoiceURI}
+          localVoiceEngine={localVoiceEngine}
+          mossBaseURL={mossBaseURL}
+          mossVoice={mossVoice}
+          mossVoiceName={mossVoiceName}
           voice={voice}
           voiceDesignPrompt={voiceDesignPrompt}
           voiceDesignCustomPrompt={voiceDesignCustomPrompt}
@@ -517,23 +540,15 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           }}
           onVoiceChange={(next) => { previewPlayer.stop(); setVoice(next); markChange('voice') }}
           onLocalVoiceURIChange={(next) => { setLocalVoiceURI(next); markChange('localVoiceURI') }}
+          onLocalVoiceEngineChange={(next) => { setLocalVoiceEngine(next); markChange('localVoiceEngine') }}
+          onMossBaseURLChange={(next) => { setMossBaseURL(next); markChange('mossBaseURL') }}
+          onMossVoiceChange={(voiceId, voiceName) => {
+            setMossVoice(voiceId)
+            setMossVoiceName(voiceName)
+            setChanges((current) => ({ ...current, mossVoice: { kind: 'set' }, mossVoiceName: { kind: 'set' } }))
+            setState('idle')
+          }}
           onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
-        /> : null}
-        {soundEnabled ? <SoundEffectsPanel
-          t={t}
-          controller={controller}
-          enabled={soundEnabled}
-          volume={soundVolume}
-          pack={soundPack}
-          taskSounds={taskSounds}
-          clickSounds={clickSounds}
-          writable={writable}
-          minimal={minimalMode}
-          open={openPanel === 'sound'}
-          onToggle={() => togglePanel('sound')}
-          onScopeChange={changeSoundScope}
-          onVolumeChange={(next) => { setSoundVolume(next); markChange('soundVolume') }}
-          onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
         /> : null}
         {enabled ? <PreviewModule
           t={t}
@@ -554,6 +569,22 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           overridden={fieldOverridden('announcementSources')}
           onReset={() => resetField('announcementSources')}
           onChange={next => { setAnnouncementSources(next); markChange('announcementSources') }}
+        /> : null}
+        {soundEnabled ? <SoundEffectsPanel
+          t={t}
+          controller={controller}
+          enabled={soundEnabled}
+          volume={soundVolume}
+          pack={soundPack}
+          taskSounds={taskSounds}
+          clickSounds={clickSounds}
+          writable={writable}
+          minimal={minimalMode}
+          open={openPanel === 'sound'}
+          onToggle={() => togglePanel('sound')}
+          onScopeChange={changeSoundScope}
+          onVolumeChange={(next) => { setSoundVolume(next); markChange('soundVolume') }}
+          onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
         /> : null}
         <div className="xmimo-tts-card-footer">
           <div className="xmimo-tts-card-actions">

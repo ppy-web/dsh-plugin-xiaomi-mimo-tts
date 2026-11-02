@@ -82,5 +82,7 @@ declare module '@deepseek-ai/cordis' {
   interface Events {
     /** Audio was delivered or exported; file consumers may surface the returned path. */
     'speech/delivered'(payload: { agent: Agent; result: SpeechDeliveryResult; automatic: boolean }): void
+    /** A speech attempt failed; the code and owner identify the affected conversation without exposing upstream secrets. */
+    'speech/failed'(payload: { agent: Agent; adapter: string; code: string; automatic: boolean }): void
   }
 }

@@ -20,6 +20,15 @@ export const DOUBAO_AGENT_PLAN_TTS_ENDPOINT = 'wss://openspeech.bytedance.com/ap
 /** Same-origin route that reports API key configuration status without exposing the key. */
 export const TTS_API_KEY_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-status'
 
+/** Same-origin route used by the Web client to probe a local MOSS-TTS-Nano service. */
+export const TTS_MOSS_PROBE_ROUTE = '/plugins/xiaomi-mimo-tts/moss/probe'
+
+/** Same-origin route used by the Web client to synthesize one local MOSS utterance. */
+export const TTS_MOSS_SYNTH_ROUTE = '/plugins/xiaomi-mimo-tts/moss/synthesize'
+
+/** Default address of the locally deployed MOSS-TTS-Nano demo server. */
+export const DEFAULT_MOSS_BASE_URL = 'http://127.0.0.1:18083'
+
 /** Same-origin route used by the QQ relay settings to inspect and edit QQ memory. */
 export const TTS_QQ_MEMORY_ROUTE = '/plugins/xiaomi-mimo-tts/qq-memory'
 
@@ -38,10 +47,11 @@ export const TTS_TOGGLE_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/toggle
 /** Same-origin route used by the Web client to load the two-state sound-effects character sheet. */
 export const TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/sound-effects-toggle-characters.webp'
 
-/** Same-origin character assets for the two faces of the provider switch. */
+/** Same-origin character assets for the provider switch. */
 export const TTS_PROVIDER_CHARACTER_ASSET_ROUTES = {
   xiaomi: '/plugins/xiaomi-mimo-tts/provider-mimo.webp',
   doubao: '/plugins/xiaomi-mimo-tts/provider-doubao.webp',
+  breeze: '/plugins/xiaomi-mimo-tts/provider-breeze.webp',
 } as const
 
 /** Provider brand marks used by the Voice reading selector. */

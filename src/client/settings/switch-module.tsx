@@ -90,7 +90,7 @@ function ProviderToggle({ t, provider, minimal, writable, onChange }: {
       <span className="xmimo-tts-character-portrait xmimo-tts-provider-portrait" aria-hidden="true">
         <span className="xmimo-tts-provider-flipper">
           <span className="xmimo-tts-provider-face xmimo-tts-provider-face-xiaomi" style={{ backgroundImage: `url(${hostRoute(TTS_PROVIDER_CHARACTER_ASSET_ROUTES.xiaomi)})` }} />
-          <span className="xmimo-tts-provider-face xmimo-tts-provider-face-doubao" style={{ backgroundImage: `url(${hostRoute(TTS_PROVIDER_CHARACTER_ASSET_ROUTES.doubao)})` }} />
+          <span className="xmimo-tts-provider-face xmimo-tts-provider-face-doubao" style={{ backgroundImage: `url(${hostRoute(TTS_PROVIDER_CHARACTER_ASSET_ROUTES[provider === 'breeze' ? 'breeze' : 'doubao'])})` }} />
         </span>
       </span>
       <span className="xmimo-tts-character-copy"><strong>{label}</strong></span>

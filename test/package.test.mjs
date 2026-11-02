@@ -127,8 +127,6 @@ test('provider image routes are unique and only declared image providers own rou
     ...Object.values(sharedModule.TTS_PROVIDER_LOGO_ASSET_ROUTES),
   ]
   assert.equal(new Set(routes).size, routes.length)
-  assert.equal(Object.hasOwn(sharedModule.TTS_PROVIDER_CHARACTER_ASSET_ROUTES, 'breeze'), false)
-  assert.equal(Object.hasOwn(sharedModule.TTS_PROVIDER_LOGO_ASSET_ROUTES, 'breeze'), false)
 })
 
 test('selects the Token Plan endpoint from tp-prefixed API keys', () => {

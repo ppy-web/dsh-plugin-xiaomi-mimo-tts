@@ -23,6 +23,7 @@ import {
 import {
   TTS_MODELS,
   TTS_LOCAL_SPEECH_MODES,
+  TTS_LOCAL_VOICE_ENGINES,
   TTS_FORMATS,
   TTS_VOICE_DESIGN_PLAYBACK_MODES,
   TTS_READ_SCOPES,
@@ -35,6 +36,7 @@ import {
 } from './types/index.js'
 import { registerStaticAsset, registerStaticAssetMap, json } from './host/index.js'
 import { registerSynthesisRoutes } from './host/synthesis-routes.js'
+import { registerMossRoutes } from './host/moss-routes.js'
 import SpeechHost from './host/speech-service.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, ttsApiKey } from './shared.js'
 
@@ -68,6 +70,10 @@ export const Config = z.object({
   model: z.union(TTS_MODELS).default(DEFAULT_TTS_SETTINGS.model).volatile(),
   localSpeechMode: z.union(TTS_LOCAL_SPEECH_MODES).default(DEFAULT_TTS_SETTINGS.localSpeechMode).volatile(),
   localVoiceURI: z.string().default(DEFAULT_TTS_SETTINGS.localVoiceURI).volatile(),
+  localVoiceEngine: z.union(TTS_LOCAL_VOICE_ENGINES).default(DEFAULT_TTS_SETTINGS.localVoiceEngine).volatile(),
+  mossBaseURL: z.string().pattern(/^https?:\/\/\S+$/iu).default(DEFAULT_TTS_SETTINGS.mossBaseURL).volatile(),
+  mossVoice: z.string().default(DEFAULT_TTS_SETTINGS.mossVoice).volatile(),
+  mossVoiceName: z.string().default(DEFAULT_TTS_SETTINGS.mossVoiceName).volatile(),
   voice: z.string().default(DEFAULT_TTS_SETTINGS.voice).volatile(),
   voiceDesignPrompt: z.string().min(1).default(DEFAULT_TTS_SETTINGS.voiceDesignPrompt).volatile(),
   voiceDesignCustomPrompt: z.string().default(DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt).volatile(),
@@ -144,7 +150,7 @@ export function apply(ctx: Context, config: Config): void {
   for (const [provider, path] of Object.entries(TTS_PROVIDER_CHARACTER_ASSET_ROUTES)) {
     registerStaticAsset(ctx, {
       path,
-      data: readFileSync(new URL(`../assets/ui/provider-${provider === 'xiaomi' ? 'mimo' : 'doubao'}.webp`, import.meta.url)),
+      data: readFileSync(new URL(`../assets/ui/provider-${provider === 'xiaomi' ? 'mimo' : provider}.webp`, import.meta.url)),
       contentType: 'image/webp',
       description: `${provider} provider character asset`,
     })
@@ -237,4 +243,5 @@ export function apply(ctx: Context, config: Config): void {
   }), 'xiaomi-mimo-tts: API key status route')
 
   registerSynthesisRoutes(ctx, current)
+  registerMossRoutes(ctx, current)
 }

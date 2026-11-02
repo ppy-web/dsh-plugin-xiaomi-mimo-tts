@@ -15,6 +15,37 @@
 }
 .xmimo-tts-plugin-status { margin: 0; padding: 16px; color: var(--xmimo-ui-text-muted); }
 
+.xmimo-tts-experimental-tag {
+  height: 18px;
+  padding: 0 7px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* Component rows have no badge slot; scope the host title adaptation to this bundle. */
+#xmimo-tts-local-voice-engine-moss::after,
+[data-plugin-detail="dsh-xiaomi-tts"] [data-plugin-row="speech-delivery-qqbot"] button[aria-label] > span:first-child::after,
+[data-xmimo-experimental-title]::after {
+  content: var(--xmimo-experimental-label);
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: var(--dsw-alias-state-business-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+[data-plugin-detail="dsh-xiaomi-tts"] [data-plugin-row="speech-delivery-qqbot"] button[aria-label] > span:first-child::after,
+[data-xmimo-experimental-title]::after {
+  margin-inline-start: 6px;
+}
+
 .xmimo-tts-detail-status {
   display: inline-flex;
   flex-wrap: wrap;

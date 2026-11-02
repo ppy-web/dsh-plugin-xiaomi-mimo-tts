@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { saveWhaleDraft, validateWhaleDraft } = await loadClientModule('src/client/settings/whale-draft.ts')
 const { registerWhalePersonaSettings, registerQqbotSpeechSettings } = await loadClientModule('src/client/settings/qqbot-registration.ts')
 const { DEFAULT_WHALE_SETTINGS } = await loadClientModule('src/types/whale.ts')
 const { saveQqSpeechDraft, validQqSpeechDraft } = await loadClientModule('src/client/settings/qqbot-speech-draft.ts')
+const { QqbotSpeechSettings } = await loadClientModule('src/client/settings/qqbot-settings.tsx')
+const { WhalePersonaSettings } = await loadClientModule('src/client/settings/whale-settings.tsx')
 const defaults = () => structuredClone(DEFAULT_WHALE_SETTINGS)
 
 test('persona and QQ relay settings bind to the correct independent namespaces', async () => {
@@ -28,7 +32,7 @@ test('persona and QQ relay settings bind to the correct independent namespaces',
     assert.equal(page.options.inject().scope, scope)
     const disposeVoice = registerQqbotSpeechSettings(ctx, t, changes)
     registrations.get('dsh-xiaomi-tts#speech-delivery-qqbot').options.inject()
-    assert.deepEqual(requested, ['preset-whale-girl', 'xiaomi-mimo-tts'])
+    assert.deepEqual(requested, ['preset-whale-girl', 'xiaomi-mimo-tts', 'speech-delivery-qqbot'])
     disposeVoice()
     dispose()
     assert.equal(registrations.size, 0)
@@ -83,4 +87,35 @@ test('QQ voice rule edits write only their own fields and reject invalid or stal
   assert.equal(validQqSpeechDraft({ ...value, qqbotMaxDurationSeconds: 0.5 }), false)
   await assert.rejects(saveQqSpeechDraft(scope, base, value, 2))
   assert.equal(writes.length, 1)
+})
+
+test('rendered QQ controls read QQ persona values and preserve separate write permissions for speech settings', () => {
+  const makeScope = (value, writable) => {
+    const snapshot = { status: 'ready', value, writable, revision: 1 }
+    return { getSnapshot: () => snapshot, subscribe: () => () => {} }
+  }
+  const qq = defaults(), desktop = defaults()
+  qq.persona.name = 'QQ configured name'
+  desktop.persona.name = 'DSH configured name'
+  const t = key => key
+  const html = renderToStaticMarkup(createElement(QqbotSpeechSettings, {
+    view: 'page', personaScope: makeScope(qq, false), scope: makeScope({ qqbotEnabled: true }, true), t,
+  }))
+  const forms = [...html.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/gu)].map(match => match[0])
+  assert.equal(forms.length, 2, 'persona and Host voice settings have independent submit boundaries')
+  const personaForm = forms.find(form => form.includes('aria-label="qq.persona"'))
+  const voiceForm = forms.find(form => form.includes('aria-label="qq.voice"'))
+  assert.ok(personaForm.includes('value="QQ configured name"'))
+  assert.ok(!html.includes('DSH configured name'))
+  const personaInputs = [...personaForm.matchAll(/<(?:input|textarea)\b[^>]*>/gu)]
+  assert.ok(personaInputs.length > 0)
+  assert.ok(personaInputs.every(([tag]) => /\bdisabled=""/u.test(tag)))
+  const automatic = [...voiceForm.matchAll(/<input\b[^>]*>/gu)].find(([tag]) => tag.includes('role="switch"'))[0]
+  assert.ok(automatic.includes('checked=""'))
+  assert.ok(!automatic.includes('disabled=""'), 'a read-only QQ persona must not disable editable Host voice settings')
+  const desktopHtml = renderToStaticMarkup(createElement(WhalePersonaSettings, {
+    view: 'page', scope: makeScope(desktop, true), t,
+  }))
+  assert.ok(desktopHtml.includes('value="DSH configured name"'))
+  assert.ok(!desktopHtml.includes('QQ configured name'))
 })

@@ -1,6 +1,23 @@
 {
   "meta": {
-    "title": "QQ Bot 传声",
-    "description": "QQ 传声与 SILK 转换，复用统一鲸鱼娘人设；不定时发送消息。"
+    "title": "QQ Bot 传声筒",
+    "description": "独立 QQ 鲸鱼娘人设、自动完整语音与隔离记忆，可在本组件自定义。"
+  },
+  "config": {
+    "persona": {
+      "$description": "QQ 鲸鱼娘人设（独立配置，保存后下一轮生效）",
+      "name": "角色名",
+      "selfReference": "自称",
+      "userAddress": "默认用户称呼（可留空）",
+      "relationship": "关系与背景",
+      "personality": "性格补充",
+      "replyStyle": "回复风格补充",
+      "likes": "角色喜好",
+      "boundaries": "避雷与禁忌"
+    },
+    "memory": {
+      "$description": "QQ 本地记忆",
+      "enabled": "允许保存私聊或群的独立记忆，不读取 DSH 工作区。"
+    }
   }
 }

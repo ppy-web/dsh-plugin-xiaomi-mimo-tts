@@ -2,6 +2,8 @@ import {
   DEFAULT_TTS_SETTINGS,
   isSupportedTtsApiKey,
   TTS_API_KEY_STATUS_ROUTE,
+  TTS_MOSS_PROBE_ROUTE,
+  TTS_MOSS_SYNTH_ROUTE,
   TTS_ROUTE,
   TTS_STREAM_ROUTE,
 } from '../../src/shared.js'
@@ -160,6 +162,22 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
     }
     if (pathname === TTS_ROUTE || pathname === TTS_STREAM_ROUTE) {
       return previewAudioResponse(pathname === TTS_STREAM_ROUTE)
+    }
+    if (pathname === TTS_MOSS_PROBE_ROUTE) {
+      return jsonResponse({
+        ok: true,
+        baseURL: 'http://127.0.0.1:18083',
+        health: { status: 'ok', device: 'cpu', cpuRuntimeLoaded: true, textNormalizationStatus: 'preview' },
+        warmup: { ready: true, failed: false, state: 'ready', progress: 1, message: 'Warmup complete.' },
+        voices: [
+          { id: 'demo-1', name: '🇨🇳 欢迎关注模思智能', prompt_speech: 'assets/audio/zh_1.wav' },
+          { id: 'demo-2', name: '🇨🇳 深夜温柔晚安', prompt_speech: 'assets/audio/zh_6.wav' },
+          { id: 'demo-3', name: '🇨🇳 台湾腔', prompt_speech: 'assets/audio/zh_4.wav' },
+        ],
+      })
+    }
+    if (pathname === TTS_MOSS_SYNTH_ROUTE) {
+      return previewAudioResponse(false)
     }
     return originalFetch(input, init)
   }

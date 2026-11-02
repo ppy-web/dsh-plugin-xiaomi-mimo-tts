@@ -1,0 +1,37 @@
+name: Dependency report
+
+on:
+  schedule:
+    - cron: '0 3 1 * *'
+      timezone: 'Asia/Shanghai'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: dependency-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Update dependency issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/scripts/dependency-report.mjs --write

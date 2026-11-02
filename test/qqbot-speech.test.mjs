@@ -95,8 +95,9 @@ test('missing, restricted or canceled QQ senders never produce a delivery', asyn
   })
 })
 
-test('QQ relay owns its delivery adapter and works without a persona registry', async () => {
-  const ctx = new Context(), adapters = new Map()
+test('QQ relay owns its adapter and separate preset and withdraws both on unload', async () => {
+  const ctx = new Context(), adapters = new Map(), presets = new Map()
+  ctx.provide('agentPresets', { async register(config) { presets.set(config.id, config); return () => presets.delete(config.id) } })
   ctx.provide('systemPrompt', { tools() {} })
   ctx.provide('speechSynthesis', { registerDelivery(adapter) { adapters.set(adapter.id, adapter); return () => adapters.delete(adapter.id) } })
   ctx.plugin(ToolsService)
@@ -105,8 +106,13 @@ test('QQ relay owns its delivery adapter and works without a persona registry', 
   try {
     await plugin.await()
     assert.ok(adapters.has('qqbot'))
+    const preset = presets.get('qq-speech-assistant')
+    assert.ok(preset)
+    assert.equal(preset.plugins.find(row => row.name === 'dsh-xiaomi-tts/speech-agent').config.delivery, 'qqbot')
+    assert.ok(ctx.qqbotSettings.current().persona.name)
     await plugin.dispose()
     assert.equal(adapters.size, 0)
+    assert.equal(presets.size, 0)
     const schema = yaml.JSON_SCHEMA.extend([new yaml.Type('tag:yaml.org,2002:js', { kind: 'scalar', construct: value => value })])
     const patch = yaml.load(readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8'), { schema })
     const entries = patch.flatMap(row => row.insert ?? [])

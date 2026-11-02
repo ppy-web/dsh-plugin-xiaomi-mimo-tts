@@ -1,10 +1,11 @@
-import type { TtsFormat, TtsLocalSpeechMode, TtsModel, TtsReadScope, TtsVoiceDesignPlaybackMode } from './models.js'
+import type { TtsFormat, TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope, TtsVoiceDesignPlaybackMode } from './models.js'
 import type { SoundPack } from './sound.js'
 import type { DoubaoTtsModel, TtsProvider } from './providers.js'
 import {
   DEFAULT_MAX_MP3_AUDIO_BYTES,
   DEFAULT_MAX_PAUSED_PCM_BYTES,
   DEFAULT_MAX_WAV_AUDIO_BYTES,
+  DEFAULT_MOSS_BASE_URL,
   TOKEN_PLAN_TTS_BASE_URL,
 } from '../constants.js'
 import { DEFAULT_SOUND_SETTINGS } from './sound.js'
@@ -32,6 +33,10 @@ export interface TtsSettings {
   model?: TtsModel
   localSpeechMode?: TtsLocalSpeechMode
   localVoiceURI?: string
+  localVoiceEngine?: TtsLocalVoiceEngine
+  mossBaseURL?: string
+  mossVoice?: string
+  mossVoiceName?: string
   voice?: string
   voiceDesignPrompt?: string
   voiceDesignCustomPrompt?: string
@@ -77,6 +82,10 @@ export interface ResolvedTtsSettings {
   model: TtsModel
   localSpeechMode: TtsLocalSpeechMode
   localVoiceURI: string
+  localVoiceEngine: TtsLocalVoiceEngine
+  mossBaseURL: string
+  mossVoice: string
+  mossVoiceName: string
   voice: string
   voiceDesignPrompt: string
   voiceDesignCustomPrompt: string
@@ -121,6 +130,10 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   model: 'mimo-v2.5-tts',
   localSpeechMode: 'auto',
   localVoiceURI: '',
+  localVoiceEngine: 'browser',
+  mossBaseURL: DEFAULT_MOSS_BASE_URL,
+  mossVoice: '',
+  mossVoiceName: '',
   voice: '冰糖',
   voiceDesignPrompt: '青年女性,声线清亮、亲切自然,吐字清楚,语速适中,情绪温柔克制。',
   voiceDesignCustomPrompt: '青年女性,声线清亮、亲切自然,吐字清楚,语速适中,情绪温柔克制。',

@@ -191,6 +191,16 @@ test('detail actions open the project and manual separately and remain available
   ])
 })
 
+test('QQ component classification stays visible without accessing speech settings or credentials', t => {
+  t.mock.method(globalThis, 'fetch', () => assert.fail('a component classification must not query credentials'))
+  const scope = { getSnapshot: () => assert.fail('a component classification must not read TTS settings'), subscribe: () => assert.fail() }
+  for (const enabled of [true, false]) {
+    const qq = { kind: 'row', pkg, row: { rowId: 'speech-delivery-qqbot', moduleName: 'dsh-xiaomi-tts/qqbot', enabled } }
+    const html = renderToStaticMarkup(createElement(PluginDetailBadge, { subject: qq, t: () => 'classification', scope }))
+    assert.ok(html.includes('classification'))
+  }
+})
+
 test('detail badge reads the saved provider, offers retry on failure, and suspends during bundle changes', async t => {
   const requests = mockRequests(t)
   apiKeyStatusStore.setAvailable(true)

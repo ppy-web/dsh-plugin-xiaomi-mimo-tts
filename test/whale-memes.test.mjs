@@ -85,7 +85,7 @@ test('installation paths with spaces work and damaged optional resources keep th
   }
 })
 
-test('DSH and QQ share configurable character fields while exposing only their own image delivery format', () => {
+test('independent DSH and QQ skills apply custom fields and expose only their own image delivery format', () => {
   const persona = { name: '同一个小鲸', selfReference: '我', userAddress: '朋友', relationship: '可靠助手', personality: '机灵', replyStyle: '简短', likes: '绘画', boundaries: '不嘲笑' }
   const dsh = buildPersona(root, { persona, channel: 'dsh' })
   const qq = buildPersona(root, { persona, channel: 'qq' })

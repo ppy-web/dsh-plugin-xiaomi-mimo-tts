@@ -65,13 +65,15 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
             } })
             forward('data: [DONE]\n\n')
           } else {
-            const upstream = settings.provider === 'breeze' ? await streamBreeze(settings, text, controller.signal) : await streamXiaomi(settings, text, controller.signal)
-            begin()
             if (settings.provider === 'breeze') {
+              const upstream = await streamBreeze(settings, text, controller.signal)
+              begin()
               for await (const chunk of evenPcmChunks(upstream.body!)) {
                 forward(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: chunk.toString('base64') } } }] })}\n\n`)
               }
             } else {
+              const upstream = await streamXiaomi(settings, text, controller.signal)
+              begin()
               const reader = upstream.body!.getReader()
               try {
                 while (!controller.signal.aborted) {

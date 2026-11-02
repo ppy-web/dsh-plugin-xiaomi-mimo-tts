@@ -29,7 +29,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
           { label: '语音播放', detail: '点击鲸鱼娘卡片或其中的复选框切换总开关。关闭后会隐藏调音台和播报台，并同时关闭自动播放、停止试听；重新开启后保留原有语音和播报来源配置。' },
           { label: '自动播放', detail: '新安装默认关闭。点击第二张角色卡片切换自动朗读；打开后，助手回复会自动尝试朗读，浏览器仍可能因自动播放策略拒绝。打开它会自动打开“语音播放”，关闭它只关闭自动朗读。' },
           { label: '音效', detail: '新安装默认关闭。点击第三张角色卡片切换音效总开关；开启后显示下方“音效库”，按面板内选择的范围播放，关闭后隐藏模块并保留配置。' },
-          { label: 'QQ 语音发送', detail: '浏览器语音播放、自动播放和音效开关不控制 QQ 发声。QQ 发送能力由“QQ Bot 传声”组件决定，是否自动发送由“播报台 → 插件联动 → QQ Bot”来源开关决定，修改来源后需保存。' },
+          { label: 'QQ 语音发送', detail: '浏览器语音播放、自动播放和音效开关不控制 QQ 发声。QQ 发送能力由“QQ Bot 传声筒”组件决定，是否自动发送由“播报台 → 插件联动 → QQ Bot”来源开关决定，修改来源后需保存。' },
         ],
       },
       {
@@ -48,6 +48,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         summary: '控制音量、速度、模型、声音来源和本地兜底策略。',
         items: [
           { label: '调音台标题', detail: '点击“调音台”标题栏展开或收起详细设置。标题栏摘要会显示当前音量、倍速、朗读范围、模型、声音和策略。' },
+          { label: '更多', detail: '本地音色、朗读范围和语音策略收纳在默认收起的“更多”二级折叠条里。点击展开或收起，草稿会保留；本地音色来源与模型选择使用相同的切换控件。' },
           { label: '音量滑块', detail: '拖动或用键盘方向键调整语音音量；松开鼠标或完成键盘操作时会试听当前音量。旁边的“恢复默认”按钮会把该项恢复为基础配置，恢复动作仍需点击“保存”。' },
           { label: '播放速度滑块', detail: '拖动或用键盘调整 0.5×–2.0× 速度。豆包在云端合成时应用语速，播放时保持 1×；小米 PCM 在本地调整速度，音高会随速度改变。' },
           { label: '模型按钮', detail: '小米可选择预置音色或音色设计；豆包可选择标准合成（seed-tts-2.0）或声音复刻（seed-icl-2.0）。下方音色控件随所选模型切换。' },
@@ -71,8 +72,20 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         ],
       },
       {
+        id: 'manual-broadcast',
+        title: '05 · 播报台',
+        summary: '位于调音台下方、音效库上方的可折叠播报台，支持文字试听与来源设置。',
+        items: [
+          { label: '宿主播报来源', detail: '提问卡片标题默认开启并跟随自动播报，只读当前题目标题；翻题、提交、关闭或切换会话时取消。首次开启不补播已有卡片，忙碌时跳过。审批提醒和后台任务结果默认关闭、独立于自动播报，只观察当前会话；审批处理或撤回后停止语音，后台任务仅播报观察到运行过程后的结束、失败或取消。宿主需提供相应服务。' },
+          { label: '插件联动', detail: 'dsh-pet 默认关闭，dsh-whale-musume 语音接口默认开启，来源名称可跳转项目主页。QQ Bot 默认关闭：开启并保存后自动发送完整语音；关闭后保留按需语音。QQ 需要另行启用 QQ Bot 传声筒组件并在 QQ 中选择对应预设，完整流程见独立的 QQBot 接入教程。' },
+          { label: '试听文本框', detail: '点击文本框输入或替换试听内容，最多 100 个字符。文本为空时，试听按钮会禁用；试听文本本身不会写入 DSH。模型、声音、音量和速度可直接使用草稿，但新 API Key 必须先保存。' },
+          { label: '播放 / 停止按钮', detail: '点击摘要首个“试听”标签即可直接播放当前文案，无需展开；面板内的“播放试听”按钮使用同一播放器。准备中或播放中再次点击可中断。状态提示会显示当前语音来源，并针对未配置密钥、密钥被拒绝、限流、超时、本地音色不可用和自动播放限制给出对应提示。' },
+        ],
+        links: [{ label: 'QQ Bot 接入流程', href: '#qqbot' }],
+      },
+      {
         id: 'manual-sounds',
-        title: '05 · 音效库',
+        title: '06 · 音效库',
         summary: '为 DSH 的任务和点击动作选择 UI 音效。',
         items: [
           { label: '音效库与范围选择', detail: '点击标题展开面板；调音台、音效库和播报台使用单开模式，展开一个会收起另外两个。面板内可横向选择全部开启、仅点击音效或仅任务音效；这只改变范围，总开关仍由顶部“音效库”控制。关闭再开启总开关会保留范围。' },
@@ -81,18 +94,6 @@ const COPY: Record<ManualLocale, ManualCopy> = {
           { label: '音效试听按钮', detail: '点击“开始”“完成”“失败”“提醒”或“点击”试听对应声音。每次点击都会播放一次，即使音效库当前折叠也不影响已开始的播放；关闭总开关会隐藏整个音效库。' },
           { label: '任务音效 / 点击音效', detail: '顶部开关只控制音效总开关，面板内三个选项只选择范围；关闭总开关会保留选择。修改后保存生效。' },
         ],
-      },
-      {
-        id: 'manual-broadcast',
-        title: '06 · 播报台',
-        summary: '位于音效库下方的可折叠播报台，支持文字试听与来源设置。',
-        items: [
-          { label: '宿主播报来源', detail: '提问卡片标题默认开启并跟随自动播报，只读当前题目标题；翻题、提交、关闭或切换会话时取消。首次开启不补播已有卡片，忙碌时跳过。审批提醒和后台任务结果默认关闭、独立于自动播报，只观察当前会话；审批处理或撤回后停止语音，后台任务仅播报观察到运行过程后的结束、失败或取消。宿主需提供相应服务。' },
-          { label: '插件联动', detail: 'dsh-pet 默认关闭，dsh-whale-musume 语音接口默认开启，来源名称可跳转项目主页。QQ Bot 默认关闭：开启并保存后自动发送完整语音；关闭后保留按需语音。QQ 需要另行启用 QQ Bot 传声组件并在 QQ 中选择对应预设，完整流程见独立的 QQBot 接入教程。' },
-          { label: '试听文本框', detail: '点击文本框输入或替换试听内容，最多 100 个字符。文本为空时，试听按钮会禁用；试听文本本身不会写入 DSH。模型、声音、音量和速度可直接使用草稿，但新 API Key 必须先保存。' },
-          { label: '播放 / 停止按钮', detail: '点击摘要首个“试听”标签即可直接播放当前文案，无需展开；面板内的“播放试听”按钮使用同一播放器。准备中或播放中再次点击可中断。状态提示会显示当前语音来源，并针对未配置密钥、密钥被拒绝、限流、超时、本地音色不可用和自动播放限制给出对应提示。' },
-        ],
-        links: [{ label: 'QQ Bot 接入流程', href: '#qqbot' }],
       },
       {
         id: 'manual-actions',
@@ -157,7 +158,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
           { label: 'Voice playback', detail: 'Click the Whale Maid card or its checkbox to toggle the main switch. Turning it off hides the mixer and Broadcast Desk, turns autoplay off and stops the preview. Turning it back on retains the voice and announcement source settings.' },
           { label: 'Automatic playback', detail: 'New installs start with this off. Click the second character card to toggle automatic reading; the browser may still reject autoplay. Enabling it also enables Voice playback; disabling it only turns off automatic reading.' },
           { label: 'Sound effects', detail: 'New installs start with this off. Click the third character card to toggle the sound master switch. Turning it on shows Sound Effects below and plays the selected scope; turning it off hides the module and retains its settings.' },
-          { label: 'QQ voice delivery', detail: 'Browser voice playback, autoplay, and sounds do not control QQ delivery. QQ Bot Voice Relay enables delivery; Broadcast Desk → Plugin integrations → QQ Bot controls automatic delivery. Save source changes to apply them.' },
+          { label: 'QQ voice delivery', detail: 'Browser voice playback, autoplay, and sounds do not control QQ delivery. QQ Bot Megaphone enables delivery; Broadcast Desk → Plugin integrations → QQ Bot controls automatic delivery. Save source changes to apply them.' },
         ],
       },
       {
@@ -181,6 +182,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
           { label: 'Model buttons', detail: 'Xiaomi offers preset voices and Voice Design. Doubao offers Standard TTS (seed-tts-2.0) and Voice cloning (seed-icl-2.0). Voice controls change with the selected model.' },
           { label: 'Voice Design picker', detail: 'Open the picker and choose Custom or a preset. Custom enables the editable description. Edit the description directly and save the settings when it is ready.' },
           { label: 'Speech instructions and styles', detail: 'Xiaomi and Doubao Standard offer separate style presets and custom instructions, saved independently. Xiaomi built-in voices add no style by default. A nonempty instruction takes priority over presetStylePrompt; an existing presetStylePrompt is used only when the instruction is blank. Voice Design keeps its voice description. Browser speech and Doubao cloning do not apply speech instructions.' },
+          { label: 'More', detail: 'Local voice, read-aloud range, and speech strategy are grouped in the initially collapsed More row. Expand or collapse it without losing drafts. Local voice sources use the same segmented control as model selection.' },
           { label: 'Built-in / browser voice pickers', detail: 'Click a picker to open its list, then click a voice. Arrow keys, Home, End, and Escape also work. Browser voices show language and online/offline status; the browser voice picker is disabled when local speech is disabled.' },
           { label: 'Read-aloud scope radios', detail: 'Smart automatically reads short replies in full and the first two semantic segments of long replies; manual reading uses the full reply. Full always reads everything. First segment limits both automatic and manual reading to that segment. These scopes apply to browser reading; QQ automatic voice sends the full reply.' },
           { label: 'Speech strategy radios', detail: 'Choose Cloud first, Local first, or Disable local speech. Cloud speech uses the selected Xiaomi or Doubao provider. The first two choose the fallback order; disabling local speech uses only the cloud provider.' },
@@ -199,8 +201,20 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         ],
       },
       {
+        id: 'manual-broadcast',
+        title: '05 · Broadcast Desk',
+        summary: 'A collapsible panel below the Mixer and above Sound Effects for text previews and announcement sources.',
+        items: [
+          { label: 'Host announcements', detail: 'Question titles are enabled by default and follow autoplay. Only the current title is read; changing, submitting, closing, or switching sessions cancels speech. Existing cards are not replayed on activation, and busy speech is respected. Approval reminders and Background job results are off by default, independent of autoplay, and limited to the current conversation. Answered or withdrawn approvals stop speech. Jobs announce settlement only after their live state was observed. The corresponding host services must be available.' },
+          { label: 'Plugin integrations', detail: 'dsh-pet is off by default; the dsh-whale-musume speech API is on. Source names link to their projects. QQ Bot starts off: enable and save it for automatic full voice replies; leave it off for voice on request. Enable QQ Bot Megaphone and select its QQ preset using the dedicated setup guide.' },
+          { label: 'Preview text field', detail: 'Click and replace the preview text, up to 100 characters. An empty field disables the preview button. Model, voice, volume, and speed drafts apply immediately, but a new API key must be saved first.' },
+          { label: 'Play / stop button', detail: 'Click the first Preview chip in the summary to play the current text without expanding the panel. The Play preview button inside uses the same player. Click again while preparing or playing to stop. The status identifies the speech source and distinguishes missing or rejected keys, rate limits, timeouts, unavailable local voices, and autoplay restrictions.' },
+        ],
+        links: [{ label: 'Set up QQ Bot', href: '#qqbot' }],
+      },
+      {
         id: 'manual-sounds',
-        title: '05 · Sound Effects',
+        title: '06 · Sound Effects',
         summary: 'Choose UI sounds for DSH tasks and clicks.',
         items: [
           { label: 'Sound Effects and scope', detail: 'The Mixer, Sound Effects, and Broadcast Desk share a single-open accordion. Choose All sounds, Click sounds only, or Task sounds only inside Sound Effects. These choices do not change the master switch at the top, and switching it off and on retains the selected scope.' },
@@ -209,18 +223,6 @@ const COPY: Record<ManualLocale, ManualCopy> = {
           { label: 'Sound preview buttons', detail: 'Click Start, Complete, Error, Notification, or Press to preview that cue once. Turning the sound switch off hides the entire Sound Effects module.' },
           { label: 'Task / click sounds', detail: 'The top switch controls sound playback; the three options inside the panel select its scope. Save to apply the changes.' },
         ],
-      },
-      {
-        id: 'manual-broadcast',
-        title: '06 · Broadcast Desk',
-        summary: 'A collapsible panel below Sound Effects for text previews and announcement sources.',
-        items: [
-          { label: 'Host announcements', detail: 'Question titles are enabled by default and follow autoplay. Only the current title is read; changing, submitting, closing, or switching sessions cancels speech. Existing cards are not replayed on activation, and busy speech is respected. Approval reminders and Background job results are off by default, independent of autoplay, and limited to the current conversation. Answered or withdrawn approvals stop speech. Jobs announce settlement only after their live state was observed. The corresponding host services must be available.' },
-          { label: 'Plugin integrations', detail: 'dsh-pet is off by default; the dsh-whale-musume speech API is on. Source names link to their projects. QQ Bot starts off: enable and save it for automatic full voice replies; leave it off for voice on request. Enable QQ Bot Voice Relay and select its QQ preset using the dedicated setup guide.' },
-          { label: 'Preview text field', detail: 'Click and replace the preview text, up to 100 characters. An empty field disables the preview button. Model, voice, volume, and speed drafts apply immediately, but a new API key must be saved first.' },
-          { label: 'Play / stop button', detail: 'Click the first Preview chip in the summary to play the current text without expanding the panel. The Play preview button inside uses the same player. Click again while preparing or playing to stop. The status identifies the speech source and distinguishes missing or rejected keys, rate limits, timeouts, unavailable local voices, and autoplay restrictions.' },
-        ],
-        links: [{ label: 'Set up QQ Bot', href: '#qqbot' }],
       },
       {
         id: 'manual-actions',

@@ -23,6 +23,11 @@ export const TTS_LOCAL_SPEECH_MODES = ['auto', 'local-first', 'disabled'] as con
 
 export type TtsLocalSpeechMode = typeof TTS_LOCAL_SPEECH_MODES[number]
 
+/** Engines that can provide the local speech fallback voice. */
+export const TTS_LOCAL_VOICE_ENGINES = ['browser', 'moss'] as const
+
+export type TtsLocalVoiceEngine = typeof TTS_LOCAL_VOICE_ENGINES[number]
+
 /** Voice-design descriptions; Whale-chan's delivery is inspired by DeepSeek Whale-chan. */
 export const TTS_VOICE_DESIGN_PRESETS = [
   {
