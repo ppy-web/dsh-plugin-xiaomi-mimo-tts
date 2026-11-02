@@ -54,10 +54,11 @@ for (const delivery of ['custom-channel', 'qqbot']) test(`${delivery} speech too
     assert.equal(exported.isError, false)
     assert.equal(exported.value.path, '/managed/speech.wav')
     assert.equal(exports[0].text, '文件')
-    const spoken = await call('speak', { text: '说给当前会话', ...(delivery === 'qqbot' ? { provider: 'doubao', voice: 'override' } : {}) })
+    const spoken = await call('speak', { text: '说给当前会话', speechInstruction: '撒娇', ...(delivery === 'qqbot' ? { provider: 'doubao', voice: 'override' } : {}) })
     assert.equal(spoken.isError, false)
     assert.equal(sends[0].context.agent, agent)
     assert.equal(sends[0].adapter, delivery)
+    assert.equal(sends[0].request.speechInstruction, '撒娇', 'explicit style instructions reach the delivery request')
     assert.equal(deliveries[0].automatic, false)
     if (delivery === 'qqbot') {
       assert.equal(sends[0].request.provider, 'doubao', 'QQ calls can select another configured provider')
@@ -113,6 +114,8 @@ test('QQ speech exposes provider selection and lets a failed model call retry wi
     try {
       const schema = ctx.tools.schemas(agent, toolSet).find(tool => tool.name === 'speak')
       assert.ok(schema.parameters.properties.provider.enum.includes('doubao'), 'the model must be able to select the retry provider')
+      assert.ok(schema.parameters.properties.speechInstruction, 'the model must be able to describe a requested style')
+      assert.ok(schema.description.includes('[轻笑]') && schema.description.includes('(sighs)'), 'the model must receive the Breeze tag list')
       const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: args, agent, signal, toolSet })
       return await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
     } finally { toolSet.dispose() }

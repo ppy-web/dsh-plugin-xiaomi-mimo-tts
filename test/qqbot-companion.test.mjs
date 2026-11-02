@@ -201,8 +201,8 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
     })
     const scope = createScope(ctx, peer)
     peer.ctx = scope.ctx
-    let automaticSpeech = false
-    ctx.provide('speechSynthesis', { isAutomaticDeliveryEnabled: id => id === 'qqbot' && automaticSpeech })
+    let automaticSpeech = false, provider = 'xiaomi'
+    ctx.provide('speechSynthesis', { isAutomaticDeliveryEnabled: id => id === 'qqbot' && automaticSpeech, currentProvider: () => provider })
     const tools = scope.ctx.plugin(qqAgent)
     await tools.await()
     try {
@@ -213,11 +213,14 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
       assert.ok(first.sections.some(section => section.text.includes('自定义角色甲') && section.text.includes('自定义喜好乙')))
       const speechStatus = assembly => JSON.parse(assembly.contexts.find(context => context.name === 'xiaomi:qqbot-speech').text.split('\n')[0])
       assert.equal(speechStatus(first).automaticSpeech, false)
+      assert.equal(speechStatus(first).provider, 'xiaomi', 'the model must know which provider will speak')
       automaticSpeech = true
+      provider = 'breeze'
       current.persona.name = '新的角色名丙'
       const next = await ctx.systemPrompt.assemble({ scope: peer, agent: peer })
       assert.ok(next.sections.some(section => section.text.includes('新的角色名丙')))
       assert.equal(speechStatus(next).automaticSpeech, true, 'the next model request must see the live QQ source switch')
+      assert.equal(speechStatus(next).provider, 'breeze', 'the tag policy follows the saved provider')
       assert.equal(ctx.tools.executable('qqbot_memory'), undefined)
       const pipeline = new ToolExecutionPipeline(ctx)
       const invoke = async args => {

@@ -69,6 +69,16 @@ test('Host speech uses saved provider settings, cleans text and produces playabl
   })
 })
 
+test('saved provider selection is observable and Breeze tags never reach other providers', async () => {
+  await withXiaomi(async ({ service, requests }) => {
+    assert.equal(service.currentProvider(), 'xiaomi')
+    await service.synthesize({ text: '你好，[轻笑]世界！(sighs)继续。', format: 'wav' })
+    const spoken = requests[0].messages.at(-1).content
+    for (const word of ['轻笑', 'sighs']) assert.ok(!spoken.includes(word), `${word} must not be read as text`)
+    for (const word of ['你好', '世界', '继续']) assert.ok(spoken.includes(word))
+  })
+})
+
 test('Host service also synthesizes and encodes Doubao without a browser or HTTP loopback', async () => {
   await withDoubaoServer(async ({ connect }) => {
     const service = new HostSpeechService(() => resolveTtsSettings({ provider: 'doubao', doubaoApiKey: 'test-doubao-key' }), { connectDoubao: connect })
@@ -86,7 +96,7 @@ test('Host service also synthesizes and encodes Doubao without a browser or HTTP
   })
 })
 
-test('QQ replies default to the saved Host provider and ignore model and voice overrides', async () => {
+test('QQ replies default to the saved Host provider, keep a per-request style and ignore model and voice overrides', async () => {
   await withXiaomi(async ({ service, requests, settings }) => {
     const sent = [], agent = { id: 'qq', session: { header: {} } }
     const unregister = service.registerDelivery({ id: 'qqbot', format: 'wav', async send(audio) {
@@ -96,11 +106,15 @@ test('QQ replies default to the saved Host provider and ignore model and voice o
     const speech = new SessionSpeech(service, { async load() { return 'manual' }, async save() {} },
       { delivery: 'qqbot', defaultMode: 'manual', maxAutoCharacters: 0, maxDurationMs: 0, sourceControlled: true }, () => {}, () => {})
     try {
-      await speech.say(agent, { text: '使用当前保存的音色。', model: 'seed-icl-2.0', voice: 'other-voice' })
+      await speech.say(agent, { text: '使用当前保存的音色。', model: 'seed-icl-2.0', voice: 'other-voice', speechInstruction: '撒娇' })
       assert.equal(sent[0].provider, 'xiaomi')
       assert.equal(sent[0].data.toString('ascii', 8, 12), 'WAVE')
       assert.equal(requests[0].audio.voice, settings.voice)
       assert.equal(requests[0].model, settings.model)
+      assert.deepEqual(requests[0].messages, [
+        { role: 'user', content: '撒娇' },
+        { role: 'assistant', content: '使用当前保存的音色.' },
+      ], 'the requested style reaches the saved provider without changing it')
     } finally { await speech.dispose(); unregister() }
   })
 })

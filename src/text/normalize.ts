@@ -99,27 +99,46 @@ export function prepareTtsText(value: string): string {
 
   const text = normalizeTtsPunctuation(
     removeTtsSymbols(
-      removeTtsMarkup(value)
-        .replace(/\\[rn]|\/n/gi, ' ')
-        .replace(/\r\n?|\n/g, '.'),
+      stripBreezeAudioTags(
+        removeTtsMarkup(value)
+          .replace(/\\[rn]|\/n/gi, ' ')
+          .replace(/\r\n?|\n/g, '.'),
+      ),
     ),
   )
 
   return text.replace(/\s+/g, ' ').trim()
 }
 
-const BREEZE_AUDIO_TAGS = new Set([
-  '[笑]', '[轻笑]', '[咯咯笑]', '[哭声]', '[抽泣]', '[呜咽]', '[呻吟]', '[哀号]',
-  '[叹气]', '[惊呼]', '[吸气]', '[呼气]', '[喘息]', '[耳语]', '[喊叫]', '[惨叫]',
-  '[唱歌]', '[哼歌]', '[结巴]', '[停顿]', '[清嗓]', '[咳嗽]', '[吸鼻子]', '[咂嘴]',
-  '[啧嘴]', '[打哈欠]', '[打喷嚏]', '[打嗝]', '[打饱嗝]', '[吞咽]', '[干呕]',
-  '[闷哼]', '[冷笑]', '[哼鼻子]', '(laughs)', '(chuckles)', '(giggles)', '(cries)',
-  '(sobs)', '(whimpers)', '(groans)', '(moans)', '(sighs)', '(gasps)', '(inhales)',
-  '(exhales)', '(breathes heavily)', '(whispers)', '(shouts)', '(screams)', '(sings)',
-  '(hums)', '(stutters)', '(pauses)', '(clears throat)', '(coughs)', '(sniffles)',
-  '(lip smacks)', '(clicks tongue)', '(yawns)', '(sneezes)', '(hiccups)', '(burps)',
-  '(gulps)', '(gags)', '(grunts)', '(scoffs)', '(snorts)',
-])
+/** Documented Breeze audio events, grouped for the model-facing tag reference. */
+export interface BreezeAudioTagGroup {
+  /** Short Chinese category label. */
+  label: string
+  /** Chinese tags, which use square brackets. */
+  zh: readonly string[]
+  /** English tags, which use parentheses. */
+  en: readonly string[]
+}
+
+export const BREEZE_AUDIO_TAG_GROUPS: readonly BreezeAudioTagGroup[] = [
+  { label: '笑声', zh: ['[笑]', '[轻笑]', '[咯咯笑]'], en: ['(laughs)', '(chuckles)', '(giggles)'] },
+  { label: '哭泣与疼痛', zh: ['[哭声]', '[抽泣]', '[呜咽]', '[呻吟]', '[哀号]'], en: ['(cries)', '(sobs)', '(whimpers)', '(groans)', '(moans)'] },
+  { label: '呼吸', zh: ['[叹气]', '[惊呼]', '[吸气]', '[呼气]', '[喘息]'], en: ['(sighs)', '(gasps)', '(inhales)', '(exhales)', '(breathes heavily)'] },
+  { label: '发声', zh: ['[耳语]', '[喊叫]', '[惨叫]'], en: ['(whispers)', '(shouts)', '(screams)'] },
+  { label: '唱歌', zh: ['[唱歌]', '[哼歌]'], en: ['(sings)', '(hums)'] },
+  { label: '说话', zh: ['[结巴]', '[停顿]', '[清嗓]'], en: ['(stutters)', '(pauses)', '(clears throat)'] },
+  { label: '喉部', zh: ['[咳嗽]', '[吸鼻子]', '[咂嘴]', '[啧嘴]'], en: ['(coughs)', '(sniffles)', '(lip smacks)', '(clicks tongue)'] },
+  { label: '其他', zh: ['[打哈欠]', '[打喷嚏]', '[打嗝]', '[打饱嗝]', '[吞咽]', '[干呕]', '[闷哼]', '[冷笑]', '[哼鼻子]'], en: ['(yawns)', '(sneezes)', '(hiccups)', '(burps)', '(gulps)', '(gags)', '(grunts)', '(scoffs)', '(snorts)'] },
+]
+
+export const BREEZE_AUDIO_TAGS: ReadonlySet<string> = new Set(
+  BREEZE_AUDIO_TAG_GROUPS.flatMap(group => [...group.zh, ...group.en]),
+)
+
+/** Compact reference appended to speech tool descriptions so the model can choose tags itself. */
+export const BREEZE_AUDIO_TAG_GUIDANCE = ' Breeze audio tags (use only when the active provider is Breeze, and only in this tool\'s text argument, never in a normal chat reply): '
+  + BREEZE_AUDIO_TAG_GROUPS.map(group => `${group.label} ${group.zh.join(' ')} / ${group.en.join(' ')}`).join('; ')
+  + '. Chinese text uses the bracketed Chinese tag and English text the parenthesized English tag; never mix forms. Add only a few tags where the emotion or action naturally occurs, keep the exact spelling, and never read a tag aloud as words.'
 
 /** Prepare Breeze text while preserving only the documented audio-tag vocabulary. */
 export function prepareBreezeTtsText(value: string): string {
@@ -131,7 +150,9 @@ export function prepareBreezeTtsText(value: string): string {
     tags.push(tag)
     return token
   })
-  return prepareTtsText(protectedText).replace(/(\d+)/gu, (_match, index: string) => tags[Number(index)] ?? '')
+  // An unsupported tag would otherwise be spoken as literal words.
+  const cleaned = prepareTtsText(protectedText.replace(/\[[^\]\r\n]+\]/gu, ' '))
+  return cleaned.replace(/(\d+)/gu, (_match, index: string) => tags[Number(index)] ?? '')
 }
 
 /** Remove documented Breeze audio tags for surfaces that cannot synthesize them, such as browser speech. */

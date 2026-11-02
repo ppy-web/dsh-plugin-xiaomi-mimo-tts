@@ -4,6 +4,7 @@ import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-session'
 import z from '@deepseek-ai/schemastery'
 import type { SpeechRequest } from './host-api.js'
+import { BREEZE_AUDIO_TAG_GUIDANCE } from './shared.js'
 import { SessionSpeech } from './host/session-speech.js'
 import { SpeechModeStore } from './host/speech-mode-store.js'
 import { TtsProviderError } from './host/provider-error.js'
@@ -29,7 +30,7 @@ const selection = {
   provider: { type: 'string', enum: ['xiaomi', 'doubao'], description: 'Omit to use the saved Host provider. After a synthesis failure, retry once with the other configured provider; its saved model, voice and credentials apply.' },
   model: { type: 'string' },
   voice: { type: 'string' },
-  speechInstruction: { type: 'string' },
+  speechInstruction: { type: 'string', description: 'Optional natural-language emotion, tone, dialect or delivery style for this call, written in the language of the text. Saved voice and model stay unchanged.' },
   voiceDesignPrompt: { type: 'string' },
   voiceRate: { type: 'number', minimum: 0.5, maximum: 2 },
 } as const
@@ -64,7 +65,8 @@ export function apply(ctx: Context, config: Config): void {
 
   ctx.tools.register({
     name: 'synthesize_speech',
-    description: 'Generate an audio file using the configured Host speech provider. Returns a local path for download, present or another delivery tool. Does not send it to a chat. Credentials stay on the Host. If synthesis fails, you may retry once with the other configured provider; omit model and voice overrides to use that provider\'s saved settings. Do not retry a canceled request.',
+    description: 'Generate an audio file using the configured Host speech provider. Returns a local path for download, present or another delivery tool. Does not send it to a chat. Credentials stay on the Host. If synthesis fails, you may retry once with the other configured provider; omit model and voice overrides to use that provider\'s saved settings. Do not retry a canceled request.'
+      + BREEZE_AUDIO_TAG_GUIDANCE,
     parameters: { type: 'object', properties: { ...selection, format: { type: 'string', enum: ['mp3', 'wav', 'silk'] } }, required: ['text'], additionalProperties: false },
     output: {
       schema: { type: 'object', properties: { path: { type: 'string' }, format: { type: 'string' }, size: { type: 'integer' } }, required: ['path', 'format', 'size'], additionalProperties: false },
@@ -77,12 +79,13 @@ export function apply(ctx: Context, config: Config): void {
   })
   ctx.tools.register({
     name: 'speak',
-    description: 'Read the requested text and deliver audio through this conversation\'s configured speech adapter. Use when asked to answer by voice or read a passage. A successful call already delivered the audio: do not send the file again.'
+    description: 'Read the requested text and deliver audio through this conversation\'s configured speech adapter. Use when asked to answer by voice or read a passage. A successful call already delivered the audio: do not send the file again. When the user explicitly requests an emotion, tone, dialect or delivery style, pass speechInstruction in the same language as the text and keep the saved voice and model. Use speechInstruction instead of bracket tags for providers other than Breeze; supported Breeze audio tags may remain in text.'
       + (sourceControlled
-        ? ' QQ replies use the saved Host provider by default. If synthesis fails before audio delivery, you may retry once with provider set to the other configured provider (xiaomi or doubao). The selected provider\'s saved model, voice and credentials apply; this does not change Host settings. Do not export and resend to bypass speak. Delivery reads all text in order and remains available when automatic speech is off. After success, end the turn without a text reply, transcript, summary or sent confirmation unless the user explicitly requests both voice and text. If the retry also fails, reply in text and report the failure.'
+        ? ' QQ replies use the saved Host provider by default. speechInstruction is allowed for the user\'s requested style and applies only to this call; the saved model, voice and credentials still apply. If synthesis fails before audio delivery, you may retry once with provider set to the other configured provider (xiaomi or doubao), keeping the same speechInstruction. Do not export and resend to bypass speak. Delivery reads all text in order and remains available when automatic speech is off. When automatic speech is on, use speak for an explicitly requested style so the automatic copy is suppressed. After success, end the turn without a text reply, transcript, summary or sent confirmation unless the user explicitly requests both voice and text. If the retry also fails, reply in text and report the failure.'
         : ' Use the saved provider and voice unless the user explicitly requests a change. If synthesis fails before audio delivery, you may retry once with the other configured provider; omit model and voice overrides to use that provider\'s saved settings.')
+      + BREEZE_AUDIO_TAG_GUIDANCE
       + ' Do not retry a canceled request, denied delivery, partially delivered passage or an uncertain send outcome.',
-    parameters: { type: 'object', properties: sourceControlled ? { text: selection.text, provider: selection.provider } : selection, required: ['text'], additionalProperties: false },
+    parameters: { type: 'object', properties: sourceControlled ? { text: selection.text, provider: selection.provider, speechInstruction: selection.speechInstruction } : selection, required: ['text'], additionalProperties: false },
     output: {
       schema: { type: 'object', properties: { adapter: { type: 'string' }, path: { type: 'string' }, messageId: { type: 'string' }, target: { type: 'string' } }, required: ['adapter'], additionalProperties: false },
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],

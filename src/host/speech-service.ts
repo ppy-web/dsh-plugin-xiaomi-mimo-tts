@@ -34,6 +34,8 @@ export class HostSpeechService implements SpeechSynthesisService {
     return task
   }
 
+  currentProvider() { return resolveTtsSettings(this.current()).provider }
+
   synthesize(request: SpeechRequest): Promise<SpeechAudio> { return this.track(this.synthesizeAudio(request)) }
 
   private async synthesizeAudio(request: SpeechRequest): Promise<SpeechAudio> {

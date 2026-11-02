@@ -5,6 +5,7 @@ import {
   applyBreezeTtsPlaybackScope,
   applyTtsLivePlaybackScope,
   applyTtsPlaybackScope,
+  BREEZE_AUDIO_TAG_GROUPS,
   DEFAULT_TTS_SEGMENT_CHARACTERS,
   firstTtsSegment,
   firstTtsSegments,
@@ -21,7 +22,20 @@ import {
 
 test('preserves documented Breeze audio tags while cleaning text', () => {
   assert.equal(prepareBreezeTtsText('你好，[轻笑]世界！(sighs)继续。'), '你好,[轻笑]世界!(sighs)继续.')
-  assert.equal(prepareBreezeTtsText('你好，[未知标签]世界'), '你好,未知标签世界')
+  const unsupported = prepareBreezeTtsText('你好，[未知标签]世界')
+  assert.ok(!unsupported.includes('未知标签'), 'an unsupported tag must not be spoken as words')
+  assert.ok(unsupported.includes('你好') && unsupported.includes('世界'))
+})
+
+test('every documented Breeze tag survives on Breeze and disappears for other providers', () => {
+  for (const group of BREEZE_AUDIO_TAG_GROUPS) {
+    for (const tag of [...group.zh, ...group.en]) {
+      assert.ok(prepareBreezeTtsText(`甲${tag}乙`).includes(tag), `Breeze must keep ${tag}`)
+    }
+  }
+  const plain = prepareTtsText('你好，[轻笑]世界！(sighs)继续。')
+  for (const word of ['轻笑', 'sighs']) assert.ok(!plain.includes(word), `${word} must not be read as text`)
+  for (const word of ['你好', '世界', '继续']) assert.ok(plain.includes(word))
 })
 
 test('keeps Breeze tags intact across provider-sized chunks', () => {
