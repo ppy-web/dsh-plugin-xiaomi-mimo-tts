@@ -24,7 +24,7 @@ import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-s
 import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
 import { ActivationGuide } from './settings/activation-guide.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
-import { installVoiceReadingNavIcon } from './settings/nav-icon.js'
+import { registerVoiceReadingNavIcon } from './settings/nav-icon.js'
 import { VoiceReadingSection } from './settings/voice-reading-section.js'
 import type { VoiceReadingSectionInjected } from './settings/voice-reading-section.js'
 import { createSoundEffectsController, installClickSounds } from './sound-effects/index.js'
@@ -59,7 +59,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: Context,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'plugins.row.config' | 'settings.section' | 'plugins.bundle.activation' | 'plugins.detail.actions' | 'plugins.detail.badge',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'plugins.row.config' | 'settings.section' | 'settings.section.icon' | 'plugins.bundle.activation' | 'plugins.detail.actions' | 'plugins.detail.badge',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -232,9 +232,9 @@ export function apply(ctx: Context): void {
     return () => style.remove()
   }, 'xiaomi-mimo-tts: styles')
 
-  // The host shell hardcodes settings-nav glyphs by section id, so the plugin
-  // marks its own nav cell for the stylesheet's speaker glyph.
-  ctx.effect(() => installVoiceReadingNavIcon(), 'xiaomi-mimo-tts: settings nav icon')
+  // The settings shell owns the nav glyph per section id and only falls back to
+  // its gear when no `settings.section.icon` entry matches the section.
+  registerSlotContribution(ctx, 'settings.section.icon', () => registerVoiceReadingNavIcon(ctx))
 
   registerSlotContribution(ctx, 'conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock',

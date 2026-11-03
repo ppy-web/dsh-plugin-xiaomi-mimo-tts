@@ -4,6 +4,7 @@ import { nextTtsProvider, TTS_PROVIDER_CHARACTER_ASSET_ROUTES, TTS_SOUND_EFFECTS
 import type { TtsProvider } from '../../types/providers.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
+import { providerLabelKey } from './provider-label.js'
 import { useHoloHover } from './use-holo-hover.js'
 
 interface CharacterToggleProps {
@@ -56,8 +57,8 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
   onChange: (provider: TtsProvider) => void
 }): ReactElement {
   const nextProvider = nextTtsProvider(provider, doubaoEnabled, breezeEnabled)
-  const label = t(provider === 'xiaomi' ? 'settings.providerXiaomi' : provider === 'doubao' ? 'settings.providerDoubao' : 'settings.providerBreeze')
-  const nextLabel = t(nextProvider === 'xiaomi' ? 'settings.providerXiaomi' : nextProvider === 'doubao' ? 'settings.providerDoubao' : 'settings.providerBreeze')
+  const label = t(providerLabelKey(provider))
+  const nextLabel = t(providerLabelKey(nextProvider))
   const switchLabel = `${t('settings.provider')}: ${label} · ${t('settings.switchProvider')}: ${nextLabel}`
   const switchIcon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M3 7h18m-4-4 4 4-4 4M21 17H3m4-4-4 4 4 4" />

@@ -9,10 +9,10 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
     sections: [
       {
         id: 'qqbot-start', title: '开始前准备',
-        summary: '需要一个运行中的 DSH、可用的 QQBot，以及小米或豆包的云端语音配置。',
+        summary: '需要一个运行中的 DSH、可用的 QQBot，以及小米、豆包或 Breeze 的云端语音配置。',
         items: [
           { label: '使用同一个 DSH 实例', detail: 'dsh-xiaomi-tts 与 @tencent-connect/dsh-qqbot 必须安装、启用在同一个实例／profile。多个 profile 的插件、服务和预设互不共享；在桌面版配置好语音，不代表另一个终端启动的 profile 也配置好了。' },
-          { label: '先验证云端合成', detail: '打开本插件设置，选择小米 MiMo 或豆包，保存 API Key、模型和音色。将调音台的本地语音策略设为“关闭本地语音”，在播报台试听一句短话，确认状态显示所选云端来源并能听到声音。QQ 发送在宿主完成，不能使用浏览器本地语音兜底。' },
+          { label: '先验证云端合成', detail: '打开本插件设置，选择小米 MiMo、豆包或 Breeze，保存 API Key、模型和音色。将调音台的本地语音策略设为“关闭本地语音”，在播报台试听一句短话，确认状态显示所选云端来源并能听到声音。QQ 发送在宿主完成，不能使用浏览器本地语音兜底。' },
           { label: '保持宿主运行', detail: '配置完成后可以关闭网页，不需要让浏览器自动播放一直开启；DSH 进程、QQBot 连接和语音服务必须继续运行。建议先用一个 QQ 私聊测试，成功后再为目标群配置。' },
         ],
         links: [{ label: '先完成豆包语音配置', href: '#doubao' }, { label: '查看通用设置说明', href: '#manual' }],
@@ -91,10 +91,10 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
     toc: 'On this page',
     sections: [
       {
-        id: 'qqbot-start', title: 'Before you begin', summary: 'Use one running DSH instance with QQBot and a working Xiaomi or Doubao cloud voice.',
+        id: 'qqbot-start', title: 'Before you begin', summary: 'Use one running DSH instance with QQBot and a working Xiaomi, Doubao or Breeze cloud voice.',
         items: [
           { label: 'One instance and profile', detail: 'Install and enable dsh-xiaomi-tts and @tencent-connect/dsh-qqbot in the same DSH instance/profile. Separate profiles do not share plugins, services, presets, or saved speech settings.' },
-          { label: 'Verify real cloud synthesis', detail: 'Choose Xiaomi or Doubao in plugin settings and save the key, model, and voice. Disable local speech fallback and play a short preview in Broadcast Desk. Confirm the status names your cloud provider and you hear its voice. QQ delivery runs on the host and cannot use browser speech fallback.' },
+          { label: 'Verify real cloud synthesis', detail: 'Choose Xiaomi, Doubao or Breeze in plugin settings and save the key, model, and voice. Disable local speech fallback and play a short preview in Broadcast Desk. Confirm the status names your cloud provider and you hear its voice. QQ delivery runs on the host and cannot use browser speech fallback.' },
           { label: 'Keep the host running', detail: 'You may close the web page after configuration, but DSH, the bot connection, and the speech service must stay running. Start with a private QQ chat before setting up groups.' },
         ],
         links: [{ label: 'Set up Doubao first', href: '#doubao' }, { label: 'General settings', href: '#manual' }],

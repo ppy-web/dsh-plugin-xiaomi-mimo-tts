@@ -6,10 +6,12 @@
   <a href="https://awesome-dsh-plugin.com"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="awesome · DSH plugin"></a>
   <a href="https://www.npmjs.com/package/dsh-xiaomi-tts"><img src="https://img.shields.io/npm/v/dsh-xiaomi-tts.svg" alt="npm version"></a>
   <img src="https://img.shields.io/badge/Xiaomi-MiMo-ff6900?logo=xiaomi&amp;logoColor=white" alt="Xiaomi MiMo">
+  <img src="https://img.shields.io/badge/Doubao-Seed_TTS-3B73FF" alt="Doubao Seed TTS">
+  <img src="https://img.shields.io/badge/Breeze-Blue_TTS-10B5A0" alt="Breeze Blue TTS">
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&amp;logo=deepseek&amp;logoColor=white" alt="deepseek-harness"></a>
 </p>
 
-> 为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS，浏览器语音；音频下载、 UI 音效、桌宠联动、QQBot 语音；
+> 为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS、Breeze Blue TTS，浏览器语音；音频下载、 UI 音效、桌宠联动、QQBot 语音；
 
 ## 🎨 [在线预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 
@@ -26,13 +28,15 @@
 ## ✨ 功能
 
 - 一键朗读与自动播报，过滤网址、代码等内容。
-- 小米 MiMo、豆包流式语音，支持内置、自定义与复刻音色；浏览器语音可优先使用或兜底。
+- 小米 MiMo、豆包与 Breeze 流式语音，支持内置、自定义与复刻音色；浏览器语音可优先使用或兜底。
 - 语速、音量、暂停与停止控制，音频历史试听和下载。
 - 可选 UI 音效、宿主事件播报、第三方插件联动及鲸鱼娘 Agent 预设。
 
 ## 🚀 安装与使用
 
-需要 DSH `0.2.2` 以上、Node.js 24.9+，当前适配目标为 DSH `0.2.2-alpha.2`。
+需要 DSH `0.2.2` 以上、Node.js 24.9+，当前适配目标为 DSH `0.2.2-alpha.3`。
+
+AI Passport 连接器还依赖宿主已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 与识别 provider；该识别组件由 DSH 宿主提供，本插件不代为安装，缺少时设备无法连接（详见用户手册的 AI Passport 章节）。
 
 在 DSH 插件管理面板搜索 `dsh-xiaomi-tts` 安装，或使用 Web 端命令：
 
@@ -50,8 +54,8 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 
 安装后可直接使用浏览器语音，**自动播报和 UI 音效默认关闭**。云端语音配置：
 
-1. 打开插件设置，选择小米 MiMo 或豆包，填写并保存 [小米 Key](https://platform.xiaomimimo.com/console/api-keys) 或 [豆包 Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default)。
-2. 在“调音台”选择模型、音色，在“播报台”试听；密钥须先保存，模型和音色支持草稿试听。
+1. 打开插件设置，选择小米 MiMo、豆包或 Breeze，填写并保存 [小米 Key](https://platform.xiaomimimo.com/console/api-keys)、[豆包 Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default) 或 [Breeze Key](https://breezeblue.ai/app/developer/api-keys)。
+2. 在“调音台”选择模型、音色，在“播报台”试听；三家服务商的密钥、音色与模型各自独立保存，密钥须先保存，模型和音色支持草稿试听。
 3. 在「设置 → 语音朗读」调整音量、语速、朗读范围及自动播报、音效，与插件设置共用配置。
 
 ## 📖 用户手册
@@ -74,7 +78,7 @@ tts?.play('欢迎回来')
 
 ## 🔒 隐私
 
-- API Key 由 DSH Host 保存，浏览器只读取配置状态；豆包由 Host 代理，文本和音色 ID 仅提交给所选服务商，费用按服务商政策计算。
+- API Key 由 DSH Host 保存，浏览器只读取配置状态；三家服务商均由 Host 代理，文本和音色 ID 仅提交给所选服务商，费用按服务商政策计算。
 - 本地语音使用 Web Speech API，音色与离线能力取决于浏览器和系统；在线音色可能向其语音服务发送文本。
 - 云端音频存于浏览器 IndexedDB，最多 100 条 / 100 MB，可试听、下载；流式 PCM 保存为 24 kHz 单声道 WAV，本地语音无法导出。
 

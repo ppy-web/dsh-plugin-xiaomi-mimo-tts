@@ -165,21 +165,18 @@ for (const mode of [
     name: 'xiaomi',
     settings: {},
     field: 'voice',
-    selected: TTS_VOICE_PRESETS[1].value,
     expectedPaths: ['voice'],
   },
   {
     name: 'voice design',
     settings: { model: 'mimo-v2.5-tts-voicedesign' },
     field: 'voiceDesignPrompt',
-    selected: TTS_VOICE_DESIGN_PRESETS[1].prompt,
     expectedPaths: ['voiceDesignPrompt', 'voiceDesignCustomPrompt'],
   },
   {
     name: 'doubao standard',
     settings: { provider: 'doubao' },
     field: 'doubaoVoice',
-    selected: DOUBAO_VOICE_PRESETS[1].value,
     expectedPaths: ['doubaoVoice'],
   },
   {
@@ -192,10 +189,13 @@ for (const mode of [
 ]) test(`${mode.name} voice selection writes ${mode.expectedPaths.join(' + ')} with no duplicates`, () => {
   const source = buildVoiceReadingVoiceSource(resolveTtsSettings(mode.settings))
   assert.equal(source.field, mode.field)
-  const ops = voiceChoiceWriteOps(source, mode.selected)
+  // Pick any preset other than the current value so the test never depends on catalog order.
+  const selected = mode.selected ?? source.choices.map(choice => choice.value).find(value => value !== source.value)
+  assert.ok(selected, `${mode.name} needs at least one selectable preset`)
+  const ops = voiceChoiceWriteOps(source, selected)
   for (const op of ops) {
     assert.equal(op.op, 'set')
-    assert.equal(op.value, mode.selected)
+    assert.equal(op.value, selected)
   }
   const paths = ops.map(op => op.path.join('.'))
   assert.equal(new Set(paths).size, paths.length, 'duplicate write paths')

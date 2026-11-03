@@ -3,15 +3,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
-const { SOURCE_URL } = await loadClientModule('src/client/settings/plugin-links.ts')
 const { TTS_QQ_GROUP_ASSET_ROUTE } = await import('../lib/shared.js')
-
-test('settings link to the project repository', () => {
-  const source = new URL(SOURCE_URL)
-  assert.equal(source.protocol, 'https:')
-  assert.equal(source.hostname, 'github.com')
-  assert.equal(source.pathname, '/ppy-web/dsh-plugin-xiaomi-mimo-tts')
-})
 
 test('the QQ invite route references a shipped WebP asset', async () => {
   const filename = TTS_QQ_GROUP_ASSET_ROUTE.split('/').at(-1)

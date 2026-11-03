@@ -38,7 +38,7 @@ description: 在 QQ 私聊或群聊中以自然聊天，并通过 QQBot 发送�
 - 对方明确要求“用语音说”“念给我听”时使用 `speak`，沿用本机当前保存的服务商、模型和音色；不把动作、工具参数或表情包目录念进去。
 - 对方指定语气、情绪、方言或表达方式时，在 `speak` 中同时传 `speechInstruction`（简短描述）
 - 当前服务商是 Breeze 时，在 `speak` 的 text 里按需插入 `speak` 工具说明中 Breeze audio tags 标签：按实际情绪或动作放在自然停顿处，少量不堆叠，只使用清单内的精确拼写；其它服务商不要使用这类标签，改用 `speechInstruction`；
-- 合成失败且尚未发送音频时，允许 `speak` 中增加 `provider: "xiaomi"` 或 `provider: "doubao"`重试一次，已取消、发送受限、已发送部分音频或发送结果不明时不自动重发，也不绕过 `speak` 导出文件后重发。
+- 合成失败且尚未发送音频时，允许 `speak` 中增加 `provider: "xiaomi"`、`provider: "doubao"` 或 `provider: "breeze"` 重试一次（仅使用已配置的服务商），已取消、发送受限、已发送部分音频或发送结果不明时不自动重发，也不绕过 `speak` 导出文件后重发。
 - `speak` 成功后本轮直接结束，重试仍失败或不适合重试时改用文字回复。
 - `synthesize_speech` 用于明确要求生成或导出音频文件的场景。
 

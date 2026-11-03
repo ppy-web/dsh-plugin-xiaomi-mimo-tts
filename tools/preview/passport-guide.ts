@@ -37,7 +37,7 @@ export const PASSPORT_GUIDE: Record<ManualLocale, ManualCopy> = {
         id: 'passport-start', title: '开始前准备', summary: '需要兼容固件、可用的宿主语音识别、对话模型与 TTS，以及设备能访问的网络。',
         items: [
           { label: '确认固件', detail: '推荐使用独立仓库 WhaleTalk Passport（鲸语通行证）应用，附有环境安装、构建和配网说明，旧 Qwen Voice Bean 仍可使用长令牌连接；4 位配对需使用新版应用。组件实现 GCP 7.0.0 音频子集，官方测试基线和其他玩法不能直接连接。' },
-          { label: '同一个 DSH 实例', detail: '本插件、@deepseek-ai/dsh-experimental-speech-to-text、识别 provider、Agent 预设和默认对话模型需在同一实例／profile 中可用。关闭网页不影响使用，但 DSH 进程必须保持运行。' },
+          { label: '同一个 DSH 实例', detail: '本插件、@deepseek-ai/dsh-experimental-speech-to-text、识别 provider、Agent 预设和默认对话模型需在同一实例／profile 中可用。语音识别组件由 DSH 宿主提供，不随本插件安装；安装或更新组件后需重启 DSH 才会加载。关闭网页不影响使用，但 DSH 进程必须保持运行。' },
           { label: '可信的局域网', detail: '设备与主机可使用同一 Wi-Fi 或手机热点，需能相互访问。默认连接是明文 WebSocket，使用私有令牌并限定可信网络，不要直接暴露到公网。' },
         ],
         links: [{ label: 'WhaleTalk Passport 固件与开发指南', href: dshFirmware }, { label: 'Qwen Voice Bean 参考项目', href: firmware }, { label: '查看 AI Passport 组件配置', href: '#components-passport' }],
@@ -45,14 +45,14 @@ export const PASSPORT_GUIDE: Record<ManualLocale, ManualCopy> = {
       {
         id: 'passport-host', title: '先让宿主能听、能说', summary: '设备不是浏览器音频的遥控器，它使用宿主识别与宿主 TTS。',
         steps: [
-          { title: '准备语音识别', detail: '在宿主语音输入设置中选择识别 provider（如 SenseVoice）和语言，完成模型准备，并实际测试一次语音转文字。本组件不下载识别模型，也不自动改用其他识别服务。' },
+          { title: '准备语音识别', detail: '在宿主语音输入设置中选择识别 provider（如 SenseVoice）和语言，完成模型准备，并实际测试一次语音转文字。本组件不下载识别模型，也不自动改用其他识别服务；若配置页提示正在等待宿主服务，先启用 @deepseek-ai/dsh-experimental-speech-to-text 与识别 provider，重启 DSH 后再试。' },
           { title: '验证默认对话模型与预设', detail: '先在 DSH 正常完成一轮文字对话，确认默认模型、凭据和所选 Agent 预设可用。工具操作仍遵循宿主权限和审批。' },
           { title: '保存并测试 TTS', detail: '在插件设置中保存服务商、密钥、模型与音色，关闭浏览器本地语音兜底后试听短句，确认云端来源正常。设备需要宿主生成 WAV，再转换为 24 kHz 单声道 PCM；浏览器系统音色不能回传给设备。' },
         ], items: [],
         links: [{ label: '语音配置与试听', href: '#manual-console' }, { label: '豆包语音接入', href: '#doubao' }],
       },
       {
-        id: 'passport-configure', title: '配置连接器组件', summary: '开启 AI Passport 连接器，一键生成 4 位数字配对码，设备只填写电脑 IP 和配对码。',
+        id: 'passport-configure', title: '配置连接器组件', summary: '确认 AI Passport 连接器已开启（默认开启），一键生成 4 位数字配对码，设备只填写电脑 IP 和配对码。',
         steps: [
           { title: '一键开放局域网连接', detail: '点击“生成配对码并开启连接”，自动使用 0.0.0.0 监听。连接电脑的 Windows 移动热点时，选择热点网卡地址，通常为 192.168.137.1；连接路由器时选择对应局域网地址。不要把 0.0.0.0、127.0.0.1 或设备 IP 当成电脑地址。' },
           { title: '记下 4 位配对码', detail: '配对码是页面生成的 4 位数字，不分开发和正常模式。设备填写相同数字，保留前导 0；重新生成会替换旧码。默认端口 3101，通常不用修改。' },
@@ -131,20 +131,20 @@ export const PASSPORT_GUIDE: Record<ManualLocale, ManualCopy> = {
         id: 'passport-start', title: 'Before you begin', summary: 'Prepare compatible firmware, Host recognition, a conversation model and TTS, plus a network the device can use.',
         items: [
           { label: 'Compatible firmware', detail: 'Use the standalone WhaleTalk Passport repository for environment, build and provisioning instructions. Older Qwen Voice Bean remains compatible with long credentials; use the updated app for four-digit pairing. The adapter uses the GCP 7.0.0 audio subset; the official hardware-test baseline and other firmware cannot connect directly.' },
-          { label: 'One DSH instance', detail: 'This plugin, @deepseek-ai/dsh-experimental-speech-to-text, a recognition provider, Agent presets and a default model must be available in the same instance/profile. The web page may close, but DSH must keep running.' },
+          { label: 'One DSH instance', detail: 'This plugin, @deepseek-ai/dsh-experimental-speech-to-text, a recognition provider, Agent presets and a default model must be available in the same instance/profile. The recognizer is a Host capability and is not installed by this plugin; restart DSH after installing or updating it. The web page may close, but DSH must keep running.' },
           { label: 'A trusted LAN', detail: 'Use reachable Wi-Fi or a mobile hotspot. The default transport is plain WebSocket; use a private token and a trusted network instead of exposing it directly to the internet.' },
         ], links: [{ label: 'WhaleTalk Passport firmware and guide', href: dshFirmware }, { label: 'Qwen Voice Bean reference', href: firmware }, { label: 'Explore component settings', href: '#components-passport' }],
       },
       {
         id: 'passport-host', title: 'Verify Host input and speech', summary: 'The device uses Host recognition and TTS, independently of browser audio.',
         steps: [
-          { title: 'Prepare recognition', detail: 'In Host voice input settings, select a provider such as SenseVoice and a language, prepare its model and transcribe real speech. This component neither downloads recognition models nor falls back to another recognizer.' },
+          { title: 'Prepare recognition', detail: 'In Host voice input settings, select a provider such as SenseVoice and a language, prepare its model and transcribe real speech. This component neither downloads recognition models nor falls back to another recognizer. If the settings page says it is waiting for Host services, enable @deepseek-ai/dsh-experimental-speech-to-text and a provider, then restart DSH.' },
           { title: 'Test the model and preset', detail: 'Complete a text conversation in DSH to check the default model, credentials and selected Agent preset. Tools retain the Host’s permission and approval rules.' },
           { title: 'Save and test TTS', detail: 'Save the provider, key, model and voice. Disable browser speech fallback and test a short cloud preview. The device needs Host-generated WAV converted to 24 kHz mono PCM; browser system voices cannot be sent back to it.' },
         ], items: [], links: [{ label: 'Speech settings and previews', href: '#manual-console' }, { label: 'Doubao voice setup', href: '#doubao' }],
       },
       {
-        id: 'passport-configure', title: 'Configure the component', summary: 'Enable AI Passport Connector and generate a four-digit pairing code. The device needs only the computer IP and code.',
+        id: 'passport-configure', title: 'Configure the component', summary: 'Confirm AI Passport Connector is enabled (on by default), then generate a four-digit pairing code. The device needs only the computer IP and code.',
         steps: [
           { title: 'Enable LAN access with one click', detail: 'Generate a pairing code and enable the connection. The listener uses 0.0.0.0. For a Windows mobile hotspot, use its adapter address, usually 192.168.137.1. For router Wi-Fi, choose the corresponding LAN address. Do not enter 0.0.0.0, 127.0.0.1 or the device IP.' },
           { title: 'Note the four-digit code', detail: 'Use the same four digits on both ends, including leading zeros. There is no separate development mode. Generating another code replaces the previous code. Keep the default port 3101.' },

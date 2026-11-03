@@ -51,6 +51,11 @@ export const BREEZE_VOICE_PRESETS = [
   { value: 'voc_f3zbgr88pz5m', name: '月夜低语者', language: 'zh' },
 ] as const
 
+/** Display name for a Breeze voice ID; custom IDs fall back to the raw value. */
+export function breezeVoiceLabel(voiceId: string): string {
+  return BREEZE_VOICE_PRESETS.find(voice => voice.value === voiceId.trim())?.name ?? voiceId
+}
+
 /** Public synthesis selection. Secrets and upstream addresses are Host-only. */
 export type TtsSelection =
   | { provider: 'xiaomi'; model: TtsModel; voice: string; voiceDesignPrompt: string; speechInstruction?: string }

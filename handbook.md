@@ -4,7 +4,7 @@
 
 ## 开始使用
 
-5.0 预览版（`5.0.0-alpha.1`）以 DSH `0.2.2-alpha.3` 为开发基线，宿主兼容声明为 `>=0.2.2-0 <0.3.0-0`，客户端使用 React 19。建议先执行 `npm install -g @deepseek-ai/dsh@0.2.2-alpha.3` 更新宿主，再执行 `dsh plugin --profile web add dsh-xiaomi-tts@5.0.0-alpha.1` 安装预览版；已有运行中的宿主需重启以加载更新。
+5.0 预览版（`5.0.0-alpha.2`）以 DSH `0.2.2-alpha.3` 为开发基线，宿主兼容声明为 `>=0.2.2-0 <0.3.0-0`，客户端使用 React 19。建议先执行 `npm install -g @deepseek-ai/dsh@0.2.2-alpha.3` 更新宿主，再执行 `dsh plugin --profile web add dsh-xiaomi-tts@5.0.0-alpha.2` 安装预览版；已有运行中的宿主需重启以加载更新。
 
 在宿主插件列表显式启用本插件后，会显示居中的启动引导弹窗。按 Esc、点击遮罩、右上角关闭按钮或「稍后再说」均可关闭，并停止试听。可以先「试听浏览器语音」，或打开插件设置选择小米 / 豆包并保存 API Key；也可以选择「稍后再说」关闭引导。试听只使用浏览器语音，失败时不会请求云端。自动播报和 UI 音效默认关闭。
 
@@ -119,7 +119,7 @@
 
 可以说「把这段文字生成音频」「用语音回答」。自然语言按需请求由模型调用对应工具；QQ 来源开关开启后，每轮成功结束时的自动合成由宿主代码触发，不需要再通过会话指令开启，也不依赖模型每轮再次调用 `speak`。
 
-语音工具默认沿用当前保存的服务商。模型调用 `speak` 或 `synthesize_speech` 合成失败时，允许指定另一个已配置的服务商重试一次（`provider: "xiaomi"` 或 `provider: "doubao"`）。切换时使用该服务商已保存的模型、音色和密钥，不改写默认设置。QQ 的 `speak` 接受正文、可选的 `provider` 和可选的 `speechInstruction`；模型不能覆盖其模型和音色，`speechInstruction` 只影响本次合成的语气。取消、发送受限、已发送部分音频或发送结果不明时不自动重发，避免重复送达。
+语音工具默认沿用当前保存的服务商。模型调用 `speak` 或 `synthesize_speech` 合成失败时，允许指定另一个已配置的服务商重试一次（`provider: "xiaomi"`、`"doubao"` 或 `"breeze"`）。切换时使用该服务商已保存的模型、音色和密钥，不改写默认设置。QQ 的 `speak` 接受正文、可选的 `provider` 和可选的 `speechInstruction`；模型不能覆盖其模型和音色，`speechInstruction` 只影响本次合成的语气。取消、发送受限、已发送部分音频或发送结果不明时不自动重发，避免重复送达。
 
 用户明确要求某种语气、情绪、方言或表达方式时，模型可在 `speak` 中传入 `speechInstruction`；它只影响本次合成，不写回已保存的服务商、模型、音色和默认指令。QQ 自动语音开启时，这类明确要求会通过 `speak` 发送并抑制本轮自动重复。三家服务商都接受自然语言语音指令：小米放入 `user` 消息，豆包标准 2.0 放入 `context_texts`，Breeze 放入 `instructions`。豆包声音复刻 2.0 不支持该指令，会沿用已保存音色。
 
@@ -250,7 +250,7 @@ export async function apply(ctx: Context) {
 
 ### 我们的组件实现了什么
 
-可选组件 `dsh-xiaomi-tts/passport` 配合 WhaleTalk Passport 固件，将设备接为通过 Wi-Fi 使用的随身 DSH 语音终端：
+组件 `dsh-xiaomi-tts/passport`（默认开启，不使用时可关闭）配合 WhaleTalk Passport 固件，将设备接为通过 Wi-Fi 使用的随身 DSH 语音终端：
 
 - **语音提问与有声回复**：设备收音后，由 DSH 宿主识别文字、交给当前默认对话模型，再通过本插件已保存的 TTS 服务与音色合成回复并回传播放；播放完成后恢复收音，继续下一轮对话。
 - **Agent 预设与专用会话**：支持选择预设，设备会话独立于网页和 QQ 会话，重启后可恢复；工具操作仍遵循宿主权限和审批规则。
@@ -259,18 +259,19 @@ export async function apply(ctx: Context) {
 
 完整分步教程见独立的 [AI Passport 接入页](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport)。[组件配置预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#components-passport)提供与真实组件相同的分组表单，但保存只修改演示数据，不启动监听、不扫描网络，也不会连接设备。
 
-组件复用 DSH 宿主的 `speechToText`、当前默认对话模型、Agent 预设，以及本插件的宿主 TTS；不需要 Qwen Audio Agent 后台、Windows 声卡采集或串口驱动。
+组件只提供设备连接、会话编排和协议适配，语音识别、对话与合成全部复用宿主能力：`speechToText`、当前默认对话模型、Agent 预设，以及本插件的宿主 TTS。它不包含自己的 ASR 引擎，也无需 Qwen Audio Agent 后台、Windows 声卡采集或串口驱动。
 
 ### 前提与配置
 
+- **宿主能力依赖**：DSH profile 必须已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 和识别 provider（如 SenseVoice），并在宿主语音输入设置里完成模型准备、实际测试过一次语音转文字。该识别组件由 DSH 宿主提供，**不随本插件安装**，本插件也不会代为下载模型或回退其他识别服务。缺少它时配置页会提示正在等待宿主服务，设备无法连接。
+- 安装或更新本插件、开启或关闭该组件后，DSH 需要重启才会加载宿主插件；配置页提示“尚未加载”时，先重启 DSH 再重新打开本页。
 - 推荐使用独立托管的 [WhaleTalk Passport（鲸语通行证）固件](https://github.com/ppy-web/whaletalk-passport/blob/main/docs/guide.zh_CN.md)，包含开发环境安装、固件构建、配网和按键说明；也兼容 [Qwen Voice Bean 固件](https://github.com/liutaocode/esp32demo/tree/main/examples/qwen-voice-bean)。设备端协议为 GCP 7.0.0 的音频子集，AI Passport 官方测试基线和其他玩法固件不能直接接入；本组件不提供完整 Qwen Gateway、任务或权限协议。
-- DSH profile 已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 和识别 provider（如 SenseVoice）。先在宿主语音输入设置里完成模型准备；组件沿用宿主选定的 provider 和语言，不代为下载模型，不自动回退其他识别服务。
 - 本插件的宿主 TTS 已能正常生成 WAV；浏览器系统语音不用于设备回传。Agent 预设和默认对话模型必须可用；工具权限与审批仍由宿主管理，不会自动批准。
 - 设备与主机处于可互通的 Wi-Fi／手机热点网络。此组件是网络语音终端，不提供普通对讲机的射频通信。
 
 ### 快速连接：电脑 IP + 4 位配对码
 
-1. 在 DSH 组合包组件列表打开「AI Passport 连接器」开关，进入配置页，点击 **生成配对码并开启连接**。
+1. 在 DSH 组合包组件列表确认「AI Passport 连接器」已开启（默认开启；若曾手动关闭，重新开启后需重启 DSH），进入配置页，点击 **生成配对码并开启连接**。
 2. 页面会显示电脑可用的局域网 IP 和本次生成的 **4 位数字配对码**。监听地址自动设为 `0.0.0.0`，端口默认 3101。`0.0.0.0` 是电脑的监听设置，不能填到设备上。
 3. 设备长按 OK 打开设置，选择重新配置。手机连接设备显示的 `DSH-Voice-*` 热点（无需密码），打开 `http://192.168.4.1`。已连过 Wi-Fi 时勾选 **保留已连接的 Wi-Fi**，只改电脑 IP 和配对码即可。
 4. 电脑和设备填写相同的 4 位数字，包含前导 0。保存后设备重启；显示“准备好了”后短按 OK 开麦。

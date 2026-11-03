@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
+import { readFileSync } from 'node:fs'
+import yaml from 'js-yaml'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Config } from '../lib/passport.js'
@@ -88,6 +90,14 @@ test('Passport configuration registration owns only its component and can be wit
     dispose()
     assert.equal(registered.size, 0)
   } finally { await ctx.fiber.dispose() }
+})
+
+test('the bundle enables the connector so its own settings page survives the install restart', () => {
+  const schema = yaml.JSON_SCHEMA.extend([new yaml.Type('tag:yaml.org,2002:js', { kind: 'scalar', construct: value => value })])
+  const patch = yaml.load(readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8'), { schema })
+  const entry = patch.flatMap(row => row.insert ?? []).find(item => item.id === 'speech-delivery-passport')
+  assert.equal(entry?.name, 'dsh-xiaomi-tts/passport')
+  assert.notEqual(entry.disabled, true)
 })
 
 test('Passport fields expose labelled controls, mask the token and respect permissions and plugin changes', () => {

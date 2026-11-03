@@ -113,7 +113,7 @@ test('QQ speech exposes provider selection and lets a failed model call retry wi
     const toolSet = await ctx.tools.resolve({ agent, modelSelection: {}, signal })
     try {
       const schema = ctx.tools.schemas(agent, toolSet).find(tool => tool.name === 'speak')
-      assert.ok(schema.parameters.properties.provider.enum.includes('doubao'), 'the model must be able to select the retry provider')
+      for (const provider of ['xiaomi', 'doubao', 'breeze']) assert.ok(schema.parameters.properties.provider.enum.includes(provider), `the model must be able to select the ${provider} retry provider`)
       assert.ok(schema.parameters.properties.speechInstruction, 'the model must be able to describe a requested style')
       assert.ok(schema.description.includes('[轻笑]') && schema.description.includes('(sighs)'), 'the model must receive the Breeze tag list')
       const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: args, agent, signal, toolSet })
@@ -125,13 +125,13 @@ test('QQ speech exposes provider selection and lets a failed model call retry wi
   try {
     emit('turn/start', 0, { turn: 1 })
     assert.equal((await call({ text: '重试这段语音。' })).isError, true)
-    const retried = await call({ text: '重试这段语音。', provider: 'doubao' })
+    const retried = await call({ text: '重试这段语音。', provider: 'breeze' })
     assert.equal(retried.isError, false)
     assert.equal(retried.value.messageId, 'retried')
     emit('assistant/message', 1, { turn: 1, message: { content: [{ type: 'text', text: '重试这段语音。' }] } })
     emit('turn/end', 2, { turn: 1, reason: { kind: 'completed' } })
     await settle()
-    assert.deepEqual(attempts.map(request => request.provider), [undefined, 'doubao'])
+    assert.deepEqual(attempts.map(request => request.provider), [undefined, 'breeze'])
     assert.equal(deliveries.length, 1, 'successful fallback must not be repeated by automatic speech')
   } finally { await owner.dispose(); await ctx.fiber.dispose() }
 })

@@ -5,6 +5,7 @@ import { SegmentedControl } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   TTS_LOCAL_SPEECH_MODES,
   DOUBAO_VOICE_PRESETS,
+  breezeVoiceLabel,
   TTS_MODELS,
   TTS_READ_SCOPES,
   TTS_VOICE_DESIGN_PRESETS,
@@ -136,7 +137,7 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
   }, [localSpeechMode, localVoiceAvailable, onLocalSpeechModeChange])
   const summaryModel = provider === 'doubao' ? t(doubaoModel === 'seed-icl-2.0' ? 'settings.doubaoCloneModel' : 'settings.doubaoStandardModel') : t(model === 'mimo-v2.5-tts-voicedesign' ? 'settings.summaryVoiceDesignModel' : 'settings.summaryPresetModel')
   const voiceDesignPreset = TTS_VOICE_DESIGN_PRESETS.find((item) => item.prompt === voiceDesignPrompt)
-  const summaryVoice = provider === 'doubao' ? (doubaoModel === 'seed-icl-2.0' ? doubaoClonedVoice || t('settings.doubaoVoiceId') : DOUBAO_VOICE_PRESETS.find(voice => voice.value === doubaoVoice)?.name ?? doubaoVoice) : provider === 'breeze' ? breezeVoice : model === 'mimo-v2.5-tts-voicedesign'
+  const summaryVoice = provider === 'doubao' ? (doubaoModel === 'seed-icl-2.0' ? doubaoClonedVoice || t('settings.doubaoVoiceId') : DOUBAO_VOICE_PRESETS.find(voice => voice.value === doubaoVoice)?.name ?? doubaoVoice) : provider === 'breeze' ? breezeVoiceLabel(breezeVoice) : model === 'mimo-v2.5-tts-voicedesign'
     ? voiceDesignPreset?.label ?? t('settings.customVoiceOption')
     : voice
   const summaryReadScope = t(readScopeLabel(readScope))

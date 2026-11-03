@@ -201,6 +201,23 @@ test('experimental component classification stays visible without accessing spee
   }
 })
 
+test('detail badge names the Breeze provider instead of falling back to Xiaomi', async t => {
+  const requests = mockRequests(t)
+  apiKeyStatusStore.setAvailable(true)
+  const scope = source({ status: 'ready', revision: 1, value: { provider: 'breeze', breezeEnabled: true }, writable: false })
+  const changes = source(false)
+  const off = apiKeyStatusStore.subscribe('breeze', () => {})
+  try {
+    requests[0].resolve({ configured: true, supported: true })
+    await settle()
+    const html = renderToStaticMarkup(createElement(PluginDetailBadge, { subject, scope, changes, t: key => key }))
+    assert.deepEqual(requests.map(request => request.provider), ['breeze'])
+    assert.match(html, /settings\.providerBreeze/)
+    assert.doesNotMatch(html, /settings\.providerXiaomi/)
+    assert.match(html, /detail\.keyRecognized/)
+  } finally { off(); apiKeyStatusStore.setAvailable(false) }
+})
+
 test('detail badge reads the saved provider, offers retry on failure, and suspends during bundle changes', async t => {
   const requests = mockRequests(t)
   apiKeyStatusStore.setAvailable(true)

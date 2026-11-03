@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { DEFAULT_TTS_SETTINGS, resolveTtsSettings, supportsRealtimeTts, ttsSelection, availableTtsProviders, nextTtsProvider } from '../lib/shared.js'
+import { DEFAULT_TTS_SETTINGS, resolveTtsSettings, supportsRealtimeTts, ttsSelection, availableTtsProviders, nextTtsProvider, breezeVoiceLabel } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { saveSettingsDraft, validateSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
@@ -92,6 +92,12 @@ test('Breeze, Doubao and Xiaomi preset voices support streaming speech', () => {
   assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'doubao' })), true)
   assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'xiaomi', model: 'mimo-v2.5-tts' })), true)
   assert.equal(supportsRealtimeTts(resolveTtsSettings({ provider: 'xiaomi', model: 'mimo-v2.5-tts-voicedesign' })), false)
+})
+
+test('Breeze preset voices resolve display names and custom IDs stay literal', () => {
+  assert.equal(breezeVoiceLabel('voc_rh6e8hdbraz6'), '哈基米娘')
+  assert.equal(breezeVoiceLabel('  voc_xb3zjqcmwp44  '), '晨曦讲解员')
+  assert.equal(breezeVoiceLabel('voc_custom_voice'), 'voc_custom_voice')
 })
 
 test('Breeze API keys persist to the Breeze secret field and leave other provider keys unchanged', async () => {

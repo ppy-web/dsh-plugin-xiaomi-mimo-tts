@@ -5,7 +5,7 @@
 This repository publishes `dsh-xiaomi-tts`, a DSH Web speech plugin.
 
 - `src/index.ts` implements host routes and configuration; `src/shared.ts` holds shared settings and text preparation.
-- `src/client/` contains React settings, conversation actions, playback controllers, sound effects, and CSS. `src/client/settings/` also owns the independent Voice reading section registered through the host's `settings.section` slot (`voice-reading-section.tsx`) and its nav glyph patch (`nav-icon.ts`). `src/client-api.ts` exposes client contracts.
+- `src/client/` contains React settings, conversation actions, playback controllers, sound effects, and CSS. `src/client/settings/` also owns the independent Voice reading section registered through the host's `settings.section` slot (`voice-reading-section.tsx`) and its nav icon in the matching `settings.section.icon` slot (`nav-icon.tsx`). `src/client-api.ts` exposes client contracts.
 - `tools/preview/` provides the standalone Vite UI preview; `assets/` contains images and audio.
 - `locale/` contains English and Chinese translations; `skills/` contains bundled agent presets.
 - `test/` contains regression tests and fixtures; `tools/scripts/` handles packaging and profile verification, and `tools/start/` contains Windows launch helpers.

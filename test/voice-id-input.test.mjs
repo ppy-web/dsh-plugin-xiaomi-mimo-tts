@@ -8,6 +8,24 @@ const { VoiceIdInput } = await loadClientModule('src/client/settings/controls/vo
 const { writeVoiceIdHistory, writeVoiceIdNames } = await loadClientModule('src/client/settings/voice-id-history.ts')
 const locales = await loadClientModule('src/client/localization.ts')
 
+const attribute = (tag, name) => tag.match(new RegExp(`\\b${name}="([^"]*)"`, 'u'))?.[1]
+const renderedInputs = html => [...html.matchAll(/<input\b([^>]*)>/gu)].map(([, tag]) => ({
+  label: attribute(tag, 'aria-label'),
+  value: attribute(tag, 'value'),
+  disabled: /\bdisabled=""/u.test(tag),
+}))
+const renderedButtons = html => [...html.matchAll(/<button\b([^>]*)>/gu)].map(([, tag]) => ({
+  label: attribute(tag, 'aria-label'),
+  selected: /\baria-pressed="true"/u.test(tag),
+  disabled: /\bdisabled=""/u.test(tag),
+}))
+const selectButtons = html => [...html.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/gu)].map(([, tag, text]) => ({
+  label: attribute(tag, 'aria-label'),
+  text,
+  selected: /\baria-pressed="true"/u.test(tag),
+}))
+const voiceField = html => renderedInputs(html).find(input => input.label === 'Voice ID')
+
 function renderInput({ kind = 'standard', value, history = [value], names = {}, disabled = false, locale = 'zh' }) {
   const stored = new Map()
   const storage = { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value) }
@@ -32,42 +50,52 @@ function renderInput({ kind = 'standard', value, history = [value], names = {}, 
 test('standard history displays a recognized voice name while retaining its ID and selection', () => {
   const id = 'zh_female_vv_uranus_bigtts'
   const html = renderInput({ value: ` ${id} `, history: [id, 'unknown-id'] })
-  assert.match(html, /<button\b[^>]*aria-label="Vivi 2\.0 \(zh_female_vv_uranus_bigtts\)"[^>]*aria-pressed="true"[^>]*>Vivi 2\.0<\/button>/)
-  assert.match(html, /<button\b[^>]*aria-label="unknown-id"[^>]*>unknown-id<\/button>/)
-  assert.match(html, /<input\b[^>]*aria-label="Voice ID"[^>]*value=" zh_female_vv_uranus_bigtts "/)
+  const named = selectButtons(html).find(button => button.text === 'Vivi 2.0')
+  assert.ok(named, 'the preset name is shown for a recognized ID')
+  assert.equal(named.selected, true)
+  assert.ok(named.label.includes(id), 'the accessible name retains the synthesis ID')
+  assert.equal(selectButtons(html).find(button => button.text === 'unknown-id').label, 'unknown-id')
+  assert.equal(voiceField(html).value, ` ${id} `)
 })
 
 for (const kind of ['standard', 'cloned']) for (const locale of ['zh', 'en', 'ja', 'fr']) test(`${locale} ${kind} labels display saved remarks and keep the original voice ID`, () => {
   const html = renderInput({ kind, locale, value: 'custom-id', names: { 'custom-id': 'My voice' } })
-  assert.match(html, /<button\b[^>]*aria-label="My voice \(custom-id\)"[^>]*aria-pressed="true"[^>]*>My voice<\/button>/)
-  assert.match(html, /<input\b[^>]*aria-label="Voice ID"[^>]*value="custom-id"/)
-  const buttons = [...html.matchAll(/<button\b[^>]*aria-label="([^"]+)"/g)].map(([, label]) => label)
-  assert.ok(buttons.includes(`${locales[locale]['settings.voiceTagEdit']}: My voice`))
-  assert.ok(buttons.includes(`${locales[locale]['settings.voiceTagRemove']}: My voice`))
+  const named = selectButtons(html).find(button => button.text === 'My voice')
+  assert.ok(named)
+  assert.equal(named.selected, true)
+  assert.ok(named.label.includes('custom-id'))
+  const labels = renderedButtons(html).map(button => button.label)
+  assert.ok(labels.includes(`${locales[locale]['settings.voiceTagEdit']}: My voice`))
+  assert.ok(labels.includes(`${locales[locale]['settings.voiceTagRemove']}: My voice`))
+  assert.equal(voiceField(html).value, 'custom-id')
 })
 
 test('cloned IDs do not inherit standard names and unlabelled IDs remain usable', () => {
   const id = 'zh_female_vv_uranus_bigtts'
   const html = renderInput({ kind: 'cloned', value: id, history: [id, 'constructor'] })
-  assert.match(html, /<button\b[^>]*>zh_female_vv_uranus_bigtts<\/button>/)
-  assert.match(html, /<button\b[^>]*>constructor<\/button>/)
+  const texts = selectButtons(html).map(button => button.text)
+  assert.ok(texts.includes(id))
+  assert.ok(texts.includes('constructor'))
+  assert.ok(!renderedButtons(html).some(button => (button.label ?? '').includes('Vivi 2.0')), 'standard names must not leak into cloned history')
 })
 
 test('read-only inputs disable voice selection and remark editing', () => {
   const html = renderInput({ kind: 'cloned', value: 'clone-id', names: { 'clone-id': 'My voice' }, disabled: true })
-  assert.equal([...html.matchAll(/<input\b[^>]*>/g)].every(([input]) => input.includes('disabled=""')), true)
-  assert.equal([...html.matchAll(/<button\b[^>]*>/g)].every(([button]) => button.includes('disabled=""')), true)
+  assert.ok(renderedInputs(html).every(input => input.disabled))
+  assert.ok(renderedButtons(html).every(button => button.disabled))
 })
 
 test('a saved label overrides the automatic name without changing the synthesis ID', () => {
   const id = 'zh_female_vv_uranus_bigtts'
   const html = renderInput({ value: id, names: { [id]: 'My Vivi' } })
-  assert.match(html, /<button\b[^>]*aria-label="My Vivi \(zh_female_vv_uranus_bigtts\)"[^>]*>My Vivi<\/button>/)
-  assert.match(html, /<input\b[^>]*aria-label="Voice ID"[^>]*value="zh_female_vv_uranus_bigtts"/)
+  const named = selectButtons(html).find(button => button.text === 'My Vivi')
+  assert.ok(named)
+  assert.ok(named.label.includes(id))
+  assert.equal(voiceField(html).value, id)
 })
 
 test('opening the control does not recreate a removed current voice', () => {
   const html = renderInput({ kind: 'cloned', value: 'removed-current', history: [] })
-  assert.match(html, /<input\b[^>]*value="removed-current"/)
-  assert.doesNotMatch(html, /<button\b/)
+  assert.equal(voiceField(html).value, 'removed-current')
+  assert.equal(selectButtons(html).length, 0)
 })

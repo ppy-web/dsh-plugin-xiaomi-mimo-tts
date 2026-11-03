@@ -88,10 +88,12 @@
       disabled: true
 
 # Optional Wi-Fi voice terminal. Reuses Host ASR and shared synthesis.
+# Enabled by default because its settings page edits this row's own namespace,
+# which DSH exposes only while the row runs. Nothing listens on the network
+# until a valid pairing token is saved.
 - insert:
     - id: speech-delivery-passport
       name: 'dsh-xiaomi-tts/passport'
-      disabled: true
       config:
         host: '127.0.0.1'
         port: 3101
