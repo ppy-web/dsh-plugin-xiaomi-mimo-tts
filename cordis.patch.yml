@@ -30,6 +30,16 @@
       name: 'dsh-xiaomi-tts/qqbot'
       disabled: true
 
+# Optional Wi-Fi voice terminal. Reuses Host ASR and shared synthesis.
+- insert:
+    - id: speech-delivery-passport
+      name: 'dsh-xiaomi-tts/passport'
+      disabled: true
+      config:
+        host: '127.0.0.1'
+        port: 3101
+        accessToken: ''
+
 # Optional companion preset: a whale maid with file, web, and question tools.
 - insert:
     - id: preset-whale-girl

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "AI Passport 语音终端",
+    "description": "通过 Wi-Fi 连接 Qwen Voice Bean 设备，复用宿主语音识别、专用 DSH 会话和插件 TTS。"
+  }
+}
