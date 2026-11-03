@@ -55,7 +55,7 @@ export function ActivationGuide({ t, scope, audioFocus, beforePreview, onOpenDet
       <div className="xmimo-tts-activation-content">
         <h2>{t('onboarding.title')}</h2>
         <ul className="xmimo-tts-activation-features">
-          {(['onboarding.featureBreeze', 'onboarding.featureAudioTags', 'onboarding.featureRetry'] as const).map((key) => <li key={key}>
+          {(['onboarding.featurePassport', 'onboarding.featureBreeze', 'onboarding.featureAudioTags', 'onboarding.featureMoss', 'onboarding.featureRetry', 'onboarding.featurePersonas', 'onboarding.featureVoiceNames'] as const).map((key) => <li key={key}>
             <span aria-hidden="true">🎉</span><span>{t(key)}</span>
           </li>)}
         </ul>

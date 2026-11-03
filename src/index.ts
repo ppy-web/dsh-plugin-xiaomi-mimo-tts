@@ -40,6 +40,7 @@ import { registerSynthesisRoutes } from './host/synthesis-routes.js'
 import { registerMossRoutes } from './host/moss-routes.js'
 import SpeechHost from './host/speech-service.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, ttsApiKey } from './shared.js'
+import type { ResolvedTtsSettings } from './shared.js'
 
 /** Cordis plugin identifier. */
 export const name = 'xiaomi-mimo-tts'
@@ -102,9 +103,13 @@ export const Config = z.object({
 
 export type Config = ReturnType<typeof Config>
 type ConfigValues = { [Key in keyof Config]: Config[Key] extends Volatile<infer Value> ? Value : Config[Key] }
-
-function readConfig(config: Config): ConfigValues {
-  return Object.fromEntries(Object.entries(config).map(([key, value]) => [key, (value as Volatile<unknown>).get()])) as ConfigValues
+function readConfig(config: Config): ResolvedTtsSettings {
+  // Host snapshots are deeply readonly; own the array used by speech settings.
+  const values = Object.fromEntries(Object.entries(config).map(([key, value]) => [key, (value as Volatile<unknown>).get()])) as ConfigValues
+  return {
+    ...values,
+    announcementSources: [...config.announcementSources.get()],
+  }
 }
 
 /** Register the TTS settings and same-origin synthesis route. */
