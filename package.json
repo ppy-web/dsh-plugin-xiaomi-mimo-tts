@@ -53,6 +53,7 @@
       "types": "./lib/passport.d.ts",
       "default": "./lib/passport.js"
     },
+    "./passport/icon": "./assets/plugin-icons/passport.webp",
     "./passport/locale/*.json": "./locale/passport/*.json",
     "./qqbot/icon": "./assets/plugin-icons/qqbot.webp",
     "./qqbot-agent": {

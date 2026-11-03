@@ -14,6 +14,7 @@ import { UserManual } from './user-manual.js'
 import { DocumentPage } from './document-page.js'
 import { QQBOT_GUIDE } from './qqbot-guide.js'
 import { DOUBAO_GUIDE } from './doubao-guide.js'
+import { PASSPORT_GUIDE } from './passport-guide.js'
 import { BundleComponents } from './bundle-components.js'
 import { FilterLab } from './filter-lab.js'
 import { TTS_VERSION } from '../../src/shared.js'
@@ -27,6 +28,7 @@ import { PluginDetailPreview, previewPluginChanges } from './plugin-detail-previ
 import { PREVIEW_COPY, previewDocumentSectionId, previewViewFromHash } from './preview-copy.js'
 import type { PreviewLocale, PreviewView } from './preview-copy.js'
 import { PreviewSidebar } from './preview-sidebar.js'
+import { VoiceReadingSelect } from '../../src/client/settings/voice-reading-select.js'
 import './preview.css'
 import './preview-shell.css'
 
@@ -36,6 +38,10 @@ const restorePreviewHostIcons = installPreviewHostIcons()
 const unbindApiKeyStatus = bindApiKeyStatus(scope, previewPluginChanges)
 const soundEffects = createSoundEffectsController()
 const history = new AudioHistory()
+const localeOptions = [
+  { id: 'zh', label: '中文' }, { id: 'en', label: 'English' },
+  { id: 'ja', label: '日本語' }, { id: 'fr', label: 'Français' },
+] as const
 
 if (import.meta.hot) import.meta.hot.dispose(() => { unbindApiKeyStatus(); restorePreviewFetch(); restorePreviewHostIcons(); void soundEffects.dispose(); void history.dispose() })
 
@@ -124,9 +130,10 @@ function PreviewApp() {
           </ol></nav>
         </div>
         <div className="preview-topbar-actions">
-          <select className="preview-locale-select" aria-label={copy.language} value={locale} onChange={event => { setLocale(event.target.value as PreviewLocale) }}>
-            <option value="zh">中文</option><option value="en">English</option><option value="ja">日本語</option><option value="fr">Français</option>
-          </select>
+          <div className="preview-locale-select">
+            <VoiceReadingSelect label={copy.language} value={locale} options={localeOptions} disabled={false}
+              onSelect={id => setLocale(id as PreviewLocale)} />
+          </div>
           <button type="button" className="preview-icon-button" title={theme === 'light' ? copy.darkTheme : copy.lightTheme} aria-label={theme === 'light' ? copy.darkTheme : copy.lightTheme}
             onClick={() => setTheme(current => current === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <LuMoon aria-hidden="true" /> : <LuSun aria-hidden="true" />}</button>
         </div>
@@ -144,10 +151,11 @@ function PreviewApp() {
               : activeView === 'voice' ? <div className="preview-voice-surface"><VoiceReadingPreview scope={scope} t={t} onOpenPluginSettings={() => { window.location.hash = 'settings' }} /></div>
               : activeView === 'conversation' ? <ConversationPreview scope={scope} />
               : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} />
-              : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} />
+              : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} readOnly={readOnly} />
               : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'qqbot' ? <DocumentPage key="qqbot" copy={QQBOT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
               : activeView === 'doubao' ? <DocumentPage key="doubao" copy={DOUBAO_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
+              : activeView === 'passport' ? <DocumentPage key="passport" copy={PASSPORT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
               : <UserManual locale={locale === 'zh' ? 'zh' : 'en'} />}
           </div>
         </div>

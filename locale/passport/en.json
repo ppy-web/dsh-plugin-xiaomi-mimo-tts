@@ -1,6 +1,21 @@
 {
   "meta": {
-    "title": "AI Passport Voice Terminal",
-    "description": "Connect Qwen Voice Bean devices over Wi-Fi using Host speech recognition, a dedicated DSH conversation and shared TTS."
+    "title": "AI Passport Connector",
+    "description": "Turn AI Passport into a portable DSH voice assistant with Wi-Fi conversations, Host speech recognition, Agent presets and TTS replies."
+  },
+  "config": {
+    "$description": "Enable the connector, then generate a four-digit pairing code and enable LAN access. Enter the computer IP and code on the device.",
+    "host": "Listen address (0.0.0.0 allows LAN device access)",
+    "port": "Listen port (default 3101; match the device setup)",
+    "accessToken": "Device pairing code (four digits; match the device)",
+    "deviceId": "Allowed device ID (blank accepts the first authenticated device)",
+    "agentPreset": "Agent preset ID (default whale-girl, the plugin Whale Girl)",
+    "cwd": "Working directory (defaults to passport/workspace under the user directory; created if missing)",
+    "silenceMs": "End-of-speech silence (ms)",
+    "minSpeechMs": "Minimum speech (ms)",
+    "speechThreshold": "Speech energy threshold (normalized RMS)",
+    "maxRecordingSeconds": "Maximum recording (seconds; oversized input is discarded)",
+    "maxReplySeconds": "Maximum spoken reply (seconds; longer replies are not spoken)",
+    "requestTimeoutMs": "Whole-request timeout (ms; recognition, conversation and playback)"
   }
 }

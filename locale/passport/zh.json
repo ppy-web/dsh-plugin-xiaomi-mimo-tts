@@ -1,6 +1,21 @@
 {
   "meta": {
-    "title": "AI Passport 语音终端",
-    "description": "通过 Wi-Fi 连接 Qwen Voice Bean 设备，复用宿主语音识别、专用 DSH 会话和插件 TTS。"
+    "title": "AI Passport 连接器",
+    "description": "让 AI Passport 成为随身 DSH 语音助手，通过 Wi-Fi 进行语音对话，复用宿主语音识别、Agent 预设与 TTS 回复。"
+  },
+  "config": {
+    "$description": "AI Passport 连接器配置。开启组件后，一键生成 4 位配对码并开放局域网连接；设备填写电脑 IP 和配对码。",
+    "host": "监听地址（0.0.0.0 允许局域网设备接入）",
+    "port": "监听端口（默认 3101，与设备配网填写一致）",
+    "accessToken": "设备配对码（4 位数字，与设备保持一致）",
+    "deviceId": "允许的设备 ID（留空允许首个认证设备）",
+    "agentPreset": "Agent 预设 ID（默认 whale-girl，插件鲸鱼娘）",
+    "cwd": "工作目录（默认用户目录下的 passport/workspace，不存在时自动创建）",
+    "silenceMs": "断句静音时长（ms）",
+    "minSpeechMs": "最短有效语音（ms）",
+    "speechThreshold": "语音能量阈值（归一化 RMS）",
+    "maxRecordingSeconds": "最长录音（秒，超长不提交）",
+    "maxReplySeconds": "最长语音回复（秒，超长不发声）",
+    "requestTimeoutMs": "整轮等待上限（ms，含识别、对话和播报）"
   }
 }

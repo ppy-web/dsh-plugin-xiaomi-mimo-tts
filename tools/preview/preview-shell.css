@@ -8,6 +8,7 @@
   --preview-hover: #efeff1;
   --preview-selected: #e9e9ec;
   --preview-ring: #71717a;
+  --preview-link: #3f5ed8;
   color: var(--preview-foreground);
   background: var(--preview-frame);
 }
@@ -20,6 +21,7 @@
   --preview-hover: #202024;
   --preview-selected: #27272c;
   --preview-ring: #a1a1aa;
+  --preview-link: #a3b3ff;
   color: var(--preview-foreground);
   background: var(--preview-frame);
 }
@@ -29,6 +31,30 @@ button, input, select, textarea { font: inherit; }
 .preview-app { --preview-sidebar-width: 240px; display: grid; grid-template-columns: var(--preview-sidebar-width) minmax(0, 1fr); min-height: 100dvh; }
 .preview-app[data-collapsed="true"] { --preview-sidebar-width: 64px; }
 .preview-app a { text-underline-offset: 3px; }
+/* Preview-wide, including Host content and portaled dialogs. Local anchors keep their navigation styles. */
+:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"]) {
+  color: var(--preview-link);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"]):hover {
+  text-decoration-thickness: 2px;
+}
+:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"])::before {
+  content: '';
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  margin-inline-end: .4em;
+  vertical-align: -.12em;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m10 13 4-4m1-2 1-1a4.24 4.24 0 0 1 6 6l-3 3a4.24 4.24 0 0 1-6 0m-4 2-1 1a4.24 4.24 0 0 1-6-6l3-3a4.24 4.24 0 0 1 6 0'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+:root a.preview-source-link::before, :root a.xmimo-voice-reading-action::before { margin-inline-end: 0; }
+:root a.xmimo-voice-reading-action > svg { display: none; }
 .preview-app :is(a, button, select, summary):focus-visible,
 .preview-mobile-sidebar :is(a, button, summary):focus-visible { outline: 2px solid var(--preview-ring); outline-offset: 3px; }
 .preview-app, .preview-app *, .preview-mobile-sidebar { scrollbar-width: thin; scrollbar-color: var(--preview-rule) transparent; }
@@ -71,7 +97,10 @@ button, input, select, textarea { font: inherit; }
 .preview-breadcrumb li { white-space: nowrap; }
 .preview-breadcrumb-root { color: var(--preview-muted); }
 .preview-breadcrumb svg { display: block; width: 13px; height: 13px; }
-.preview-locale-select { min-height: 34px; max-width: 110px; border: 1px solid var(--preview-rule); border-radius: 6px; padding: 0 8px; font-size: 12px; background: var(--preview-background); color: var(--preview-foreground); }
+.preview-locale-select { flex: none; }
+.preview-locale-select .xmimo-voice-reading-selector { min-width: 104px; height: 36px; justify-content: space-between; border-radius: 999px; padding-inline: 14px; background: var(--preview-hover); color: var(--preview-foreground); font-size: 13px; }
+.preview-locale-select .xmimo-voice-reading-selector:hover { background: var(--preview-selected); }
+.preview-locale-select .xmimo-voice-reading-chevron { width: 14px; height: 14px; color: var(--preview-muted); }
 .preview-canvas { min-height: calc(100dvh - 72px); margin: 0 8px 8px 0; border: 1px solid var(--preview-rule); border-radius: 12px; background: var(--preview-background); }
 .preview-page { width: min(1100px, 100%); margin-inline: auto; padding: 32px; }
 .preview-page-heading { margin-bottom: 28px; }
@@ -147,7 +176,7 @@ button, input, select, textarea { font: inherit; }
   .preview-breadcrumb { padding-inline-start: 10px; }
   .preview-breadcrumb-root { display: none; }
   .preview-icon-button { width: 40px; height: 40px; }
-  .preview-locale-select { max-width: 96px; min-height: 40px; }
+  .preview-locale-select .xmimo-voice-reading-selector { min-width: 96px; height: 40px; padding-inline: 12px; }
   .preview-canvas { min-height: calc(100dvh - 56px); margin: 0; border-radius: 0; border-inline: 0; border-bottom: 0; }
   .preview-page { padding: 24px 16px; }
   .preview-page-heading { margin-bottom: 24px; }

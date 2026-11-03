@@ -1,6 +1,6 @@
 # 用户手册
 
-在线预览中的[用户手册](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual)、[QQBot 接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#qqbot)与[豆包语音接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#doubao)为侧栏同级页面。两份接入教程分别提供准备条件、配置步骤、验收方法与故障排查，支持中文和英文；日语、法语界面显示英文正文。在线预览使用模拟配置和演示音频，真实接入请在 DSH 与对应服务控制台完成。
+在线预览中的[用户手册](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual)、[QQBot 接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#qqbot)、[豆包语音接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#doubao)与[AI Passport 接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport)为侧栏同级页面。接入教程提供准备条件、配置步骤、验收方法与故障排查，支持中文和英文；日语、法语界面显示英文正文。在线预览使用模拟配置和演示音频，真实接入请在 DSH、设备与对应服务控制台完成。
 
 ## 开始使用
 
@@ -240,34 +240,90 @@ export async function apply(ctx: Context) {
 
 本地回归验证合成、转码、会话隔离、取消、策略拒绝及临时文件清理；QQ 平台权限、实际回复额度和手机端播放需要在真实账号上验证。
 
-## AI Passport 语音终端
+## AI Passport 连接器
 
-可选组件 `dsh-xiaomi-tts/passport` 将 FoloToy AI Passport 接为通过 Wi-Fi 使用的随身语音终端。它复用 DSH 宿主的 `speechToText`、当前默认对话模型、Agent 预设，以及本插件的宿主 TTS；不需要 Qwen Audio Agent 后台、Windows 声卡采集或串口驱动。关闭网页后，只要 DSH 主机仍在运行且设备能访问它，就能继续对话。
+### AI Passport 是什么
+
+[AI Passport](https://ai-passport.folotoy.cn/) 是 FoloToy 推出的卡片大小、可随身佩戴的开放式 AI 硬件平台。你可以安装社区提供的应用，也可以借助官方开发资源和 AI Agent 编写自己的固件，把设备变成随身伙伴、实用工具或小游戏。设备的具体功能取决于安装的固件；产品介绍与社区玩法见 [AI Passport 官网](https://ai-passport.folotoy.cn/)。
+
+### 我们的组件实现了什么
+
+可选组件 `dsh-xiaomi-tts/passport` 配合 WhaleTalk Passport 固件，将设备接为通过 Wi-Fi 使用的随身 DSH 语音终端：
+
+- **语音提问与有声回复**：设备收音后，由 DSH 宿主识别文字、交给当前默认对话模型，再通过本插件已保存的 TTS 服务与音色合成回复并回传播放；播放完成后恢复收音，继续下一轮对话。
+- **Agent 预设与专用会话**：支持选择预设，设备会话独立于网页和 QQ 会话，重启后可恢复；工具操作仍遵循宿主权限和审批规则。
+- **快捷配对与取消**：一键生成 4 位配对码并显示电脑局域网地址；使用配套固件时，按 DOWN 可取消当前识别、对话或播报，掉线重连后不会补播旧回复。
+- **关闭网页后继续使用**：只要电脑上的 DSH 进程保持运行且设备能访问它，就能继续对话。
+
+完整分步教程见独立的 [AI Passport 接入页](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport)。[组件配置预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#components-passport)提供与真实组件相同的分组表单，但保存只修改演示数据，不启动监听、不扫描网络，也不会连接设备。
+
+组件复用 DSH 宿主的 `speechToText`、当前默认对话模型、Agent 预设，以及本插件的宿主 TTS；不需要 Qwen Audio Agent 后台、Windows 声卡采集或串口驱动。
 
 ### 前提与配置
 
-- 设备使用 [Qwen Voice Bean 固件](https://github.com/liutaocode/esp32demo/tree/main/examples/qwen-voice-bean)，设备端协议为 GCP 7.0.0 的音频子集。AI Passport 官方开发基线和其他玩法固件不能直接接入；本组件不提供完整 Qwen Gateway、任务或权限协议。
+- 推荐使用独立托管的 [WhaleTalk Passport（鲸语通行证）固件](https://github.com/ppy-web/whaletalk-passport/blob/main/docs/guide.zh_CN.md)，包含开发环境安装、固件构建、配网和按键说明；也兼容 [Qwen Voice Bean 固件](https://github.com/liutaocode/esp32demo/tree/main/examples/qwen-voice-bean)。设备端协议为 GCP 7.0.0 的音频子集，AI Passport 官方测试基线和其他玩法固件不能直接接入；本组件不提供完整 Qwen Gateway、任务或权限协议。
 - DSH profile 已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 和识别 provider（如 SenseVoice）。先在宿主语音输入设置里完成模型准备；组件沿用宿主选定的 provider 和语言，不代为下载模型，不自动回退其他识别服务。
 - 本插件的宿主 TTS 已能正常生成 WAV；浏览器系统语音不用于设备回传。Agent 预设和默认对话模型必须可用；工具权限与审批仍由宿主管理，不会自动批准。
 - 设备与主机处于可互通的 Wi-Fi／手机热点网络。此组件是网络语音终端，不提供普通对讲机的射频通信。
 
-在组合包组件列表找到「AI Passport 语音终端」，先填写配置，再启用默认关闭的条目。也可以将下面的条目加入自己的 profile：
+### 快速连接：电脑 IP + 4 位配对码
+
+1. 在 DSH 组合包组件列表打开「AI Passport 连接器」开关，进入配置页，点击 **生成配对码并开启连接**。
+2. 页面会显示电脑可用的局域网 IP 和本次生成的 **4 位数字配对码**。监听地址自动设为 `0.0.0.0`，端口默认 3101。`0.0.0.0` 是电脑的监听设置，不能填到设备上。
+3. 设备长按 OK 打开设置，选择重新配置。手机连接设备显示的 `DSH-Voice-*` 热点（无需密码），打开 `http://192.168.4.1`。已连过 Wi-Fi 时勾选 **保留已连接的 Wi-Fi**，只改电脑 IP 和配对码即可。
+4. 电脑和设备填写相同的 4 位数字，包含前导 0。保存后设备重启；显示“准备好了”后短按 OK 开麦。
+
+配对码不区分开发或正常模式，都使用 4 位数字。刷新页面后需要查看新码时，可重新生成并同步到设备；重新生成会替换旧码。已有长令牌仍能连接，避免旧设备在升级前突然失联。4 位配对仅接受局域网或本机地址，且仍拒绝错误配对码和浏览器跨域连接。
+
+**电脑开启移动热点时：** 设备连接该热点后，应填写热点网卡的 IPv4（Windows 通常为 `192.168.137.1`，网卡名称常为 `本地连接*` 或 `Local Area Connection*`），以连接器地址列表和系统实际地址为准。不要直接选电脑另一张以太网或 Wi-Fi 网卡的地址。AI Passport 使用独立的 `3101` 端口；DSH 网页端口 `3080` 即使只允许本机访问，也不影响已开放的设备接口。
+
+若设备已连上电脑热点，但连接正确 IP 时仍超时，而连接器显示正在监听，检查 Windows 防火墙是否放行了热点网络上的入站 TCP 端口。已有 Node.js 规则可能只覆盖专用网络，或仍指向旧版本 Node。在管理员 PowerShell 中可为默认热点地址和端口添加以下范围受限的规则；自定义热点网段或端口时先替换对应值：
+
+```powershell
+New-NetFirewallRule -DisplayName 'DSH AI Passport hotspot' -Direction Inbound -Action Allow -Profile Private,Public -Protocol TCP -LocalPort 3101 -LocalAddress 192.168.137.1 -RemoteAddress 192.168.137.0/24
+```
+
+配置页会显示“仅本机可访问”“正在监听，等待设备”“设备已连接”“ASR 未准备好”或端口错误。若始终提示后端断开，先看电脑是否已监听；不要在设备填 `127.0.0.1`、`0.0.0.0` 或设备自己的 IP。多网卡电脑选择设备当前 Wi-Fi 能访问的那一项；确认防火墙允许对应端口。
+
+会话、收音、超时和手动连接参数收进 **高级配置**，通常保留默认值。已保存的配对码不回传浏览器，修改其他参数时留空保留。只读、插件变更或保存期间不能提交；其他窗口已修改配置时，先放弃旧草稿再编辑。
+
+需要手写配置时，例如：
 
 ```yaml
 - id: speech-delivery-passport
   name: 'dsh-xiaomi-tts/passport'
   config:
-    host: '192.168.1.10' # 改为 DSH 主机当前的局域网 IPv4
+    host: '0.0.0.0'
     port: 3101
-    accessToken: 'REPLACE_WITH_A_PRIVATE_TOKEN_AT_LEAST_24_CHARACTERS'
-    agentPreset: '' # 空值在首次创建时使用宿主默认预设
+    accessToken: '1234' # 示例配对码，实际请在界面生成
+    agentPreset: 'whale-girl'
+    cwd: '~/.dsh-xiaomi-tts/passport/workspace'
 ```
 
-`host` 默认 `127.0.0.1`，仅供本机验证；设备使用时必须改为可访问的主机地址，并允许对应端口通过防火墙。参考固件使用固定端口 3101 和路径 `/api/realtime`，因此保留 `port: 3101`。在设备配网页面输入同一主机 IPv4，启用令牌输入并填入同一个 `accessToken`。令牌至少 24 个字符，不能留空；它仅用于设备认证，不是模型 API Key。默认链路是可信局域网内的明文 WebSocket，不应直接暴露到公网。
+设备只填电脑的局域网 IPv4 和配对码。端口在设备“高级设置”中，默认 3101，与电脑保持一致；连接路径固定为 `/api/realtime`。电脑需保持 DSH 运行，且宿主 ASR、默认模型和 TTS 已准备好。
+
+### 配置参数
+
+| 字段 | 默认值 / 范围 | 填写说明 |
+| --- | --- | --- |
+| `host` | `127.0.0.1` | 监听地址，必须属于 DSH 主机。设备接入填写主机的局域网 IPv4，不附带协议、端口或路径。 |
+| `port` | `3101` / 1–65535 整数 | WhaleTalk Passport 支持自定义端口，与设备配网页面保持一致。 |
+| `accessToken` | 空 / 4 位数字 | 设备配对码；推荐一键生成。空值时等待配置，编辑其他设置时留空保留已保存的码。兼容已有长令牌。 |
+| `deviceId` | 空 | 可选，限制 `client.instance_id`；留空接受首个通过认证的设备，仍只允许一台设备占用。 |
+| `agentPreset` | `whale-girl` | 默认本插件鲸鱼娘，需先启用该 Agent 预设组件；首次创建时选用，已有会话保留原预设。留空使用宿主默认。 |
+| `cwd` | `~/.dsh-xiaomi-tts/passport/workspace` | 目录不存在时自动递归创建，`~/` 表示用户目录；恢复已有会话时沿用原目录。显式留空使用 DSH 进程目录。 |
+| `silenceMs` | 700 ms / 200–3000 ms | 说完后持续静音多久才断句。切句过早时增大。 |
+| `minSpeechMs` | 200 ms / 100–1000 ms | 最短有效语音，过滤过短噪声。 |
+| `speechThreshold` | 0.015 / 0.001–0.5 | 归一化 RMS；提高后更不易被环境声音触发。 |
+| `maxRecordingSeconds` | 30 秒 / 1–60 秒 | 含预录与尾部静音，超长录音不提交。 |
+| `maxReplySeconds` | 60 秒 / 1–120 秒 | 超长回复不发声，不截断会话文字。 |
+| `requestTimeoutMs` | 180000 ms / 10000–600000 ms | 识别、对话与播报的整轮上限，超时取消当前任务。 |
+
+首次接入建议保留收音和超时默认值。先分别验证宿主语音转文字、普通文字对话与关闭本地兜底后的云端试听，再连接设备；不要用增大超时掩盖模型或网络未就绪的问题。
 
 ### 使用与会话
 
-`cwd` 可指定专用会话的工作目录，空值在首次创建时使用 DSH 进程工作目录；恢复已有会话时沿用原目录。
+默认使用 `whale-girl` 预设和 `~/.dsh-xiaomi-tts/passport/workspace` 工作目录。创建新会话前自动创建目录；默认鲸鱼娘预设未启用时会提示预设不可用，不会擅自替换为其他预设。恢复已有会话时保留已保存的预设和目录。
 
 固件启动后麦克风关闭；短按 OK 开始或暂停收音，说完后停顿，等待回复。播放时暂停接收新请求，实际播放完成后恢复；DOWN 按键可取消当前识别、对话或播报，不支持声音自动打断。
 
@@ -277,7 +333,26 @@ export async function apply(ctx: Context) {
 
 可调参数：`silenceMs` 默认 700 ms，`minSpeechMs` 默认 200 ms，`speechThreshold` 默认 0.015（归一化 RMS）；环境嘈杂时提高阈值，切句过早时延长静音时间。`maxRecordingSeconds` 默认 30 秒（含预录和尾部静音），超长录音不提交；`maxReplySeconds` 默认 60 秒，超长回复不发声、不截断文字；`requestTimeoutMs` 默认 180000 ms，限制一次识别、对话及播报的总等待时间。音频先完整合成，再转换为固件可播放的 24 kHz 单声道 PCM，按实际时长分包发送，等待设备播放回执，不把网络发送完成当作播放完成。
 
-宿主日志中的 `passport-asr-unavailable`／`passport-session-unavailable` 表示识别或会话未就绪；先检查宿主 ASR 准备、默认模型和预设。认证失败时核对设备令牌、主机地址和端口。掉线会取消当前工作，重连后不自动补发旧回复。模拟设备回归不能代替硬件验收；实际音质、长回复、按键取消和 Wi-Fi 重连需要在真实 AI Passport 上验证。
+宿主日志中的 `passport-asr-unavailable`／`passport-session-unavailable` 表示识别或会话未就绪；先检查宿主 ASR 准备、默认模型和预设。认证失败时核对两端的 4 位配对码、电脑 IP 和端口。掉线会取消当前工作，重连后不自动补发旧回复。模拟设备回归不能代替硬件验收；实际音质、长回复、按键取消和 Wi-Fi 重连需要在真实 AI Passport 上验证。
+
+播放发送根据音频时长和单调时钟调度，并提前发送有界的小段音频供设备缓冲，补偿 Windows 定时器误差。电脑短时卡顿后重新校准发送进度，避免集中补发挤满设备队列；完整音频仍按顺序发送，交付成功以设备播放完成回执为准。此优化在电脑端插件生效，兼容当前设备固件，不需要调整配对或收音参数。
+
+### 首次验收与故障排查
+
+1. 在设备上短按 OK 开始收音，说一句短话并停顿，确认识别、专用会话和语音回复均能完成。
+2. 完整播放后再说第二句话，确认收音恢复且沿用同一会话。浏览器自动播放开关不控制这条链路。
+3. 分别在识别、生成或播放期间按 DOWN，确认取消后不再发送旧音频。
+4. 断开并恢复设备 Wi-Fi，重新发起一轮；旧回复不应补播。真实硬件验收后再尝试长回复和调整阈值。
+
+| 现象 / 错误 | 排查方向 |
+| --- | --- |
+| 组件无法启动 | 确认同一 profile 的五项注入服务可用；监听地址属于本机且端口未被占用。 |
+| 无法连接或 HTTP 401 | 检查兼容固件、局域网地址、防火墙、端口和两端令牌。浏览器跨域请求会被拒绝。 |
+| `passport-asr-unavailable` | 检查宿主选择的识别 provider 及模型准备，先在宿主测试转文字。 |
+| `passport-session-unavailable` / `passport-preset-unavailable` | 检查默认模型、Agent 预设和会话恢复日志，不要先删除已有会话状态。 |
+| `passport-preset-changed` | 配置的预设与已保存会话不同，恢复原预设配置后重连。 |
+| `passport-recognition-failed` / `passport-speech-failed` | 分别测试宿主识别与 TTS；检查供应商、凭据和音色，反馈时隐藏凭据。 |
+| `passport-request-timeout` / 长回复无声 | 用短句区分识别、生成和合成耗时，核对整轮上限及最长回复时长。 |
 
 ## 插件详情页
 

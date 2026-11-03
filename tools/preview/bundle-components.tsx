@@ -2,8 +2,9 @@ import { useState } from 'react'
 import pluginIcon from '../../assets/plugin-icons/avatar.webp'
 import whaleGirlIcon from '../../assets/plugin-icons/preset.webp'
 import qqbotIcon from '../../assets/plugin-icons/qqbot.webp'
+import passportIcon from '../../assets/plugin-icons/passport.webp'
 import { PersonaSettingsPreview } from './persona-settings-preview.js'
-import { QqbotExperimentalListBadge } from '../../src/client/settings/plugin-detail.js'
+import { ExperimentalComponentListBadge } from '../../src/client/settings/plugin-detail.js'
 import { zh, en } from '../../src/client/localization.js'
 
 type PreviewLocale = 'zh' | 'en'
@@ -37,19 +38,21 @@ const COPY = {
   },
 } as const
 
-export function BundleComponents({ locale }: { locale: PreviewLocale }) {
+export function BundleComponents({ locale, readOnly = false }: { locale: PreviewLocale; readOnly?: boolean }) {
   const copy = COPY[locale]
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [agentEnabled, setAgentEnabled] = useState(false)
   const [qqbotEnabled, setQqbotEnabled] = useState(false)
+  const [passportEnabled, setPassportEnabled] = useState(false)
   const components = [
     { id: 'xiaomi-mimo-tts', icon: pluginIcon, title: copy.ttsTitle, description: copy.ttsDescription, module: 'dsh-xiaomi-tts', enabled: ttsEnabled, setEnabled: setTtsEnabled },
     { id: 'speech-delivery-qqbot', icon: qqbotIcon, title: copy.qqbotTitle, description: copy.qqbotDescription, module: 'dsh-xiaomi-tts/qqbot', enabled: qqbotEnabled, setEnabled: setQqbotEnabled },
+    { id: 'speech-delivery-passport', icon: passportIcon, title: (locale === 'zh' ? zh : en)['passport.title'], description: (locale === 'zh' ? zh : en)['passport.description'], module: 'dsh-xiaomi-tts/passport', enabled: passportEnabled, setEnabled: setPassportEnabled },
     { id: 'preset-whale-girl', icon: whaleGirlIcon, title: copy.agentTitle, description: copy.agentDescription, module: 'dsh-xiaomi-tts/whale-girl', enabled: agentEnabled, setEnabled: setAgentEnabled },
   ]
 
   return <section className="preview-bundle" aria-label={copy.heading} data-plugin-detail="dsh-xiaomi-tts">
-    <QqbotExperimentalListBadge label={(locale === 'zh' ? zh : en)['settings.experimental']} />
+    <ExperimentalComponentListBadge label={(locale === 'zh' ? zh : en)['settings.experimental']} />
     <header className="preview-bundle-heading">
       <h2>{copy.heading}</h2>
       <span>{copy.count(components.length, components.filter((item) => item.enabled).length)}</span>
@@ -58,10 +61,11 @@ export function BundleComponents({ locale }: { locale: PreviewLocale }) {
       {components.map((component) => <li className="preview-bundle-item" key={component.id}>
         <img src={component.icon} alt="" aria-hidden="true" />
         <div className="preview-bundle-copy">
-          <strong data-xmimo-experimental-title={component.id === 'speech-delivery-qqbot' ? '' : undefined}>{component.title}</strong>
+          <strong data-xmimo-experimental-title={['speech-delivery-qqbot', 'speech-delivery-passport'].includes(component.id) ? '' : undefined}>{component.title}</strong>
           <p>{component.description}</p>
           <code>{component.id}</code>
           <code>{component.module}</code>
+          <a className="preview-component-config-link" href={component.id === 'xiaomi-mimo-tts' ? '#settings' : `#components-${component.id === 'preset-whale-girl' ? 'desktop' : component.id === 'speech-delivery-qqbot' ? 'qqbot' : 'passport'}`}>{locale === 'zh' ? '配置组件' : 'Configure'}</a>
         </div>
         <span className={`preview-bundle-status${component.enabled ? ' preview-bundle-status-running' : ''}`}>
           {component.enabled ? copy.running : copy.stopped}
@@ -71,6 +75,7 @@ export function BundleComponents({ locale }: { locale: PreviewLocale }) {
             type="checkbox"
             role="switch"
             checked={component.enabled}
+            disabled={readOnly}
             aria-label={copy.toggle(component.title)}
             onChange={(event) => { component.setEnabled(event.target.checked) }}
           />
@@ -78,6 +83,6 @@ export function BundleComponents({ locale }: { locale: PreviewLocale }) {
         </label>
       </li>)}
     </ul>
-    <PersonaSettingsPreview locale={locale} />
+    <PersonaSettingsPreview locale={locale} readOnly={readOnly} />
   </section>
 }

@@ -26,7 +26,7 @@
 
 /* Component rows have no badge slot; scope the host title adaptation to this bundle. */
 #xmimo-tts-local-voice-engine-moss::after,
-[data-plugin-detail="dsh-xiaomi-tts"] [data-plugin-row="speech-delivery-qqbot"] button[aria-label] > span:first-child::after,
+[data-plugin-detail="dsh-xiaomi-tts"] :is([data-plugin-row="speech-delivery-qqbot"], [data-plugin-row="speech-delivery-passport"]) button[aria-label] > span:first-child::after,
 [data-xmimo-experimental-title]::after {
   content: var(--xmimo-experimental-label);
   display: inline-flex;
@@ -43,7 +43,7 @@
   vertical-align: middle;
 }
 
-[data-plugin-detail="dsh-xiaomi-tts"] [data-plugin-row="speech-delivery-qqbot"] button[aria-label] > span:first-child::after,
+[data-plugin-detail="dsh-xiaomi-tts"] :is([data-plugin-row="speech-delivery-qqbot"], [data-plugin-row="speech-delivery-passport"]) button[aria-label] > span:first-child::after,
 [data-xmimo-experimental-title]::after {
   margin-inline-start: 6px;
 }

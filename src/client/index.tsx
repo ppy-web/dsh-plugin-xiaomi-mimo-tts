@@ -19,6 +19,7 @@ import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
 import { onTtsCredentialsSaved } from './conversation/api-key-status.js'
 import { SettingsCard } from './settings/card.js'
 import { registerWhalePersonaSettings, registerQqbotSpeechSettings } from './settings/qqbot-registration.js'
+import { registerPassportSettings } from './settings/passport-registration.js'
 import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
 import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
 import { ActivationGuide } from './settings/activation-guide.js'
@@ -271,7 +272,7 @@ export function apply(ctx: Context): void {
     inject: () => ({ scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback }),
   }, SettingsCard))
 
-  registerSlotContribution(ctx, 'plugins.row.config', () => [registerWhalePersonaSettings(ctx, t, changes), registerQqbotSpeechSettings(ctx, t, changes)])
+  registerSlotContribution(ctx, 'plugins.row.config', () => [registerWhalePersonaSettings(ctx, t, changes), registerQqbotSpeechSettings(ctx, t, changes), registerPassportSettings(ctx, t, changes)])
 
   registerSlotContribution(ctx, 'plugins.bundle.activation', () => ctx.slots.register({
     name: 'plugins.bundle.activation',

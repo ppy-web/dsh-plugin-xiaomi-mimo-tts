@@ -1,8 +1,10 @@
 import type { LocaleKey } from '../localization.js'
 import { whaleEn } from '../settings/whale-copy.js'
+import { passportEn } from '../settings/passport-copy.js'
 
 export const ja: Record<LocaleKey, string> = {
   ...whaleEn,
+  ...passportEn,
   'settings.moreProviders': 'その他のプロバイダー',
   'settings.breezeEnabled': 'Breeze Blue を有効にする',
   'settings.providerMinimum': 'Xiaomi は常に有効です。豆包か Breeze のどちらかを有効にしてください。',

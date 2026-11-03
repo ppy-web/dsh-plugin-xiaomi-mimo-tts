@@ -51,18 +51,18 @@ const STATUS_KEYS: Record<ApiKeyStatus, LocaleKey> = {
 }
 
 export function PluginDetailBadge(props: DetailBadgeProps): ReactElement | null {
-  if (props.subject.kind === 'row' && props.subject.pkg.name === 'dsh-xiaomi-tts' && props.subject.row.moduleName === 'dsh-xiaomi-tts/qqbot') {
+  if (props.subject.kind === 'row' && props.subject.pkg.name === 'dsh-xiaomi-tts' && ['dsh-xiaomi-tts/qqbot', 'dsh-xiaomi-tts/passport'].includes(props.subject.row.moduleName)) {
     return <Tag tone="info" className="xmimo-tts-experimental-tag">{props.t('settings.experimental')}</Tag>
   }
   if (!isTtsBundle(props)) return null
   return <>
     <KeyBadge scope={props.scope} t={props.t} changes={props.changes} />
-    <QqbotExperimentalListBadge label={props.t('settings.experimental')} />
+    <ExperimentalComponentListBadge label={props.t('settings.experimental')} />
   </>
 }
 
 /** The host exposes a detail badge slot but no component-list badge slot. */
-export function QqbotExperimentalListBadge({ label }: { label: string }): ReactElement {
+export function ExperimentalComponentListBadge({ label }: { label: string }): ReactElement {
   return <style>{`[data-plugin-detail="dsh-xiaomi-tts"] { --xmimo-experimental-label: ${JSON.stringify(label)}; }`}</style>
 }
 

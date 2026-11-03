@@ -1,5 +1,5 @@
 export type PreviewLocale = 'zh' | 'en' | 'ja' | 'fr'
-export type PreviewView = 'settings' | 'voice' | 'conversation' | 'detail' | 'components' | 'filter' | 'manual' | 'qqbot' | 'doubao'
+export type PreviewView = 'settings' | 'voice' | 'conversation' | 'detail' | 'components' | 'filter' | 'manual' | 'qqbot' | 'doubao' | 'passport'
 
 export interface PreviewCopy {
   workspace: string
@@ -39,6 +39,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       filter: { title: '文本过滤', description: '比较原始文本与朗读内容，试用自定义输入或测试样例。' },
       manual: { title: '用户手册', description: '了解各项配置与操作。手册提供中文和英文版本。' },
       qqbot: { title: 'QQBot 接入', description: '从机器人连接到语音消息，逐步完成 DSH 与 QQ 的联动。' },
+      passport: { title: 'AI Passport 接入', description: '准备固件、配置宿主和设备，通过 Wi-Fi 与 DSH 语音对话。' },
       doubao: { title: '豆包语音接入', description: '开通语音服务，配置密钥与音色，验证云端合成和实时朗读。' },
     },
   },
@@ -58,6 +59,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       filter: { title: 'Text filtering', description: 'Compare source text with spoken text using your input or test samples.' },
       manual: { title: 'User manual', description: 'A guide to settings and controls, available in Chinese and English.' },
       qqbot: { title: 'QQBot setup', description: 'Connect your bot, select its preset, and verify voice messages in QQ.' },
+      passport: { title: 'AI Passport setup', description: 'Prepare firmware, configure the host and device, and talk to DSH over Wi-Fi.' },
       doubao: { title: 'Doubao voice setup', description: 'Enable the service, configure a key and voice, and verify cloud speech and streaming.' },
     },
   },
@@ -77,6 +79,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       filter: { title: 'テキストフィルター', description: '入力文やサンプルで、元の文章と読み上げ用テキストを比較します。' },
       manual: { title: 'ユーザーマニュアル', description: '設定と操作のガイドです。中国語と英語で提供しています。' },
       qqbot: { title: 'QQBot 連携', description: 'QQ の接続から音声メッセージの確認まで。本文は英語で表示します。' },
+      passport: { title: 'AI Passport 接続', description: 'ホストと端末を設定して Wi-Fi 音声会話を始めます。本文は英語で表示します。' },
       doubao: { title: '豆包音声の接続', description: 'サービスの有効化、キーと音声の設定、動作確認。本文は英語で表示します。' },
     },
   },
@@ -96,6 +99,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       filter: { title: 'Filtrage du texte', description: 'Comparez le texte source et le texte lu avec votre saisie ou les exemples.' },
       manual: { title: 'Manuel utilisateur', description: 'Le guide des réglages et des commandes, disponible en chinois et en anglais.' },
       qqbot: { title: 'Connexion QQBot', description: 'Connectez le bot et vérifiez les messages vocaux. Guide en anglais.' },
+      passport: { title: 'Connexion AI Passport', description: 'Configurez l’hôte et l’appareil pour parler à DSH via Wi-Fi. Guide en anglais.' },
       doubao: { title: 'Connexion vocale Doubao', description: 'Activez le service, configurez la clé et testez la voix. Guide en anglais.' },
     },
   },
@@ -106,11 +110,13 @@ export function previewDocumentSectionId(hash: string): string | undefined {
   const value = hash.replace(/^#/, '')
   if (value === 'manual-qqbot') return 'qqbot-start'
   if (value === 'manual-doubao') return 'doubao-start'
-  return /^(manual|qqbot|doubao)-/.test(value) ? value : undefined
+  if (value === 'manual-passport') return 'passport-start'
+  return /^(manual|qqbot|doubao|passport)-/.test(value) ? value : undefined
 }
 
 export function previewViewFromHash(hash: string): PreviewView {
   const value = hash.replace(/^#/, '')
+  if (/^components-(desktop|qqbot|passport)$/.test(value)) return 'components'
   const sectionId = previewDocumentSectionId(hash)
   if (sectionId) return sectionId.split('-')[0] as PreviewView
   return Object.hasOwn(PREVIEW_COPY.zh.pages, value) ? value as PreviewView : 'settings'

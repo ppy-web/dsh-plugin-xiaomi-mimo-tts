@@ -25,6 +25,23 @@
 .xmimo-qq-field > span { font-weight: 550; }
 .xmimo-qq-field small { color: var(--xmimo-ui-text-muted); }
 
+.xmimo-passport-settings { font-size: 14px; }
+.xmimo-passport-intro { padding: 0; }
+.xmimo-passport-intro p { margin: 0 0 8px; }
+.xmimo-passport-intro a { color: var(--xmimo-ui-text); text-underline-offset: 3px; }
+.xmimo-passport-settings .xmimo-qq-field small { font-size: 12px; line-height: 1.6; font-weight: 400; }
+.xmimo-passport-settings input[aria-invalid="true"] { border-color: var(--dsw-alias-state-error-primary, #c23f4a); }
+.xmimo-passport-settings button { box-shadow: none; }
+.xmimo-passport-settings button:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
+.xmimo-passport-quick { padding-block: 8px 18px; }
+.xmimo-passport-quick ol { padding-inline-start: 22px; line-height: 1.8; }
+.xmimo-passport-addresses { display: flex; flex-direction: column; gap: 8px; padding: 0; list-style: none; }
+.xmimo-passport-addresses li { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.xmimo-passport-addresses strong, .xmimo-passport-code { user-select: all; font-variant-numeric: tabular-nums; }
+.xmimo-passport-addresses span { color: var(--xmimo-ui-text-muted); }
+.xmimo-passport-advanced summary { cursor: pointer; padding-block: 12px; font-weight: 550; }
+.xmimo-passport-advanced section { padding-block: 8px; }
+
 .xmimo-qq-field input, .xmimo-qq-field textarea {
   box-sizing: border-box;
   width: 100%;
@@ -50,7 +67,7 @@
 .xmimo-qq-memory-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
 .xmimo-qq-memory-row input { min-width: 0; }
 .xmimo-qq-memory-kind { color: var(--xmimo-ui-text-muted); font-size: 12px; }
-.xmimo-qq-footer { position: sticky; bottom: 0; padding: 12px 0; border-top: 1px solid var(--xmimo-ui-border-soft); }
+.xmimo-qq-footer { position: sticky; z-index: 1; bottom: 0; padding: 12px 0; border-top: 1px solid var(--xmimo-ui-border-soft); background: var(--xmimo-ui-surface); }
 .xmimo-qq-footer .xmimo-tts-card-action-buttons { grid-column: 2; }
 .xmimo-qq-footer [role="status"] { text-align: start; }
 

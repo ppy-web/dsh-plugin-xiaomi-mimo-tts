@@ -6,13 +6,14 @@ import { createServer } from 'node:http'
 import type { Server } from 'node:http'
 import { Socket } from 'node:net'
 import { randomUUID, timingSafeEqual } from 'node:crypto'
-import { setTimeout as delay } from 'node:timers/promises'
 import { WebSocket, WebSocketServer } from 'ws'
 import type { SpeechAudio, SpeechDeliveryAdapter, SpeechSynthesisService } from '../host-api.js'
 import { SessionSpeech } from '../host/session-speech.js'
 import { prepareTtsText } from '../shared.js'
 import { playbackPcm, PcmUtterances } from './audio.js'
+import { sendPlaybackPcm } from './playback.js'
 import type { CaptureOptions } from './audio.js'
+import { isPassportAccessToken, isPassportLanAddress } from '../types/passport.js'
 
 export interface PassportOptions extends CaptureOptions {
   host: string
@@ -40,7 +41,7 @@ interface Playback {
 type Event = Record<string, unknown> & { type: string }
 const MAX_FRAME_BYTES = 64 * 1024
 
-/** Qwen Voice Bean's device-facing GCP 7 audio subset, backed entirely by DSH services. */
+/** The local DSH Voice Companion's GCP 7 audio subset, also compatible with Qwen Voice Bean. */
 export class PassportBridge {
   private readonly sockets = new Set<WebSocket>()
   private readonly connections = new Set<PassportConnection>()
@@ -106,17 +107,18 @@ export class PassportBridge {
     if (session === this.session.agent?.session) this.current?.observe(event)
   }
 
-  private authorized(header: string | undefined): boolean {
+  private authorized(header: string | undefined, address = ''): boolean {
+    if (/^\d{4}$/u.test(this.options.accessToken) && !isPassportLanAddress(address)) return false
     const expected = Buffer.from(`Bearer ${this.options.accessToken}`), supplied = Buffer.from(header ?? '')
     return expected.length === supplied.length && timingSafeEqual(expected, supplied)
   }
 
   async listen(): Promise<void> {
     if (this.disposed || this.server) throw new Error('passport-server-unavailable')
-    if (this.options.accessToken.length < 24 || /[\r\n]/u.test(this.options.accessToken)) throw new Error('passport-token-required')
+    if (!isPassportAccessToken(this.options.accessToken)) throw new Error('passport-token-required')
     const server = createServer((req, res) => {
       res.setHeader('cache-control', 'no-store')
-      if (req.headers.origin || !this.authorized(req.headers.authorization)) { res.writeHead(401); res.end(); return }
+      if (req.headers.origin || !this.authorized(req.headers.authorization, req.socket.remoteAddress)) { res.writeHead(401); res.end(); return }
       if (req.method !== 'GET' || req.url !== '/api/health') { res.writeHead(404); res.end(); return }
       res.setHeader('content-type', 'application/json')
       res.end(JSON.stringify({ ok: true, adapter: 'passport', protocol_version: '7.0.0' }))
@@ -124,7 +126,7 @@ export class PassportBridge {
     this.server = server
     server.on('connection', socket => { socket.setTimeout(15000, () => socket.destroy()) })
     server.on('upgrade', (req, socket, head) => {
-      if (this.disposed || req.url !== '/api/realtime' || req.headers.origin || !this.authorized(req.headers.authorization)) {
+      if (this.disposed || req.url !== '/api/realtime' || req.headers.origin || !this.authorized(req.headers.authorization, req.socket.remoteAddress)) {
         socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n'); return
       }
       if (this.sockets.size >= 2) { socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n'); return }
@@ -146,6 +148,7 @@ export class PassportBridge {
   }
 
   get address() { return this.server?.address() }
+  get status() { return { listening: !!this.server?.listening, connected: !!this.current?.available } }
 
   dispose(): Promise<void> { return this.closing ??= this.shutdown() }
 
@@ -269,7 +272,7 @@ class PassportConnection {
       || !capabilities.includes('input.audio') || !capabilities.includes('playback.receipts')) throw new Error('passport-protocol-mismatch')
     this.deviceId = client.instance_id
     if (this.bridge.options.deviceId && this.deviceId !== this.bridge.options.deviceId) { this.close(4003, 'device-rejected'); return }
-    if (!this.bridge.claim(this)) { this.close(4002, 'occupied'); return }
+    if (!this.bridge.claim(this)) { this.send('voice.ownership', { state: 'busy' }); this.close(4002, 'occupied'); return }
     this.bridge.checkRecognition()
     const { agent } = await this.bridge.session.acquire()
     if (this.disposed) return
@@ -334,11 +337,9 @@ class PassportConnection {
     signal.addEventListener('abort', aborted, { once: true })
     try {
       this.send('response.started', { responseId: id })
-      for (let offset = 0; offset < pcm.length; offset += 960) {
-        signal.throwIfAborted()
-        this.send('audio.delta', { responseId: id, sampleRate: 24000, audio: pcm.subarray(offset, offset + 960).toString('base64') })
-        await delay(20, undefined, { signal })
-      }
+      await sendPlaybackPcm(pcm, chunk => {
+        this.send('audio.delta', { responseId: id, sampleRate: 24000, audio: chunk.toString('base64') })
+      }, signal)
       this.playback.doneSent = true
       this.send('audio.done', { responseId: id })
       await receipt.promise

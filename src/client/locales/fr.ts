@@ -1,8 +1,10 @@
 import type { LocaleKey } from '../localization.js'
 import { whaleEn } from '../settings/whale-copy.js'
+import { passportEn } from '../settings/passport-copy.js'
 
 export const fr: Record<LocaleKey, string> = {
   ...whaleEn,
+  ...passportEn,
   'settings.moreProviders': 'Plus de fournisseurs',
   'settings.breezeEnabled': 'Activer Breeze Blue',
   'settings.providerMinimum': 'Xiaomi reste activé ; gardez Doubao ou Breeze activé.',

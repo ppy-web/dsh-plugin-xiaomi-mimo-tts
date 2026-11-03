@@ -6,7 +6,9 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { homedir } from 'node:os'
 import { SPEECH_DATA_ROOT } from '../host/speech-files.js'
+import { DEFAULT_PASSPORT_SETTINGS as defaults } from '../types/passport.js'
 
 interface SessionIdentity { sessionId: string; preset: string }
 
@@ -43,7 +45,7 @@ export class PassportSession {
   private pending: Promise<AgentHandle> | undefined
   private readonly lifetime = new AbortController()
 
-  constructor(private readonly ctx: Context, private readonly preset = '', private readonly cwd = '', private readonly store = new PassportSessionStore(
+  constructor(private readonly ctx: Context, private readonly preset = defaults.agentPreset, private readonly cwd = defaults.cwd, private readonly store = new PassportSessionStore(
     `${ctx.get('loader')?.config.baseUrl ?? resolve(process.cwd())}\n${ctx.get('loader')?.locate(ctx.fiber) ?? 'passport'}`,
   )) {}
 
@@ -56,9 +58,9 @@ export class PassportSession {
 
   private async open(): Promise<AgentHandle> {
     const identity = await this.store.load()
-    const preset = await this.ctx.agentPresets.resolve(this.preset || identity?.preset || undefined)
+    const preset = await this.ctx.agentPresets.resolve(identity?.preset || this.preset || undefined)
     if (preset.broken) throw new Error('passport-preset-unavailable')
-    if (identity && this.preset && identity.preset !== preset.id) throw new Error('passport-preset-changed')
+    if (identity && this.preset && this.preset !== defaults.agentPreset && this.preset !== preset.id) throw new Error('passport-preset-changed')
     await using lease = await this.ctx.agentPresets.acquireScope(preset.id)
     void lease
     const options = {
@@ -66,10 +68,18 @@ export class PassportSession {
       agentOptions: this.agentOptions(),
       setup: async (agentCtx: Context) => { await this.ctx.agentPresets.mount(agentCtx, preset.id) },
     }
+    let workspace: string | undefined
+    if (!identity) {
+      const path = /^~[/\\]/u.test(this.cwd) ? join(homedir(), this.cwd.slice(2)) : this.cwd || process.cwd()
+      workspace = resolve(path)
+      this.lifetime.signal.throwIfAborted()
+      await mkdir(workspace, { recursive: true })
+      this.lifetime.signal.throwIfAborted()
+    }
     const handle = identity
       ? await this.ctx.agents.resume({ ...options, resumeSessionId: identity.sessionId as AgentHandle['agent']['id'] })
       : await this.ctx.agents.create({ ...options, sessionId: `passport-${randomUUID()}` as AgentHandle['agent']['id'],
-        meta: { agentPreset: preset.id, cwd: resolve(this.cwd || process.cwd()) } })
+        meta: { agentPreset: preset.id, cwd: workspace! } })
     this.handle = handle
     try {
       this.lifetime.signal.throwIfAborted()

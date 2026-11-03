@@ -152,6 +152,30 @@
 .preview-bundle-switch input:focus-visible + span { outline: 2px solid var(--preview-focus-ring); outline-offset: 3px; }
 .preview-bundle-note { margin: 0; border-top: 1px solid var(--dsw-alias-border-l2); padding: 9px 16px 11px; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 1.5; }
 
+.preview-component-config-link { display: inline-block; margin-top: 7px; color: var(--dsw-alias-label-primary); font-size: 13px; text-underline-offset: 3px; }
+.preview-component-settings { border-top: 1px solid var(--dsw-alias-border-l2); margin-top: 16px; padding: 24px; scroll-margin-top: 85px; }
+.preview-component-settings > header h2 { margin: 0 0 7px; color: var(--dsw-alias-label-primary); font-size: 18px; }
+.preview-component-settings > header p { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 14px; line-height: 1.65; }
+.preview-component-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 24px; padding: 5px; border-radius: 10px; background: var(--dsw-alias-bg-layer-2); }
+.preview-component-tabs button { flex: 1 1 150px; display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; padding: 8px 12px; border: 1px solid transparent; border-radius: 7px; color: var(--dsw-alias-label-secondary); background: transparent; font: inherit; font-size: 14px; cursor: pointer; }
+.preview-component-tabs button[aria-selected="true"] { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-1); font-weight: 600; }
+.preview-component-tabs button:hover { color: var(--dsw-alias-label-primary); }
+.preview-component-tabs button:focus-visible, .preview-component-config-link:focus-visible { outline: 2px solid var(--preview-focus-ring); outline-offset: 3px; }
+.preview-component-tabs img { object-fit: contain; flex-shrink: 0; }
+.preview-component-panel { padding: 4px 4px 0; scroll-margin-top: 85px; }
+.preview-component-panel[hidden] { display: none; }
+.preview-component-panel .xmimo-qq-settings { max-width: none; }
+.preview-component-settings button { box-shadow: none; }
+.preview-bundle-switch input:disabled { cursor: not-allowed; }
+.preview-bundle-switch input:disabled + span { opacity: .5; }
+
+@media (max-width: 600px) {
+  .preview-component-settings { padding: 20px 14px; }
+  .preview-component-tabs { gap: 4px; }
+  .preview-component-tabs button { justify-content: flex-start; flex-basis: 100%; }
+  .preview-component-panel { padding-inline: 0; }
+}
+
 @media (max-width: 560px) {
   .preview-bundle-item { flex-wrap: wrap; }
   .preview-bundle-copy { flex-basis: calc(100% - 54px); }

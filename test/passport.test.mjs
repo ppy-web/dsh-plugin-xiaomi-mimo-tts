@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { once, EventEmitter } from 'node:events'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { homedir, tmpdir } from 'node:os'
+import { isAbsolute, join, relative } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { WebSocket } from 'ws'
 import { Context } from '@deepseek-ai/cordis'
@@ -144,6 +144,18 @@ test('device audio uses the Host recognizer and only its dedicated final reply i
   assert.equal(run.deliveries.filter(item => item.request.text === '正确回复').length, 1)
 })
 
+test('paced device playback preserves a long reply and its partial final packet', async t => {
+  const wave = pcmWave(tone(1437))
+  const run = await harness(t, { synthesize: async () => wave }), device = await run.connect()
+  device.audio(); await device.wait('voice.state', event => event.state === 'processing'); await settle()
+  run.reply()
+  const done = await device.wait('audio.done')
+  const received = Buffer.concat(device.events.filter(event => event.type === 'audio.delta').map(event => Buffer.from(event.audio, 'base64')))
+  assert.deepEqual(received, playbackPcm(wave, defaults.maxReplySeconds))
+  device.send({ type: 'playback.ended', responseId: done.responseId })
+  await device.wait('response.done')
+})
+
 test('unrelated sessions cannot trigger synthesis or explicit device delivery', async t => {
   const run = await harness(t), device = await run.connect()
   device.audio(); await device.wait('voice.state', event => event.state === 'processing'); await settle()
@@ -154,6 +166,30 @@ test('unrelated sessions cannot trigger synthesis or explicit device delivery', 
   await settle()
   assert.equal(run.deliveries.length, 0)
   await assert.rejects(async () => run.bridge.adapter.check({ agent: { ...run.agent }, signal: new AbortController().signal }))
+})
+
+test('a device resumes capture after speaker drain and completes two independent voice turns', async t => {
+  const run = await harness(t), device = await run.connect()
+  let previousId
+  for (const [index, text] of ['第一轮回复', '第二轮回复'].entries()) {
+    // Firmware sends 20 ms PCM frames, followed by silence for Host segmentation.
+    const pcm = Buffer.concat([tone(200), Buffer.alloc(6400)])
+    for (let offset = 0; offset < pcm.length; offset += 640) device.audio(pcm.subarray(offset, offset + 640))
+    const deadline = Date.now() + 3000
+    while (run.submitted.length <= index && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 5))
+    }
+    assert.equal(run.submitted.length, index + 1)
+    run.reply(text, index + 1)
+    const done = await device.wait('audio.done', event => event.responseId !== previousId)
+    device.send({ type: 'playback.started', responseId: done.responseId })
+    device.send({ type: 'playback.ended', responseId: done.responseId })
+    await device.wait('response.done', event => event.responseId === done.responseId)
+    await settle()
+    previousId = done.responseId
+  }
+  assert.deepEqual(run.deliveries.map(item => item.request.text), ['第一轮回复', '第二轮回复'])
+  assert.equal(run.delivered.length, 2)
 })
 
 test('empty recognition, mute and protocol-only events do not submit a user message', async t => {
@@ -219,8 +255,33 @@ test('one authenticated device cannot occupy another device lease', async t => {
   const second = new Device(run.url)
   t.after(() => second.stop())
   await once(second.ws, 'open'); second.send(hello('another_device'))
+  assert.equal((await second.wait('voice.ownership')).state, 'busy')
   assert.equal((await second.closed).code, 4002)
   assert.equal(first.ws.readyState, WebSocket.OPEN)
+})
+
+test('local DSH Voice Companion negotiates muted, uses its configured port and starts audio only after OK', async t => {
+  const run = await harness(t)
+  const device = await run.connect('bean_001122aabbcc', {
+    client: { type: 'dsh-passport', version: '0.1.0', instance_id: 'bean_001122aabbcc' },
+    locale: 'zh-CN', time_zone: 'Asia/Shanghai',
+    connection: { voice_enabled: true, input_enabled: false, output_enabled: true, text_only: false },
+  })
+  const ready = await device.wait('voice.ready')
+  assert.equal(ready.inputSampleRate, 16000)
+  assert.equal(ready.outputSampleRate, 24000)
+  device.audio()
+  await settle()
+  assert.equal(run.recognized.length, 0)
+  device.send({ type: 'wake' })
+  device.send({ type: 'input.unmute' })
+  device.audio()
+  await device.wait('voice.state', value => value.state === 'processing')
+  await settle()
+  assert.deepEqual(run.submitted, ['你好'])
+  device.send({ type: 'response.cancel' })
+  await device.wait('playback.clear')
+  assert.equal(run.cancelled, 1)
 })
 
 test('authentication rejects missing/wrong tokens and browser origins before session creation', async t => {
@@ -236,6 +297,24 @@ test('authentication rejects missing/wrong tokens and browser origins before ses
   assert.equal((await fetch(health)).status, 401)
   assert.equal((await fetch(health, { headers: { Authorization: `Bearer ${TOKEN}` } })).status, 200)
   assert.equal(acquired, 0)
+})
+
+test('four-digit pairing authenticates a LAN device and still rejects missing, wrong and cross-origin credentials', async t => {
+  const run = await harness(t, { options: { accessToken: '0042' } })
+  const health = run.url.replace('ws:', 'http:').replace('/api/realtime', '/api/health')
+  for (const headers of [{}, { Authorization: 'Bearer 0041' }, { Authorization: 'Bearer 0042', Origin: 'https://other.example' }]) {
+    assert.equal((await fetch(health, { headers })).status, 401)
+  }
+  assert.equal((await fetch(health, { headers: { Authorization: 'Bearer 0042' } })).status, 200)
+  const device = new Device(run.url, { headers: { Authorization: 'Bearer 0042' } })
+  t.after(() => device.stop())
+  await once(device.ws, 'open')
+  device.send(hello())
+  await device.wait('voice.ready')
+  device.audio()
+  await device.wait('voice.state', event => event.state === 'processing')
+  await settle()
+  assert.deepEqual(run.submitted, ['你好'])
 })
 
 test('malformed or oversized audio closes the connection and never reaches ASR', async t => {
@@ -422,6 +501,71 @@ test('a persisted session resume failure never creates a replacement conversatio
   const session = new PassportSession(ctx, '', '', { load: async () => identity, save: async () => assert.fail('must preserve identity') })
   await assert.rejects(session.acquire(), /writer-held/u)
   assert.equal(created, 0)
+  await session.dispose()
+})
+
+test('new Passport sessions create the configured workspace before Agent startup and expand the user directory', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'passport-workspace-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  for (const useTilde of [false, true]) {
+    const workspace = join(directory, useTilde ? 'tilde' : 'absolute', 'nested')
+    const fromHome = relative(homedir(), workspace)
+    const configuredPath = useTilde && !isAbsolute(fromHome) ? `~/${fromHome.replaceAll('\\', '/')}` : workspace
+    let persisted
+    const ctx = {
+      agentDefaultModel: {},
+      agentPresets: {
+        resolve: async id => { assert.equal(id, 'whale-girl'); return { id } },
+        acquireScope: async () => ({ [Symbol.asyncDispose]: async () => {} }),
+      },
+      agents: { create: async options => {
+        assert.equal(options.meta.cwd, workspace)
+        assert.ok((await stat(workspace)).isDirectory())
+        return { agent: { id: options.sessionId, whenIdle: async () => {}, cancel() {} }, dispose: async () => {} }
+      } },
+    }
+    const session = new PassportSession(ctx, 'whale-girl', configuredPath, { load: async () => undefined, save: async value => { persisted = value } })
+    await session.acquire()
+    assert.equal(persisted.preset, 'whale-girl')
+    await session.dispose()
+  }
+})
+
+test('changing defaults preserves a saved session and does not create an unused replacement workspace', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'passport-existing-workspace-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const workspace = join(directory, 'unused'), identity = { sessionId: `passport-${randomUUID()}`, preset: 'saved-persona' }
+  const ctx = {
+    agentDefaultModel: {},
+    agentPresets: { resolve: async id => { assert.equal(id, identity.preset); return { id } }, acquireScope: async () => ({ [Symbol.asyncDispose]: async () => {} }) },
+    agents: {
+      create: () => assert.fail('must resume the saved identity'),
+      resume: async options => {
+        assert.equal(options.resumeSessionId, identity.sessionId)
+        assert.equal(options.meta, undefined)
+        return { agent: { whenIdle: async () => {}, cancel() {} }, dispose: async () => {} }
+      },
+    },
+  }
+  const session = new PassportSession(ctx, 'whale-girl', workspace, { load: async () => identity, save: () => assert.fail('must preserve saved identity') })
+  await session.acquire()
+  await assert.rejects(stat(workspace), { code: 'ENOENT' })
+  await session.dispose()
+})
+
+test('an unusable workspace rejects creation without starting an Agent or overwriting the existing file', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'passport-invalid-workspace-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const path = join(directory, 'existing-file')
+  await writeFile(path, 'keep this data')
+  const ctx = {
+    agentDefaultModel: {},
+    agentPresets: { resolve: async id => ({ id }), acquireScope: async () => ({ [Symbol.asyncDispose]: async () => {} }) },
+    agents: { create: () => assert.fail('directory preparation must succeed first') },
+  }
+  const session = new PassportSession(ctx, 'whale-girl', path, { load: async () => undefined, save: () => assert.fail('must not save failed creation') })
+  await assert.rejects(session.acquire(), error => ['EEXIST', 'ENOTDIR'].includes(error.code))
+  assert.equal(await readFile(path, 'utf8'), 'keep this data')
   await session.dispose()
 })
 

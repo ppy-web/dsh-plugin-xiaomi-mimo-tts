@@ -7,12 +7,12 @@ export type ManualLocale = 'zh' | 'en'
 const COPY: Record<ManualLocale, ManualCopy> = {
   zh: {
     title: '把鲸鱼娘调成你喜欢的样子',
-    intro: '按使用顺序了解语音配置、自动朗读与播放操作。QQBot 与豆包接入教程可从侧栏单独打开。所有安装和连接操作均在真实 DSH 中执行；本预览不修改 DSH，也不向 QQ 发送消息。',
+    intro: '按使用顺序了解语音配置、自动朗读与播放操作。QQBot、豆包与 AI Passport 接入教程可从侧栏单独打开。所有安装和连接操作均在真实 DSH 中执行；本预览不修改 DSH，也不连接机器人或设备。',
     toc: '目录',
     sections: [
       {
         id: 'manual-start',
-        links: [{ label: 'QQBot 接入教程', href: '#qqbot' }, { label: '豆包语音接入教程', href: '#doubao' }],
+        links: [{ label: 'QQBot 接入教程', href: '#qqbot' }, { label: '豆包语音接入教程', href: '#doubao' }, { label: 'AI Passport 接入教程', href: '#passport' }],
         title: '01 · 开始使用',
         summary: '先选择小米 MiMo 或豆包语音并保存密钥，再选择模型和音色试听。',
         items: [
@@ -136,12 +136,12 @@ const COPY: Record<ManualLocale, ManualCopy> = {
   },
   en: {
     title: 'Tune Whale Maid your way',
-    intro: 'Set up speech and understand automatic reading and playback controls. QQBot and Doubao setup guides have their own sidebar pages. Perform installation and connection steps in real DSH; this preview does not change DSH or send QQ messages.',
+    intro: 'Set up speech and understand automatic reading and playback controls. QQBot, Doubao and AI Passport guides have their own sidebar pages. Perform setup in real DSH; this preview does not change DSH or connect bots or devices.',
     toc: 'Contents',
     sections: [
       {
         id: 'manual-start',
-        links: [{ label: 'QQBot setup guide', href: '#qqbot' }, { label: 'Doubao voice setup guide', href: '#doubao' }],
+        links: [{ label: 'QQBot setup guide', href: '#qqbot' }, { label: 'Doubao voice setup guide', href: '#doubao' }, { label: 'AI Passport setup guide', href: '#passport' }],
         title: '01 · Getting started',
         summary: 'Choose Xiaomi MiMo or Doubao, save its key, then select a model and voice to preview.',
         items: [

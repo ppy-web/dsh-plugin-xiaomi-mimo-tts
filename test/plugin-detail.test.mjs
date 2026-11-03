@@ -191,12 +191,12 @@ test('detail actions open the project and manual separately and remain available
   ])
 })
 
-test('QQ component classification stays visible without accessing speech settings or credentials', t => {
+test('experimental component classification stays visible without accessing speech settings or credentials', t => {
   t.mock.method(globalThis, 'fetch', () => assert.fail('a component classification must not query credentials'))
   const scope = { getSnapshot: () => assert.fail('a component classification must not read TTS settings'), subscribe: () => assert.fail() }
-  for (const enabled of [true, false]) {
-    const qq = { kind: 'row', pkg, row: { rowId: 'speech-delivery-qqbot', moduleName: 'dsh-xiaomi-tts/qqbot', enabled } }
-    const html = renderToStaticMarkup(createElement(PluginDetailBadge, { subject: qq, t: () => 'classification', scope }))
+  for (const component of ['qqbot', 'passport']) for (const enabled of [true, false]) {
+    const subject = { kind: 'row', pkg, row: { rowId: `speech-delivery-${component}`, moduleName: `dsh-xiaomi-tts/${component}`, enabled } }
+    const html = renderToStaticMarkup(createElement(PluginDetailBadge, { subject, t: () => 'classification', scope }))
     assert.ok(html.includes('classification'))
   }
 })
