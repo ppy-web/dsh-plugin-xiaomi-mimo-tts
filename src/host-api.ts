@@ -1,5 +1,6 @@
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { TtsProvider } from './types/providers.js'
+import type { ResolvedTtsSettings } from './shared.js'
 
 export type SpeechFormat = 'mp3' | 'wav' | 'silk'
 
@@ -77,9 +78,16 @@ export interface SpeechSynthesisService {
   deliver(request: SpeechRequest, adapter: string, context: SpeechDeliveryContext): Promise<SpeechDeliveryResult>
 }
 
+/** Live settings shared with the DSH Go native half (host-local; secrets included). */
+export interface TtsSettingsAccess {
+  current(): ResolvedTtsSettings
+  updates(listener: () => void): () => void
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     speechSynthesis: SpeechSynthesisService
+    xiaomiTtsSettings: TtsSettingsAccess
   }
   interface Events {
     /** Audio was delivered or exported; file consumers may surface the returned path. */

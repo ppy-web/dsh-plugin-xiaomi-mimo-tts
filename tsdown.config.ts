@@ -106,6 +106,7 @@ export default defineConfig([{
     'host-api': 'src/host-api.ts',
     'speech-host': 'src/speech-host.ts',
     'speech-agent': 'src/speech-agent.ts',
+    'dsh-go': 'src/dsh-go.ts',
     qqbot: 'src/qqbot.ts',
     passport: 'src/passport.ts',
     'qqbot-agent': 'src/qqbot-agent.ts',

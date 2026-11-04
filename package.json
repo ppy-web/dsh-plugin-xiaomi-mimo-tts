@@ -47,6 +47,10 @@
       "types": "./lib/speech-agent.d.ts",
       "default": "./lib/speech-agent.js"
     },
+    "./dsh-go": {
+      "types": "./lib/dsh-go.d.ts",
+      "default": "./lib/dsh-go.js"
+    },
     "./qqbot": {
       "types": "./lib/qqbot.d.ts",
       "default": "./lib/qqbot.js"
@@ -85,6 +89,8 @@
     "lib/host-api.d.ts",
     "lib/speech-host.d.ts",
     "lib/speech-agent.d.ts",
+    "lib/dsh-go.js",
+    "lib/dsh-go.d.ts",
     "lib/qqbot.d.ts",
     "lib/passport.d.ts",
     "lib/passport/*.d.ts",
@@ -127,6 +133,27 @@
       ],
       "external": [
         "@deepseek-ai/dsh-client-ui-primitives"
+      ]
+    }
+  },
+  "dshGo": {
+    "v": 1,
+    "title": { "zh": "小米 TTS", "en": "MiMo TTS" },
+    "icon": "speaker",
+    "wants": ["message"],
+    "capabilities": ["audio", "voice", "micro", "overlay"],
+    "contributes": {
+      "message.actions": [
+        { "id": "read", "label": { "zh": "朗读", "en": "Read aloud" }, "icon": "play", "requires": ["audio"] }
+      ],
+      "media": [{ "id": "speech" }],
+      "micro": [{ "id": "caption" }],
+      "overlays": [{ "id": "subtitle", "channel": "caption" }],
+      "panels": [
+        { "id": "settings", "title": { "zh": "朗读设置", "en": "Read aloud" }, "icon": "settings", "placement": ["features", "chat.panel"] }
+      ],
+      "composer.strip": [
+        { "id": "status", "icon": "speaker", "panel": "settings" }
       ]
     }
   },

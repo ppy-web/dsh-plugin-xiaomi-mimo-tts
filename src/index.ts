@@ -120,6 +120,14 @@ export function readConfig(config: Config): ResolvedTtsSettings {
 /** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
   const current = () => readConfig(config)
+  // The DSH Go native row reads live settings (including secrets) through this
+  // service. Minimal test contexts may not implement service registration.
+  if (typeof ctx.provide === 'function') {
+    ctx.provide('xiaomiTtsSettings', {
+      current,
+      updates: (listener: () => void) => ctx.on('loader/volatile-update', listener),
+    })
+  }
   ctx.inject(['webServer'], host => { host.plugin(SpeechHost, { current, updates: (listener: () => void) => ctx.on('loader/volatile-update', listener) }) })
 
   // Load all assets

@@ -24,6 +24,12 @@
         maxWavAudioBytes: 134217728
         maxPausedPcmBytes: 33554432
 
+# DSH Go native half: long-press read-aloud, floating caption, native settings.
+# Inert on hosts that have no dsh-go bridge (plain DSH Web keeps the row below).
+- insert:
+    - id: xiaomi-mimo-tts-dsh-go
+      name: 'dsh-xiaomi-tts/dsh-go'
+
 # Optional companion preset: a whale maid with file, web, and question tools.
 - insert:
     - id: preset-whale-girl
