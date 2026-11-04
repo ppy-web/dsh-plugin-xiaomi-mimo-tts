@@ -5,7 +5,7 @@ import type { ResolvedTtsSettings } from '../shared.js'
 import type { SpeechAudio, SpeechArtifact, SpeechDeliveryAdapter, SpeechDeliveryContext, SpeechDeliveryResult, SpeechRequest, SpeechSynthesisService } from '../host-api.js'
 import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
 import type { SynthesisRuntime } from './complete-synthesis.js'
-import { completeAudioFormat, CompleteAudioResponseError } from './validation.js'
+import { completeAudioFormat, CompleteAudioResponseError, synthesisOptions } from './validation.js'
 import { TtsProviderError, safeProviderError } from './provider-error.js'
 import { cleanupSpeechArtifacts, writeSpeechArtifact } from './speech-files.js'
 
@@ -155,8 +155,9 @@ export class HostSpeechService implements SpeechSynthesisService {
       signal.throwIfAborted()
       await adapter.check?.({ ...context, signal })
       signal.throwIfAborted()
-      const settings = this.current()
+      const settings = synthesisOptions(this.current(), request)
       const text = request.splitLongText ? (settings.provider === 'breeze' ? prepareBreezeTtsText(request.text) : prepareTtsText(request.text)) : request.text
+      if (request.splitLongText && !text) throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)
       const configuredLimit = Math.floor(settings.maxTextLength)
       const limit = settings.provider === 'breeze' ? Math.min(configuredLimit, BREEZE_MAX_TEXT_LENGTH) : configuredLimit
       if (request.splitLongText && (!Number.isFinite(limit) || limit < 1)) throw new TtsProviderError('invalid-text-limit')

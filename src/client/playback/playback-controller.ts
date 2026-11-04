@@ -58,7 +58,7 @@ export class PlaybackController {
 
   setVoiceRate(value: number): void {
     this.voiceRate = normalizeVoiceRate(value)
-    if (this.selection?.provider === 'doubao') this.selection = { ...this.selection, voiceRate: this.voiceRate }
+    if (this.selection?.provider === 'doubao' || this.selection?.provider === 'breeze') this.selection = { ...this.selection, voiceRate: this.voiceRate }
   }
 
   interrupt(): void {
@@ -249,7 +249,7 @@ export class PlaybackController {
 
     this.stopCurrent()
     const selection = this.selection
-    const voiceRateApplied = selection?.provider === 'doubao'
+    const voiceRateApplied = selection?.provider === 'doubao' || selection?.provider === 'breeze'
     const voiceRate = voiceRateApplied ? 1 : this.voiceRate
     const generation = ++this.generation
     const controller = new AbortController()

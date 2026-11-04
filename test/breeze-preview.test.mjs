@@ -15,12 +15,14 @@ const settings = resolveTtsSettings({
   breezeInstruction: 'breeze delivery',
   instruction: 'xiaomi delivery',
   localSpeechMode: 'disabled',
+  voiceRate: 1.5,
 })
 
 test('Breeze preview sends its own voice and instruction and reports the Breeze source', async () => {
   await withBrowserPlayback(async state => {
     const views = []
-    const player = new PreviewPlayer(view => views.push(view))
+    const saved = []
+    const player = new PreviewPlayer(view => views.push(view), { stopReplay() {}, add: entry => saved.push(entry) })
     try {
       const playing = player.play('试听一句。', settings)
       await settle()
@@ -32,6 +34,9 @@ test('Breeze preview sends its own voice and instruction and reports the Breeze 
       assert.equal(request.voice, 'voc_custom')
       assert.equal(request.speechInstruction, 'breeze delivery')
       assert.equal(request.format, 'mp3')
+      assert.equal(request.voiceRate, 1.5)
+      assert.equal(state.media.at(-1).playbackRate, 1)
+      assert.equal(saved.at(-1).voiceRateApplied, true)
       assert.deepEqual(views.at(-1), { status: 'idle', source: 'breeze', error: null })
     } finally { await player.dispose() }
   }, { fetch: () => new Response('mp3 bytes') })

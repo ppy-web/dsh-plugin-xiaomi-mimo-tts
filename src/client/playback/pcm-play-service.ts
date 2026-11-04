@@ -110,7 +110,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       }
       void synthesize().then(() => {
         if (!this.disposed && !controller.signal.aborted && generation === this.generation) {
-          recording.save(this.history, { text: normalized, source: 'service', voiceRateApplied: settings.provider === 'doubao' })
+          recording.save(this.history, { text: normalized, source: 'service', voiceRateApplied: settings.provider !== 'xiaomi' })
         }
       }).catch((error: unknown) => {
         if (this.disposed || controller.signal.aborted || generation !== this.generation) return

@@ -106,9 +106,11 @@ export const Config = z.object({
 
 export type Config = ReturnType<typeof Config>
 type ConfigValues = { [Key in keyof Config]: Config[Key] extends Volatile<infer Value> ? Value : Config[Key] }
-function readConfig(config: Config): ResolvedTtsSettings {
+/** Read declared settings only; Schemastery preserves undeclared profile fields as plain values. */
+export function readConfig(config: Config): ResolvedTtsSettings {
   // Host snapshots are deeply readonly; own the array used by speech settings.
-  const values = Object.fromEntries(Object.entries(config).map(([key, value]) => [key, (value as Volatile<unknown>).get()])) as ConfigValues
+  const fields = Object.keys(Config.dict!) as (keyof Config)[]
+  const values = Object.fromEntries(fields.map(key => [key, config[key].get()])) as ConfigValues
   return {
     ...values,
     announcementSources: [...config.announcementSources.get()],

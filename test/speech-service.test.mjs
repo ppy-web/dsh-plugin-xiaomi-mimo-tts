@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isSilk, decode } from 'silk-wasm'
 import { Context } from '@deepseek-ai/cordis'
-import { resolveTtsSettings } from '../lib/shared.js'
+import { BREEZE_MAX_TEXT_LENGTH, prepareBreezeTtsText, resolveTtsSettings } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 import { withDoubaoServer, serverFrame } from './helpers/doubao-server.mjs'
 
@@ -368,6 +368,25 @@ test('long delivery sends every provider-sized part in order and stops if the co
     await assert.rejects(service.deliver({ text, splitLongText: true }, 'qqbot', { agent, signal }))
     assert.equal(count, 1)
   })
+})
+
+test('long delivery uses the requested provider limit and preserves Breeze audio tags', async t => {
+  const requests = [], sent = []
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    requests.push(JSON.parse(init.body))
+    return new Response(wav(), { headers: { 'content-type': 'audio/wav' } })
+  })
+  const service = new HostSpeechService(() => resolveTtsSettings({ provider: 'xiaomi', breezeEnabled: true, breezeApiKey: 'fixture-breeze-key', breezeVoice: 'test-voice' }))
+  service.registerDelivery({ id: 'qqbot', format: 'wav', async send(audio) { sent.push(audio); return { adapter: 'qqbot' } } })
+  const text = `[轻笑]${'跨供应商长文。'.repeat(200)}`
+  try {
+    await service.deliver({ provider: 'breeze', text, splitLongText: true }, 'qqbot', { agent: { id: 'qq' }, signal: new AbortController().signal })
+    assert.ok(requests.length > 1)
+    assert.ok(requests.every(request => request.text.length <= BREEZE_MAX_TEXT_LENGTH))
+    assert.equal(sent.map(audio => audio.text).join(''), prepareBreezeTtsText(text))
+    assert.ok(sent.every(audio => audio.provider === 'breeze'))
+    await assert.rejects(service.deliver({ provider: 'breeze', text: '', splitLongText: true }, 'qqbot', { agent: { id: 'qq' }, signal: new AbortController().signal }), error => error.code === 'text-required')
+  } finally { await service.dispose() }
 })
 
 test('turning the source off cancels automatic jobs without canceling explicit jobs', async () => {

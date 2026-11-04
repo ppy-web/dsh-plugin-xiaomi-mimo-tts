@@ -65,6 +65,7 @@ interface PreviewRequestBody {
   voiceDesignPrompt: string
   format?: 'mp3' | 'wav'
   speechInstruction?: string
+  voiceRate?: number
 }
 
 function browserVoice(value: string): SpeechSynthesisVoice | undefined {
@@ -286,6 +287,7 @@ export class PreviewPlayer {
       voice: breeze ? settings.breezeVoice ?? '' : settings.voice,
       voiceDesignPrompt: settings.voiceDesignPrompt,
       ...(instruction === undefined ? {} : { speechInstruction: instruction }),
+      ...(breeze ? { voiceRate: normalizeVoiceRate(settings.voiceRate) } : {}),
       ...(format === undefined ? {} : { format }),
     }
   }
@@ -346,12 +348,13 @@ export class PreviewPlayer {
     const blob = await response.blob()
     if (generation !== this.generation) return
     if (capture && blob.size > 0) this.setRecording({ blob, text, format })
-    void this.history?.add({ blob, text, format, source: 'preview' })
+    const voiceRateApplied = settings.provider === 'breeze'
+    void this.history?.add({ blob, text, format, source: 'preview', voiceRateApplied })
     this.request = null
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
     audio.volume = this.volume
-    applyMediaVoiceRate(audio, this.voiceRate)
+    applyMediaVoiceRate(audio, voiceRateApplied ? 1 : this.voiceRate)
     this.audioUrl = url
     this.audio = audio
     await new Promise<void>((resolve, reject) => {

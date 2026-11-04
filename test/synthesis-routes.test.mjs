@@ -6,12 +6,12 @@ import WebSocket from 'ws'
 import { resolveTtsSettings, TTS_ROUTE, TTS_STREAM_ROUTE, TTS_DUPLEX_ROUTE } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 import { withDoubaoServer, serverFrame } from './helpers/doubao-server.mjs'
-import { apply } from '../lib/index.js'
+import { apply, Config } from '../lib/index.js'
 
 const { registerSynthesisRoutes } = await loadClientModule('src/host/synthesis-routes.ts')
 const { DuplexPcmStream } = await loadClientModule('src/client/playback/duplex-pcm.ts')
 
-test('key status selects each provider without exposing saved secrets', () => {
+test('key status reads each provider with legacy profile fields without exposing saved secrets', () => {
   const routes = new Map()
   const disposers = []
   const ctx = {
@@ -22,8 +22,10 @@ test('key status selects each provider without exposing saved secrets', () => {
       registerUpgrade() { return () => {} },
     },
   }
-  const values = resolveTtsSettings({ apiKey: 'sk-private-xiaomi', doubaoApiKey: 'private-doubao', breezeApiKey: 'private-breeze', provider: 'doubao' })
-  apply(ctx, Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { get: () => value }])))
+  apply(ctx, Config({
+    apiKey: 'sk-private-xiaomi', doubaoApiKey: 'private-doubao', breezeApiKey: 'private-breeze', provider: 'doubao',
+    petFeedEnabled: true, petFeedTarget: 'legacy-pet', petAnnouncementTypes: ['completed'],
+  }))
   try {
     const handler = routes.get('/plugins/xiaomi-mimo-tts/api-key-status')
     for (const provider of ['xiaomi', 'doubao', 'breeze', undefined, 'invalid']) {

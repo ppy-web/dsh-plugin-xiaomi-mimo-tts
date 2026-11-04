@@ -79,18 +79,20 @@ test('saving the Host QQ source updates automatic delivery without reloading the
     },
   }
   try {
-    await ctx.loader.root.update([{ id: 'speech-host', name: 'dsh-xiaomi-tts/host', config: { qqbotEnabled: false } }])
+    const legacy = { petFeedEnabled: true, petFeedTarget: 'legacy-pet', petAnnouncementTypes: ['completed'] }
+    await ctx.loader.root.update([{ id: 'speech-host', name: 'dsh-xiaomi-tts/host', config: { ...legacy, qqbotEnabled: false } }])
     await ctx.loader.await()
     const entry = ctx.loader.resolve('speech-host'), fiber = entry.fiber, service = ctx.speechSynthesis
     const unregister = service.registerDelivery({ id: 'qqbot', format: 'wav', async send() { return { adapter: 'qqbot' } } })
     try {
       assert.equal(service.isAutomaticDeliveryEnabled('qqbot'), false)
-      await entry.update({ config: { qqbotEnabled: true } })
+      await entry.update({ config: { ...legacy, qqbotEnabled: true, provider: 'breeze', breezeEnabled: true, breezeApiKey: 'fixture-breeze-key' } })
       await ctx.loader.await()
       assert.equal(entry.fiber, fiber)
       assert.equal(ctx.speechSynthesis, service)
+      assert.equal(service.currentProvider(), 'breeze')
       assert.equal(service.isAutomaticDeliveryEnabled('qqbot'), true)
-      await entry.update({ config: { qqbotEnabled: false } })
+      await entry.update({ config: { ...legacy, qqbotEnabled: false } })
       await ctx.loader.await()
       assert.equal(service.isAutomaticDeliveryEnabled('qqbot'), false)
       assert.equal(service.hasDelivery('qqbot'), true, 'turning off automatic speech retains explicit delivery')

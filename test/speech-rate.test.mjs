@@ -142,6 +142,37 @@ test('complete audio fallback uses upstream speed for Doubao and local speed for
   }, { fetch: () => new Response('audio') })
 })
 
+test('Breeze complete playback uses the latest speed once and marks history for unmodified replay', async () => {
+  await withBrowserPlayback(async state => {
+    const saved = []
+    const playback = new PlaybackController({ add: entry => saved.push(entry) })
+    playback.activateSession('session')
+    try {
+      playback.configure(settings({ provider: 'breeze', breezeEnabled: true }))
+      playback.setVoiceRate(0.8)
+      await playback.toggle('session', 'breeze', 'Breeze 完整音频。', false)
+      assert.equal(state.requests[0].voiceRate, 0.8)
+      assert.equal(state.media[0].playbackRate, 1)
+      assert.equal(saved[0].voiceRateApplied, true)
+    } finally { playback.dispose() }
+  }, { fetch: () => new Response('audio') })
+})
+
+test('Breeze optional PCM service preserves upstream speed in saved history', async () => {
+  await withBrowserPlayback(async state => {
+    const saved = []
+    const ctx = new Context()
+    const service = new XiaomiMimoTtsPcmService(ctx, { getSnapshot: () => ({ status: 'ready', value: settings({ provider: 'breeze', breezeEnabled: true }) }) }, () => {}, { stopReplay() {}, add: entry => saved.push(entry) })
+    try {
+      service.play('Breeze 服务朗读。')
+      await settle()
+      assert.equal(state.requests[0].voiceRate, 1.5)
+      assert.equal(state.contexts[0].sources[0].playbackRate.value, 1)
+      assert.equal(saved[0].voiceRateApplied, true)
+    } finally { await service.dispose() }
+  }, { endPcm: true })
+})
+
 test('persisted upstream-speed history replays at 1x after settings change; older history retains local speed', async () => {
   let entries = []
   const storage = { load: async () => structuredClone(entries), replace: async next => { entries = structuredClone(next) }, close() {} }
