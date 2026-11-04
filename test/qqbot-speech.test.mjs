@@ -33,13 +33,13 @@ async function setup(run) {
   }
 }
 
-function registerSender(ctx, execute) {
+function registerSender(ctx, execute, options) {
   ctx.tools.register({
     name: 'qqbot_send_file', description: 'test QQ sender',
     parameters: { type: 'object', properties: { file_path: { type: 'string' } }, required: ['file_path'], additionalProperties: false },
     output: { schema: { type: 'object', properties: { messageId: { type: 'string' }, target: { type: 'string' } }, required: ['messageId', 'target'], additionalProperties: false }, render: () => [] },
     execute,
-  })
+  }, options)
 }
 
 test('QQ adapter passes the real Agent through the shared pipeline and cleans audio after the sender settles', async () => {
@@ -60,6 +60,14 @@ test('QQ adapter passes the real Agent through the shared pipeline and cleans au
     assert.equal(results[0].result.isError, false)
     await assert.rejects(readFile(sentPath), { code: 'ENOENT' })
     assert.deepEqual(await readdir(directory), [])
+  })
+})
+
+test('a step-conditional QQ sender stays usable for out-of-band deliveries', async () => {
+  await setup(async ({ ctx, agent, audio, adapter, signal }) => {
+    registerSender(ctx, async () => ({ messageId: 'conditional', target: 'group:peer' }), { when: () => true })
+    await settle()
+    assert.deepEqual(await adapter.send(audio, { agent, signal }), { adapter: 'qqbot', messageId: 'conditional', target: 'group:peer' })
   })
 })
 

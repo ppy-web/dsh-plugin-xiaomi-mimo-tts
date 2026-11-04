@@ -61,8 +61,8 @@ export async function sendQqbotFile(ctx: Context, path: string, context: SpeechD
   const { agent, signal } = context
   signal.throwIfAborted()
   ctx.logger.debug(`dsh-xiaomi-tts: QQ file delivery start agent=${agent.id} file=${path}`)
-  if (!ctx.tools.executable('qqbot_send_file', agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending files.', 409)
-  const pipeline = new ToolExecutionPipeline(ctx)
+  if (!ctx.tools.get('qqbot_send_file', agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending files.', 409)
+  const pipeline = new ToolExecutionPipeline(ctx, { get: (name, scope) => ctx.tools.get(name, scope) })
   const prepared = await pipeline.prepare({ callId: ToolCallId(randomUUID()), name: 'qqbot_send_file', arguments: { file_path: path }, agent, signal })
   const outcome = prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared
   const result = await pipeline.complete(prepared.exec, outcome)
@@ -83,7 +83,7 @@ export async function sendQqbotFile(ctx: Context, path: string, context: SpeechD
 /** Only a catalog entry chosen by ID is copied; callers never supply source paths or targets. */
 export async function sendWhaleMeme(ctx: Context, meme: WhaleMeme, context: SpeechDeliveryContext, directory = QQBOT_MEDIA_ROOT): Promise<SpeechDeliveryResult> {
   context.signal.throwIfAborted()
-  if (!ctx.tools.executable('qqbot_send_file', context.agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending memes.', 409)
+  if (!ctx.tools.get('qqbot_send_file', context.agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending memes.', 409)
   const data = await readFile(meme.path)
   context.signal.throwIfAborted()
   await mkdir(directory, { recursive: true })
