@@ -5,6 +5,7 @@ import { ANNOUNCEMENT_SOURCES, type AnnouncementSourceId } from '../../types/set
 import type { Translate } from '../localization.js'
 import { SettingFieldHeading } from './field-heading.js'
 import { FieldInfo } from './controls/field-info.js'
+import { useNestedDisclosure } from './use-nested-disclosure.js'
 
 export interface AnnouncementSettingsProps {
   children?: ReactNode
@@ -36,8 +37,9 @@ const SOURCE_GROUPS = [
   { label: 'settings.announcementsPlugins', hint: 'settings.announcementsPluginsHint', options: PLUGIN_SOURCE_OPTIONS },
 ] as const
 
-export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, writable, overridden, onChange, onReset }: AnnouncementSettingsProps): ReactElement {
-  return <details className="xmimo-tts-more-settings">
+export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, writable, overridden, onChange, onReset, parentOpen = true }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
+  const moreSettings = useNestedDisclosure(parentOpen)
+  return <details ref={moreSettings} className="xmimo-tts-more-settings">
     <summary className="xmimo-tts-builtin-voice-trigger">
       <span>{t('settings.more')}</span>
       <span className="xmimo-tts-more-settings-hint">{t('settings.announcementsMoreHint')}</span>

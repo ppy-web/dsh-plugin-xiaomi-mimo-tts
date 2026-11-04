@@ -37,8 +37,9 @@ import type { SpeechActivity } from '../announcements/speech-activity.js'
 import { isSpeechBusy } from '../announcements/speech-activity.js'
 import type { AudioFocus } from '../playback/tab-audio-focus.js'
 
-interface SettingsCardProps {
+export interface SettingsCardProps {
   view: 'summary' | 'page'
+  initialPanel?: 'mixer' | undefined
   scope: ConfigForm<TtsSettings>
   t: Translate
   controller: SoundEffectsController
@@ -87,10 +88,10 @@ function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory;
 
 export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   if (props.view === 'summary') return <>{props.t('settings.description')}</>
-  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} history={props.history} audioFocus={props.audioFocus} speechActivity={props.speechActivity} beforePreview={props.beforePreview} beforeHistoryPlayback={props.beforeHistoryPlayback} changes={props.changes} />
+  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} history={props.history} audioFocus={props.audioFocus} speechActivity={props.speechActivity} beforePreview={props.beforePreview} beforeHistoryPlayback={props.beforeHistoryPlayback} changes={props.changes} initialPanel={props.initialPanel} />
 }
 
-function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(pluginChanges.subscribe, pluginChanges.getSnapshot, pluginChanges.getSnapshot)
   const writable = snapshot.writable && !changing
@@ -137,7 +138,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [saveError, setSaveError] = useState<'api-key-rejected' | 'host-rejected' | 'unknown' | null>(null)
-  const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | null>(null)
+  const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | null>(initialPanel ?? null)
   const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast'): void => setOpenPanel(current => current === panel ? null : panel)
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
   const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
@@ -379,19 +380,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       return
     }
     beforePreview?.()
-    void previewPlayer.play(text, {
-      provider, doubaoModel, doubaoVoice, doubaoClonedVoice, breezeVoice, breezeInstruction, instruction,
-      model,
-      localSpeechMode,
-      localVoiceURI,
-      localVoiceEngine,
-      mossBaseURL,
-      mossVoice,
-      voice,
-      voiceDesignPrompt,
-      voiceVolume,
-      voiceRate,
-    })
+    void previewPlayer.play(text, draft)
   }
 
   const toggleSettingsPreview = (): void => { togglePreview(previewText) }

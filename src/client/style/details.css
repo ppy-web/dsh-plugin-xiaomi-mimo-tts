@@ -14,7 +14,7 @@
 .xmimo-tts-details-body {
   min-height: 0;
   overflow: hidden;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   column-gap: 12px
 }
 
@@ -22,9 +22,6 @@
   border-top: 0
 }
 
-.xmimo-tts-details-body > :nth-child(n + 3) {
-  grid-column: 1 / -1
-}
 
 .xmimo-tts-settings-segmented-wrap {
   min-width: 0;
@@ -69,6 +66,8 @@
   padding: var(--xmimo-ui-space-3);
 }
 
+.xmimo-tts-playback-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; }
+
 .xmimo-tts-doubao-models button {
   height: auto;
   min-height: 28px;
@@ -81,7 +80,5 @@
     grid-template-columns: minmax(0, 1fr)
   }
 
-  .xmimo-tts-details-body > :nth-child(n + 3) {
-    grid-column: auto
-  }
+  .xmimo-tts-playback-controls { grid-template-columns: minmax(0, 1fr); }
 }

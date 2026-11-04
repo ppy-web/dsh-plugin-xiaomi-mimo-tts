@@ -266,11 +266,12 @@ export function apply(ctx: Context): void {
     inject: () => ({ t, scope, changes }),
   }, PluginDetailBadge))
 
+  const settingsPageProps = { scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback }
   registerSlotContribution(ctx, 'plugins.bundle.config', () => ctx.slots.register({
     name: 'plugins.bundle.config',
     key: 'dsh-xiaomi-tts',
     locale: NS,
-    inject: () => ({ scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback }),
+    inject: () => settingsPageProps,
   }, SettingsCard))
 
   registerSlotContribution(ctx, 'plugins.row.config', () => [registerWhalePersonaSettings(ctx, t, changes), registerQqbotSpeechSettings(ctx, t, changes), registerPassportSettings(ctx, t, changes)])
@@ -282,7 +283,7 @@ export function apply(ctx: Context): void {
     inject: () => ({ scope, t, audioFocus, changes, beforePreview: stopAllPlayback }),
   }, ActivationGuide))
 
-  registerSlotContribution(ctx, 'sidebar.panellist', () => registerVoiceSettingsSidebar(ctx, scope, t))
+  registerSlotContribution(ctx, 'sidebar.panellist', () => registerVoiceSettingsSidebar(ctx, settingsPageProps))
 
   registerSlotContribution(ctx, 'settings.section', () => ctx.slots.register({
     name: 'settings.section',

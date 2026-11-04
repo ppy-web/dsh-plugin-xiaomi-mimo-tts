@@ -150,7 +150,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
         {downloadFailed ? <small className="xmimo-tts-failed" role="alert">{t('settings.previewDownloadFailed')}</small> : null}
       </div>
       <ProviderSettings t={t} writable={settings.writable} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} mossEnabled={mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange} />
-      <AnnouncementSettings t={t} {...settings}>
+      <AnnouncementSettings t={t} {...settings} parentOpen={open}>
         <SidebarSettings t={t} value={showInSidebar} writable={settings.writable} overridden={sidebarOverridden} onChange={onShowInSidebarChange} onReset={onResetSidebar} />
       </AnnouncementSettings>
     </div>

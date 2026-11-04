@@ -17,6 +17,7 @@ function host(initial = {}) {
   const events = []
   const opened = []
   const scope = { getSnapshot: () => snapshot, subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) } }
+  const page = { scope, t, controller: { play() {}, update() {} } }
   const ctx = {
     slots: { register(options, component) {
       const key = `${options.name}:${options.key ?? options.id}`
@@ -31,13 +32,13 @@ function host(initial = {}) {
     snapshot = { status, value: resolveTtsSettings(value) }
     for (const listener of listeners) listener()
   }
-  return { scope, ctx, entries, listeners, events, opened, update }
+  return { scope, page, ctx, entries, listeners, events, opened, update }
 }
 
-test('saved shortcut registers a top navigation row with a matching destination and opens the bundle', () => {
+test('saved shortcut opens a standalone settings page using the shared configuration and controls', () => {
   const h = host()
-  const dispose = registerVoiceSettingsSidebar(h.ctx, h.scope, t)
-  assert.equal(h.entries.size, 0)
+  const dispose = registerVoiceSettingsSidebar(h.ctx, h.page)
+  assert.equal(h.entries.size, 1)
   // Speech can be disabled while the settings shortcut remains available.
   h.update({ showInSidebar: true, enabled: false })
   assert.deepEqual(h.events, [['register', 'main'], ['register', 'sidebar.panellist']])
@@ -48,29 +49,48 @@ test('saved shortcut registers a top navigation row with a matching destination 
   assert.equal(nav.options.label(), t('settings.voiceSettingsNav'))
   const icon = renderToStaticMarkup(createElement(nav.component, { size: 18, active: false }))
   assert.ok(icon.includes('<svg'), 'the host receives a glyph for its native row')
-  panel.options.inject().open()
-  assert.deepEqual(h.opened, ['dsh-xiaomi-tts'])
+  assert.equal(panel.options.inject().scope, h.scope)
+  assert.equal(panel.options.inject().controller, h.page.controller)
+  const html = renderToStaticMarkup(createElement(panel.component, panel.options.inject()))
+  assert.ok(html.includes('<h1>settings.voiceSettingsNav</h1>'))
+  assert.ok(html.includes('type="password"'), 'provider credentials remain editable on the standalone page')
+  assert.deepEqual(h.opened, [], 'opening settings must not navigate to plugin management')
+  panel.options.inject().onOpenPluginSettings()
+  assert.deepEqual(h.opened, ['dsh-xiaomi-tts'], 'the explicit Plugin settings action opens this bundle')
   h.update({ showInSidebar: true, enabled: false })
   assert.equal(h.entries.size, 2)
   assert.equal(h.events.length, 2)
   h.update({ showInSidebar: false })
-  assert.equal(h.entries.size, 0)
-  assert.deepEqual(h.events.slice(2), [['remove', 'sidebar.panellist'], ['remove', 'main']])
+  assert.equal(h.entries.size, 1, 'hiding the shortcut must keep the current settings page mounted')
+  assert.deepEqual(h.events.slice(2), [['remove', 'sidebar.panellist']])
   dispose()
+  assert.equal(h.entries.size, 0)
   assert.equal(h.listeners.size, 0)
 })
 
 test('shortcut cleans up on unavailable settings, re-enables and disposes without duplicate registrations', () => {
   const h = host({ showInSidebar: true })
-  const dispose = registerVoiceSettingsSidebar(h.ctx, h.scope, t)
+  const dispose = registerVoiceSettingsSidebar(h.ctx, h.page)
   h.update({ showInSidebar: true }, 'unavailable')
-  assert.equal(h.entries.size, 0)
+  assert.equal(h.entries.size, 1)
   h.update({ showInSidebar: true })
   assert.equal(h.entries.size, 2)
   dispose()
   dispose()
   assert.equal(h.entries.size, 0)
   assert.equal(h.listeners.size, 0)
+})
+
+test('the independent settings page opens its mixer by default', () => {
+  const h = host({ enabled: true })
+  const dispose = registerVoiceSettingsSidebar(h.ctx, h.page)
+  try {
+    const panel = [...h.entries.values()].find(entry => entry.options.name === 'main')
+    const html = renderToStaticMarkup(createElement(panel.component, panel.options.inject()))
+    const mixer = html.match(/<button\b[^>]*aria-label="settings.detailedVoiceConfig"[^>]*>/u)?.[0]
+    assert.ok(mixer)
+    assert.ok(mixer.includes('aria-expanded="true"'))
+  } finally { dispose() }
 })
 
 test('failed navigation-row registration rolls back its destination and settings subscription', () => {
@@ -80,7 +100,7 @@ test('failed navigation-row registration rolls back its destination and settings
     if (options.name === 'sidebar.panellist') throw new Error('slot unavailable')
     return register(options, component)
   }
-  assert.throws(() => registerVoiceSettingsSidebar(h.ctx, h.scope, t), /slot unavailable/)
+  assert.throws(() => registerVoiceSettingsSidebar(h.ctx, h.page), /slot unavailable/)
   assert.equal(h.entries.size, 0)
   assert.equal(h.listeners.size, 0)
 })
