@@ -34,7 +34,7 @@
 
 ## 🚀 安装与使用
 
-需要 DSH `0.2.2` 以上、Node.js 24.9+，当前适配目标为 DSH `0.2.2-alpha.3`。
+需要 DSH `0.2.2` 以上、Node.js 24.9+，当前适配目标为 DSH `0.2.2-rc.1`。
 
 AI Passport 连接器还依赖宿主已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 与识别 provider；该识别组件由 DSH 宿主提供，本插件不代为安装，缺少时设备无法连接（详见用户手册的 AI Passport 章节）。
 
