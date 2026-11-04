@@ -31,14 +31,16 @@ function isTtsBundle({ subject }: PluginDetailProps): boolean {
 
 export function PluginDetailActions(props: DetailProps): ReactElement | null {
   if (!isTtsBundle(props)) return null
+  const sourceLabel = props.t('settings.source')
+  const manualLabel = props.t('detail.manual')
   return <div className="xmimo-ui-scope xmimo-tts-detail-actions">
-    <Button variant="outline" size="sm" className="xmimo-tts-star" onClick={() => window.open(SOURCE_URL, '_blank', 'noopener,noreferrer')}>
+    <Button variant="outline" size="sm" className="xmimo-tts-star" aria-label={sourceLabel} title={sourceLabel} onClick={() => window.open(SOURCE_URL, '_blank', 'noopener,noreferrer')}>
       <AiFillGithub size={14} aria-hidden="true" focusable="false" />
-      {props.t('settings.source')}
+      <span className="xmimo-tts-detail-action-label">{sourceLabel}</span>
     </Button>
-    <Button variant="outline" size="sm" onClick={() => window.open(MANUAL_URL, '_blank', 'noopener,noreferrer')}>
+    <Button variant="outline" size="sm" aria-label={manualLabel} title={manualLabel} onClick={() => window.open(MANUAL_URL, '_blank', 'noopener,noreferrer')}>
       <LuBookOpen size={14} aria-hidden="true" focusable="false" />
-      {props.t('detail.manual')}
+      <span className="xmimo-tts-detail-action-label">{manualLabel}</span>
     </Button>
   </div>
 }

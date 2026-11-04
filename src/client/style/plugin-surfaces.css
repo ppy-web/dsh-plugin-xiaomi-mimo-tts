@@ -82,6 +82,17 @@
   gap: 8px;
 }
 
+.xmimo-tts-detail-actions .xmimo-tts-detail-action-label {
+  white-space: nowrap;
+}
+
+/* Narrow / mobile screens: keep the icon-only action buttons so both fit. */
+@media (max-width: 480px) {
+  .xmimo-tts-detail-actions .xmimo-tts-detail-action-label {
+    display: none;
+  }
+}
+
 .xmimo-tts-detail-actions .xmimo-tts-star {
   position: relative;
   isolation: isolate;

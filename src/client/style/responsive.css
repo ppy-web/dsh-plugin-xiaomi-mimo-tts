@@ -73,6 +73,10 @@
     max-width: calc(100% - 72px);
     padding: 3px 6px;
   }
+  /* Narrow screens: drop the API key idle/focus copy bubble to keep the row clean. */
+  .xmimo-tts-api-key .xmimo-tts-api-key-bubble {
+    display: none;
+  }
   .xmimo-tts-sound-summary {
     padding-right: 64px
   }
