@@ -46,13 +46,39 @@ for (const locale of ['zh', 'en', 'ja', 'fr']) test(`${locale} style selection u
 })
 
 test('compact and read-only style pickers retain provider-specific prompts and disable native controls', () => {
-  for (const provider of ['xiaomi', 'doubao']) {
+  for (const provider of ['xiaomi', 'doubao', 'breeze']) {
     const props = { provider, value: '', disabled: true, t: key => key, onChange: () => {} }
     const tree = SpeechInstructionPicker({ ...props, minimal: true })
-    assert.equal(elements(tree, 'textarea').length, 0)
+    assert.equal(elements(tree, 'textarea')[0].props.disabled, true)
     assert.ok(elements(tree, 'button').every(button => button.props.disabled))
     const html = renderToStaticMarkup(createElement(SpeechInstructionPicker, props))
     assert.match(html, /<textarea\b[^>]*disabled=""/)
     assert.equal(elements(tree, 'button').filter(button => button.props['aria-pressed']).length, 1)
+  }
+})
+
+for (const locale of ['zh', 'en', 'ja', 'fr']) test(`${locale} Breeze presets replace custom instructions and Natural clears them in both display modes`, () => {
+  const t = key => {
+    assert.equal(typeof locales[locale][key], 'string', `missing ${locale} translation: ${key}`)
+    return locales[locale][key]
+  }
+  for (const minimal of [false, true]) {
+    let value = 'custom Breeze delivery'
+    const props = { provider: 'breeze', value, minimal, disabled: false, t, onChange: next => { value = next } }
+    const tree = SpeechInstructionPicker(props)
+    const buttons = elements(tree, 'button')
+    const textarea = elements(tree, 'textarea')[0]
+    assert.equal(textarea.props.value, value)
+    assert.equal(textarea.props.disabled, false)
+    const warm = buttons.find(button => button.props.children === t('settings.breezeInstructionLabelWarmCompanion'))
+    warm.props.onClick()
+    assert.equal(value, t('settings.breezeInstructionTextWarmCompanion'))
+    const selected = elements(SpeechInstructionPicker({ ...props, value }), 'button').filter(button => button.props['aria-pressed'])
+    assert.equal(selected.length, 1)
+    assert.equal(selected[0].props.children, t('settings.breezeInstructionLabelWarmCompanion'))
+    buttons.find(button => button.props.children === t('settings.speechInstructionNatural')).props.onClick()
+    assert.equal(value, '')
+    textarea.props.onChange({ target: { value: 'edited Breeze instruction' } })
+    assert.equal(value, 'edited Breeze instruction')
   }
 })

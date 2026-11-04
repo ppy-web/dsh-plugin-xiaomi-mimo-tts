@@ -1,9 +1,10 @@
-.xmimo-tts-activation-dialog { display: block; width: min(780px, 100%); box-sizing: border-box; max-height: min(200px, 100%); padding: 24px; overflow-y: auto; }
-.xmimo-tts-activation-layout { display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 32px; }
+.xmimo-tts-activation-dialog { display: flex; flex-direction: column; width: min(780px, 100%); box-sizing: border-box; max-height: min(420px, 100%); padding: 24px; overflow: hidden; }
+.xmimo-tts-activation-layout { display: grid; grid-template-columns: 128px minmax(0, 1fr); min-height: 0; gap: 32px; }
+.xmimo-tts-activation-art { align-self: center; }
 .xmimo-tts-activation-art img { display: block; width: 100%; height: auto; object-fit: contain; filter: blur(2px); }
-.xmimo-tts-activation-content { display: grid; min-width: 0; gap: 8px; color: var(--xmimo-ui-text); }
+.xmimo-tts-activation-content { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; min-height: 0; gap: 8px; color: var(--xmimo-ui-text); }
 .xmimo-tts-activation-content h2 { margin: 0; padding-inline-end: 12px; font-size: 20px; font-weight: 600; line-height: 1.4; }
-.xmimo-tts-activation-features { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; line-height: 1.5; }
+.xmimo-tts-activation-features { display: grid; align-content: start; min-height: 0; gap: 4px; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; list-style: none; font-size: 14px; line-height: 1.5; }
 .xmimo-tts-activation-features li { display: flex; align-items: baseline; gap: 6px; }
 .xmimo-tts-activation-features li > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .xmimo-tts-activation-close { position: absolute; inset-block-start: 12px; inset-inline-end: 12px; width: 28px; padding: 0; color: var(--xmimo-ui-text-muted); }
@@ -11,8 +12,8 @@
 .xmimo-tts-activation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 @media (max-width: 560px) {
   .xmimo-tts-activation-dialog { padding: 28px 20px; }
-  .xmimo-tts-activation-layout { grid-template-columns: 64px minmax(0, 1fr); align-items: start; gap: 16px; }
-  .xmimo-tts-activation-art { margin-block-start: 24px; }
+  .xmimo-tts-activation-layout { grid-template-columns: 64px minmax(0, 1fr); gap: 16px; }
+  .xmimo-tts-activation-art { align-self: start; margin-block-start: 24px; }
   .xmimo-tts-activation-content h2 { font-size: 18px; }
 }
 .xmimo-tts-plugin-status { margin: 0; padding: 16px; color: var(--xmimo-ui-text-muted); }

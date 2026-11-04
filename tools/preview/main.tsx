@@ -14,9 +14,12 @@ import { UserManual } from './user-manual.js'
 import { DocumentPage } from './document-page.js'
 import { QQBOT_GUIDE } from './qqbot-guide.js'
 import { DOUBAO_GUIDE } from './doubao-guide.js'
+import { XIAOMI_GUIDE } from './xiaomi-guide.js'
+import { BREEZE_GUIDE } from './breeze-guide.js'
 import { PASSPORT_GUIDE } from './passport-guide.js'
 import { BundleComponents } from './bundle-components.js'
 import { FilterLab } from './filter-lab.js'
+import { useSettingsSnapshot } from '../../src/client/settings/scope.js'
 import { TTS_VERSION } from '../../src/shared.js'
 import { ActivationGuide } from '../../src/client/settings/activation-guide.js'
 import { unrestrictedAudioFocus } from '../../src/client/playback/tab-audio-focus.js'
@@ -108,7 +111,9 @@ function PreviewApp() {
     setInstance(current => current + 1)
   }
   const openActivation = (): void => { setNavigationOpen(false); setActivationOpen(true) }
+  const savedSettings = useSettingsSnapshot(scope)
   const sidebarProps = {
+    voiceSettingsLabel: savedSettings.value?.showInSidebar ? t('settings.voiceSettingsNav') : undefined,
     copy, activeView, readOnly, onReadOnlyChange: toggleReadOnly,
     onNavigate: () => setNavigationOpen(false), onActivation: openActivation, onReset: reset,
   }
@@ -155,6 +160,8 @@ function PreviewApp() {
               : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'qqbot' ? <DocumentPage key="qqbot" copy={QQBOT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
               : activeView === 'doubao' ? <DocumentPage key="doubao" copy={DOUBAO_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
+              : activeView === 'xiaomi' ? <DocumentPage key="xiaomi" copy={XIAOMI_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
+              : activeView === 'breeze' ? <DocumentPage key="breeze" copy={BREEZE_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
               : activeView === 'passport' ? <DocumentPage key="passport" copy={PASSPORT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
               : <UserManual locale={locale === 'zh' ? 'zh' : 'en'} />}
           </div>

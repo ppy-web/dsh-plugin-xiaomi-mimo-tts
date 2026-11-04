@@ -1,5 +1,5 @@
 export type PreviewLocale = 'zh' | 'en' | 'ja' | 'fr'
-export type PreviewView = 'settings' | 'voice' | 'conversation' | 'detail' | 'components' | 'filter' | 'manual' | 'qqbot' | 'doubao' | 'passport'
+export type PreviewView = 'settings' | 'voice' | 'conversation' | 'detail' | 'components' | 'filter' | 'manual' | 'qqbot' | 'xiaomi' | 'doubao' | 'breeze' | 'passport'
 
 export interface PreviewCopy {
   workspace: string
@@ -41,6 +41,8 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       qqbot: { title: 'QQBot 接入', description: '从机器人连接到语音消息，逐步完成 DSH 与 QQ 的联动。' },
       passport: { title: 'AI Passport 接入', description: '准备固件、配置宿主和设备，通过 Wi-Fi 与 DSH 语音对话。' },
       doubao: { title: '豆包语音接入', description: '开通语音服务，配置密钥与音色，验证云端合成和实时朗读。' },
+      xiaomi: { title: '小米 MiMo 接入', description: '了解免费体验与使用限制，配置密钥、预置音色和自定义声音。' },
+      breeze: { title: 'Breeze 接入', description: '准备外网环境，注册领取积分，配置密钥、音色与情感语气。' },
     },
   },
   en: {
@@ -61,6 +63,8 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       qqbot: { title: 'QQBot setup', description: 'Connect your bot, select its preset, and verify voice messages in QQ.' },
       passport: { title: 'AI Passport setup', description: 'Prepare firmware, configure the host and device, and talk to DSH over Wi-Fi.' },
       doubao: { title: 'Doubao voice setup', description: 'Enable the service, configure a key and voice, and verify cloud speech and streaming.' },
+      xiaomi: { title: 'Xiaomi MiMo setup', description: 'Review the free trial and limitations, then configure a key and voice.' },
+      breeze: { title: 'Breeze setup', description: 'Prepare network access, register for credits, and configure a key, voice, and delivery.' },
     },
   },
   ja: {
@@ -81,6 +85,8 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       qqbot: { title: 'QQBot 連携', description: 'QQ の接続から音声メッセージの確認まで。本文は英語で表示します。' },
       passport: { title: 'AI Passport 接続', description: 'ホストと端末を設定して Wi-Fi 音声会話を始めます。本文は英語で表示します。' },
       doubao: { title: '豆包音声の接続', description: 'サービスの有効化、キーと音声の設定、動作確認。本文は英語で表示します。' },
+      xiaomi: { title: '小米 MiMo の接続', description: '無料体験と制限、キーと音声の設定。本文は英語で表示します。' },
+      breeze: { title: 'Breeze の接続', description: 'ネットワーク、登録とクレジット、音声の設定。本文は英語で表示します。' },
     },
   },
   fr: {
@@ -101,6 +107,8 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       qqbot: { title: 'Connexion QQBot', description: 'Connectez le bot et vérifiez les messages vocaux. Guide en anglais.' },
       passport: { title: 'Connexion AI Passport', description: 'Configurez l’hôte et l’appareil pour parler à DSH via Wi-Fi. Guide en anglais.' },
       doubao: { title: 'Connexion vocale Doubao', description: 'Activez le service, configurez la clé et testez la voix. Guide en anglais.' },
+      xiaomi: { title: 'Connexion Xiaomi MiMo', description: 'Découvrez l’essai gratuit et les limites, puis configurez la voix. Guide en anglais.' },
+      breeze: { title: 'Connexion Breeze', description: 'Préparez le réseau, les crédits et les réglages de voix. Guide en anglais.' },
     },
   },
 }
@@ -110,8 +118,10 @@ export function previewDocumentSectionId(hash: string): string | undefined {
   const value = hash.replace(/^#/, '')
   if (value === 'manual-qqbot') return 'qqbot-start'
   if (value === 'manual-doubao') return 'doubao-start'
+  if (value === 'manual-xiaomi') return 'xiaomi-start'
+  if (value === 'manual-breeze') return 'breeze-start'
   if (value === 'manual-passport') return 'passport-start'
-  return /^(manual|qqbot|doubao|passport)-/.test(value) ? value : undefined
+  return /^(manual|qqbot|xiaomi|doubao|breeze|passport)-/.test(value) ? value : undefined
 }
 
 export function previewViewFromHash(hash: string): PreviewView {

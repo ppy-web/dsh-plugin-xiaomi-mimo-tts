@@ -14,6 +14,7 @@ import {
   TTS_PROVIDER_CHARACTER_ASSET_ROUTES,
   TTS_PROVIDER_LOGO_ASSET_ROUTES,
   TTS_BREEZE_WORDMARK_ASSET_ROUTE,
+  TTS_MOSS_LOGO_ASSET_ROUTE,
   TTS_API_KEY_WHALE_ASSET_ROUTE,
   TTS_HISTORY_EMPTY_ASSET_ROUTE,
   TTS_QQ_GROUP_ASSET_ROUTE,
@@ -53,6 +54,7 @@ export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = TTS_SETTINGS_NAMESPACE
 
 /** Validated Host settings schema. */
 export const Config = z.object({
+  showInSidebar: z.boolean().default(false).volatile(),
   qqbotEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.qqbotEnabled).volatile(),
   qqbotMaxAutoCharacters: z.number().step(1).min(0).max(12000).default(0).volatile(),
   qqbotMaxDurationSeconds: z.number().step(1).min(0).max(6000).default(0).volatile(),
@@ -75,6 +77,7 @@ export const Config = z.object({
   localSpeechMode: z.union(TTS_LOCAL_SPEECH_MODES).default(DEFAULT_TTS_SETTINGS.localSpeechMode).volatile(),
   localVoiceURI: z.string().default(DEFAULT_TTS_SETTINGS.localVoiceURI).volatile(),
   localVoiceEngine: z.union(TTS_LOCAL_VOICE_ENGINES).default(DEFAULT_TTS_SETTINGS.localVoiceEngine).volatile(),
+  mossEnabled: z.boolean().default(false).volatile(),
   mossBaseURL: z.string().pattern(/^https?:\/\/\S+$/iu).default(DEFAULT_TTS_SETTINGS.mossBaseURL).volatile(),
   mossVoice: z.string().default(DEFAULT_TTS_SETTINGS.mossVoice).volatile(),
   mossVoiceName: z.string().default(DEFAULT_TTS_SETTINGS.mossVoiceName).volatile(),
@@ -154,6 +157,13 @@ export function apply(ctx: Context, config: Config): void {
       description: `${provider} provider logo`,
     })
   }
+
+  registerStaticAsset(ctx, {
+    path: TTS_MOSS_LOGO_ASSET_ROUTE,
+    data: readFileSync(new URL('../assets/ui/provider-moss-logo.svg', import.meta.url)),
+    contentType: 'image/svg+xml',
+    description: 'MOSS-Nano local provider logo',
+  })
 
   for (const [provider, path] of Object.entries(TTS_PROVIDER_CHARACTER_ASSET_ROUTES)) {
     registerStaticAsset(ctx, {

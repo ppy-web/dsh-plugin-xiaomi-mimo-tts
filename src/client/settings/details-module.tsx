@@ -104,6 +104,7 @@ export interface DetailsModuleProps {
   localSpeechMode: TtsLocalSpeechMode
   localVoiceURI: string
   localVoiceEngine: TtsLocalVoiceEngine
+  mossEnabled: boolean
   mossBaseURL: string
   mossVoice: string
   mossVoiceName: string
@@ -128,7 +129,7 @@ export interface DetailsModuleProps {
   onLocalSpeechModeChange: (value: TtsLocalSpeechMode) => void
 }
 
-export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, breezeVoice, breezeInstruction, speechInstruction, onSpeechInstructionChange, onDoubaoModelChange, onDoubaoVoiceChange, onDoubaoClonedVoiceChange, onBreezeVoiceChange, onBreezeInstructionChange, open, minimal, writable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalVoiceEngineChange, onMossBaseURLChange, onMossVoiceChange, onLocalSpeechModeChange }: DetailsModuleProps): ReactElement {
+export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, breezeVoice, breezeInstruction, speechInstruction, onSpeechInstructionChange, onDoubaoModelChange, onDoubaoVoiceChange, onDoubaoClonedVoiceChange, onBreezeVoiceChange, onBreezeInstructionChange, open, minimal, writable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalVoiceEngineChange, onMossBaseURLChange, onMossVoiceChange, onLocalSpeechModeChange }: DetailsModuleProps): ReactElement {
   const [localVoicesAvailable, setLocalVoicesAvailable] = useState<boolean | null>(null)
   const onLocalVoicesAvailabilityChange = useCallback((available: boolean): void => { setLocalVoicesAvailable(available) }, [])
   const localVoiceAvailable = localVoiceEngine === 'browser' ? localVoicesAvailable !== false : true
@@ -255,6 +256,7 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
             writable={writable}
             localSpeechMode={localSpeechMode}
             engine={localVoiceEngine}
+            mossEnabled={mossEnabled}
             browserVoiceURI={localVoiceURI}
             mossBaseURL={mossBaseURL}
             mossVoice={mossVoice}

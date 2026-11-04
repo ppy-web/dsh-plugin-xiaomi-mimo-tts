@@ -19,40 +19,42 @@ const DOUBAO_PRESETS = [
   'Cantonese', 'Shanghai', 'Henan', 'Beijing', 'Tianjin', 'Sichuan', 'Shaanxi', 'Dongbei',
 ] as const
 
-const BREEZE_PRESETS = ['WhisperFear', 'ExcitedSurprise', 'SarcasticDisbelief', 'NervousHumor', 'RestrainedGrief', 'CalmNarration'] as const
+const BREEZE_PRESETS = [
+  'Natural', 'WhisperFear', 'ExcitedSurprise', 'SarcasticDisbelief', 'NervousHumor', 'RestrainedGrief',
+  'CalmNarration', 'WarmCompanion', 'PlayfulTeasing', 'SeriousAnnouncement', 'EncouragingSupport', 'SleepyBedtime',
+] as const
 
 export function SpeechInstructionPicker({ provider, value, disabled, minimal = false, onChange, t }: { provider: TtsProvider; value: string; disabled: boolean; minimal?: boolean; onChange: (value: string) => void; t: Translate }): ReactElement {
-  const allPresets = provider === 'xiaomi'
+  const presets = provider === 'xiaomi'
     ? XIAOMI_PRESETS.map(preset => ({ preset, prompt: preset === 'Natural' ? '' : t(`settings.mimoInstruction${preset}Prompt`) }))
     : provider === 'breeze'
-      ? BREEZE_PRESETS.map(preset => ({ preset, prompt: t(`settings.breezeInstructionText${preset}`) }))
+      ? BREEZE_PRESETS.map(preset => ({ preset, prompt: preset === 'Natural' ? '' : t(`settings.breezeInstructionText${preset}`) }))
       : DOUBAO_PRESETS.map(preset => ({ preset, prompt: preset === 'Natural' ? '' : t(`settings.speechInstruction${preset}Prompt`) }))
-  const presets = minimal ? allPresets.slice(0, 8) : allPresets
   const hint = t(provider === 'xiaomi' ? 'settings.mimoInstructionHint' : provider === 'breeze' ? 'settings.breezeInstructionHint' : 'settings.doubaoInstructionHint')
   return <>
-    <div className="xmimo-tts-instruction-presets" role="group" aria-label={t('settings.speechInstructionPresets')}>
-      {presets.map(({ preset, prompt }) => {
-        return <button
-          key={preset}
-          type="button"
-          className="xmimo-tts-instruction-tag"
-          disabled={disabled}
-          aria-pressed={value.trim() === prompt}
-          title={prompt || hint}
-          onClick={() => onChange(prompt)}
-        >{provider === 'breeze' ? t(`settings.breezeInstructionLabel${preset}` as LocaleKey) : t(`settings.speechInstruction${preset}` as LocaleKey)}</button>
-      })}
-    </div>
-    {minimal ? null : <>
+    <div className="xmimo-tts-instruction-editor">
       <textarea
         value={value}
-        rows={3}
+        rows={minimal ? 3 : 4}
         disabled={disabled}
         aria-label={t('settings.speechInstruction')}
         placeholder={t('settings.speechInstructionPlaceholder')}
         onChange={event => onChange(event.target.value)}
       />
-      <small>{hint}</small>
-    </>}
+      <div className="xmimo-tts-instruction-presets" role="group" aria-label={t('settings.speechInstructionPresets')}>
+        {presets.map(({ preset, prompt }) => {
+          return <button
+            key={preset}
+            type="button"
+            className="xmimo-tts-instruction-tag"
+            disabled={disabled}
+            aria-pressed={value.trim() === prompt}
+            title={prompt || hint}
+            onClick={() => onChange(prompt)}
+          >{provider === 'breeze' && preset !== 'Natural' ? t(`settings.breezeInstructionLabel${preset}` as LocaleKey) : t(`settings.speechInstruction${preset}` as LocaleKey)}</button>
+        })}
+      </div>
+    </div>
+    {minimal ? null : <small>{hint}</small>}
   </>
 }

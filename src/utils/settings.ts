@@ -23,7 +23,8 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     : TTS_VOICE_DESIGN_PRESETS.some((item) => item.prompt === resolved.voiceDesignPrompt)
       ? DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt
       : resolved.voiceDesignPrompt
-  const localVoiceEngine = TTS_LOCAL_VOICE_ENGINES.includes(resolved.localVoiceEngine)
+  const mossEnabled = resolved.mossEnabled === true
+  const localVoiceEngine = TTS_LOCAL_VOICE_ENGINES.includes(resolved.localVoiceEngine) && (resolved.localVoiceEngine !== 'moss' || mossEnabled)
     ? resolved.localVoiceEngine
     : 'browser'
   const mossBaseURL = typeof resolved.mossBaseURL === 'string' && resolved.mossBaseURL.trim().length > 0
@@ -31,6 +32,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     : DEFAULT_MOSS_BASE_URL
   return {
     ...resolved,
+    showInSidebar: resolved.showInSidebar === true,
     qqbotEnabled: resolved.qqbotEnabled === true,
     announcementSources: ANNOUNCEMENT_SOURCES.filter(source => (Array.isArray(value?.announcementSources) ? value.announcementSources : DEFAULT_TTS_SETTINGS.announcementSources).includes(source)),
     breezeEnabled: resolved.breezeEnabled === true,
@@ -42,6 +44,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     model,
     voiceDesignCustomPrompt,
     localVoiceEngine,
+    mossEnabled,
     mossBaseURL,
     mossVoice: typeof resolved.mossVoice === 'string' ? resolved.mossVoice : '',
     mossVoiceName: typeof resolved.mossVoiceName === 'string' ? resolved.mossVoiceName : '',

@@ -238,10 +238,6 @@
   min-width: 0
 }
 
-.xmimo-tts-local-voice-segmented {
-  width: 100%
-}
-
 .xmimo-tts-local-voice-tabs .xmimo-tts-local-voice-segmented [role='tab'] {
   display: flex;
   align-items: center;
@@ -456,6 +452,41 @@
 
 .xmimo-tts-doubao-voice-hint a {
   white-space: nowrap
+}
+
+.xmimo-tts-speech-instruction { container-type: inline-size; }
+
+.xmimo-tts-instruction-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 16px;
+  min-width: 0;
+}
+
+.xmimo-tts-instruction-editor > textarea {
+  min-width: 0;
+  min-height: 112px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.xmimo-tts-instruction-editor > .xmimo-tts-instruction-presets {
+  align-content: start;
+  align-items: start;
+}
+
+.xmimo-tts-instruction-editor .xmimo-tts-instruction-tag {
+  padding: 5px 10px;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+
+@container (max-width: 480px) {
+  .xmimo-tts-instruction-editor { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 }
 
 .xmimo-tts-voice-id-history,

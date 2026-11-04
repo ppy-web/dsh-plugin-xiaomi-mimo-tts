@@ -41,6 +41,7 @@
 
 
 .xmimo-tts-broadcast-body {
+  container: xmimo-broadcast / inline-size;
   display: flex;
   min-height: 0;
   overflow: hidden;
@@ -49,12 +50,12 @@
   padding: 0 var(--xmimo-ui-module-padding) var(--xmimo-ui-module-padding);
 }
 
-.xmimo-tts-preview-input { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.xmimo-tts-preview-input { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px; margin-top: 8px; }
 .xmimo-tts-preview-input > textarea {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  flex: 1;
+  min-height: 152px;
   resize: vertical;
   border: 1px solid var(--xmimo-ui-border);
   border-radius: var(--xmimo-ui-control-radius);
@@ -62,22 +63,49 @@
   color: var(--xmimo-ui-text);
   background: var(--xmimo-ui-control-surface);
   font: inherit;
+  line-height: 1.6;
 }
+.xmimo-tts-preview-tools { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; gap: 16px; }
+.xmimo-tts-preview-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.xmimo-tts-preview-preset {
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid var(--xmimo-ui-border-soft);
+  border-radius: 999px;
+  padding: 6px 8px;
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-control-surface);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.xmimo-tts-preview-preset:hover { background: var(--xmimo-ui-hover); }
+.xmimo-tts-preview-preset[aria-pressed="true"] { border-color: var(--xmimo-ui-brand); color: var(--xmimo-ui-brand); background: var(--xmimo-ui-chip-surface); }
+.xmimo-tts-preview-preset:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
+.xmimo-tts-preview-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: auto; }
+.xmimo-tts-preview-playback-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.xmimo-tts-preview-actions > .xmimo-tts-breeze-audio-tags { margin-right: auto; }
 .xmimo-tts-broadcast .xmimo-tts-preview-toggle {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  padding: 0;
+  gap: 4px;
+  min-height: 32px;
+  padding: 5px 12px;
   border: 0;
-  border-radius: 50%;
+  border-radius: 999px;
   color: var(--dsw-alias-label-primary-foreground, var(--xmimo-ui-surface));
   background: var(--xmimo-ui-brand);
 }
+.xmimo-tts-broadcast .xmimo-tts-preview-download { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 32px; border: 1px solid var(--xmimo-ui-border); border-radius: 999px; padding: 5px 10px; color: var(--xmimo-ui-text); background: var(--xmimo-ui-surface); }
+.xmimo-tts-broadcast .xmimo-tts-preview-download:hover:not(:disabled) { background: var(--xmimo-ui-hover); }
+.xmimo-tts-broadcast .xmimo-tts-preview-download:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
+.xmimo-tts-broadcast .xmimo-tts-preview-download:disabled { opacity: .5; cursor: not-allowed; }
+.xmimo-tts-preview-toggle > svg { width: 16px; height: 16px; }
 .xmimo-tts-broadcast .xmimo-tts-preview-toggle:hover:not(:disabled) { background: color-mix(in srgb, var(--xmimo-ui-brand) 88%, var(--xmimo-ui-text)); }
 .xmimo-tts-broadcast .xmimo-tts-preview-toggle:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
 .xmimo-tts-preview-status, .xmimo-tts-announcement-source small { color: var(--xmimo-ui-text-muted); }
@@ -85,36 +113,55 @@
 .xmimo-tts-announcement-source > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .xmimo-tts-announcement-source a { align-self: flex-start; color: var(--xmimo-ui-brand); }
 .xmimo-tts-announcement-source > button { flex-shrink: 0; }
+.xmimo-tts-switch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 24px;
+}
+.xmimo-tts-switch-grid > .xmimo-tts-field-heading { grid-column: 1 / -1; }
+.xmimo-tts-switch-grid > .xmimo-tts-announcement-source { min-width: 0; }
+.xmimo-tts-switch-grid .xmimo-tts-announcement-source small,
+.xmimo-tts-switch-grid .xmimo-tts-announcement-source a { overflow-wrap: anywhere; }
+@container xmimo-broadcast (max-width: 560px) {
+  .xmimo-tts-switch-grid { grid-template-columns: minmax(0, 1fr); }
+}
 .xmimo-tts-provider-settings > small { display: block; color: var(--xmimo-ui-text-muted); }
 .xmimo-tts-announcement-source > .xmimo-tts-more-provider-brand { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
-.xmimo-tts-provider-settings-brand { display: inline-flex; align-items: center; gap: 8px; }
-.xmimo-tts-provider-settings-brand img { width: 24px; height: 24px; object-fit: contain; }
-.xmimo-tts-breeze-wordmark { display: block; flex: none; width: 120px; height: 22px; background: var(--dsw-alias-label-primary, #1f2328); mask: var(--xmimo-breeze-wordmark) left center / contain no-repeat; -webkit-mask: var(--xmimo-breeze-wordmark) left center / contain no-repeat; }
+.xmimo-tts-provider-settings-brand { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; line-height: 24px; }
+.xmimo-tts-provider-settings-brand img { flex: none; width: 24px; height: 24px; object-fit: contain; }
+.xmimo-tts-provider-settings-local { flex-wrap: wrap; }
+.xmimo-tts-breeze-wordmark { display: block; flex: none; width: 156px; height: 24px; background: var(--dsw-alias-label-primary, #1f2328); mask: var(--xmimo-breeze-wordmark) left center / 100% 100% no-repeat; -webkit-mask: var(--xmimo-breeze-wordmark) left center / 100% 100% no-repeat; }
 .xmimo-tts-preview-input > textarea:focus-visible { outline: var(--xmimo-ui-focus); }
-/* Inline disclosure under the preview textarea, never an overlay. */
-.xmimo-tts-breeze-audio-tags { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+/* The tag palette is body-portaled so the broadcast frame cannot clip it. */
+.xmimo-tts-breeze-audio-tags { display: flex; min-width: 0; }
 .xmimo-tts-breeze-audio-tags-toggle {
   display: inline-flex;
   align-self: flex-start;
   align-items: center;
-  gap: 2px;
-  border: 0;
+  gap: 4px;
+  min-height: 32px;
+  border: 1px solid var(--xmimo-ui-border);
   border-radius: 999px;
-  padding: 2px 8px 2px 6px;
-  color: var(--xmimo-ui-text-muted);
-  background: transparent;
+  padding: 5px 8px 5px 10px;
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-surface);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+  white-space: nowrap;
 }
 .xmimo-tts-breeze-audio-tags-toggle:hover:not(:disabled) { color: var(--xmimo-ui-text); background: var(--xmimo-ui-hover); }
 .xmimo-tts-breeze-audio-tags-toggle:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 1px; }
 .xmimo-tts-breeze-audio-tags-toggle:disabled { opacity: .5; cursor: not-allowed; }
 .xmimo-tts-breeze-audio-tags-open .xmimo-tts-breeze-audio-tags-toggle .xmimo-tts-chevron { transform: rotate(180deg); }
 .xmimo-tts-breeze-audio-tags-panel {
+  position: fixed;
+  z-index: 1000;
   display: flex;
   min-width: 0;
-  max-height: 260px;
+  width: 340px;
+  max-width: min(340px, var(--dsh-anchored-max-width, calc(100vw - 24px)));
+  max-height: min(320px, var(--dsh-anchored-max-height, calc(100dvh - 24px)));
   overflow-y: auto;
   overscroll-behavior: contain;
   flex-direction: column;
@@ -122,8 +169,11 @@
   box-sizing: border-box;
   padding: 10px;
   border: 1px solid var(--xmimo-ui-border-soft);
-  border-radius: var(--xmimo-ui-control-radius);
-  background: var(--xmimo-ui-control-surface);
+  border-radius: 12px;
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-surface);
+  font-family: inherit;
+  font-size: 12px;
 }
 .xmimo-tts-breeze-audio-tags-panel > small { color: var(--xmimo-ui-text-muted); line-height: 18px; }
 .xmimo-tts-breeze-audio-tags-panel > .xmimo-tts-settings-segmented-wrap { display: flex; gap: 6px; }
@@ -131,4 +181,10 @@
 .xmimo-tts-breeze-audio-tag-group > strong { color: var(--xmimo-ui-text-subtle); font-size: 12px; font-weight: 600; }
 .xmimo-tts-breeze-audio-tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .xmimo-tts-breeze-audio-tag-list button { flex: none; border: 1px solid var(--xmimo-ui-border-soft); border-radius: 999px; font-size: 12px; }
+
+@media (max-width: 600px) {
+  .xmimo-tts-preview-input { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .xmimo-tts-preview-input > textarea { min-height: 128px; }
+  .xmimo-tts-preview-tools { gap: 12px; }
+}
 

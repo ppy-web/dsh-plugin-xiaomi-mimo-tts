@@ -7,12 +7,12 @@ export type ManualLocale = 'zh' | 'en'
 const COPY: Record<ManualLocale, ManualCopy> = {
   zh: {
     title: '把鲸鱼娘调成你喜欢的样子',
-    intro: '按使用顺序了解语音配置、自动朗读与播放操作。QQBot、豆包与 AI Passport 接入教程可从侧栏单独打开。所有安装和连接操作均在真实 DSH 中执行；本预览不修改 DSH，也不连接机器人或设备。',
+    intro: '按使用顺序了解语音配置、自动朗读与播放操作。小米、豆包、Breeze、QQBot 与 AI Passport 接入教程可从侧栏单独打开。所有安装和连接操作均在真实 DSH 中执行；本预览不修改 DSH，也不连接机器人或设备。',
     toc: '目录',
     sections: [
       {
         id: 'manual-start',
-        links: [{ label: 'QQBot 接入教程', href: '#qqbot' }, { label: '豆包语音接入教程', href: '#doubao' }, { label: 'AI Passport 接入教程', href: '#passport' }],
+        links: [{ label: '小米 MiMo 接入教程', href: '#xiaomi' }, { label: '豆包语音接入教程', href: '#doubao' }, { label: 'Breeze 接入教程', href: '#breeze' }, { label: 'QQBot 接入教程', href: '#qqbot' }, { label: 'AI Passport 接入教程', href: '#passport' }],
         title: '01 · 开始使用',
         summary: '先选择小米 MiMo、豆包或 Breeze 语音并保存密钥，再选择模型和音色试听。',
         items: [
@@ -48,7 +48,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         summary: '控制音量、速度、模型、声音来源和本地兜底策略。',
         items: [
           { label: '调音台标题', detail: '点击“调音台”标题栏展开或收起详细设置。标题栏摘要会显示当前音量、倍速、朗读范围、模型、声音和策略。' },
-          { label: '更多', detail: '本地音色、朗读范围和语音策略收纳在默认收起的“更多”二级折叠条里。点击展开或收起，草稿会保留；本地音色来源与模型选择使用相同的切换控件。' },
+          { label: '更多', detail: '本地音色、朗读范围和语音策略收纳在默认收起的“更多”二级折叠条里。先在播报台的语音服务商中开启「MOSS-Nano（本地）」并保存，才显示浏览器与 MOSS 的切换标签；关闭时只显示浏览器声音，MOSS 服务地址和音色配置保留。' },
           { label: '音量滑块', detail: '拖动或用键盘方向键调整语音音量；松开鼠标或完成键盘操作时会试听当前音量。旁边的“恢复默认”按钮会把该项恢复为基础配置，恢复动作仍需点击“保存”。' },
           { label: '播放速度滑块', detail: '拖动或用键盘调整 0.5×–2.0× 速度。豆包在云端合成时应用语速，播放时保持 1×；小米 PCM 在本地调整速度，音高会随速度改变。' },
           { label: '模型按钮', detail: '小米可选择预置音色或音色设计；豆包可选择标准合成（seed-tts-2.0）或声音复刻（seed-icl-2.0）；Breeze 固定使用 breeze-tts-2，支持预置音色和自定义 Voice ID。下方音色控件随所选服务商和模型切换。' },
@@ -78,7 +78,10 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: '宿主播报来源', detail: '提问卡片标题默认开启并跟随自动播报，只读当前题目标题；翻题、提交、关闭或切换会话时取消。首次开启不补播已有卡片，忙碌时跳过。审批提醒和后台任务结果默认关闭、独立于自动播报，只观察当前会话；审批处理或撤回后停止语音，后台任务仅播报观察到运行过程后的结束、失败或取消。宿主需提供相应服务。' },
           { label: '插件联动', detail: 'dsh-pet 默认关闭，dsh-whale-musume 语音接口默认开启，来源名称可跳转项目主页。QQ Bot 默认关闭：开启并保存后自动发送完整语音；关闭后保留按需语音。QQ 需要另行启用 QQ Bot 传声筒组件并在 QQ 中选择对应预设，完整流程见独立的 QQBot 接入教程。' },
+          { label: '侧栏快捷入口', detail: '位于播报台内「语音服务商」之后的独立设置项，默认关闭。开启并保存后，在宿主侧栏顶部显示「语音配置」，点击进入插件设置。' },
           { label: '试听文本框', detail: '点击文本框输入或替换试听内容，最多 100 个字符。文本为空时，试听按钮会禁用；试听文本本身不会写入 DSH。模型、声音、音量和速度可直接使用草稿，但新 API Key 必须先保存。' },
+          { label: '九宫格快捷文案', detail: '宽屏时输入区和快捷区各占一半，右侧九个固定标签可切换问候、诗意、鼓励、随想、幽默、新闻、故事、客服欢迎和对白。窄屏自动上下排列。选择文案或修改文字会停止当前试听并清除旧的下载音频。' },
+          { label: '下载与声音标签', detail: '快捷区底部是试听和下载按钮。音频生成后可一键下载当前 MP3 / WAV，复用本次结果，不会重新合成；浏览器系统语音无法下载，MOSS 音频支持下载。Breeze 会在试听按钮左侧显示“声音标签”胶囊按钮，打开弹窗后点击标签可插入文本光标处；选择、按 Esc 或点击外部均可关闭。' },
           { label: '播放 / 停止按钮', detail: '点击摘要首个“试听”标签即可直接播放当前文案，无需展开；面板内的“播放试听”按钮使用同一播放器。准备中或播放中再次点击可中断。状态提示会显示当前语音来源，并针对未配置密钥、密钥被拒绝、限流、超时、本地音色不可用和自动播放限制给出对应提示。' },
         ],
         links: [{ label: 'QQ Bot 接入流程', href: '#qqbot' }],
@@ -136,12 +139,12 @@ const COPY: Record<ManualLocale, ManualCopy> = {
   },
   en: {
     title: 'Tune Whale Maid your way',
-    intro: 'Set up speech and understand automatic reading and playback controls. QQBot, Doubao and AI Passport guides have their own sidebar pages. Perform setup in real DSH; this preview does not change DSH or connect bots or devices.',
+    intro: 'Set up speech and understand automatic reading and playback controls. Xiaomi, Doubao, Breeze, QQBot, and AI Passport guides have their own sidebar pages. Perform setup in real DSH; this preview does not change DSH or connect bots or devices.',
     toc: 'Contents',
     sections: [
       {
         id: 'manual-start',
-        links: [{ label: 'QQBot setup guide', href: '#qqbot' }, { label: 'Doubao voice setup guide', href: '#doubao' }, { label: 'AI Passport setup guide', href: '#passport' }],
+        links: [{ label: 'Xiaomi MiMo setup guide', href: '#xiaomi' }, { label: 'Doubao voice setup guide', href: '#doubao' }, { label: 'Breeze setup guide', href: '#breeze' }, { label: 'QQBot setup guide', href: '#qqbot' }, { label: 'AI Passport setup guide', href: '#passport' }],
         title: '01 · Getting started',
         summary: 'Choose Xiaomi MiMo, Doubao or Breeze, save its key, then select a model and voice to preview.',
         items: [
@@ -182,7 +185,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
           { label: 'Model buttons', detail: 'Xiaomi offers preset voices and Voice Design. Doubao offers Standard TTS (seed-tts-2.0) and Voice cloning (seed-icl-2.0). Breeze uses breeze-tts-2 with preset voices and custom Voice IDs. Voice controls change with the selected provider and model.' },
           { label: 'Voice Design picker', detail: 'Open the picker and choose Custom or a preset. Custom enables the editable description. Edit the description directly and save the settings when it is ready.' },
           { label: 'Speech instructions and styles', detail: 'Xiaomi, Doubao Standard and Breeze offer separate style presets and custom instructions, saved independently. Xiaomi built-in voices add no style by default. A nonempty instruction takes priority over presetStylePrompt; an existing presetStylePrompt is used only when the instruction is blank. Voice Design keeps its voice description. Browser speech and Doubao cloning do not apply speech instructions.' },
-          { label: 'More', detail: 'Local voice, read-aloud range, and speech strategy are grouped in the initially collapsed More row. Expand or collapse it without losing drafts. Local voice sources use the same segmented control as model selection.' },
+          { label: 'More', detail: 'Local voice, read-aloud range, and speech strategy are grouped in the initially collapsed More row. Enable and save MOSS-Nano (local) under Broadcast Desk → Speech providers to show the Browser / MOSS tabs. Turning it off shows browser voices only and retains the MOSS service URL and voice settings.' },
           { label: 'Built-in / browser voice pickers', detail: 'Click a picker to open its list, then click a voice. Arrow keys, Home, End, and Escape also work. Browser voices show language and online/offline status; the browser voice picker is disabled when local speech is disabled.' },
           { label: 'Read-aloud scope radios', detail: 'Smart automatically reads short replies in full and the first two semantic segments of long replies; manual reading uses the full reply. Full always reads everything. First segment limits both automatic and manual reading to that segment. These scopes apply to browser reading; QQ automatic voice sends the full reply.' },
           { label: 'Speech strategy radios', detail: 'Choose Cloud first, Local first, or Disable local speech. Cloud speech uses the selected Xiaomi, Doubao or Breeze provider. The first two choose the fallback order; disabling local speech uses only the cloud provider.' },
@@ -207,7 +210,10 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: 'Host announcements', detail: 'Question titles are enabled by default and follow autoplay. Only the current title is read; changing, submitting, closing, or switching sessions cancels speech. Existing cards are not replayed on activation, and busy speech is respected. Approval reminders and Background job results are off by default, independent of autoplay, and limited to the current conversation. Answered or withdrawn approvals stop speech. Jobs announce settlement only after their live state was observed. The corresponding host services must be available.' },
           { label: 'Plugin integrations', detail: 'dsh-pet is off by default; the dsh-whale-musume speech API is on. Source names link to their projects. QQ Bot starts off: enable and save it for automatic full voice replies; leave it off for voice on request. Enable QQ Bot Megaphone and select its QQ preset using the dedicated setup guide.' },
+          { label: 'Sidebar shortcut', detail: 'A separate setting immediately after Speech providers in the Broadcast desk, off by default. Enable and save it to add Voice settings to the top of the host sidebar and open plugin settings.' },
           { label: 'Preview text field', detail: 'Click and replace the preview text, up to 100 characters. An empty field disables the preview button. Model, voice, volume, and speed drafts apply immediately, but a new API key must be saved first.' },
+          { label: 'Sample text grid', detail: 'The text field and nine fixed sample chips share the width equally on wide screens and stack on narrow screens. Pick greetings, poetry, encouragement, reflection, humor, news, stories, a service welcome, or dialogue. Editing or replacing the text stops playback and clears the previous download.' },
+          { label: 'Downloads and audio tags', detail: 'Play and download controls sit below the sample grid. Download the current MP3 or WAV once generated, without synthesizing it again. Browser system speech cannot be downloaded; MOSS audio can. Breeze adds an Audio tags pill to the left of Play. Select a tag from the popup to insert it at the caret. Selection, Escape, or an outside click closes the popup.' },
           { label: 'Play / stop button', detail: 'Click the first Preview chip in the summary to play the current text without expanding the panel. The Play preview button inside uses the same player. Click again while preparing or playing to stop. The status identifies the speech source and distinguishes missing or rejected keys, rate limits, timeouts, unavailable local voices, and autoplay restrictions.' },
         ],
         links: [{ label: 'Set up QQ Bot', href: '#qqbot' }],

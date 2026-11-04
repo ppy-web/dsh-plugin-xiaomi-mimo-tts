@@ -22,10 +22,14 @@ export class HistoryDownloads {
   private pending = new Map<string, ReturnType<typeof setTimeout>>()
 
   download(entry: AudioHistoryEntry): void {
-    const url = URL.createObjectURL(entry.blob)
+    this.downloadBlob(entry.blob, `mimo-${new Date(entry.createdAt).toISOString().replace(/[:.]/gu, '-')}-${entry.id.slice(0, 8)}.${entry.format}`)
+  }
+
+  downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `mimo-${new Date(entry.createdAt).toISOString().replace(/[:.]/gu, '-')}-${entry.id.slice(0, 8)}.${entry.format}`
+    anchor.download = filename
     try {
       document.body.appendChild(anchor)
       anchor.click()

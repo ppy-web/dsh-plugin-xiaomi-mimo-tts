@@ -302,3 +302,19 @@ test('both volume and speed defaults are offered in their option lists', () => {
   assert.ok(VOICE_VOLUME_STEPS.includes(defaults.voiceVolume), 'default volume missing from the steps')
   assert.ok(VOICE_RATE_STEPS.includes(defaults.voiceRate), 'default speed missing from the steps')
 })
+
+for (const [kind, settings, field] of [
+  ['standard', { provider: 'doubao', doubaoVoice: 'custom-standard' }, 'doubaoVoice'],
+  ['cloned', { provider: 'doubao', doubaoModel: 'seed-icl-2.0', doubaoClonedVoice: 'custom-cloned' }, 'doubaoClonedVoice'],
+  ['breeze', { provider: 'breeze', breezeEnabled: true, breezeVoice: 'custom-breeze' }, 'breezeVoice'],
+]) test(`${kind} remarks label custom choices without changing saved synthesis IDs`, () => {
+  const id = settings[field]
+  const resolved = resolveTtsSettings(settings)
+  const source = buildVoiceReadingVoiceSource(resolved, [], { [kind]: { history: [id, id, 'other'], names: { [id]: '我的声音' } } })
+  assert.equal(source.choices.filter(choice => choice.value === id).length, 1)
+  assert.equal(source.choices.find(choice => choice.value === id).label, '我的声音')
+  assertSetOperations(voiceChoiceWriteOps(source, id), { [field]: id })
+  const removed = buildVoiceReadingVoiceSource(resolved, [], { [kind]: { history: [], names: {} } })
+  assert.equal(removed.choices.find(choice => choice.value === id).label, id)
+  assert.equal(removed.choices.some(choice => choice.value === 'other'), false)
+})

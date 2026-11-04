@@ -31,18 +31,18 @@ button, input, select, textarea { font: inherit; }
 .preview-app { --preview-sidebar-width: 240px; display: grid; grid-template-columns: var(--preview-sidebar-width) minmax(0, 1fr); min-height: 100dvh; }
 .preview-app[data-collapsed="true"] { --preview-sidebar-width: 64px; }
 .preview-app a { text-underline-offset: 3px; }
-/* Preview-wide, including Host content and portaled dialogs. Local anchors keep their navigation styles. */
-:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"]) {
+/* Shared link treatment for external URLs and document references; navigation keeps its own styles. */
+:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"], .preview-manual-section a[href^="#"]) {
   color: var(--preview-link);
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   overflow-wrap: anywhere;
 }
-:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"]):hover {
+:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"], .preview-manual-section a[href^="#"]):hover {
   text-decoration-thickness: 2px;
 }
-:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"])::before {
+:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"], .preview-manual-section a[href^="#"])::before {
   content: '';
   display: inline-block;
   flex: none;
@@ -139,7 +139,6 @@ button, input, select, textarea { font: inherit; }
 .preview-manual-section dl > div + div { margin-top: 20px; }
 .preview-manual-section dt { margin-bottom: 6px; font-size: 14px; font-weight: 500; }
 .preview-manual-section ul { display: flex; flex-wrap: wrap; gap: 12px; list-style: none; margin: 20px 0 0; padding: 0; font-size: 13px; }
-.preview-manual-section a { color: var(--preview-foreground); }
 .preview-manual-steps { margin: 0 0 28px; padding-inline-start: 24px; }
 .preview-manual-steps li { padding-inline-start: 4px; }
 .preview-manual-steps li + li { margin-top: 20px; }

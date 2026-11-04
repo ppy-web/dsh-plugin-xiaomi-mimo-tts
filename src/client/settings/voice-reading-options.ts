@@ -9,6 +9,7 @@
 import { BREEZE_VOICE_PRESETS, DOUBAO_VOICE_PRESETS, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, ttsSelection } from '../../shared.js'
 import type { ResolvedTtsSettings, TtsReadScope } from '../../shared.js'
 import type { LocaleKey } from '../localization.js'
+import type { VoiceIdHistoryKind } from './voice-id-history.js'
 import type { ApiKeyStatus } from './api-key-state.js'
 
 /** Report the first incomplete setting, including cloud credentials when local speech works. */
@@ -43,23 +44,29 @@ export interface VoiceReadingVoiceSource {
 const DOUBAO_CLONED_MODEL = 'seed-icl-2.0'
 const XIAOMI_VOICE_DESIGN_MODEL = 'mimo-v2.5-tts-voicedesign'
 
-function uniqueVoiceIds(ids: readonly string[]): string[] {
-  const seen = new Set<string>()
-  for (const id of ids) {
-    if (id.trim() === '' || seen.has(id)) continue
-    seen.add(id)
+export type VoiceIdLibrary = Partial<Record<VoiceIdHistoryKind, { history: readonly string[]; names: Record<string, string> }>>
+
+function voiceChoices(presets: readonly VoiceReadingChoice[], current: string, library: VoiceIdLibrary, kind: VoiceIdHistoryKind): VoiceReadingChoice[] {
+  const saved = library[kind]
+  const choices = new Map(presets.map(choice => [choice.value, choice]))
+  for (const id of [current, ...saved?.history ?? []]) {
+    if (id.trim() && !choices.has(id)) choices.set(id, { value: id, label: id })
   }
-  return [...seen]
+  return [...choices.values()].map(choice => {
+    const remark = saved?.names && Object.hasOwn(saved.names, choice.value) ? saved.names[choice.value]?.trim() : ''
+    return remark ? { value: choice.value, label: remark } : choice
+  })
 }
 
 export function buildVoiceReadingVoiceSource(
   settings: ResolvedTtsSettings,
   clonedVoiceHistory: readonly string[] = [],
+  library: VoiceIdLibrary = {},
 ): VoiceReadingVoiceSource {
   if (settings.provider === 'breeze') return {
     field: 'breezeVoice',
     value: settings.breezeVoice,
-    choices: BREEZE_VOICE_PRESETS.map(voice => ({ value: voice.value, label: voice.name })),
+    choices: voiceChoices(BREEZE_VOICE_PRESETS.map(voice => ({ value: voice.value, label: voice.name })), settings.breezeVoice, library, 'breeze'),
     hintKey: 'settings.voiceReadingHintBreeze',
   }
   if (settings.provider === 'doubao') {
@@ -67,14 +74,14 @@ export function buildVoiceReadingVoiceSource(
       return {
         field: 'doubaoClonedVoice',
         value: settings.doubaoClonedVoice,
-        choices: uniqueVoiceIds([settings.doubaoClonedVoice, ...clonedVoiceHistory]).map((id) => ({ value: id, label: id })),
+        choices: voiceChoices([], settings.doubaoClonedVoice, { cloned: { history: clonedVoiceHistory, names: {}, ...library.cloned } }, 'cloned'),
         hintKey: 'settings.voiceReadingHintDoubaoCloned',
       }
     }
     return {
       field: 'doubaoVoice',
       value: settings.doubaoVoice,
-      choices: DOUBAO_VOICE_PRESETS.map((voice) => ({ value: voice.value, label: voice.name, detail: voice.scene })),
+      choices: voiceChoices(DOUBAO_VOICE_PRESETS.map((voice) => ({ value: voice.value, label: voice.name, detail: voice.scene })), settings.doubaoVoice, library, 'standard'),
       hintKey: 'settings.voiceReadingHintDoubaoStandard',
     }
   }

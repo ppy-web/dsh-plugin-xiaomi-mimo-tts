@@ -15,6 +15,17 @@ export const DOUBAO_GUIDE: Record<ManualLocale, ManualCopy> = {
     toc: '本页目录',
     sections: [
       {
+        id: 'doubao-overview', title: '先了解优点与限制',
+        summary: '适合需要丰富音色、复刻声音或双向流式朗读的用户。官方资料于 2026-11-04 核对，具体能力取决于所选模型与音色。',
+        items: [
+          { label: '优点 · 音色丰富', detail: '提供多种角色、风格和场景音色，也可使用控制台创建的复刻音色，适合在旁白、陪伴和角色对话之间切换。先确认音色属于插件支持的 TTS 2.0 或声音复刻 2.0。' },
+          { label: '优点 · 标准音色支持表达控制与双向流式', detail: '支持相应能力的标准 2.0 音色可用语音指令调整情绪、语气和方言；插件通过 WebSocket 接收持续新增文本，适合边生成边朗读。' },
+          { label: '限制 · 资源开通与计费较复杂', detail: '标准合成、声音复刻和音色权限需匹配当前账号与密钥；免费额度、资源包或套餐以控制台为准，不是无限免费。Agent Plan 需使用对应专属 Key，Coding Plan 不含语音。' },
+          { label: '限制 · 指令与实时链路有条件', detail: '插件的声音复刻 2.0 不应用标准语音指令；自定义音色 ID 也不保证具备全部控制能力。双向流式要求宿主和反向代理支持 WebSocket Upgrade，实际延迟受网络与资源限制影响。' },
+        ],
+        links: [{ label: '官方标准音色列表', href: 'https://docs.volcengine.com/docs/DoubaoVoice/Tonelist-1?lang=zh' }, { label: '官方语音指令说明', href: INSTRUCTION_DOCS }, { label: '官方双向流式接口', href: STREAMING_DOCS }],
+      },
+      {
         id: 'doubao-start', title: '选择服务与模型',
         summary: '插件支持标准合成 2.0 与声音复刻 2.0。先确认账号、密钥、模型资源和音色属于可一起使用的一套配置。',
         table: {
@@ -36,7 +47,7 @@ export const DOUBAO_GUIDE: Record<ManualLocale, ManualCopy> = {
         summary: '先用默认表达、正常语速和内置标准音色，减少首次排查时的变量。',
         steps: [
           { title: '开通并确认服务可用', detail: '登录火山引擎，进入豆包语音控制台，按页面提示开通标准合成所需资源；检查当前账号／项目的权限与可用额度。使用 Agent Plan 则核对套餐的语音权限及专属 Key。开通方式和计费以控制台实时显示为准。' },
-          { title: '选择豆包并保存密钥', detail: '在真实 DSH 打开本插件设置，切换服务商到“豆包语音”，将对应 API Key 粘贴到密码框并点击底部“保存”。两家服务商的配置独立保留，切换不会把小米 Key 当作豆包 Key。新 Key 必须先保存，试听不会读取尚未保存的密钥草稿。' },
+          { title: '选择豆包并保存密钥', detail: '在真实 DSH 打开本插件设置，确认豆包已启用，切换服务商到“豆包语音”，将对应 API Key 粘贴到密码框并点击底部“保存”。各供应商的配置独立保留，切换不会混用密钥。新 Key 必须先保存，试听不会读取尚未保存的密钥草稿。' },
           { title: '选择标准合成与音色', detail: '展开“调音台”，模型选“标准合成（seed-tts-2.0）”，先选一个内置标准音色。语速先保持 1×，语音指令留空。需要其他音色时，在音色库确认它属于 TTS 2.0，再通过自定义选项填写完整音色 ID，不要只填显示名称。' },
           { title: '暂时关闭本地兜底', detail: '将本地语音策略改为“关闭本地语音”，然后保存模型、音色与策略。这样云端失败会直接显示错误，避免“听到声音”其实是浏览器本地语音。验证成功后可恢复你需要的兜底策略并保存。' },
         ], items: [],
@@ -106,6 +117,15 @@ export const DOUBAO_GUIDE: Record<ManualLocale, ManualCopy> = {
     intro: 'Start with a standard voice, then try voice cloning, instructions, and streaming. Follow these steps in the Volcano Engine console and real DSH. This preview uses mock settings and sample audio; it does not verify keys or resource access.',
     toc: 'On this page',
     sections: [
+      {
+        id: 'doubao-overview', title: 'Strengths and limitations', summary: 'A choice for varied voices, voice cloning, and bidirectional streaming. Official sources checked on November 4, 2026; capabilities depend on model and voice.',
+        items: [
+          { label: 'Strength · A varied voice catalog', detail: 'Choose voices for narration, companionship, and character dialogue, or use a cloned voice created in the console. Verify it belongs to the supported TTS 2.0 or Voice Cloning 2.0 series.' },
+          { label: 'Strength · Delivery control and bidirectional streaming', detail: 'Compatible standard 2.0 voices support instructions for emotion, delivery, and dialect. The plugin uses WebSocket to accept new text during generation for live reading.' },
+          { label: 'Limit · Resource access and billing', detail: 'Synthesis resources, cloning, and voice access must match the key and account. Free quotas, resource packs, and plans follow the console; usage is not unlimited. Agent Plan requires its dedicated key; Coding Plan excludes speech.' },
+          { label: 'Limit · Conditional instruction and streaming support', detail: 'Voice Cloning 2.0 does not apply standard instructions in this plugin. Custom IDs may not support every control. Streaming requires WebSocket Upgrade support in the host and reverse proxy; network and resource limits affect latency.' },
+        ], links: [{ label: 'Official voice catalog', href: 'https://docs.volcengine.com/docs/DoubaoVoice/Tonelist-1?lang=zh' }, { label: 'Official instructions', href: INSTRUCTION_DOCS }, { label: 'Official bidirectional streaming API', href: STREAMING_DOCS }],
+      },
       {
         id: 'doubao-start', title: 'Choose your service and model', summary: 'The account, key, model resource, and voice must work together.',
         table: { caption: 'Choose a voice source', headers: ['Goal', 'Plugin model', 'Requirements'], rows: [

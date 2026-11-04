@@ -54,7 +54,7 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 
 安装后可直接使用浏览器语音，**自动播报和 UI 音效默认关闭**。云端语音配置：
 
-1. 打开插件设置，选择小米 MiMo、豆包或 Breeze，填写并保存 [小米 Key](https://platform.xiaomimimo.com/console/api-keys)、[豆包 Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default) 或 [Breeze Key](https://breezeblue.ai/app/developer/api-keys)。
+1. 打开插件设置，选择小米 MiMo、豆包或 Breeze，填写并保存 [小米 Key](https://platform.xiaomimimo.com/console/api-keys)、[豆包 Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default) 或 [Breeze Key](https://breezeblue.ai/zh?code=JHKLSJ)。
 2. 在“调音台”选择模型、音色，在“播报台”试听；三家服务商的密钥、音色与模型各自独立保存，密钥须先保存，模型和音色支持草稿试听。
 3. 在「设置 → 语音朗读」调整音量、语速、朗读范围及自动播报、音效，与插件设置共用配置。
 

@@ -1,11 +1,13 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { Switch } from '@deepseek-ai/dsh-client-ui-primitives'
+import { RiArrowDownSLine } from 'react-icons/ri'
 import { ANNOUNCEMENT_SOURCES, type AnnouncementSourceId } from '../../types/settings.js'
 import type { Translate } from '../localization.js'
 import { SettingFieldHeading } from './field-heading.js'
 import { FieldInfo } from './controls/field-info.js'
 
 export interface AnnouncementSettingsProps {
+  children?: ReactNode
   t: Translate
   sources: AnnouncementSourceId[]
   qqbotEnabled: boolean
@@ -34,26 +36,42 @@ const SOURCE_GROUPS = [
   { label: 'settings.announcementsPlugins', hint: 'settings.announcementsPluginsHint', options: PLUGIN_SOURCE_OPTIONS },
 ] as const
 
-export function AnnouncementSettings({ t, sources, qqbotEnabled, onQqbotChange, writable, overridden, onChange, onReset }: AnnouncementSettingsProps): ReactElement {
-  return <>{SOURCE_GROUPS.map((group, index) => <section key={group.label} className="xmimo-tts-format" aria-label={t(group.label)}>
-    <SettingFieldHeading label={t(group.label)}
-      suffix={<FieldInfo label={t(group.label)} text={t(group.hint)} />}
-      overriddenLabel={t('settings.overridden')}
-      resetLabel={t('settings.reset')} overridden={index === 0 && overridden} resettable disabled={!writable} onReset={onReset} />
-    {group.options.map(option => <div key={option.id} className="xmimo-tts-announcement-source">
-      <div>
-        {option.href ? <a href={option.href} target="_blank" rel="noopener noreferrer">{t(option.label)} ↗</a> : <span>{t(option.label)}</span>}
-        <small>{t(option.hint)}</small>
-      </div>
-      <Switch checked={sources.includes(option.id)} disabled={!writable} label={t(option.label)}
-        onChange={checked => onChange(ANNOUNCEMENT_SOURCES.filter(id => id === option.id ? checked : sources.includes(id)))} />
-    </div>)}
-    {index === 1 ? <div className="xmimo-tts-announcement-source">
-      <div>
-        <a href="https://github.com/tencent-connect/dsh-qqbot" target="_blank" rel="noopener noreferrer">{t('settings.qqbotIntegration')} ↗</a>
-        <small>{t('settings.qqbotIntegrationHint')}</small>
-      </div>
-      <Switch checked={qqbotEnabled} disabled={!writable} label={t('settings.qqbotIntegration')} onChange={onQqbotChange} />
-    </div> : null}
-  </section>)}</>
+export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, writable, overridden, onChange, onReset }: AnnouncementSettingsProps): ReactElement {
+  return <details className="xmimo-tts-more-settings">
+    <summary className="xmimo-tts-builtin-voice-trigger">
+      <span>{t('settings.more')}</span>
+      <span className="xmimo-tts-more-settings-hint">{t('settings.announcementsMoreHint')}</span>
+      <RiArrowDownSLine className="xmimo-tts-voice-picker-chevron" size={16} aria-hidden="true" focusable="false" />
+    </summary>
+    <div className="xmimo-tts-more-settings-body">
+      {children}
+      {SOURCE_GROUPS.map((group, index) => <section key={group.label} className="xmimo-tts-format xmimo-tts-switch-grid" aria-label={t(group.label)}>
+        <SettingFieldHeading label={t(group.label)}
+          suffix={<FieldInfo label={t(group.label)} text={t(group.hint)} />}
+          overriddenLabel={t('settings.overridden')}
+          resetLabel={t('settings.reset')} overridden={index === 0 && overridden} resettable disabled={!writable} onReset={onReset} />
+        {group.options.map(option => <div key={option.id} className="xmimo-tts-announcement-source">
+          <div>
+            {option.href ? <a href={option.href} target="_blank" rel="noopener noreferrer">{t(option.label)} ↗</a> : <span>{t(option.label)}</span>}
+            <small>{t(option.hint)}</small>
+          </div>
+          <Switch checked={sources.includes(option.id)} disabled={!writable} label={t(option.label)}
+            onChange={checked => onChange(ANNOUNCEMENT_SOURCES.filter(id => id === option.id ? checked : sources.includes(id)))} />
+        </div>)}
+        {index === 1 ? <><div className="xmimo-tts-announcement-source">
+          <div>
+            <a href="https://github.com/tencent-connect/dsh-qqbot" target="_blank" rel="noopener noreferrer">{t('settings.qqbotIntegration')} ↗</a>
+            <small>{t('settings.qqbotIntegrationHint')}</small>
+          </div>
+          <Switch checked={qqbotEnabled} disabled={!writable} label={t('settings.qqbotIntegration')} onChange={onQqbotChange} />
+        </div>
+        <div className="xmimo-tts-announcement-source">
+          <div>
+            <a href="https://github.com/ppy-web/whaletalk-passport#readme" target="_blank" rel="noopener noreferrer">{t('settings.passportIntegration')} ↗</a>
+            <small>{t('settings.passportIntegrationHint')}</small>
+          </div>
+        </div></> : null}
+      </section>)}
+    </div>
+  </details>
 }

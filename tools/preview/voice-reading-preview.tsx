@@ -5,5 +5,5 @@ import type { TtsSettings } from '../../src/shared.js'
 
 /** Renders the independent Voice reading settings page inside the standalone preview. */
 export function VoiceReadingPreview({ scope, t, onOpenPluginSettings }: { scope: ConfigForm<TtsSettings>; t: Translate; onOpenPluginSettings: () => void }) {
-  return <VoiceReadingSection scope={scope} t={t} openPluginSettings={onOpenPluginSettings} close={() => {}} />
+  return <VoiceReadingSection scope={scope} t={t} openPluginSettings={onOpenPluginSettings} close={() => {}} usePanelInfo={selector => selector({ activePanelId: null })} />
 }

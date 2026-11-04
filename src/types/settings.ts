@@ -14,6 +14,7 @@ export const ANNOUNCEMENT_SOURCES = ['dsh-pet', 'dsh-whale-musume', 'question-ti
 export type AnnouncementSourceId = typeof ANNOUNCEMENT_SOURCES[number]
 
 export interface TtsSettings {
+  showInSidebar?: boolean
   qqbotEnabled?: boolean
   qqbotMaxAutoCharacters?: number
   qqbotMaxDurationSeconds?: number
@@ -36,6 +37,7 @@ export interface TtsSettings {
   localSpeechMode?: TtsLocalSpeechMode
   localVoiceURI?: string
   localVoiceEngine?: TtsLocalVoiceEngine
+  mossEnabled?: boolean
   mossBaseURL?: string
   mossVoice?: string
   mossVoiceName?: string
@@ -65,6 +67,7 @@ export interface TtsSettings {
 }
 
 export interface ResolvedTtsSettings {
+  showInSidebar: boolean
   qqbotEnabled: boolean
   qqbotMaxAutoCharacters: number
   qqbotMaxDurationSeconds: number
@@ -87,6 +90,7 @@ export interface ResolvedTtsSettings {
   localSpeechMode: TtsLocalSpeechMode
   localVoiceURI: string
   localVoiceEngine: TtsLocalVoiceEngine
+  mossEnabled: boolean
   mossBaseURL: string
   mossVoice: string
   mossVoiceName: string
@@ -115,6 +119,7 @@ export interface ResolvedTtsSettings {
 
 /** Defaults shared by the Schemastery config and the Web settings form. */
 export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
+  showInSidebar: false,
   qqbotEnabled: false,
   qqbotMaxAutoCharacters: 0,
   qqbotMaxDurationSeconds: 0,
@@ -137,6 +142,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   localSpeechMode: 'auto',
   localVoiceURI: '',
   localVoiceEngine: 'browser',
+  mossEnabled: false,
   mossBaseURL: DEFAULT_MOSS_BASE_URL,
   mossVoice: '',
   mossVoiceName: '',

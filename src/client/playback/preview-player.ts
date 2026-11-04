@@ -30,6 +30,12 @@ export interface PreviewView {
   error: PreviewError | null
 }
 
+export interface PreviewRecording {
+  blob: Blob
+  format: 'mp3' | 'wav'
+  text: string
+}
+
 export interface PreviewSettings {
   provider?: TtsProvider
   doubaoModel?: DoubaoTtsModel
@@ -144,10 +150,18 @@ export class PreviewPlayer {
   private error: PreviewError | null = null
   private volume = 1
   private voiceRate = 1
+  private recording: PreviewRecording | null = null
 
   constructor(private readonly onViewChange: (view: PreviewView) => void, private readonly history?: AudioHistory) {}
 
   getView(): PreviewView { return { status: this.status, source: this.source, error: this.error } }
+
+  getRecording(): PreviewRecording | null { return this.recording }
+
+  private setRecording(recording: PreviewRecording | null): void {
+    this.recording = recording
+    this.onViewChange(this.getView())
+  }
 
   setVolume(value: number): void {
     this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
@@ -254,6 +268,7 @@ export class PreviewPlayer {
       this.utterance = null
     }
     this.publish('idle', null)
+    if (this.recording !== null) this.setRecording(null)
   }
 
   async dispose(): Promise<void> {
@@ -291,7 +306,11 @@ export class PreviewPlayer {
         })
         stream.append(text)
         await stream.finish()
-        if (generation === this.generation) recording.save(this.history, { text, source: 'preview', voiceRateApplied: true })
+        if (generation === this.generation) {
+          const blob = recording.toWav()
+          if (blob !== null) this.setRecording({ blob, text, format: 'wav' })
+          recording.save(this.history, { text, source: 'preview', voiceRateApplied: true })
+        }
       } finally {
         controller.abort()
         if (generation === this.generation) { this.request = null; this.requestBusy = false; this.maybeFinishPcm() }
@@ -313,7 +332,7 @@ export class PreviewPlayer {
     await this.playPcm(text, settings, generation)
   }
 
-  private async playComplete(text: string, settings: PreviewSettings, generation: number, format: 'mp3' | 'wav', source: PreviewSource = 'mimo'): Promise<void> {
+  private async playComplete(text: string, settings: PreviewSettings, generation: number, format: 'mp3' | 'wav', source: PreviewSource = 'mimo', capture = true): Promise<void> {
     this.publish('loading', source)
     const controller = new AbortController()
     this.request = controller
@@ -326,6 +345,7 @@ export class PreviewPlayer {
     if (!response.ok) throw await responseError(response)
     const blob = await response.blob()
     if (generation !== this.generation) return
+    if (capture && blob.size > 0) this.setRecording({ blob, text, format })
     void this.history?.add({ blob, text, format, source: 'preview' })
     this.request = null
     const url = URL.createObjectURL(blob)
@@ -367,7 +387,7 @@ export class PreviewPlayer {
     const segments = breeze ? splitBreezeTtsSegments(text) : splitTtsSegments(text)
     for (const segment of segments) {
       if (generation !== this.generation) return
-      await this.playComplete(segment, settings, generation, 'wav', breeze ? 'breeze' : 'mimo')
+      await this.playComplete(segment, settings, generation, 'wav', breeze ? 'breeze' : 'mimo', false)
     }
   }
 
@@ -412,6 +432,8 @@ export class PreviewPlayer {
       pending += decoder.decode()
       if (generation === this.generation && !controller.signal.aborted) {
         if (pending.trim().length > 0) await consume(parseSseRecords(`${pending}\n\n`).events)
+        const blob = recording.toWav()
+        if (blob !== null) this.setRecording({ blob, text, format: 'wav' })
         recording.save(this.history, { text, source: 'preview' })
       }
     } finally {
@@ -426,6 +448,7 @@ export class PreviewPlayer {
   }
 
   private playLocal(text: string, settings: Pick<PreviewSettings, 'localVoiceURI' | 'localVoiceEngine' | 'mossBaseURL' | 'mossVoice' | 'voiceVolume' | 'voiceRate'>, generation: number): Promise<void> {
+    if (this.recording !== null) this.setRecording(null)
     this.publish('loading', 'local')
     if (settings.localVoiceEngine === 'moss') return this.playMossLocal(text, settings, generation)
     if (typeof window === 'undefined' || window.speechSynthesis === undefined) return Promise.reject(new PreviewPlaybackError('local-voice-unavailable', 'local-speech-unavailable'))
@@ -476,6 +499,7 @@ export class PreviewPlayer {
     try {
       const blob = await fetchMossAudio(text, { baseURL: settings.mossBaseURL, voice: settings.mossVoice }, controller.signal)
       if (generation !== this.generation || controller.signal.aborted) return
+      if (blob.size > 0) this.setRecording({ blob, text, format: 'wav' })
       const handle = playMossAudio(blob, {
         volume: this.volume,
         rate: this.voiceRate,

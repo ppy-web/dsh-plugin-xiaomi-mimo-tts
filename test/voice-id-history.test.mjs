@@ -91,3 +91,26 @@ test('removing a voice forgets its history and remark, survives reload and allow
   assert.equal(Object.hasOwn(readVoiceIdNames('cloned', storage), 'same-id'), false)
   assert.deepEqual(forgetVoiceId(['only'], { only: 'Label' }, 'only'), { history: [], names: {} })
 })
+
+test('voice library subscribers observe same-page writes, cross-tab storage changes, and unsubscribe', async t => {
+  const { subscribeVoiceIds, voiceIdRevision } = await loadClientModule('src/client/settings/voice-id-history.ts')
+  const window = new EventTarget()
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'window')
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: window })
+  t.after(() => { if (original) Object.defineProperty(globalThis, 'window', original); else delete globalThis.window })
+  const stored = new Map()
+  const storage = { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value) }
+  const revisions = []
+  const off = subscribeVoiceIds(() => revisions.push(voiceIdRevision()))
+  writeVoiceIdNames('breeze', { voice: '备注' }, storage)
+  assert.equal(revisions.length, 1)
+  writeVoiceIdNames('breeze', { voice: '备注' }, storage)
+  assert.equal(revisions.length, 1)
+  const event = new Event('storage')
+  Object.defineProperty(event, 'key', { value: 'dsh-xiaomi-mimo-tts:breeze-voice-history:names' })
+  window.dispatchEvent(event)
+  assert.equal(revisions.length, 2)
+  off()
+  window.dispatchEvent(event)
+  assert.equal(revisions.length, 2)
+})

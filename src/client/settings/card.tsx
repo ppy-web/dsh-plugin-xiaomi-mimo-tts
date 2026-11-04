@@ -52,14 +52,6 @@ interface SettingsCardProps {
 
 type DraftSettings = SettingsValues
 
-const PREVIEW_TEXT_KEYS = [
-  'settings.previewDefaultText',
-  'settings.previewDefaultTextPoetry',
-  'settings.previewDefaultTextInspiration',
-  'settings.previewDefaultTextReflection',
-  'settings.previewDefaultTextHumor',
-] as const
-
 /** Secret fields map one-to-one to the provider whose key they hold. */
 const API_KEY_STATE = {
   apiKey: 'xiaomi',
@@ -118,6 +110,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const apiKey = apiKeys[provider]
   const apiKeyField = API_KEY_BY_PROVIDER[provider]
   const setApiKey = (next: string): void => { setApiKeys(current => ({ ...current, [provider]: next })) }
+  const [showInSidebar, setShowInSidebar] = useState(initial.showInSidebar)
   const [announcementSources, setAnnouncementSources] = useState(initial.announcementSources)
   const [qqbotEnabled, setQqbotEnabled] = useState(initial.qqbotEnabled)
   const [enabled, setEnabled] = useState(initial.enabled)
@@ -129,6 +122,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [localSpeechMode, setLocalSpeechMode] = useState(initial.localSpeechMode)
   const [localVoiceURI, setLocalVoiceURI] = useState(initial.localVoiceURI)
   const [localVoiceEngine, setLocalVoiceEngine] = useState(initial.localVoiceEngine)
+  const [mossEnabled, setMossEnabled] = useState(initial.mossEnabled)
   const [mossBaseURL, setMossBaseURL] = useState(initial.mossBaseURL)
   const [mossVoice, setMossVoice] = useState(initial.mossVoice)
   const [mossVoiceName, setMossVoiceName] = useState(initial.mossVoiceName)
@@ -145,8 +139,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [saveError, setSaveError] = useState<'api-key-rejected' | 'host-rejected' | 'unknown' | null>(null)
   const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | null>(null)
   const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast'): void => setOpenPanel(current => current === panel ? null : panel)
-  const [previewDefaultText] = useState(() => t(PREVIEW_TEXT_KEYS[Math.floor(Math.random() * PREVIEW_TEXT_KEYS.length)]))
-  const [previewText, setPreviewText] = useState(previewDefaultText)
+  const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
   const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView, history))
   useEffect(() => speechActivity?.register(() => isSpeechBusy(previewPlayer.getView().status)), [speechActivity, previewPlayer])
@@ -164,7 +157,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { showInSidebar, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -180,7 +173,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     const change = changes[field]
     if (change === undefined) return false
     if (change.kind === 'clear') return hasOverride(field)
-    return field === 'announcementSources' ? JSON.stringify(draft[field]) !== JSON.stringify(acceptedValue(field)) : !Object.is(draft[field], acceptedValue(field))
+    return Array.isArray(draft[field]) ? JSON.stringify(draft[field]) !== JSON.stringify(acceptedValue(field)) : !Object.is(draft[field], acceptedValue(field))
   }
   const apiKeyDirty = (Object.keys(API_KEY_STATE) as ApiKeyField[]).some(field => changes[field]?.kind === 'set' && apiKeys[API_KEY_STATE[field]].trim().length > 0)
   const dirty = EDITABLE_SETTING_FIELDS.some(fieldDirty) || apiKeyDirty
@@ -214,6 +207,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setBreezeVoice(next.breezeVoice)
     setBreezeInstruction(next.breezeInstruction)
     setInstruction(next.instruction)
+    setShowInSidebar(next.showInSidebar)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
@@ -225,6 +219,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setLocalSpeechMode(next.localSpeechMode)
     setLocalVoiceURI(next.localVoiceURI)
     setLocalVoiceEngine(next.localVoiceEngine)
+    setMossEnabled(next.mossEnabled)
     setMossBaseURL(next.mossBaseURL)
     setMossVoice(next.mossVoice)
     setMossVoiceName(next.mossVoiceName)
@@ -277,6 +272,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'breezeVoice') setBreezeVoice(base.breezeVoice)
     if (field === 'breezeInstruction') setBreezeInstruction(base.breezeInstruction)
     if (field === 'instruction') setInstruction(base.instruction)
+    if (field === 'showInSidebar') setShowInSidebar(base.showInSidebar)
     if (field === 'announcementSources') setAnnouncementSources(base.announcementSources)
     if (field === 'qqbotEnabled') setQqbotEnabled(base.qqbotEnabled)
     if (field === 'enabled') setEnabled(base.enabled)
@@ -287,7 +283,14 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'model') setModel(base.model)
     if (field === 'localSpeechMode') setLocalSpeechMode(base.localSpeechMode)
     if (field === 'localVoiceURI') setLocalVoiceURI(base.localVoiceURI)
-    if (field === 'localVoiceEngine') setLocalVoiceEngine(base.localVoiceEngine)
+    if (field === 'localVoiceEngine') setLocalVoiceEngine(!mossEnabled ? 'browser' : base.localVoiceEngine)
+    if (field === 'mossEnabled') {
+      setMossEnabled(base.mossEnabled)
+      if (!base.mossEnabled && localVoiceEngine === 'moss') {
+        setLocalVoiceEngine('browser')
+        setChanges(current => ({ ...current, localVoiceEngine: { kind: 'set' } }))
+      }
+    }
     if (field === 'mossBaseURL') setMossBaseURL(base.mossBaseURL)
     if (field === 'mossVoice') setMossVoice(base.mossVoice)
     if (field === 'mossVoiceName') setMossVoiceName(base.mossVoiceName)
@@ -313,6 +316,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setBreezeVoice(next.breezeVoice)
     setBreezeInstruction(next.breezeInstruction)
     setInstruction(next.instruction)
+    setShowInSidebar(next.showInSidebar)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
@@ -324,6 +328,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setLocalSpeechMode(next.localSpeechMode)
     setLocalVoiceURI(next.localVoiceURI)
     setLocalVoiceEngine(next.localVoiceEngine)
+    setMossEnabled(next.mossEnabled)
     setMossBaseURL(next.mossBaseURL)
     setMossVoice(next.mossVoice)
     setMossVoiceName(next.mossVoiceName)
@@ -369,6 +374,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       return
     }
     if (validationError !== null || changes[apiKeyField] !== undefined) {
+      previewPlayer.stop()
       setPreviewView({ status: 'error', source: provider === 'doubao' ? 'doubao' : provider === 'breeze' ? 'breeze' : 'mimo', error: validationError !== null ? 'voice-required' : 'save-key-first' })
       return
     }
@@ -525,6 +531,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           localSpeechMode={localSpeechMode}
           localVoiceURI={localVoiceURI}
           localVoiceEngine={localVoiceEngine}
+          mossEnabled={mossEnabled}
           mossBaseURL={mossBaseURL}
           mossVoice={mossVoice}
           mossVoiceName={mossVoiceName}
@@ -559,6 +566,15 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
         /> : null}
         {enabled ? <PreviewModule
+          mossEnabled={mossEnabled}
+          onMossEnabledChange={next => {
+            previewPlayer.stop()
+            setMossEnabled(next)
+            const switchToBrowser = !next && localVoiceEngine === 'moss'
+            if (switchToBrowser) setLocalVoiceEngine('browser')
+            setChanges(current => ({ ...current, mossEnabled: { kind: 'set' }, ...(switchToBrowser ? { localVoiceEngine: { kind: 'set' } as const } : {}) }))
+            setState('idle')
+          }}
           doubaoEnabled={doubaoEnabled}
           breezeEnabled={breezeEnabled}
           onProviderEnabledChange={(target, next) => {
@@ -581,7 +597,12 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           text={previewText}
           breezeAudioTags={provider === 'breeze'}
           onToggle={toggleSettingsPreview}
-          onTextChange={setPreviewText}
+          onTextChange={next => { previewPlayer.stop(); setPreviewText(next) }}
+          recording={previewPlayer.getRecording()}
+          showInSidebar={showInSidebar}
+          sidebarOverridden={fieldOverridden('showInSidebar')}
+          onShowInSidebarChange={next => { setShowInSidebar(next); markChange('showInSidebar') }}
+          onResetSidebar={() => resetField('showInSidebar')}
           sources={announcementSources}
           qqbotEnabled={qqbotEnabled}
           onQqbotChange={next => { setQqbotEnabled(next); markChange('qqbotEnabled') }}

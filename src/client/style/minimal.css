@@ -307,8 +307,8 @@
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-preview-input {
-  display: flex;
-  align-items: center;
+    display: grid;
+    align-items: stretch;
   gap: 6px;
 }
 

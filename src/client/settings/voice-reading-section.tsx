@@ -8,7 +8,7 @@ import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
-import { readVoiceIdHistory } from './voice-id-history.js'
+import { readVoiceIdHistory, readVoiceIdNames, subscribeVoiceIds, voiceIdRevision } from './voice-id-history.js'
 import { VoiceReadingHeaderActions } from './voice-reading-links.js'
 import {
   autoPlayWriteOps,
@@ -62,13 +62,14 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
   const minimalMode = useSyncExternalStore(subscribeMinimalMode, readMinimalMode, () => false)
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
-  const [clonedHistory] = useState(() => readVoiceIdHistory('cloned'))
+  const voiceRevision = useSyncExternalStore(subscribeVoiceIds, voiceIdRevision, () => 0)
+  const library = useMemo(() => Object.fromEntries((['standard', 'cloned', 'breeze'] as const).map(kind => [kind, { history: readVoiceIdHistory(kind), names: readVoiceIdNames(kind) }])), [voiceRevision])
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const settings = useMemo(() => resolveTtsSettings(snapshot.value), [snapshot.value])
   const source = useMemo(
-    () => buildVoiceReadingVoiceSource(settings, clonedHistory),
-    [settings, clonedHistory],
+    () => buildVoiceReadingVoiceSource(settings, [], library),
+    [settings, library],
   )
 
   const write = (ops: VoiceReadingWriteOp[]): void => {

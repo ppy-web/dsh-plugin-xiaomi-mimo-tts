@@ -26,6 +26,7 @@ export interface LocalVoiceModuleProps {
   writable: boolean
   localSpeechMode: TtsLocalSpeechMode
   engine: TtsLocalVoiceEngine
+  mossEnabled: boolean
   browserVoiceURI: string
   mossBaseURL: string
   mossVoice: string
@@ -84,11 +85,12 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 export function LocalVoiceModule({
-  t, minimal, writable, localSpeechMode, engine, browserVoiceURI,
+  t, minimal, writable, localSpeechMode, engine: selectedEngine, mossEnabled, browserVoiceURI,
   mossBaseURL, mossVoice, mossVoiceName,
   fieldOverridden, resetField, onEngineChange, onBrowserVoiceChange,
   onMossBaseURLChange, onMossVoiceChange, onBrowserAvailabilityChange,
 }: LocalVoiceModuleProps): ReactElement {
+  const engine = mossEnabled ? selectedEngine : 'browser'
   const [probe, setProbe] = useState<ProbeState>({ status: 'idle' })
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const probeAbort = useRef<AbortController | null>(null)
@@ -186,7 +188,7 @@ export function LocalVoiceModule({
       }}
       suffix={<small className="xmimo-tts-hint xmimo-tts-local-voice-engine-note" style={{ fontSize: '11px' }}>{engine === 'moss' ? 'MOSS' : 'Microsoft Edge – Better'}</small>}
     />
-    <div className="xmimo-tts-settings-segmented-wrap xmimo-tts-local-voice-tabs" data-xmimo-select-option="true" style={{ '--xmimo-experimental-label': JSON.stringify(t('settings.experimental')) } as CSSProperties}>
+    {mossEnabled ? <div className="xmimo-tts-settings-segmented-wrap xmimo-tts-local-voice-tabs" data-xmimo-select-option="true" style={{ '--xmimo-experimental-label': JSON.stringify(t('settings.experimental')) } as CSSProperties}>
       <SegmentedControl
         id="xmimo-tts-local-voice-engine"
         value={engine}
@@ -199,7 +201,7 @@ export function LocalVoiceModule({
         onChange={onEngineChange}
         className="xmimo-tts-settings-segmented xmimo-tts-local-voice-segmented"
       />
-    </div>
+    </div> : null}
     {engine === 'browser' ? <LocalVoicePicker
       value={browserVoiceURI}
       disabled={disabled}

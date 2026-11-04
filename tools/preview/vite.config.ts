@@ -21,6 +21,7 @@ const assetDirectories = new Map([
 
 const assetFiles = new Map([
   ['mimo.svg', path.join(repositoryRoot, 'assets', 'mimo.svg')],
+  ['provider-moss-logo.svg', path.join(repositoryRoot, 'assets', 'ui', 'provider-moss-logo.svg')],
   ['toggle-characters.webp', path.join(repositoryRoot, 'assets', 'ui', 'toggle-characters.webp')],
   ['sound-effects-toggle-characters.webp', path.join(repositoryRoot, 'assets', 'ui', 'sound-effects-toggle-characters.webp')],
   ['provider-mimo.webp', path.join(repositoryRoot, 'assets', 'ui', 'provider-mimo.webp')],
@@ -97,7 +98,7 @@ export default defineConfig({
   },
   server: {
     host: true,
-    open: true,
+    open: false,
   },
   build: {
     outDir: path.join(repositoryRoot, '.preview-dist'),

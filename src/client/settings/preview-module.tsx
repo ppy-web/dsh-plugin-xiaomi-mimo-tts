@@ -1,21 +1,29 @@
-import { useRef, type ReactElement } from 'react'
-import { RiRadio2Line } from 'react-icons/ri'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { RiDownloadLine, RiRadio2Line } from 'react-icons/ri'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PreviewError, PreviewSource, PreviewStatus } from '../playback/preview-player.js'
+import type { PreviewError, PreviewRecording, PreviewSource, PreviewStatus } from '../playback/preview-player.js'
 import { CollapsibleModule } from './collapsible-module.js'
 import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS } from './announcement-settings.js'
 import type { AnnouncementSettingsProps } from './announcement-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { BreezeAudioTagPicker } from './controls/breeze-audio-tag-picker.js'
+import { SidebarSettings } from './sidebar-settings.js'
 import { ProviderSettings } from './provider-settings.js'
 import type { ProviderSettingsProps } from './provider-settings.js'
+import { PREVIEW_PRESETS } from './preview-presets.js'
+import { HistoryDownloads } from '../history/history-list.js'
 
 export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<ProviderSettingsProps, 't' | 'writable'> {
+  showInSidebar: boolean
+  sidebarOverridden: boolean
+  onShowInSidebarChange: (value: boolean) => void
+  onResetSidebar: () => void
   enabled: boolean
   status: PreviewStatus
   source: PreviewSource
   error: PreviewError | null
   text: string
+  recording: PreviewRecording | null
   onToggle: () => void
   onTextChange: (value: string) => void
   open: boolean
@@ -23,8 +31,18 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<Prov
   breezeAudioTags?: boolean
 }
 
-export function PreviewModule({ t, enabled, status, source, error, text, onToggle, onTextChange, open, onToggleOpen, breezeAudioTags = false, doubaoEnabled, breezeEnabled, onProviderEnabledChange, ...settings }: PreviewModuleProps): ReactElement {
+export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, breezeAudioTags = false, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, showInSidebar, sidebarOverridden, onShowInSidebarChange, onResetSidebar, ...settings }: PreviewModuleProps): ReactElement {
   const textRef = useRef<HTMLTextAreaElement>(null)
+  const [downloads] = useState(() => new HistoryDownloads())
+  const [downloadFailed, setDownloadFailed] = useState(false)
+  useEffect(() => () => downloads.dispose(), [downloads])
+  const changeText = (next: string): void => { setDownloadFailed(false); onTextChange(next) }
+  const download = (): void => {
+    if (recording === null) return
+    setDownloadFailed(false)
+    try { downloads.downloadBlob(recording.blob, `tts-preview-${Date.now()}.${recording.format}`) }
+    catch { setDownloadFailed(true) }
+  }
   const insertTag = (tag: string): void => {
     const textarea = textRef.current
     if (textarea === null) return
@@ -32,7 +50,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
     const end = textarea.selectionEnd ?? start
     const spacer = start > 0 && !/\s$/u.test(text.slice(0, start)) ? ' ' : ''
     const next = `${text.slice(0, start)}${spacer}${tag}${text.slice(end)}`
-    onTextChange(next)
+    changeText(next)
     requestAnimationFrame(() => { textarea.focus(); const position = start + spacer.length + tag.length; textarea.setSelectionRange(position, position) })
   }
   const busy = status === 'loading' || status === 'playing'
@@ -95,30 +113,46 @@ export function PreviewModule({ t, enabled, status, source, error, text, onToggl
           <textarea
             ref={textRef}
             value={text}
-            rows={2}
+            rows={5}
             maxLength={100}
             aria-label={t('settings.previewText')}
             placeholder={t('settings.previewPlaceholder')}
-            onChange={(event) => { onTextChange(event.target.value) }}
+            onChange={(event) => { changeText(event.target.value) }}
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="xmimo-tts-preview-toggle"
-            title={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
-            aria-label={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
-            disabled={!enabled || text.trim().length === 0}
-            onClick={onToggle}
-          ><PlaybackIcon state={busy ? 'stop' : 'play'} /></Button>
+          <div className="xmimo-tts-preview-tools">
+            <div className="xmimo-tts-preview-presets" role="group" aria-label={t('settings.previewPresets')}>
+              {PREVIEW_PRESETS.map(preset => <button key={preset.text} type="button" className="xmimo-tts-preview-preset"
+                aria-pressed={text === t(preset.text)} title={t(preset.text)}
+                onClick={() => changeText(t(preset.text))}>{t(preset.label)}</button>)}
+            </div>
+            <div className="xmimo-tts-preview-actions">
+              {breezeAudioTags ? <BreezeAudioTagPicker disabled={!enabled} onInsert={insertTag} t={t} /> : null}
+              <div className="xmimo-tts-preview-playback-actions">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="xmimo-tts-preview-toggle"
+                  title={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
+                  aria-label={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
+                  disabled={!enabled || (!busy && text.trim().length === 0)}
+                  onClick={() => { setDownloadFailed(false); onToggle() }}
+                ><PlaybackIcon state={busy ? 'stop' : 'play'} /><span>{t(busy ? 'settings.previewStopShort' : 'settings.previewListen')}</span></Button>
+                <Button type="button" variant="ghost" size="sm" className="xmimo-tts-preview-download"
+                  aria-label={t('settings.previewDownload')}
+                  title={t(recording !== null ? 'settings.previewDownload' : source === 'local' ? 'settings.previewDownloadLocal' : 'settings.previewDownloadUnavailable')}
+                  disabled={recording === null} onClick={download}><RiDownloadLine size={16} aria-hidden="true" /><span>{t('history.download')}</span></Button>
+              </div>
+            </div>
+          </div>
         </div>
-        {breezeAudioTags ? <BreezeAudioTagPicker disabled={!enabled} onInsert={insertTag} t={t} /> : null}
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
+        {downloadFailed ? <small className="xmimo-tts-failed" role="alert">{t('settings.previewDownloadFailed')}</small> : null}
       </div>
-      <ProviderSettings t={t} writable={settings.writable} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} onProviderEnabledChange={onProviderEnabledChange} />
-      <AnnouncementSettings t={t} sources={settings.sources} writable={settings.writable} overridden={settings.overridden}
-        qqbotEnabled={settings.qqbotEnabled} onQqbotChange={settings.onQqbotChange}
-        onChange={settings.onChange} onReset={settings.onReset} />
+      <ProviderSettings t={t} writable={settings.writable} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} mossEnabled={mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange} />
+      <AnnouncementSettings t={t} {...settings}>
+        <SidebarSettings t={t} value={showInSidebar} writable={settings.writable} overridden={sidebarOverridden} onChange={onShowInSidebarChange} onReset={onResetSidebar} />
+      </AnnouncementSettings>
     </div>
   </CollapsibleModule>
 }

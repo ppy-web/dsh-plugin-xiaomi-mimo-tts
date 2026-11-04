@@ -25,6 +25,7 @@ import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail
 import { ActivationGuide } from './settings/activation-guide.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
 import { registerVoiceReadingNavIcon } from './settings/nav-icon.js'
+import { registerVoiceSettingsSidebar } from './settings/sidebar-action.js'
 import { VoiceReadingSection } from './settings/voice-reading-section.js'
 import type { VoiceReadingSectionInjected } from './settings/voice-reading-section.js'
 import { createSoundEffectsController, installClickSounds } from './sound-effects/index.js'
@@ -59,7 +60,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: Context,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'plugins.row.config' | 'settings.section' | 'settings.section.icon' | 'plugins.bundle.activation' | 'plugins.detail.actions' | 'plugins.detail.badge',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'plugins.row.config' | 'settings.section' | 'sidebar.panellist' | 'settings.section.icon' | 'plugins.bundle.activation' | 'plugins.detail.actions' | 'plugins.detail.badge',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -280,6 +281,8 @@ export function apply(ctx: Context): void {
     locale: NS,
     inject: () => ({ scope, t, audioFocus, changes, beforePreview: stopAllPlayback }),
   }, ActivationGuide))
+
+  registerSlotContribution(ctx, 'sidebar.panellist', () => registerVoiceSettingsSidebar(ctx, scope, t))
 
   registerSlotContribution(ctx, 'settings.section', () => ctx.slots.register({
     name: 'settings.section',

@@ -9,10 +9,11 @@ import { SOURCE_URL } from '../../src/client/settings/plugin-links.js'
 const GROUPS: { label: 'speech' | 'plugin' | 'help'; items: { view: PreviewView; icon: IconType }[] }[] = [
   { label: 'speech', items: [{ view: 'settings', icon: LuSettings2 }, { view: 'voice', icon: LuVolume2 }, { view: 'conversation', icon: LuMessageSquare }] },
   { label: 'plugin', items: [{ view: 'detail', icon: LuInfo }, { view: 'components', icon: LuPackage }] },
-  { label: 'help', items: [{ view: 'filter', icon: LuTextSearch }, { view: 'manual', icon: LuBookOpen }, { view: 'qqbot', icon: LuMessagesSquare }, { view: 'doubao', icon: LuMic }, { view: 'passport', icon: LuRadio }] },
+  { label: 'help', items: [{ view: 'filter', icon: LuTextSearch }, { view: 'manual', icon: LuBookOpen }, { view: 'qqbot', icon: LuMessagesSquare }, { view: 'xiaomi', icon: LuMic }, { view: 'doubao', icon: LuMic }, { view: 'breeze', icon: LuMic }, { view: 'passport', icon: LuRadio }] },
 ]
 
 interface PreviewSidebarProps {
+  voiceSettingsLabel?: string | undefined
   copy: PreviewCopy
   activeView: PreviewView
   readOnly: boolean
@@ -23,7 +24,7 @@ interface PreviewSidebarProps {
   onClose?: () => void
 }
 
-export function PreviewSidebar({ copy, activeView, readOnly, onReadOnlyChange, onNavigate, onActivation, onReset, onClose }: PreviewSidebarProps) {
+export function PreviewSidebar({ copy, activeView, readOnly, onReadOnlyChange, onNavigate, onActivation, onReset, onClose, voiceSettingsLabel }: PreviewSidebarProps) {
   return <div className="preview-sidebar-content">
     <div className="preview-workspace-brand">
       <img src={pluginIcon} alt="" width={36} height={36} />
@@ -31,6 +32,7 @@ export function PreviewSidebar({ copy, activeView, readOnly, onReadOnlyChange, o
       {onClose ? <button type="button" className="preview-icon-button" aria-label={copy.closeNavigation} onClick={onClose}><LuX /></button> : null}
     </div>
     <nav aria-label={copy.navigation} className="preview-navigation">
+      {voiceSettingsLabel ? <div className="preview-nav-group"><ul><li><a href="#settings" title={voiceSettingsLabel} onClick={onNavigate}><LuVolume2 aria-hidden="true" /><span className="preview-sidebar-label">{voiceSettingsLabel}</span></a></li></ul></div> : null}
       {GROUPS.map(group => <div className="preview-nav-group" key={group.label}>
         <p className="preview-nav-group-label">{copy[group.label]}</p>
         <ul>

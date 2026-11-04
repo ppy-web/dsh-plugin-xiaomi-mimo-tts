@@ -1,8 +1,9 @@
 import type { CSSProperties, ReactElement } from 'react'
 import { Switch, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { TTS_BREEZE_WORDMARK_ASSET_ROUTE, TTS_PROVIDER_LOGO_ASSET_ROUTES } from '../../shared.js'
+import { TTS_BREEZE_WORDMARK_ASSET_ROUTE, TTS_MOSS_LOGO_ASSET_ROUTE, TTS_PROVIDER_LOGO_ASSET_ROUTES } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
+import { FieldInfo } from './controls/field-info.js'
 import { SettingFieldHeading } from './field-heading.js'
 
 export interface ProviderSettingsProps {
@@ -10,20 +11,21 @@ export interface ProviderSettingsProps {
   writable: boolean
   doubaoEnabled: boolean
   breezeEnabled: boolean
+  mossEnabled: boolean
+  onMossEnabledChange: (enabled: boolean) => void
   onProviderEnabledChange: (provider: 'doubao' | 'breeze', enabled: boolean) => void
 }
 
-export function ProviderSettings({ t, writable, doubaoEnabled, breezeEnabled, onProviderEnabledChange }: ProviderSettingsProps): ReactElement {
-  return <section className="xmimo-tts-format xmimo-tts-provider-settings" aria-label={t('settings.provider')}>
-    <SettingFieldHeading label={t('settings.provider')} resettable={false} disabled={!writable} />
-    <small>{t('settings.providerMinimum')}</small>
+export function ProviderSettings({ t, writable, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange }: ProviderSettingsProps): ReactElement {
+  return <section className="xmimo-tts-format xmimo-tts-provider-settings xmimo-tts-switch-grid" aria-label={t('settings.provider')}>
+    <SettingFieldHeading label={t('settings.provider')} suffix={<FieldInfo label={t('settings.provider')} text={t('settings.providerMinimum')} />} resettable={false} disabled={!writable} />
     <div className="xmimo-tts-announcement-source">
-      <span className="xmimo-tts-provider-settings-brand"><img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES.xiaomi)} alt="" /><span>{t('settings.providerXiaomi')}</span></span>
-      <Switch checked disabled label={t('settings.providerXiaomi')} onChange={() => {}} />
+      <span className="xmimo-tts-provider-settings-brand"><img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES.xiaomi)} alt="" /><span>XiaoMi Mimo</span></span>
+      <Switch checked disabled label="XiaoMi Mimo" onChange={() => {}} />
     </div>
     <div className="xmimo-tts-announcement-source">
-      <span className="xmimo-tts-provider-settings-brand"><img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES.doubao)} alt="" /><span>{t('settings.providerDoubao')}</span></span>
-      <Switch checked={doubaoEnabled} disabled={!writable || (doubaoEnabled && !breezeEnabled)} label={t('settings.providerDoubao')} onChange={next => onProviderEnabledChange('doubao', next)} />
+      <span className="xmimo-tts-provider-settings-brand"><img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES.doubao)} alt="" /><span>DouBao Seed</span></span>
+      <Switch checked={doubaoEnabled} disabled={!writable || (doubaoEnabled && !breezeEnabled)} label="DouBao Seed" onChange={next => onProviderEnabledChange('doubao', next)} />
     </div>
     <div className="xmimo-tts-announcement-source">
       <span className="xmimo-tts-more-provider-brand">
@@ -31,6 +33,14 @@ export function ProviderSettings({ t, writable, doubaoEnabled, breezeEnabled, on
         <Tag tone="info" className="xmimo-tts-experimental-tag">{t('settings.experimental')}</Tag>
       </span>
       <Switch checked={breezeEnabled} disabled={!writable || (breezeEnabled && !doubaoEnabled)} label={t('settings.breezeEnabled')} onChange={next => onProviderEnabledChange('breeze', next)} />
+    </div>
+    <div className="xmimo-tts-announcement-source">
+      <span className="xmimo-tts-provider-settings-brand xmimo-tts-provider-settings-local">
+        <img src={hostRoute(TTS_MOSS_LOGO_ASSET_ROUTE)} alt="" />
+        <span>{t('settings.mossProvider')}</span>
+        <Tag tone="info" className="xmimo-tts-experimental-tag">{t('settings.experimental')}</Tag>
+      </span>
+      <Switch checked={mossEnabled} disabled={!writable} label={t('settings.mossProvider')} onChange={onMossEnabledChange} />
     </div>
   </section>
 }
