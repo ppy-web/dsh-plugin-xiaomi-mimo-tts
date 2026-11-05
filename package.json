@@ -279,7 +279,7 @@
     "anser": "^2.3.5",
     "clsx": "^2.0.0",
     "immer": "11.1.18",
-    "js-yaml": "4.3.1",
+    "js-yaml": "5.5.0",
     "katex": "^0.18.7",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm": "^3.1.0",
