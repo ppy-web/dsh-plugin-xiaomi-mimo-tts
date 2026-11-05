@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "MiMo & Seed TTS",
-    "description": "Lecture vocale Xiaomi MiMo et Doubao pour DSH, avec historique audio, téléchargement, repli sur la voix du navigateur et effets sonores facultatifs.",
+    "description": "Ajoute Xiaomi MiMo TTS, Doubao Seed TTS, Breeze Blue TTS et la synthèse vocale locale à DSH, avec téléchargement audio, effets sonores, intégration aux compagnons de bureau et à QQBot, et connexion à AI Passport.",
     "detail": "intro.md"
   }
 }

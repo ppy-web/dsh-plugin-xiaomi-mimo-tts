@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "MiMo & Seed TTS",
-    "description": "Xiaomi MiMo と Doubao による DSH の音声読み上げ。音声履歴とダウンロード、ブラウザー音声への切り替え、任意の効果音に対応します。",
+    "description": "DSH に Xiaomi MiMo TTS、Doubao Seed TTS、Breeze Blue TTS、ローカル音声合成を追加。音声ダウンロード、効果音、デスクトップペット・QQBot 連携、AI Passport 接続に対応します。",
     "detail": "intro.md"
   }
 }
