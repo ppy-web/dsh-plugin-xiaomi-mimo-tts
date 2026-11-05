@@ -98,6 +98,7 @@
     "locale",
     "cordis.patch.yml",
     "README.md",
+    "open-api.md",
     "intro.md",
     "skills",
     "!skills/whale-girl/memory",

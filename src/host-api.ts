@@ -3,6 +3,47 @@ import type { TtsProvider } from './types/providers.js'
 
 export type SpeechFormat = 'mp3' | 'wav' | 'silk'
 
+export interface SpeechModelCapabilities {
+  id: string
+  voices: { id: string; name: string }[]
+  customVoice: boolean
+  voiceDesign: boolean
+  speechInstruction: boolean
+  audioTags: boolean
+  voiceRate: boolean
+  streaming: boolean
+  duplex: boolean
+}
+
+export interface SpeechProviderCapabilities {
+  id: TtsProvider
+  configured: boolean
+  /** Local validation only; does not probe upstream credentials or quota. */
+  ready: boolean
+  unavailableReason?: string
+  selectedModel: string
+  selectedVoice: string
+  maxTextLength: number
+  models: SpeechModelCapabilities[]
+}
+
+export interface SpeechCapabilities {
+  provider: TtsProvider
+  formats: SpeechFormat[]
+  providers: SpeechProviderCapabilities[]
+}
+
+/** A Web-entry download URL. Resolve relative to the export response URL. */
+export interface SpeechDownload {
+  audioId: string
+  url: string
+  expiresAt: string
+  size: number
+  format: SpeechFormat
+  contentType: string
+  durationMs?: number
+}
+
 /** A complete audio request. Credentials are always resolved by the Host. */
 export interface SpeechRequest {
   text: string
@@ -62,6 +103,8 @@ export interface SpeechDeliveryAdapter {
 }
 
 export interface SpeechSynthesisService {
+  /** Inspect saved provider configuration and supported features without synthesizing. */
+  capabilities(): SpeechCapabilities
   /** Provider selected by the saved Host settings. Per-request retries do not change it. */
   currentProvider?(): TtsProvider
   /** Whether the saved provider and model accept inline audio tags. */

@@ -64,7 +64,9 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 
 ## 🔌 插件联动
 
-第三方插件通过可选服务调用语音，新播放会中断当前朗读：
+宿主合成、能力查询、音频下载 URL、Agent 工具与浏览器播放的接入方式见[开放能力接口文档](open-api.md)。
+
+第三方插件通过可选服务调用语音播报，新播放会中断当前朗读：
 
 ```ts
 import type { XiaomiMimoTtsService } from 'dsh-xiaomi-tts/client-api'

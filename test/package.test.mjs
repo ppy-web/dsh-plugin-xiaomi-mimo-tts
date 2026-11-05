@@ -67,7 +67,7 @@ test('package metadata exposes the DSH bundle and supported Web client entries',
 })
 
 test('documentation links resolve and documented pnpm commands exist', async () => {
-  for (const name of ['README.md', 'handbook.md', 'intro.md']) {
+  for (const name of ['README.md', 'handbook.md', 'intro.md', 'open-api.md']) {
     const source = name === 'README.md' ? readmeZh : await readFile(new URL(`../${name}`, import.meta.url), 'utf8')
     await assertLocalDocumentTargets(source, name)
     for (const [, command] of source.matchAll(/\bpnpm\s+(?:run\s+)?([\w:-]+)/g)) {

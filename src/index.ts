@@ -39,6 +39,7 @@ import {
 import { registerStaticAsset, registerStaticAssetMap, json } from './host/index.js'
 import { registerSynthesisRoutes } from './host/synthesis-routes.js'
 import { registerMossRoutes } from './host/moss-routes.js'
+import { registerOpenApiRoutes } from './host/open-api-routes.js'
 import SpeechHost from './host/speech-service.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, ttsApiKey } from './shared.js'
 import type { ResolvedTtsSettings } from './shared.js'
@@ -54,6 +55,7 @@ export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = TTS_SETTINGS_NAMESPACE
 
 /** Validated Host settings schema. */
 export const Config = z.object({
+  openApiToken: z.string().role('secret').default('').volatile(),
   showInSidebar: z.boolean().default(false).volatile(),
   qqbotEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.qqbotEnabled).volatile(),
   qqbotMaxAutoCharacters: z.number().step(1).min(0).max(12000).default(0).volatile(),
@@ -121,6 +123,7 @@ export function readConfig(config: Config): ResolvedTtsSettings {
 export function apply(ctx: Context, config: Config): void {
   const current = () => readConfig(config)
   ctx.inject(['webServer'], host => { host.plugin(SpeechHost, { current, updates: (listener: () => void) => ctx.on('loader/volatile-update', listener) }) })
+  ctx.inject(['speechSynthesis'], host => { registerOpenApiRoutes(host, () => config.openApiToken.get()) })
 
   // Load all assets
   const voicePresetAssets = new Map(TTS_VOICE_DESIGN_PRESETS.map((preset) => {

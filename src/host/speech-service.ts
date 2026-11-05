@@ -8,6 +8,7 @@ import type { SynthesisRuntime } from './complete-synthesis.js'
 import { completeAudioFormat, CompleteAudioResponseError, synthesisOptions } from './validation.js'
 import { TtsProviderError, safeProviderError } from './provider-error.js'
 import { cleanupSpeechArtifacts, writeSpeechArtifact } from './speech-files.js'
+import { speechCapabilities } from './capabilities.js'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -35,6 +36,8 @@ export class HostSpeechService implements SpeechSynthesisService {
   }
 
   currentProvider() { return resolveTtsSettings(this.current()).provider }
+
+  capabilities() { return speechCapabilities(resolveTtsSettings(this.current())) }
 
   supportsAudioTags(): boolean {
     const settings = this.current()
