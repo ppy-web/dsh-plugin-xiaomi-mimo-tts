@@ -1,15 +1,16 @@
 import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 import type { ReactElement } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { FiLink, FiCopy, FiCheck, FiRefreshCw } from 'react-icons/fi'
 import type { PluginConfigViewProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, PASSPORT_STATUS_ROUTE } from '../../types/passport.js'
+import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, PASSPORT_STATUS_ROUTE, PASSPORT_PRESETS_ROUTE } from '../../types/passport.js'
 import type { PassportNumberField, PassportSettings } from '../../types/passport.js'
-import type { PassportConnectionStatus } from '../../types/passport.js'
+import type { PassportConnectionStatus, PassportPreset } from '../../types/passport.js'
 import { IDLE_PLUGIN_CHANGES } from '../plugin-activity.js'
 import type { SnapshotSource } from '../plugin-activity.js'
 import type { LocaleKey, Translate } from '../localization.js'
-import { savePassportDraft, validatePassportDraft } from './passport-draft.js'
+import { savePassportDraft, validatePassportDraft, refreshPassportSession } from './passport-draft.js'
 import { useSettingsSnapshot } from './scope.js'
 import { hostRoute } from '../host-route.js'
 
@@ -20,11 +21,12 @@ interface Props extends PluginConfigViewProps {
   tokenConfigured?: SnapshotSource<boolean>
   guideHref?: string
   connectionStatus?: PassportConnectionStatus
+  presets?: PassportPreset[]
 }
 
 const GROUPS = [
   { id: 'connection', fields: ['host', 'port', 'accessToken', 'deviceId'] },
-  { id: 'session', fields: ['agentPreset', 'cwd'] },
+  { id: 'workspace', fields: ['cwd'] },
   { id: 'capture', fields: ['silenceMs', 'minSpeechMs', 'speechThreshold', 'maxRecordingSeconds'] },
   { id: 'limits', fields: ['maxReplySeconds', 'requestTimeoutMs'] },
 ] as const
@@ -36,7 +38,7 @@ export function PassportSettingsPage(props: Props): ReactElement {
   return <PassportForm {...props} />
 }
 
-function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured, connectionStatus, guideHref = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport' }: Props): ReactElement {
+function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured, connectionStatus, presets, guideHref = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport' }: Props): ReactElement {
   const id = useId()
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
@@ -46,6 +48,23 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
   const [connection, setConnection] = useState<PassportConnectionStatus | undefined>(undefined)
   const [copied, setCopied] = useState('')
   const [pairingCode, setPairingCode] = useState('')
+  const [roster, setRoster] = useState<PassportPreset[] | undefined>(presets)
+  const [rosterFailed, setRosterFailed] = useState(false)
+  const [rosterVersion, setRosterVersion] = useState(0)
+  useEffect(() => {
+    if (presets) { setRoster(presets); return }
+    if (snapshot.status !== 'ready' || changing) return
+    const request = new AbortController()
+    setRoster(undefined); setRosterFailed(false)
+    void fetch(hostRoute(PASSPORT_PRESETS_ROUTE), { cache: 'no-store', credentials: 'same-origin', signal: request.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error('passport-preset-unavailable')
+        const value = await response.json() as { presets: PassportPreset[] }
+        if (!Array.isArray(value.presets) || value.presets.some(item => typeof item.id !== 'string')) throw new Error('passport-preset-unavailable')
+        if (!request.signal.aborted) setRoster(value.presets)
+      }).catch(() => { if (!request.signal.aborted) setRosterFailed(true) })
+    return () => request.abort()
+  }, [presets, snapshot.status, changing, rosterVersion])
   const hasToken = savedToken || (liveToken.scope === scope && liveToken.configured) || !!snapshot.value?.accessToken
   useEffect(() => {
     if (tokenConfigured || snapshot.status !== 'ready' || changing) return
@@ -67,13 +86,14 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
     return () => { request.abort(); clearTimeout(timer) }
   }, [scope, tokenConfigured, snapshot.status, snapshot.revision, changing])
   const [draft, setDraft] = useState<Draft | null>(null)
-  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'renewed' | 'failed'>('idle')
   const accepted = { ...DEFAULT_PASSPORT_SETTINGS, ...snapshot.value, accessToken: snapshot.value?.accessToken ?? '' }
   const value = draft?.value ?? accepted
   const disabled = snapshot.status !== 'ready' || !snapshot.writable || changing || state === 'saving'
   const dirty = draft !== null && Object.keys(DEFAULT_PASSPORT_SETTINGS).some(field => draft.base[field as keyof PassportSettings] !== value[field as keyof PassportSettings])
   const conflict = draft !== null && draft.revision !== snapshot.revision
   const invalid = validatePassportDraft(value, hasToken)
+  const knownPreset = !value.agentPreset || roster?.some(item => item.id === value.agentPreset && !item.unavailable)
   const edit = (field: keyof PassportSettings, next: string | number): void => {
     if (disabled || snapshot.revision === undefined) return
     const revision = snapshot.revision
@@ -85,6 +105,7 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
     setState('saving')
     try {
       await savePassportDraft(scope, draft.base, draft.value, draft.revision, hasToken)
+      if (draft.value.accessToken !== draft.base.accessToken) setPairingCode(/^\d{4}$/u.test(draft.value.accessToken) ? draft.value.accessToken : '')
       if (draft.value.accessToken) setLiveToken({ scope, configured: true })
       setDraft(null)
       setState('saved')
@@ -104,14 +125,30 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
     } catch { setState('failed') }
   }
   const status = connectionStatus ?? connection
+  const renewSession = async (): Promise<void> => {
+    if (disabled || conflict || invalid || !roster || !knownPreset || snapshot.revision === undefined) return
+    setState('saving')
+    try {
+      await refreshPassportSession(scope, draft?.base ?? accepted, value, draft?.revision ?? snapshot.revision, roster, hasToken)
+      if (value.accessToken !== (draft?.base ?? accepted).accessToken) setPairingCode(/^\d{4}$/u.test(value.accessToken) ? value.accessToken : '')
+      if (value.accessToken) setLiveToken({ scope, configured: true })
+      setDraft(null); setState('renewed')
+    } catch { setState('failed') }
+  }
   const statusKey = status?.error === 'passport-port-in-use' ? 'passport.portInUse'
     : status?.error ? 'passport.listenFailed' : !status ? 'passport.statusLoading'
+      : status.sessionError === 'passport-preset-changed' ? 'passport.presetChanged'
+        : status.sessionError === 'passport-preset-unavailable' ? 'passport.presetUnavailable'
+          : status.sessionError === 'passport-session-unavailable' ? 'passport.sessionFailed'
       : typeof status.servicesReady !== 'boolean' ? 'passport.reloadRequired'
       : !status.servicesReady ? 'passport.servicesWaiting'
         : !status.listening ? 'passport.notListening'
           : ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(status.host) ? 'passport.localOnly'
             : !status.recognitionReady ? 'passport.asrWaiting'
               : status.connected ? 'passport.deviceConnected' : 'passport.deviceWaiting'
+  const statusTone = statusKey === 'passport.deviceConnected' ? 'connected'
+    : statusKey === 'passport.deviceWaiting' ? 'waiting'
+      : ['passport.statusLoading', 'passport.notListening'].includes(statusKey) ? 'idle' : 'warning'
 
   if (snapshot.status !== 'ready') return <p role="status">{t(snapshot.status === 'loading' ? 'passport.loading' : 'passport.unavailable')}</p>
   return <form className="xmimo-ui-scope xmimo-qq-settings xmimo-passport-settings" aria-label={t('passport.title')} onSubmit={event => { event.preventDefault(); void save() }}>
@@ -121,22 +158,68 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
     </header>
     {changing ? <p role="status">{t('plugin.changing')}</p> : null}
     <section className="xmimo-passport-quick" aria-labelledby={`${id}-quick`}>
-      <h4 id={`${id}-quick`}>{t('passport.quickTitle')}</h4>
-      <p>{t('passport.quickHint')}</p>
-      <Button type="button" variant="primary" size="sm" disabled={disabled || conflict} onClick={() => { void quickConnect() }}>{t(state === 'saving' ? 'settings.saving' : 'passport.quickEnable')}</Button>
-      {pairingCode ? <p>{t('passport.pairingCode')} <strong className="xmimo-passport-code">{pairingCode}</strong></p> : null}
-      <p role="status">{t(statusKey)}{status?.listening ? ` · ${t('passport.port')} ${status.port}` : ''}</p>
-      <p>{t('passport.deviceAddress')}</p>
+      <div className="xmimo-passport-heading">
+        <div><h4 id={`${id}-quick`}>{t('passport.quickTitle')}</h4><p className="xmimo-qq-hint">{t('passport.quickHint')}</p></div>
+        <Button className="xmimo-passport-generate" type="button" variant="primary" size="sm" disabled={disabled || conflict} onClick={() => { void quickConnect() }}>
+          {pairingCode ? <FiRefreshCw aria-hidden="true" /> : <FiLink aria-hidden="true" />}
+          {t(state === 'saving' ? 'settings.saving' : 'passport.quickEnable')}
+        </Button>
+      </div>
+      <div className="xmimo-passport-status" data-tone={statusTone} role="status">
+        <span className="xmimo-passport-status-dot" aria-hidden="true" />
+        <span>{t(statusKey)}</span>
+        {status?.listening ? <span className="xmimo-passport-port">{t('passport.port')} <strong>{status.port}</strong></span> : null}
+      </div>
+      <div className="xmimo-passport-transfer">
+      <div className="xmimo-passport-ip-field">
+      <h4>{t('passport.computerIp')}</h4>
+      <p className="xmimo-qq-hint">{t('passport.networkHint')}</p>
       {status?.addresses?.length ? <ul className="xmimo-passport-addresses">{status.addresses.map(item => <li key={item.address}>
-        <strong>{item.address}</strong><span>{item.name}</span>
+        <div><strong>{item.address}</strong><span>{item.name}</span></div>
         <Button type="button" variant="outline" size="sm" onClick={() => {
           if (!navigator.clipboard) { setCopied('failed'); return }
           void navigator.clipboard.writeText(item.address).then(() => setCopied(item.address), () => setCopied('failed'))
-        }}>{t(copied === item.address ? 'passport.copied' : 'passport.copyAddress')}</Button>
+        }} aria-label={`${t(copied === item.address ? 'passport.copied' : 'passport.copyAddress')} ${item.address}`}>
+          {copied === item.address ? <FiCheck aria-hidden="true" /> : <FiCopy aria-hidden="true" />}
+          {t(copied === item.address ? 'passport.copied' : 'passport.copyAddress')}</Button>
       </li>)}</ul> : <p className="xmimo-qq-hint">{t('passport.addressUnavailable')}</p>}
-      {copied === 'failed' ? <p role="status">{t('passport.copyFailed')}</p> : null}
-      <ol><li>{t('passport.stepHost')}</li><li>{t('passport.stepDevice')}</li><li>{t('passport.stepTalk')}</li></ol>
-      <p className="xmimo-qq-hint">{t('passport.devScope')}</p>
+      {copied ? <span className="xmimo-passport-copy-feedback" role="status">{t(copied === 'failed' ? 'passport.copyFailed' : 'passport.copied')}</span> : null}
+      </div>
+      <div className="xmimo-passport-pair-field">
+        <h4>{t('passport.codeLabel')}</h4>
+        <p className="xmimo-qq-hint">{t(pairingCode ? 'passport.matchCode' : hasToken ? 'passport.codeSaved' : 'passport.codeEmpty')}</p>
+        <div className="xmimo-passport-digits" aria-label={t('passport.codeLabel')}>
+          {Array.from(pairingCode || '----', (digit, index) => <span key={index} aria-hidden="true">{digit === '-' ? '–' : digit}</span>)}
+          <span className="xmimo-passport-sr-only">{pairingCode || t(hasToken ? 'passport.codeSaved' : 'passport.codeEmpty')}</span>
+        </div>
+        <p className="xmimo-qq-hint">{t('passport.devScope')}</p>
+      </div>
+      </div>
+      <aside className="xmimo-passport-device-help">
+        <h4>{t('passport.deviceSetup')}</h4>
+        <p>{t('passport.deviceSetupHint')}</p>
+        <p className="xmimo-qq-hint">{t('passport.stepTalk')}</p>
+      </aside>
+    </section>
+    <section aria-labelledby={`${id}-preset`}>
+      <div className="xmimo-passport-heading">
+        <div><h4 id={`${id}-preset`}>{t('passport.session')}</h4><p className="xmimo-qq-hint">{t('passport.sessionHint')}</p></div>
+        <Button type="button" variant="outline" size="sm" disabled={disabled || conflict || !!invalid || !roster || !knownPreset}
+          onClick={() => { void renewSession() }}><FiRefreshCw aria-hidden="true" />{t(state === 'saving' ? 'settings.saving' : 'passport.newSession')}</Button>
+      </div>
+      <label className="xmimo-qq-field" htmlFor={`${id}-agentPreset`}>
+        <span>{t('passport.agentPreset')}</span>
+        <select id={`${id}-agentPreset`} name="agentPreset" disabled={disabled || !roster} value={value.agentPreset}
+          aria-describedby={`${id}-preset-hint`} onChange={event => edit('agentPreset', event.currentTarget.value)}>
+          <option value="">{t('passport.hostDefault')}</option>
+          {value.agentPreset && !roster?.some(item => item.id === value.agentPreset) ? <option value={value.agentPreset} disabled>{value.agentPreset} — {t('passport.presetUnavailable')}</option> : null}
+          {roster?.map(item => <option key={item.id} value={item.id} disabled={item.unavailable}>{item.name ? `${item.name} · ${item.id}` : item.id}{item.unavailable ? ` — ${t('passport.presetUnavailable')}` : ''}</option>)}
+        </select>
+        <small id={`${id}-preset-hint`}>{t('passport.agentPresetHint')}</small>
+      </label>
+      <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => setRosterVersion(version => version + 1)}>{t('passport.reloadPresets')}</Button>
+      <p role="status" className="xmimo-qq-hint">{rosterFailed ? t('passport.presetsFailed') : !roster ? t('passport.presetsLoading')
+        : !knownPreset ? t('passport.presetUnavailable') : state === 'renewed' ? t('passport.sessionRenewed') : ''}</p>
     </section>
     <details className="xmimo-passport-advanced"><summary>{t('passport.advanced')}</summary>
     {GROUPS.map(group => <section key={group.id} aria-labelledby={`${id}-${group.id}`}>

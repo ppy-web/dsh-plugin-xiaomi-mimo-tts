@@ -33,16 +33,43 @@
 .xmimo-passport-settings input[aria-invalid="true"] { border-color: var(--dsw-alias-state-error-primary, #c23f4a); }
 .xmimo-passport-settings button { box-shadow: none; }
 .xmimo-passport-settings button:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
-.xmimo-passport-quick { padding-block: 8px 18px; }
-.xmimo-passport-quick ol { padding-inline-start: 22px; line-height: 1.8; }
-.xmimo-passport-addresses { display: flex; flex-direction: column; gap: 8px; padding: 0; list-style: none; }
-.xmimo-passport-addresses li { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
-.xmimo-passport-addresses strong, .xmimo-passport-code { user-select: all; font-variant-numeric: tabular-nums; }
+.xmimo-passport-quick { padding-block: 8px 0; }
+.xmimo-passport-heading { display: flex; flex-wrap: wrap; align-items: start; gap: 12px 24px; }
+.xmimo-passport-heading > div { flex: 1 1 280px; }
+.xmimo-passport-heading .xmimo-qq-hint { margin-bottom: 0; }
+.xmimo-passport-settings button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.xmimo-passport-settings button svg { width: 16px; height: 16px; flex-shrink: 0; }
+.xmimo-passport-settings .xmimo-passport-generate { align-self: stretch; height: auto; min-height: 52px; min-width: 180px; padding: 14px 24px; font-size: 16px; font-weight: 600; }
+.xmimo-passport-settings .xmimo-passport-generate svg { width: 22px; height: 22px; }
+.xmimo-passport-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-block: 20px 24px; padding: 14px 16px; background: var(--xmimo-ui-surface-subtle, var(--xmimo-ui-control-surface)); border-radius: var(--xmimo-ui-control-radius); }
+.xmimo-passport-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--xmimo-ui-text-muted); flex-shrink: 0; }
+.xmimo-passport-status[data-tone="connected"] { background: color-mix(in srgb, #23865b 10%, var(--xmimo-ui-surface)); }
+.xmimo-passport-status[data-tone="connected"] .xmimo-passport-status-dot { background: #23865b; }
+.xmimo-passport-status[data-tone="waiting"] .xmimo-passport-status-dot { background: var(--xmimo-ui-brand); }
+.xmimo-passport-status[data-tone="warning"] { background: color-mix(in srgb, #c08a28 12%, var(--xmimo-ui-surface)); }
+.xmimo-passport-status[data-tone="warning"] .xmimo-passport-status-dot { background: #c08a28; }
+.xmimo-passport-status > span:nth-child(2) { flex: 1 1 220px; }
+.xmimo-passport-port { font-size: 12px; color: var(--xmimo-ui-text-muted); }
+.xmimo-passport-port strong { margin-inline-start: 4px; color: var(--xmimo-ui-text); font-variant-numeric: tabular-nums; }
+.xmimo-passport-transfer { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 28px; }
+.xmimo-passport-transfer .xmimo-qq-hint { font-size: 12px; line-height: 1.7; }
+.xmimo-passport-addresses { display: flex; flex-direction: column; gap: 10px; padding: 0; margin: 16px 0 0; list-style: none; }
+.xmimo-passport-addresses li { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid var(--xmimo-ui-border); border-radius: var(--xmimo-ui-control-radius); }
+.xmimo-passport-addresses li > div { display: flex; flex: 1 1 180px; flex-direction: column; gap: 4px; min-width: 0; }
+.xmimo-passport-addresses strong { user-select: all; font-size: 23px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .xmimo-passport-addresses span { color: var(--xmimo-ui-text-muted); }
+.xmimo-passport-addresses li > div > span { font-size: 12px; }
+.xmimo-passport-digits { display: flex; gap: 8px; margin-top: 16px; }
+.xmimo-passport-digits > span:not(.xmimo-passport-sr-only) { display: grid; place-items: center; width: 48px; height: 60px; border: 1px solid var(--xmimo-ui-border); border-radius: var(--xmimo-ui-control-radius); background: var(--xmimo-ui-control-surface); font-size: 32px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.xmimo-passport-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.xmimo-passport-copy-feedback { display: block; margin-top: 8px; font-size: 12px; }
+.xmimo-passport-device-help { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--xmimo-ui-border-soft); }
+.xmimo-passport-device-help p { margin-block: 8px 0; line-height: 1.8; }
+.xmimo-passport-advanced { border-top: 1px solid var(--xmimo-ui-border-soft); }
 .xmimo-passport-advanced summary { cursor: pointer; padding-block: 12px; font-weight: 550; }
 .xmimo-passport-advanced section { padding-block: 8px; }
 
-.xmimo-qq-field input, .xmimo-qq-field textarea {
+.xmimo-qq-field input, .xmimo-qq-field textarea, .xmimo-qq-field select {
   box-sizing: border-box;
   width: 100%;
   min-height: var(--xmimo-ui-control-height);
@@ -58,8 +85,8 @@
 }
 .xmimo-qq-field textarea { resize: vertical; min-height: 64px; }
 .xmimo-qq-field :is(input, textarea)::placeholder { color: var(--xmimo-ui-text-muted); }
-.xmimo-qq-field :is(input, textarea):focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
-.xmimo-qq-field :is(input, textarea):disabled { opacity: .65; cursor: not-allowed; }
+.xmimo-qq-field :is(input, textarea, select):focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
+.xmimo-qq-field :is(input, textarea, select):disabled { opacity: .65; cursor: not-allowed; }
 .xmimo-qq-field :is(input, textarea)::selection { background: var(--xmimo-ui-brand); color: var(--dsw-alias-label-primary-foreground, #fff); }
 .xmimo-qq-memory-list { display: flex; flex-direction: column; gap: 12px; }
 .xmimo-qq-memory-peer { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--xmimo-ui-border-soft); border-radius: var(--xmimo-ui-control-radius); }
@@ -72,6 +99,8 @@
 .xmimo-qq-footer [role="status"] { text-align: start; }
 
 @container (max-width: 480px) {
+  .xmimo-passport-transfer { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .xmimo-passport-heading > button { width: 100%; }
   .xmimo-qq-grid { grid-template-columns: minmax(0, 1fr); }
   .xmimo-qq-memory-row { grid-template-columns: auto minmax(0, 1fr); }
   .xmimo-qq-memory-row button { width: 100%; }

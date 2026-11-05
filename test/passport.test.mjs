@@ -587,3 +587,117 @@ test('unload during Agent creation aborts setup and disposes a handle returned a
   await closing
   assert.equal(disposed, 1)
 })
+
+
+test('explicit refresh starts the selected preset and commits new routing only after successful startup', async () => {
+  let identity = { sessionId: `passport-${randomUUID()}`, preset: 'old-preset' }
+  const old = { ...identity }, started = Promise.withResolvers(), idle = Promise.withResolvers()
+  const calls = [], revision = randomUUID()
+  const ctx = {
+    agentDefaultModel: {},
+    agentPresets: {
+      resolve: async id => { calls.push(['resolve', id]); return { id } },
+      acquireScope: async () => ({ [Symbol.asyncDispose]: async () => {} }),
+      mount: async (_ctx, id) => calls.push(['mount', id]),
+    },
+    agents: {
+      create: async options => {
+        calls.push(['create', options]); await options.setup({}); started.resolve()
+        return { agent: { id: options.sessionId, whenIdle: () => idle.promise, cancel() {} }, dispose: async () => {} }
+      },
+      resume: () => assert.fail('refresh must not resume the previous conversation'),
+    },
+  }
+  const store = { load: async () => identity, save: async next => { identity = next } }
+  const session = new PassportSession(ctx, 'new-preset', '', store, revision)
+  const opening = session.acquire()
+  await started.promise
+  assert.deepEqual(identity, old, 'startup has not yet committed the replacement routing')
+  idle.resolve(); await opening
+  assert.notEqual(identity.sessionId, old.sessionId)
+  assert.equal(identity.preset, 'new-preset')
+  assert.equal(identity.revision, revision)
+  assert.deepEqual(calls.find(item => item[0] === 'mount'), ['mount', 'new-preset'])
+  await session.dispose()
+  ctx.agents.create = () => assert.fail('a repeated configuration load must resume, not create again')
+  ctx.agents.resume = async options => {
+    assert.equal(options.resumeSessionId, identity.sessionId)
+    return { agent: { whenIdle: async () => {}, cancel() {} }, dispose: async () => {} }
+  }
+  const resumed = new PassportSession(ctx, 'new-preset', '', store, revision)
+  await resumed.acquire(); await resumed.dispose()
+})
+
+for (const failure of ['preset', 'create', 'idle', 'save', 'cancel']) test(`failed refresh (${failure}) retains previous routing and cleans up`, async () => {
+  const identity = { sessionId: `passport-${randomUUID()}`, preset: 'old-preset' }
+  let saved = 0, disposed = 0
+  const started = Promise.withResolvers(), idle = Promise.withResolvers()
+  const ctx = {
+    agentDefaultModel: {},
+    agentPresets: {
+      resolve: async () => { if (failure === 'preset') throw new Error('agent-preset/not-found'); return { id: 'new-preset' } },
+      acquireScope: async () => ({ [Symbol.asyncDispose]: async () => {} }),
+    },
+    agents: {
+      resume: () => assert.fail('refresh cannot resume old routing'),
+      create: async options => {
+        if (failure === 'create') throw new Error('create-failed')
+        return { agent: { id: options.sessionId, cancel() {}, whenIdle: async () => {
+          started.resolve()
+          if (failure === 'cancel') await idle.promise
+          if (failure === 'idle') throw new Error('idle-failed')
+        } }, dispose: async () => { disposed++ } }
+      },
+    },
+  }
+  const store = { load: async () => identity, save: async () => { saved++; throw new Error('save-failed') } }
+  const session = new PassportSession(ctx, 'new-preset', '', store, randomUUID())
+  const opening = session.acquire()
+  const rejected = assert.rejects(opening, failure === 'preset' ? /passport-preset-unavailable/u : undefined)
+  if (failure === 'cancel') { await started.promise; const closing = session.dispose(); idle.resolve(); await closing }
+  await rejected; await session.dispose()
+  assert.equal(saved, failure === 'save' ? 1 : 0)
+  assert.equal(disposed, ['idle', 'save', 'cancel'].includes(failure) ? 1 : 0)
+  assert.equal(identity.preset, 'old-preset')
+})
+
+test('saved conversation refresh revisions round-trip and malformed revisions are rejected without rewriting', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'passport-revision-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new PassportSessionStore('profile-refresh', directory)
+  const identity = { sessionId: `passport-${randomUUID()}`, preset: 'custom-preset', revision: randomUUID() }
+  await store.save(identity)
+  assert.deepEqual(await store.load(), identity)
+  await writeFile(store.path, JSON.stringify({ ...identity, revision: 123 }))
+  await assert.rejects(store.load(), /passport-invalid-session-state/u)
+})
+
+
+test('preset roster route lists actual IDs without exposing configuration and rejects mutation methods', async () => {
+  const ctx = new Context(), routes = new Map()
+  ctx.provide('webServer', { register: route => { routes.set(route.path, route); return () => routes.delete(route.path) } })
+  ctx.provide('agentPresets', { list: async () => [
+    { id: 'valid-preset', name: 'Display name', plugins: ['private-composition'] },
+    { id: 'broken-preset', broken: 'private internal diagnostic' },
+  ] })
+  const plugin = ctx.plugin(passport, {})
+  try {
+    for (let n = 0; n < 20 && !routes.size; n++) await settle()
+    const route = routes.get('/plugins/xiaomi-mimo-tts/passport-presets')
+    assert.ok(route)
+    const request = async method => {
+      let status, body
+      const headers = {}
+      const res = { set statusCode(value) { status = value }, setHeader(key, value) { headers[key] = value }, end(value) { body = JSON.parse(value) } }
+      await route.handler({ method }, res)
+      return { status, body, headers }
+    }
+    const response = await request('GET')
+    assert.equal(response.status, 200)
+    assert.deepEqual(response.body.presets, [{ id: 'valid-preset', name: 'Display name', unavailable: false }, { id: 'broken-preset', unavailable: true }])
+    const rejected = await request('POST')
+    assert.equal(rejected.status, 405)
+    assert.equal(rejected.headers.allow, 'GET')
+  } finally { await plugin.dispose(); await ctx.fiber.dispose() }
+  assert.equal(routes.size, 0)
+})

@@ -4,6 +4,7 @@ export interface PassportSettings {
   accessToken: string
   deviceId: string
   agentPreset: string
+  sessionRevision: string
   cwd: string
   silenceMs: number
   minSpeechMs: number
@@ -15,6 +16,7 @@ export interface PassportSettings {
 
 export const DEFAULT_PASSPORT_SETTINGS: Readonly<PassportSettings> = {
   host: '127.0.0.1', port: 3101, accessToken: '', deviceId: '', agentPreset: 'whale-girl', cwd: '~/.dsh-xiaomi-tts/passport/workspace',
+  sessionRevision: '',
   silenceMs: 700, minSpeechMs: 200, speechThreshold: 0.015,
   maxRecordingSeconds: 30, maxReplySeconds: 60, requestTimeoutMs: 180000,
 }
@@ -31,6 +33,8 @@ export const PASSPORT_NUMBER_FIELDS = {
 
 export type PassportNumberField = keyof typeof PASSPORT_NUMBER_FIELDS
 export const PASSPORT_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/passport-status'
+export const PASSPORT_PRESETS_ROUTE = '/plugins/xiaomi-mimo-tts/passport-presets'
+export interface PassportPreset { id: string; name?: string; unavailable?: boolean }
 
 export interface PassportConnectionStatus {
   configured: boolean
@@ -42,6 +46,7 @@ export interface PassportConnectionStatus {
   port: number
   addresses: Array<{ name: string; address: string }>
   error?: string
+  sessionError?: string
 }
 
 /** Numeric pairing codes admit only local/private IPv4 peers. */

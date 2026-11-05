@@ -16,6 +16,7 @@
     "speechThreshold": "语音能量阈值（归一化 RMS）",
     "maxRecordingSeconds": "最长录音（秒，超长不提交）",
     "maxReplySeconds": "最长语音回复（秒，超长不发声）",
-    "requestTimeoutMs": "整轮等待上限（ms，含识别、对话和播报）"
+    "requestTimeoutMs": "整轮等待上限（ms，含识别、对话和播报）",
+    "sessionRevision": "会话刷新标识（由“刷新预设并新建会话”按钮维护）"
   }
 }

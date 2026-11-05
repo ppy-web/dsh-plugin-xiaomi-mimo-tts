@@ -1,11 +1,12 @@
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, isPassportAccessToken } from '../../types/passport.js'
-import type { PassportSettings, PassportNumberField } from '../../types/passport.js'
+import type { PassportSettings, PassportNumberField, PassportPreset } from '../../types/passport.js'
 
 export function validatePassportDraft(value: PassportSettings, tokenConfigured = false): keyof PassportSettings | null {
   if (!value.host.trim() || /[\s/]/u.test(value.host)) return 'host'
   if (!(tokenConfigured && value.accessToken === '') && !isPassportAccessToken(value.accessToken)) return 'accessToken'
   if (value.deviceId && !/^[a-zA-Z0-9_.:-]{1,128}$/u.test(value.deviceId)) return 'deviceId'
+  if (typeof value.sessionRevision !== 'string' || value.sessionRevision.length > 128) return 'sessionRevision'
   for (const field of Object.keys(PASSPORT_NUMBER_FIELDS) as PassportNumberField[]) {
     const { min, max } = PASSPORT_NUMBER_FIELDS[field]
     if (!Number.isFinite(value[field]) || value[field] < min || value[field] > max) return field
@@ -24,4 +25,13 @@ export async function savePassportDraft(scope: ConfigForm<PassportSettings>, bas
     if (value[field] !== base[field]) ops.push({ op: 'set', path: [field], value: value[field] })
   }
   if (ops.length && !await scope.mutate(ops, revision)) throw new Error('passport-settings-save-failed')
+}
+
+/** An explicit, revision-fenced request; unrelated settings saves never rotate a session. */
+export async function refreshPassportSession(scope: ConfigForm<PassportSettings>, base: PassportSettings, value: PassportSettings,
+  revision: number, presets: readonly PassportPreset[], tokenConfigured = false): Promise<void> {
+  if (value.agentPreset && !presets.some(item => item.id === value.agentPreset && !item.unavailable)) throw new Error('passport-preset-unavailable')
+  // getRandomValues also works on LAN HTTP pages where randomUUID is unavailable.
+  const sessionRevision = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
+  await savePassportDraft(scope, base, { ...value, sessionRevision }, revision, tokenConfigured)
 }

@@ -16,6 +16,7 @@
     "speechThreshold": "Speech energy threshold (normalized RMS)",
     "maxRecordingSeconds": "Maximum recording (seconds; oversized input is discarded)",
     "maxReplySeconds": "Maximum spoken reply (seconds; longer replies are not spoken)",
-    "requestTimeoutMs": "Whole-request timeout (ms; recognition, conversation and playback)"
+    "requestTimeoutMs": "Whole-request timeout (ms; recognition, conversation and playback)",
+    "sessionRevision": "Conversation refresh identifier (managed by the new conversation action)"
   }
 }

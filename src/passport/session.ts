@@ -10,7 +10,7 @@ import { homedir } from 'node:os'
 import { SPEECH_DATA_ROOT } from '../host/speech-files.js'
 import { DEFAULT_PASSPORT_SETTINGS as defaults } from '../types/passport.js'
 
-interface SessionIdentity { sessionId: string; preset: string }
+interface SessionIdentity { sessionId: string; preset: string; revision?: string }
 
 /** Persist only routing identity, partitioned by Host profile and component entry. */
 export class PassportSessionStore {
@@ -25,8 +25,9 @@ export class PassportSessionStore {
     catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error }
     const value = JSON.parse(text) as Partial<SessionIdentity> | null
     if (!value || typeof value.sessionId !== 'string' || !/^passport-[a-f0-9-]{36}$/u.test(value.sessionId)
-      || typeof value.preset !== 'string' || !value.preset) throw new Error('passport-invalid-session-state')
-    return { sessionId: value.sessionId, preset: value.preset }
+      || typeof value.preset !== 'string' || !value.preset
+      || (value.revision !== undefined && (typeof value.revision !== 'string' || value.revision.length > 128))) throw new Error('passport-invalid-session-state')
+    return { sessionId: value.sessionId, preset: value.preset, ...(value.revision === undefined ? {} : { revision: value.revision }) }
   }
 
   async save(value: SessionIdentity): Promise<void> {
@@ -47,7 +48,7 @@ export class PassportSession {
 
   constructor(private readonly ctx: Context, private readonly preset = defaults.agentPreset, private readonly cwd = defaults.cwd, private readonly store = new PassportSessionStore(
     `${ctx.get('loader')?.config.baseUrl ?? resolve(process.cwd())}\n${ctx.get('loader')?.locate(ctx.fiber) ?? 'passport'}`,
-  )) {}
+  ), private readonly revision = '') {}
 
   get agent() { return this.handle?.agent }
 
@@ -57,8 +58,13 @@ export class PassportSession {
   }
 
   private async open(): Promise<AgentHandle> {
-    const identity = await this.store.load()
-    const preset = await this.ctx.agentPresets.resolve(identity?.preset || this.preset || undefined)
+    const saved = await this.store.load()
+    // An explicit refresh requests a new conversation. Commit its routing
+    // identity only after successful startup; the old session log is retained.
+    const identity = (saved?.revision ?? '') === this.revision ? saved : undefined
+    let preset: { id: string; broken?: string }
+    try { preset = await this.ctx.agentPresets.resolve(identity?.preset || this.preset || undefined) }
+    catch { throw new Error('passport-preset-unavailable') }
     if (preset.broken) throw new Error('passport-preset-unavailable')
     if (identity && this.preset && this.preset !== defaults.agentPreset && this.preset !== preset.id) throw new Error('passport-preset-changed')
     await using lease = await this.ctx.agentPresets.acquireScope(preset.id)
@@ -86,7 +92,8 @@ export class PassportSession {
       // Resume may drain durable inbox work. Do not attach the device to old replies.
       await handle.agent.whenIdle()
       this.lifetime.signal.throwIfAborted()
-      if (!identity) await this.store.save({ sessionId: handle.agent.id, preset: preset.id })
+      if (!identity) await this.store.save({ sessionId: handle.agent.id, preset: preset.id,
+        ...(this.revision ? { revision: this.revision } : {}) })
       return handle
     } catch (error) { this.handle = undefined; await handle.dispose(); throw error }
   }

@@ -5,7 +5,7 @@ import z from '@deepseek-ai/schemastery'
 import { readFileSync } from 'node:fs'
 import { PassportBridge } from './passport/bridge.js'
 import { PassportSession } from './passport/session.js'
-import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE } from './types/passport.js'
+import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_PRESETS_ROUTE } from './types/passport.js'
 import type { PassportSettings } from './types/passport.js'
 import { json } from './host/http.js'
 import { passportAddresses } from './passport/network.js'
@@ -25,6 +25,7 @@ export const Config = z.object({
   accessToken: z.string().max(192).pattern(/^\S*$/u).role('secret').default(defaults.accessToken).volatile(),
   deviceId: z.string().default(defaults.deviceId).volatile(),
   agentPreset: z.string().default(defaults.agentPreset).volatile(),
+  sessionRevision: z.string().max(128).default(defaults.sessionRevision).volatile(),
   cwd: z.string().default(defaults.cwd).volatile(),
   silenceMs: z.number().step(20).min(200).max(3000).default(defaults.silenceMs).volatile(),
   minSpeechMs: z.number().step(20).min(100).max(1000).default(defaults.minSpeechMs).volatile(),
@@ -39,7 +40,17 @@ export type Config = ReturnType<typeof Config>
 export function apply(ctx: Context, config: Config): void {
   let connection: PassportBridge | undefined
   let lastError: string | undefined
+  let sessionError: string | undefined
   ctx.inject(['webServer'], child => {
+    child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_PRESETS_ROUTE, async handler(req, res) {
+      if (req.method !== 'GET') { res.setHeader('allow', 'GET'); json(res, 405, { error: 'method-not-allowed' }); return }
+      try {
+        const registry = ctx.get('agentPresets')
+        if (!registry) { json(res, 503, { error: 'passport-preset-unavailable' }); return }
+        const presets = (await registry.list()).map(({ id, name, broken }) => ({ id, name, unavailable: !!broken }))
+        json(res, 200, { presets })
+      } catch { json(res, 503, { error: 'passport-preset-unavailable' }) }
+    } }))
     child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_STATUS_ROUTE, handler(req, res) {
       if (req.method !== 'GET') { res.setHeader('allow', 'GET'); json(res, 405, { error: 'method-not-allowed' }); return }
       const servicesReady = ['speechSynthesis', 'speechToText', 'agents', 'agentPresets', 'agentDefaultModel'].every(name => !!ctx.get(name))
@@ -50,7 +61,8 @@ export function apply(ctx: Context, config: Config): void {
       } catch {}
       json(res, 200, { configured: isPassportAccessToken(config.accessToken.get()),
         listening: connection?.status.listening ?? false, connected: connection?.status.connected ?? false,
-        servicesReady, recognitionReady, host: config.host.get(), port: config.port.get(), addresses: passportAddresses(), error: lastError })
+        servicesReady, recognitionReady, host: config.host.get(), port: config.port.get(), addresses: passportAddresses(), error: lastError,
+        sessionError: connection?.status.connected ? undefined : sessionError })
     } }))
   })
   ctx.inject(['speechSynthesis', 'speechToText', 'agents', 'agentPresets', 'agentDefaultModel'], child => {
@@ -68,12 +80,13 @@ export function apply(ctx: Context, config: Config): void {
         lastError = undefined
         await previous?.stop()
         if (disposed || requested !== generation) return
+        sessionError = undefined
         const settings = Object.fromEntries(Object.keys(defaults).map(key => [key, config[key]!.get()])) as unknown as PassportSettings
         // An unconfigured component still owns editable settings, but exposes no network listener.
         if (!isPassportAccessToken(settings.accessToken)) return
-        const session = new PassportSession(child, settings.agentPreset, settings.cwd)
+        const session = new PassportSession(child, settings.agentPreset, settings.cwd, undefined, settings.sessionRevision)
         const bridge = new PassportBridge(settings, session, child.speechToText, child.speechSynthesis,
-          code => child.logger.warn(`Passport: ${code}`),
+          code => { sessionError = code; child.logger.warn(`Passport: ${code}`) },
           agent => child.emit('speech/delivered', { agent, automatic: true, result: { adapter: 'passport' } }))
         let unregister = () => {}
         const stop = async (): Promise<void> => {

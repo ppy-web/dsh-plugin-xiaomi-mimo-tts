@@ -9,7 +9,7 @@ import { Config } from '../lib/passport.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, isPassportLanAddress } = await loadClientModule('src/types/passport.ts')
-const { savePassportDraft, validatePassportDraft } = await loadClientModule('src/client/settings/passport-draft.ts')
+const { savePassportDraft, validatePassportDraft, refreshPassportSession } = await loadClientModule('src/client/settings/passport-draft.ts')
 const { PassportSettingsPage } = await loadClientModule('src/client/settings/passport-settings.tsx')
 const { registerPassportSettings } = await loadClientModule('src/client/settings/passport-registration.ts')
 const configured = () => ({ ...DEFAULT_PASSPORT_SETTINGS, accessToken: 'test-passport-private-token-123456789' })
@@ -105,10 +105,12 @@ test('Passport fields expose labelled controls, mask the token and respect permi
     const snapshot = { status: 'ready', value: configured(), writable, revision: 1 }
     const html = renderToStaticMarkup(createElement(PassportSettingsPage, {
       view: 'page', scope: { getSnapshot: () => snapshot, subscribe: () => () => {} }, t: key => key,
+      presets: [{ id: DEFAULT_PASSPORT_SETTINGS.agentPreset }],
       changes: { getSnapshot: () => changing, subscribe: () => () => {} },
     }))
-    const inputs = [...html.matchAll(/<input\b[^>]*>/gu)].map(([tag]) => tag)
+    const inputs = [...html.matchAll(/<(?:input|select)\b[^>]*>/gu)].map(([tag]) => tag)
     for (const field of Object.keys(DEFAULT_PASSPORT_SETTINGS)) {
+      if (field === 'sessionRevision') continue // Internal refresh token has no manual editor.
       const input = inputs.find(tag => tag.includes(`name="${field}"`))
       assert.ok(input, `editable control for ${field}`)
       assert.equal(/\bdisabled=""/u.test(input), !writable || changing)
@@ -129,4 +131,37 @@ test('a redacted saved Passport token remains write-only without blocking other 
   assert.ok(input.includes('type="password"'))
   assert.ok(!/\brequired=""/u.test(input), 'the saved token need not be re-entered')
   assert.ok(!/\bdisabled=""/u.test(input))
+})
+
+
+test('new-conversation action validates available preset IDs and atomically saves a fresh revision with edited settings', async () => {
+  const base = configured(), value = { ...base, agentPreset: 'selected-preset', cwd: '/new-workspace' }
+  let mutations = []
+  const scope = { getSnapshot: () => ({ status: 'ready', writable: true, revision: 7 }), mutate: async (ops, revision) => { mutations.push({ ops, revision }); return true } }
+  const presets = [{ id: 'selected-preset', name: 'A display name' }]
+  await refreshPassportSession(scope, base, value, 7, presets)
+  const first = mutations[0]
+  assert.equal(first.revision, 7)
+  assert.equal(first.ops.find(op => op.path[0] === 'agentPreset').value, 'selected-preset')
+  assert.equal(first.ops.find(op => op.path[0] === 'cwd').value, '/new-workspace')
+  const token = first.ops.find(op => op.path[0] === 'sessionRevision').value
+  assert.equal(typeof token, 'string')
+  assert.notEqual(token, base.sessionRevision)
+  await refreshPassportSession(scope, base, base, 7, [{ id: base.agentPreset }])
+  assert.notEqual(mutations[1].ops.find(op => op.path[0] === 'sessionRevision').value, token)
+  assert.equal(mutations[1].ops.length, 1, 'refreshing the same preset changes only the session revision')
+  for (const preset of ['A display name', 'missing-preset']) await assert.rejects(refreshPassportSession(scope, base, { ...value, agentPreset: preset }, 7, presets), /passport-preset-unavailable/u)
+  await assert.rejects(refreshPassportSession(scope, base, value, 7, [{ id: value.agentPreset, unavailable: true }]), /passport-preset-unavailable/u)
+  await assert.rejects(refreshPassportSession(scope, base, value, 6, presets), /passport-settings-conflict/u)
+  assert.equal(mutations.length, 2)
+})
+
+
+test('preset refresh accepts a registered Chinese ID and preserves redacted pairing credentials', async () => {
+  const base = { ...configured(), accessToken: '' }, id = '鲸鱼娘活人版Agent预设'
+  let mutations
+  const scope = { getSnapshot: () => ({ status: 'ready', writable: true, revision: 1 }), mutate: async ops => { mutations = ops; return true } }
+  await refreshPassportSession(scope, base, { ...base, agentPreset: id }, 1, [{ id }], true)
+  assert.equal(mutations.find(op => op.path[0] === 'agentPreset').value, id)
+  assert.equal(mutations.some(op => op.path[0] === 'accessToken'), false)
 })
