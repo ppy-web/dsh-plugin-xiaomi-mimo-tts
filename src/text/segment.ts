@@ -1,4 +1,5 @@
 import { prepareBreezeTtsText, prepareTtsText } from './normalize.js'
+import { XIAOMI_AUDIO_TAG_PATTERN, stripXiaomiAudioTags } from './xiaomi-audio-tags.js'
 import {
   DEFAULT_TTS_SEGMENT_CHARACTERS,
   MAX_TTS_SEGMENT_CHARACTERS,
@@ -12,14 +13,16 @@ export { MIN_TTS_STREAM_CHARACTERS }
 
 /** Count text-bearing characters only, excluding punctuation and whitespace. */
 export function countTtsSpeechCharacters(value: string): number {
-  return (value.match(/[\p{L}\p{N}]/gu) ?? []).length
+  return (stripXiaomiAudioTags(value).match(/[\p{L}\p{N}]/gu) ?? []).length
 }
 
 /** Find sentence ends after markup removal and punctuation normalization. */
 function splitPreparedTtsSentences(text: string, final = true): { sentences: string[]; remainder: string } {
   const sentences: string[] = []
   let consumed = 0
+  const tags = [...text.matchAll(XIAOMI_AUDIO_TAG_PATTERN)]
   for (const match of text.matchAll(/[.!?;]+/gu)) {
+    if (tags.some(tag => match.index >= tag.index && match.index < tag.index + tag[0].length)) continue
     const end = match.index + match[0].length
     // A decimal point is part of a number, not the end of a sentence.
     if (match[0] === '.' && /\d/u.test(text[match.index - 1] ?? '')
@@ -75,8 +78,8 @@ function segmentsFromPreparedText(text: string, target: number, maximum: number)
 }
 
 /** Group whole sentences into short requests; a single long sentence may exceed the preferred maximum. */
-export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHARACTERS, maximum = MAX_TTS_SEGMENT_CHARACTERS): string[] {
-  const text = prepareTtsText(value)
+export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHARACTERS, maximum = MAX_TTS_SEGMENT_CHARACTERS, prepare = prepareTtsText): string[] {
+  const text = prepare(value)
   return text.length === 0 ? [] : segmentsFromPreparedText(text, target, maximum)
 }
 
@@ -145,7 +148,7 @@ export class TtsFirstSegmentLimiter {
     if (occupiedSegments < this.segmentCount && countTtsSpeechCharacters(remainder) >= DEFAULT_TTS_SEGMENT_CHARACTERS) {
       const prefix = `${completed}${remainder}`
       // Keep complete audio tags and trailing decimal points intact.
-      return /(?:\[[^\]\r\n]+\]|\([^()\r\n]+\))$/u.test(prefix)
+      return /(?:\[[^\]\r\n]+\]|\([^()\r\n]+\)|（[^（）\r\n]+）)$/u.test(prefix)
         ? prefix
         : prefix.replace(/[^\p{L}\p{N}.]+$/u, '')
     }

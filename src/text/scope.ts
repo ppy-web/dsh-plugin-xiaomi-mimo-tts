@@ -1,6 +1,6 @@
 import type { TtsEffectiveReadScope, TtsReadScope } from '../types/index.js'
 import { countTtsSpeechCharacters } from './segment.js'
-import { firstTtsSegment, firstTtsSegments, splitBreezeTtsSentences, TtsFirstSegmentLimiter } from './segment.js'
+import { firstTtsSegment, firstTtsSegments, splitBreezeTtsSentences, splitTtsSegments, TtsFirstSegmentLimiter } from './segment.js'
 import { prepareBreezeTtsText, prepareTtsText } from './normalize.js'
 
 /** Resolve Smart into a concrete range for this playback invocation. */
@@ -38,7 +38,13 @@ export function appendTtsSmartTruncationOutro(fullText: string, spokenText: stri
 }
 
 /** Apply the configured playback range to a completed reply. */
-export function applyTtsPlaybackScope(value: string, scope: TtsReadScope, automatic: boolean, random: () => number = Math.random): string {
+export function applyTtsPlaybackScope(value: string, scope: TtsReadScope, automatic: boolean, random: () => number = Math.random, prepare = prepareTtsText): string {
+  if (prepare !== prepareTtsText) {
+    const text = prepare(value)
+    if (resolveTtsReadScope(scope, automatic) === 'full') return text
+    const scoped = splitTtsSegments(text, undefined, undefined, prepare).slice(0, scope === 'smart' && automatic ? 2 : 1).join('')
+    return scope === 'smart' && automatic ? appendTtsSmartTruncationOutro(text, scoped, random) : scoped
+  }
   const scoped = scope === 'smart' && automatic
     ? firstTtsSegments(value, 2)
     : applyTtsReadScope(value, resolveTtsReadScope(scope, automatic))

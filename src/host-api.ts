@@ -64,6 +64,8 @@ export interface SpeechDeliveryAdapter {
 export interface SpeechSynthesisService {
   /** Provider selected by the saved Host settings. Per-request retries do not change it. */
   currentProvider?(): TtsProvider
+  /** Whether the saved provider and model accept inline audio tags. */
+  supportsAudioTags?(): boolean
   synthesize(request: SpeechRequest): Promise<SpeechAudio>
   /** Export to the managed audio directory; files expire after 24 hours. */
   exportAudio(request: SpeechRequest): Promise<SpeechArtifact>

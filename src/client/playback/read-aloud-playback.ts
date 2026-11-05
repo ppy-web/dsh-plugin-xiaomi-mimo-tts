@@ -1,4 +1,4 @@
-import { applyBreezeTtsPlaybackScope, applyTtsPlaybackScope, splitTtsSegments, stripBreezeAudioTags, supportsRealtimeTts } from '../../shared.js'
+import { prepareProviderTtsText, stripXiaomiAudioTags, applyBreezeTtsPlaybackScope, applyTtsPlaybackScope, splitTtsSegments, stripBreezeAudioTags, supportsRealtimeTts } from '../../shared.js'
 import type { ResolvedTtsSettings } from '../../shared.js'
 import type { LiveSpeechController } from './live-speech-controller.js'
 import type { LocalSpeechController } from './local-speech-controller.js'
@@ -20,12 +20,12 @@ export interface ReadAloudRequest {
 function readAloudText(text: string, settings: ResolvedTtsSettings, automatic: boolean): string {
   return settings.provider === 'breeze'
     ? applyBreezeTtsPlaybackScope(text, settings.readScope, automatic)
-    : applyTtsPlaybackScope(text, settings.readScope, automatic)
+    : applyTtsPlaybackScope(text, settings.readScope, automatic, undefined, value => prepareProviderTtsText(value, settings))
 }
 
-/** Browser speech cannot synthesize Breeze tags, so strip them instead of reading tag words aloud. */
+/** Browser speech cannot synthesize provider audio tags, so strip them instead of reading tag words aloud. */
 function fallbackText(text: string, settings: ResolvedTtsSettings): string {
-  return settings.provider === 'breeze' ? stripBreezeAudioTags(text) : text
+  return settings.provider === 'breeze' ? stripBreezeAudioTags(text) : settings.provider === 'xiaomi' ? stripXiaomiAudioTags(text) : text
 }
 
 /** Start a completed reply with one directed fallback, using the selected playback range. */

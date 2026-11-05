@@ -1,4 +1,4 @@
-import { applyTtsLivePlaybackScope, TtsFirstSegmentLimiter, countTtsSpeechCharacters, stripBreezeAudioTags } from '../../shared.js'
+import { applyTtsLivePlaybackScope, TtsFirstSegmentLimiter, countTtsSpeechCharacters, stripXiaomiAudioTags, stripBreezeAudioTags } from '../../shared.js'
 import type { LiveSpeechCursor, TtsLocalSpeechMode, TtsReadScope } from '../../shared.js'
 import type { LiveSpeechController } from './live-speech-controller.js'
 import type { LocalSpeechController } from './local-speech-controller.js'
@@ -129,7 +129,7 @@ export class RealtimeSpeechSession {
   }
 
   private backendText(backend: SpeechBackend, text: string): string {
-    return backend === 'system' ? stripBreezeAudioTags(text) : text
+    return backend === 'system' ? stripXiaomiAudioTags(stripBreezeAudioTags(text)) : text
   }
 
   private controller(backend: SpeechBackend): LiveSpeechController | LocalSpeechController {

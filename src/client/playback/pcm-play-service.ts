@@ -1,6 +1,6 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type { XiaomiMimoTtsService } from '../../client-api.js'
-import { prepareTtsText, resolveTtsSettings } from '../../shared.js'
+import { prepareProviderTtsText, resolveTtsSettings } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import { streamPcmAudio } from '../../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
@@ -71,12 +71,12 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       if (snapshot.value?.enabled !== true) {
         return
       }
-      const normalized = prepareTtsText(text).trim()
+      const settings = resolveTtsSettings(snapshot.value)
+      const normalized = prepareProviderTtsText(text, settings).trim()
       if (normalized.length === 0) {
         return
       }
 
-      const settings = resolveTtsSettings(snapshot.value)
       this.stop()
       this.history?.stopReplay()
       if (interruptConversation) this.interruptConversationPlayback()

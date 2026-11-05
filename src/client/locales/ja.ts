@@ -29,6 +29,7 @@ export const ja: Record<LocaleKey, string> = {
   'settings.breezeEnabled': 'Breeze Blue を有効にする',
   'settings.providerMinimum': 'Xiaomi は常に有効です。豆包か Breeze のどちらかを有効にしてください。',
   'settings.breezeAudioTags': 'オーディオタグ',
+  'settings.xiaomiAudioTagsHint': '小米のプリセット音声：文頭にスタイル、文中に声のタグを挿入できます。()・（）・[]、自由記述と組み合わせに対応。歌唱は文頭に挿入します。音声デザインには音声指示を使用してください。',
   'settings.breezeAudioTagsHint': 'タグは試聴テキストに挿入されます。中国語は角括弧、英語は丸括弧を使用します。Breeze TTS 専用です。',
   'settings.breezeAudioTagsChinese': '中文',
   'settings.breezeAudioTagsEnglish': 'English',

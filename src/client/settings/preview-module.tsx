@@ -6,7 +6,7 @@ import { CollapsibleModule } from './collapsible-module.js'
 import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS } from './announcement-settings.js'
 import type { AnnouncementSettingsProps } from './announcement-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
-import { BreezeAudioTagPicker } from './controls/breeze-audio-tag-picker.js'
+import { AudioTagPicker } from './controls/audio-tag-picker.js'
 import { SidebarSettings } from './sidebar-settings.js'
 import { ProviderSettings } from './provider-settings.js'
 import type { ProviderSettingsProps } from './provider-settings.js'
@@ -28,10 +28,10 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<Prov
   onTextChange: (value: string) => void
   open: boolean
   onToggleOpen: () => void
-  breezeAudioTags?: boolean
+  audioTagProvider?: 'xiaomi' | 'breeze' | undefined
 }
 
-export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, breezeAudioTags = false, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, showInSidebar, sidebarOverridden, onShowInSidebarChange, onResetSidebar, ...settings }: PreviewModuleProps): ReactElement {
+export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, showInSidebar, sidebarOverridden, onShowInSidebarChange, onResetSidebar, ...settings }: PreviewModuleProps): ReactElement {
   const textRef = useRef<HTMLTextAreaElement>(null)
   const [downloads] = useState(() => new HistoryDownloads())
   const [downloadFailed, setDownloadFailed] = useState(false)
@@ -43,11 +43,11 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
     try { downloads.downloadBlob(recording.blob, `tts-preview-${Date.now()}.${recording.format}`) }
     catch { setDownloadFailed(true) }
   }
-  const insertTag = (tag: string): void => {
+  const insertTag = (tag: string, placement?: 'start'): void => {
     const textarea = textRef.current
     if (textarea === null) return
-    const start = textarea.selectionStart ?? text.length
-    const end = textarea.selectionEnd ?? start
+    const start = placement === 'start' ? 0 : textarea.selectionStart ?? text.length
+    const end = placement === 'start' ? 0 : textarea.selectionEnd ?? start
     const spacer = start > 0 && !/\s$/u.test(text.slice(0, start)) ? ' ' : ''
     const next = `${text.slice(0, start)}${spacer}${tag}${text.slice(end)}`
     changeText(next)
@@ -126,7 +126,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
                 onClick={() => changeText(t(preset.text))}>{t(preset.label)}</button>)}
             </div>
             <div className="xmimo-tts-preview-actions">
-              {breezeAudioTags ? <BreezeAudioTagPicker disabled={!enabled} onInsert={insertTag} t={t} /> : null}
+              {audioTagProvider ? <AudioTagPicker key={audioTagProvider} provider={audioTagProvider} disabled={!enabled} onInsert={insertTag} t={t} /> : null}
               <div className="xmimo-tts-preview-playback-actions">
                 <Button
                   type="button"

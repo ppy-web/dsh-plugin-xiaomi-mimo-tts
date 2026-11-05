@@ -1,6 +1,5 @@
 import type { ChatSnapshot, AssistantBlock, TurnTailChatData } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { LiveMessageIdentity } from '../playback/types.js'
-import { prepareSpeechText } from '../playback/speech-text.js'
 
 type ChatLegacy = ChatSnapshot['legacy']
 
@@ -15,10 +14,11 @@ export function finalAssistantMessageId(chat: ChatSnapshot): string | null {
   return null
 }
 
+/** Keep raw text until the selected provider can preserve its own audio controls. */
 export function messageText(legacy: ChatLegacy, messageId: string): string {
   for (const node of legacy.nodes) {
     if (node.kind !== 'assistant' || node.messageId !== messageId) continue
-    return prepareSpeechText(assistantText(node.blocks as readonly AssistantBlock[]))
+    return assistantText(node.blocks as readonly AssistantBlock[])
   }
   return ''
 }

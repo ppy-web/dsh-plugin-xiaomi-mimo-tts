@@ -1,4 +1,4 @@
-import { BREEZE_MAX_TEXT_LENGTH, prepareBreezeTtsText, prepareTtsText } from '../shared.js'
+import { BREEZE_MAX_TEXT_LENGTH, prepareProviderTtsText } from '../shared.js'
 import type { ResolvedTtsSettings } from '../shared.js'
 import { synthesizeDoubao, wrapPcmWav } from './doubao.js'
 import type { DoubaoSessionOptions } from './doubao.js'
@@ -15,7 +15,7 @@ export interface SynthesisRuntime {
 
 export function prepareSpeechRequest(current: ResolvedTtsSettings, body: SynthesizeBody): { settings: ResolvedTtsSettings; text: string } {
   const settings = synthesisOptions(current, body)
-  const text = typeof body.text === 'string' ? (settings.provider === 'breeze' ? prepareBreezeTtsText(body.text) : prepareTtsText(body.text)) : ''
+  const text = typeof body.text === 'string' ? prepareProviderTtsText(body.text, settings) : ''
   if (!text) throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)
   const providerLimit = settings.provider === 'breeze' ? Math.min(settings.maxTextLength, BREEZE_MAX_TEXT_LENGTH) : settings.maxTextLength
   if (text.length > providerLimit) throw new TtsProviderError('text-too-long', 'Text exceeds the configured limit.', 413)

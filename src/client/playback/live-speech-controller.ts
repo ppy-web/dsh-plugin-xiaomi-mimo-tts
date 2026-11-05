@@ -7,7 +7,7 @@ import {
   DEFAULT_TTS_SEGMENT_CHARACTERS,
   normalizeVoiceRate,
   splitCompletedTtsSentences,
-  splitTtsSegments,
+  splitTtsSegments, prepareProviderTtsText, supportsXiaomiAudioTags,
   splitBreezeTtsSegments,
 } from '../../shared.js'
 import type { LiveSpeechCursor } from '../../shared.js'
@@ -89,7 +89,7 @@ export class LiveSpeechController {
     this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
   }
 
-  prepareText(value: string): string { return prepareSpeechText(value, this.selection.provider === 'breeze') }
+  prepareText(value: string): string { return prepareSpeechText(value, supportsXiaomiAudioTags(this.selection) ? 'xiaomi' : this.selection.provider === 'breeze') }
 
   isDuplex(): boolean { return this.selection.provider === 'doubao' }
 
@@ -201,7 +201,7 @@ export class LiveSpeechController {
       this.finishDuplexStep()
       return
     }
-    for (const segment of (this.selection.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text))) this.queue.enqueue(segment)
+    for (const segment of (this.selection.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text, undefined, undefined, value => prepareProviderTtsText(value, this.selection)))) this.queue.enqueue(segment)
   }
 
   finish(sessionId: string, final: LiveMessageIdentity): void {
@@ -325,7 +325,7 @@ export class LiveSpeechController {
       const preparedRemainder = this.prepareText(remainder)
       const needed = DEFAULT_TTS_SEGMENT_CHARACTERS - countTtsSpeechCharacters(this.pendingText)
       if (countTtsSpeechCharacters(preparedRemainder) >= needed) {
-        const provisional = takeStreamChunk(remainder, needed, this.selection.provider === 'breeze')
+        const provisional = takeStreamChunk(remainder, needed, this.selection.provider === 'breeze' || supportsXiaomiAudioTags(this.selection))
         if (provisional.length > 0) {
           this.stageSentences([provisional], false)
           this.consumed += provisional.length
@@ -521,7 +521,7 @@ function takeStreamChunk(value: string, target: number, preserveTags = false): s
     const nextPoint = value.codePointAt(end)
     const next = nextPoint === undefined ? '' : String.fromCodePoint(nextPoint)
     if (preserveTags) {
-      if (tagEnd === null && (character === '[' || character === '(')) tagEnd = character === '[' ? ']' : ')'
+      if (tagEnd === null && (character === '[' || character === '(' || character === '（')) tagEnd = character === '[' ? ']' : character === '（' ? '）' : ')'
       else if (character === tagEnd) tagEnd = null
     }
     if (tagEnd === null && speechCharacters >= target && !/\p{M}/u.test(next)) {

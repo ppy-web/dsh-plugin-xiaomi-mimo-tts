@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { encode, getDuration, getWavFileInfo } from 'silk-wasm'
-import { BREEZE_MAX_TEXT_LENGTH, prepareBreezeTtsText, prepareTtsText, resolveTtsSettings, splitBreezeTtsSegments } from '../shared.js'
+import { BREEZE_MAX_TEXT_LENGTH, prepareProviderTtsText, supportsXiaomiAudioTags, XIAOMI_AUDIO_TAG_PATTERN, resolveTtsSettings, splitBreezeTtsSegments } from '../shared.js'
 import type { ResolvedTtsSettings } from '../shared.js'
 import type { SpeechAudio, SpeechArtifact, SpeechDeliveryAdapter, SpeechDeliveryContext, SpeechDeliveryResult, SpeechRequest, SpeechSynthesisService } from '../host-api.js'
 import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
@@ -35,6 +35,11 @@ export class HostSpeechService implements SpeechSynthesisService {
   }
 
   currentProvider() { return resolveTtsSettings(this.current()).provider }
+
+  supportsAudioTags(): boolean {
+    const settings = this.current()
+    return settings.provider === 'breeze' || supportsXiaomiAudioTags(settings)
+  }
 
   synthesize(request: SpeechRequest): Promise<SpeechAudio> { return this.track(this.synthesizeAudio(request)) }
 
@@ -156,12 +161,12 @@ export class HostSpeechService implements SpeechSynthesisService {
       await adapter.check?.({ ...context, signal })
       signal.throwIfAborted()
       const settings = synthesisOptions(this.current(), request)
-      const text = request.splitLongText ? (settings.provider === 'breeze' ? prepareBreezeTtsText(request.text) : prepareTtsText(request.text)) : request.text
+      const text = request.splitLongText ? prepareProviderTtsText(request.text, settings) : request.text
       if (request.splitLongText && !text) throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)
       const configuredLimit = Math.floor(settings.maxTextLength)
       const limit = settings.provider === 'breeze' ? Math.min(configuredLimit, BREEZE_MAX_TEXT_LENGTH) : configuredLimit
       if (request.splitLongText && (!Number.isFinite(limit) || limit < 1)) throw new TtsProviderError('invalid-text-limit')
-      const chunks = request.splitLongText ? (settings.provider === 'breeze' ? splitBreezeTtsSegments(text, limit) : splitDeliveryText(text, limit)) : [text]
+      const chunks = request.splitLongText ? (settings.provider === 'breeze' ? splitBreezeTtsSegments(text, limit) : splitDeliveryText(text, limit, supportsXiaomiAudioTags(settings))) : [text]
       let result: SpeechDeliveryResult | undefined
       for (const chunk of chunks) {
         signal.throwIfAborted()
@@ -213,8 +218,9 @@ export default class SpeechHost {
 }
 
 /** Prefer sentence boundaries, falling back to a hard provider-sized request without dropping text. */
-function splitDeliveryText(text: string, limit: number): string[] {
+function splitDeliveryText(text: string, limit: number, preserveTags = false): string[] {
   if (!text) throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)
+  const tags = preserveTags ? [...text.matchAll(XIAOMI_AUDIO_TAG_PATTERN)] : []
   const chunks: string[] = []
   let offset = 0
   while (offset < text.length) {
@@ -226,6 +232,11 @@ function splitDeliveryText(text: string, limit: number): string[] {
       if (boundary && boundary.index >= candidate.length / 2) end = offset + boundary.index + boundary[0].length
       // Avoid splitting a supplementary character if a caller's configured limit permits it.
       if (end > offset + 1 && /[\uD800-\uDBFF]/u.test(text[end - 1]!)) end--
+    }
+    const tag = tags.find(tag => end > tag.index && end < tag.index + tag[0].length)
+    if (tag) {
+      if (tag.index === offset) throw new TtsProviderError('text-too-long', 'Audio tag exceeds the configured limit.', 413)
+      end = tag.index
     }
     chunks.push(text.slice(offset, end))
     offset = end

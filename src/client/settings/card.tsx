@@ -584,7 +584,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           source={previewView.source}
           error={previewView.error}
           text={previewText}
-          breezeAudioTags={provider === 'breeze'}
+          audioTagProvider={provider === 'breeze' ? 'breeze' : provider === 'xiaomi' && model === 'mimo-v2.5-tts' ? 'xiaomi' : undefined}
           onToggle={toggleSettingsPreview}
           onTextChange={next => { previewPlayer.stop(); setPreviewText(next) }}
           recording={previewPlayer.getRecording()}

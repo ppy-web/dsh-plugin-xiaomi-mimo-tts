@@ -4,10 +4,11 @@ import { createPortal } from 'react-dom'
 import { Button, useAnchoredPosition, useDismissOnOutsidePointer } from '@deepseek-ai/dsh-client-ui-primitives'
 import { RiArrowDownSLine } from 'react-icons/ri'
 import { BREEZE_AUDIO_TAG_GROUPS, type BreezeAudioTagLanguage } from '../breeze-audio-tags.js'
+import { XIAOMI_AUDIO_TAG_GROUPS } from '../../../text/xiaomi-audio-tags.js'
 import type { Translate } from '../../localization.js'
 
 /** Anchored tag palette; selection inserts at the caret and returns to the text. */
-export function BreezeAudioTagPicker({ disabled, onInsert, t }: { disabled: boolean; onInsert: (tag: string) => void; t: Translate }): ReactElement {
+export function AudioTagPicker({ provider, disabled, onInsert, t }: { provider: 'xiaomi' | 'breeze'; disabled: boolean; onInsert: (tag: string, placement?: 'start') => void; t: Translate }): ReactElement {
   const [language, setLanguage] = useState<BreezeAudioTagLanguage>('zh')
   const [open, setOpen] = useState(false)
   const panelId = useId()
@@ -15,7 +16,7 @@ export function BreezeAudioTagPicker({ disabled, onInsert, t }: { disabled: bool
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const expanded = open && !disabled
-  const position = useAnchoredPosition({ open: expanded, anchorRef: triggerRef, panelRef, side: 'bottom', align: 'start', gap: 6, margin: 12, layoutKey: language })
+  const position = useAnchoredPosition({ open: expanded, anchorRef: triggerRef, panelRef, side: 'bottom', align: 'start', gap: 6, margin: 12, layoutKey: `${provider}:${language}` })
   useDismissOnOutsidePointer(rootRef, expanded, setOpen, panelRef)
   useEffect(() => {
     if (!expanded) return
@@ -31,7 +32,9 @@ export function BreezeAudioTagPicker({ disabled, onInsert, t }: { disabled: bool
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [expanded])
-  const groups = BREEZE_AUDIO_TAG_GROUPS[language]
+  const groups: readonly { label: string; tags: readonly string[]; placement?: 'start' }[] = provider === 'xiaomi'
+    ? XIAOMI_AUDIO_TAG_GROUPS.map(group => ({ label: group[language], tags: (language === 'zh' ? group.tags : group.english).map(tag => `(${tag})`), ...('placement' in group ? { placement: group.placement } : {}) }))
+    : BREEZE_AUDIO_TAG_GROUPS[language]
   return <div ref={rootRef} className={expanded ? 'xmimo-tts-breeze-audio-tags xmimo-tts-breeze-audio-tags-open' : 'xmimo-tts-breeze-audio-tags'}>
     <button
       type="button"
@@ -49,7 +52,7 @@ export function BreezeAudioTagPicker({ disabled, onInsert, t }: { disabled: bool
     {expanded ? createPortal(<div ref={panelRef} id={panelId} className="xmimo-ui-scope xmimo-tts-breeze-audio-tags-panel"
       role="dialog" aria-label={t('settings.breezeAudioTags')} style={position ?? { visibility: 'hidden' }}
       onBlur={event => { if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget) && !rootRef.current?.contains(event.relatedTarget)) setOpen(false) }}>
-      <small>{t('settings.breezeAudioTagsHint')}</small>
+      <small>{t(provider === 'xiaomi' ? 'settings.xiaomiAudioTagsHint' : 'settings.breezeAudioTagsHint')}</small>
       <div className="xmimo-tts-settings-segmented-wrap">
         <Button type="button" aria-pressed={language === 'zh'} variant={language === 'zh' ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setLanguage('zh')}>{t('settings.breezeAudioTagsChinese')}</Button>
         <Button type="button" aria-pressed={language === 'en'} variant={language === 'en' ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setLanguage('en')}>{t('settings.breezeAudioTagsEnglish')}</Button>
@@ -57,7 +60,7 @@ export function BreezeAudioTagPicker({ disabled, onInsert, t }: { disabled: bool
       {groups.map(group => <div key={group.label} className="xmimo-tts-breeze-audio-tag-group">
         <strong>{group.label}</strong>
         <div className="xmimo-tts-breeze-audio-tag-list">
-          {group.tags.map(tag => <Button key={tag} type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => { setOpen(false); onInsert(tag) }}>{tag}</Button>)}
+          {group.tags.map(tag => <Button key={tag} type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => { setOpen(false); onInsert(tag, group.placement) }}>{tag}</Button>)}
         </div>
       </div>)}
     </div>, document.body) : null}

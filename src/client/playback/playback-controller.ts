@@ -1,4 +1,4 @@
-import { normalizeVoiceRate, splitBreezeTtsSegments, splitTtsSegments, TTS_ROUTE } from '../../shared.js'
+import { normalizeVoiceRate, prepareProviderTtsText, splitBreezeTtsSegments, splitTtsSegments, TTS_ROUTE } from '../../shared.js'
 import { hostRoute } from '../host-route.js'
 import type { PlaybackStatus, PlaybackView } from './types.js'
 import { applyMediaVoiceRate } from './voice-rate.js'
@@ -163,7 +163,7 @@ export class PlaybackController {
     const previous = this.segmentedState
     const resume = previous !== null && previous.sessionId === sessionId && previous.messageId === messageId
     this.stopCurrent()
-    const segments = resume ? previous.segments : (this.selection?.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text))
+    const segments = resume ? previous.segments : (this.selection?.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text, undefined, undefined, value => prepareProviderTtsText(value, this.selection ?? {})))
     const startIndex = resume ? previous.index : 0
     const voiceRate = resume ? previous.voiceRate : this.voiceRate
     if (segments.length === 0) {

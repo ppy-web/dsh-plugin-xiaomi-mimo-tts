@@ -1,4 +1,5 @@
 import { findFencedCodeRegions, removeFencedCode } from './fenced-code.js'
+import { XIAOMI_AUDIO_TAG_PATTERN } from './xiaomi-audio-tags.js'
 
 const TTS_PUNCTUATION: Record<string, string> = {
   '，': ',',
@@ -45,13 +46,14 @@ function removeTtsPaths(value: string): string {
     .replace(TTS_UNIX_PATH_PATTERN, ' ')
 }
 
-function removeTtsMarkup(value: string): string {
+function removeTtsMarkup(value: string, protect?: (text: string) => string): string {
   let text = removeFencedCode(value)
     .replace(MARKDOWN_CODE_BLOCK_RE, ' ')
     .replace(MARKDOWN_INDENTED_CODE_RE, '$1')
     .replace(MARKDOWN_IMAGE_RE, ' ')
     .replace(MARKDOWN_LINK_RE, '$1')
     .replace(MARKDOWN_HTML_TAG_RE, ' ')
+  text = (protect?.(text) ?? text)
     .replace(MARKDOWN_HEADING_RE, '$1')
     .replace(MARKDOWN_LIST_RE, '$1')
     .replace(MARKDOWN_BLOCKQUOTE_RE, '$1')
@@ -108,6 +110,17 @@ export function prepareTtsText(value: string): string {
   )
 
   return text.replace(/\s+/g, ' ').trim()
+}
+
+/** Preserve MiMo's open tag vocabulary after removing code, links and paths. */
+export function prepareXiaomiTtsText(value: string): string {
+  const tags: string[] = []
+  const protectedText = removeTtsMarkup(value.replace(/[\uE000-\uE002]/gu, ' '), text =>
+    text.replace(XIAOMI_AUDIO_TAG_PATTERN, tag => {
+      tags.push(tag)
+      return `${tags.length - 1}`
+    }))
+  return prepareTtsText(protectedText).replace(/(\d+)/gu, (_match, index: string) => tags[Number(index)] ?? '')
 }
 
 /** Documented Breeze audio events, grouped for the model-facing tag reference. */
@@ -173,6 +186,7 @@ export interface TtsSentenceSplit {
 export function splitCompletedTtsSentences(value: string): TtsSentenceSplit {
   const { regions, pendingStart } = findFencedCodeRegions(value)
   const limit = pendingStart ?? value.length
+  const tags = [...value.matchAll(XIAOMI_AUDIO_TAG_PATTERN)]
   const boundary = /[。！？!?；;.\n]+(?:[”’）】》〕\]}'"]*\s*)/gu
   const sentences: string[] = []
   let sentenceStart = 0
@@ -182,6 +196,7 @@ export function splitCompletedTtsSentences(value: string): TtsSentenceSplit {
     boundary.lastIndex = from
     let match: RegExpExecArray | null
     while ((match = boundary.exec(value)) !== null) {
+      if (tags.some(tag => match!.index >= tag.index && match!.index < tag.index + tag[0].length)) continue
       const end = match.index + match[0].length
       if (end > to) break
       // A trailing digit and period may still grow into a decimal in the next update.

@@ -29,6 +29,7 @@ export const fr: Record<LocaleKey, string> = {
   'settings.breezeEnabled': 'Activer Breeze Blue',
   'settings.providerMinimum': 'Xiaomi reste activé ; gardez Doubao ou Breeze activé.',
   'settings.breezeAudioTags': 'Balises audio',
+  'settings.xiaomiAudioTagsHint': 'Voix Xiaomi prédéfinies : style en début de texte, sons dans le texte. Accepte (), （）, [], descriptions libres et combinaisons. Le chant s’insère au début. Pour Voice Design, utilisez les instructions vocales.',
   'settings.breezeAudioTagsHint': 'Les balises sont insérées dans le texte d’essai. Crochets pour le chinois, parenthèses pour l’anglais. Breeze TTS uniquement.',
   'settings.breezeAudioTagsChinese': '中文',
   'settings.breezeAudioTagsEnglish': 'English',

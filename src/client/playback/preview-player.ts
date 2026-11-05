@@ -4,7 +4,7 @@ import {
   normalizeVoiceRate,
   parseSseRecords,
   splitBreezeTtsSegments, splitTtsSegments,
-  stripBreezeAudioTags,
+  stripBreezeAudioTags, stripXiaomiAudioTags,
 } from '../../shared.js'
 import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel } from '../../shared.js'
 import { hostRoute } from '../host-route.js'
@@ -183,7 +183,7 @@ export class PreviewPlayer {
       return
     }
     const generation = this.generation
-    const localText = settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : normalized
+    const localText = settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : (settings.provider ?? 'xiaomi') === 'xiaomi' ? stripXiaomiAudioTags(normalized) : normalized
     try {
       if (settings.localSpeechMode === 'local-first') {
         try {

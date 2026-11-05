@@ -69,13 +69,18 @@ test('Host speech uses saved provider settings, cleans text and produces playabl
   })
 })
 
-test('saved provider selection is observable and Breeze tags never reach other providers', async () => {
-  await withXiaomi(async ({ service, requests }) => {
+test('saved Xiaomi preset preserves inline controls while VoiceDesign omits them', async () => {
+  await withXiaomi(async ({ service, requests, settings }) => {
     assert.equal(service.currentProvider(), 'xiaomi')
     await service.synthesize({ text: '你好，[轻笑]世界！(sighs)继续。', format: 'wav' })
     const spoken = requests[0].messages.at(-1).content
-    for (const word of ['轻笑', 'sighs']) assert.ok(!spoken.includes(word), `${word} must not be read as text`)
+    assert.ok(spoken.includes('[轻笑]') && spoken.includes('(sighs)'), 'controls must retain their delimiters in the Xiaomi assistant message')
     for (const word of ['你好', '世界', '继续']) assert.ok(spoken.includes(word))
+    settings.model = 'mimo-v2.5-tts-voicedesign'
+    await service.synthesize({ text: '你好，[轻笑]世界！(sighs)继续。', format: 'wav' })
+    const plain = requests[1].messages.at(-1).content
+    for (const word of ['轻笑', 'sighs']) assert.ok(!plain.includes(word), `${word} must not become spoken text on VoiceDesign`)
+    for (const word of ['你好', '世界', '继续']) assert.ok(plain.includes(word))
   })
 })
 
