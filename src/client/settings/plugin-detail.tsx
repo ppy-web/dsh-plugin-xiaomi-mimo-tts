@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import type { ReactElement } from 'react'
 import { Button, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AiFillGithub } from 'react-icons/ai'
-import { LuBookOpen } from 'react-icons/lu'
+import { LuBookOpen, LuAudioLines } from 'react-icons/lu'
 import type { PluginDetailProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { resolveTtsSettings } from '../../shared.js'
@@ -18,6 +18,8 @@ import { useSettingsSnapshot } from './scope.js'
 
 interface DetailProps extends PluginDetailProps {
   t: Translate
+  scope?: ConfigForm<TtsSettings> | undefined
+  onOpenWorkbench?: (() => void) | undefined
 }
 
 interface DetailBadgeProps extends DetailProps {
@@ -42,7 +44,17 @@ export function PluginDetailActions(props: DetailProps): ReactElement | null {
       <LuBookOpen size={14} aria-hidden="true" focusable="false" />
       <span className="xmimo-tts-detail-action-label">{manualLabel}</span>
     </Button>
+    {props.scope ? <WorkbenchAction scope={props.scope} t={props.t} onOpen={props.onOpenWorkbench} /> : null}
   </div>
+}
+
+function WorkbenchAction({ scope, t, onOpen }: { scope: ConfigForm<TtsSettings>; t: Translate; onOpen: (() => void) | undefined }): ReactElement | null {
+  const snapshot = useSettingsSnapshot(scope)
+  if (snapshot.status !== 'ready' || !resolveTtsSettings(snapshot.value).showInSidebar || !onOpen) return null
+  return <Button type="button" variant="outline" size="sm" onClick={onOpen}>
+    <LuAudioLines size={14} aria-hidden="true" focusable="false" />
+    <span>{t('settings.voiceSettingsNav')}</span>
+  </Button>
 }
 
 const STATUS_KEYS: Record<ApiKeyStatus, LocaleKey> = {

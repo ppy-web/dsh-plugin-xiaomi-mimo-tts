@@ -17,7 +17,8 @@ import type { Translate } from './localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback/index.js'
 import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
 import { onTtsCredentialsSaved } from './conversation/api-key-status.js'
-import { SettingsCard } from './settings/card.js'
+import { registerBundleSettings } from './settings/bundle-settings.js'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { registerWhalePersonaSettings, registerQqbotSpeechSettings } from './settings/qqbot-registration.js'
 import { registerPassportSettings } from './settings/passport-registration.js'
 import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
@@ -25,7 +26,7 @@ import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail
 import { ActivationGuide } from './settings/activation-guide.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
 import { registerVoiceReadingNavIcon } from './settings/nav-icon.js'
-import { registerVoiceSettingsSidebar } from './settings/sidebar-action.js'
+import { registerVoiceSettingsSidebar, VOICE_SETTINGS_PANEL_ID } from './settings/sidebar-action.js'
 import { VoiceReadingSection } from './settings/voice-reading-section.js'
 import type { VoiceReadingSectionInjected } from './settings/voice-reading-section.js'
 import { createSoundEffectsController, installClickSounds } from './sound-effects/index.js'
@@ -50,6 +51,7 @@ export const inject = [
   'remote',
   'configForms',
   'pluginNavigation',
+  'layout',
   'pluginChanges',
   'sessions',
 ]
@@ -256,7 +258,7 @@ export function apply(ctx: Context): void {
     name: 'plugins.detail.actions',
     id: 'xiaomi-mimo-tts.manual',
     locale: NS,
-    inject: () => ({ t }),
+    inject: () => ({ t, scope, onOpenWorkbench: () => ctx.layout.selectPanel(VOICE_SETTINGS_PANEL_ID as MainPanelId) }),
   }, PluginDetailActions))
 
   registerSlotContribution(ctx, 'plugins.detail.badge', () => ctx.slots.register({
@@ -267,12 +269,9 @@ export function apply(ctx: Context): void {
   }, PluginDetailBadge))
 
   const settingsPageProps = { scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback }
-  registerSlotContribution(ctx, 'plugins.bundle.config', () => ctx.slots.register({
-    name: 'plugins.bundle.config',
-    key: 'dsh-xiaomi-tts',
-    locale: NS,
-    inject: () => settingsPageProps,
-  }, SettingsCard))
+  registerSlotContribution(ctx, 'plugins.bundle.config', () => registerBundleSettings(ctx, {
+    ...settingsPageProps, onSidebarChange: mounted => { if (mounted) ctx.layout.selectPanel(VOICE_SETTINGS_PANEL_ID as MainPanelId) },
+  }))
 
   registerSlotContribution(ctx, 'plugins.row.config', () => [registerWhalePersonaSettings(ctx, t, changes), registerQqbotSpeechSettings(ctx, t, changes), registerPassportSettings(ctx, t, changes)])
 

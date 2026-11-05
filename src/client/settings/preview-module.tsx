@@ -7,17 +7,12 @@ import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS } from './announcemen
 import type { AnnouncementSettingsProps } from './announcement-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { AudioTagPicker } from './controls/audio-tag-picker.js'
-import { SidebarSettings } from './sidebar-settings.js'
 import { ProviderSettings } from './provider-settings.js'
 import type { ProviderSettingsProps } from './provider-settings.js'
 import { PREVIEW_PRESETS } from './preview-presets.js'
 import { HistoryDownloads } from '../history/history-list.js'
 
 export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<ProviderSettingsProps, 't' | 'writable'> {
-  showInSidebar: boolean
-  sidebarOverridden: boolean
-  onShowInSidebarChange: (value: boolean) => void
-  onResetSidebar: () => void
   enabled: boolean
   status: PreviewStatus
   source: PreviewSource
@@ -31,7 +26,7 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<Prov
   audioTagProvider?: 'xiaomi' | 'breeze' | undefined
 }
 
-export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, showInSidebar, sidebarOverridden, onShowInSidebarChange, onResetSidebar, ...settings }: PreviewModuleProps): ReactElement {
+export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, ...settings }: PreviewModuleProps): ReactElement {
   const textRef = useRef<HTMLTextAreaElement>(null)
   const [downloads] = useState(() => new HistoryDownloads())
   const [downloadFailed, setDownloadFailed] = useState(false)
@@ -151,7 +146,6 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
       </div>
       <ProviderSettings t={t} writable={settings.writable} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} mossEnabled={mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange} />
       <AnnouncementSettings t={t} {...settings} parentOpen={open}>
-        <SidebarSettings t={t} value={showInSidebar} writable={settings.writable} overridden={sidebarOverridden} onChange={onShowInSidebarChange} onReset={onResetSidebar} />
       </AnnouncementSettings>
     </div>
   </CollapsibleModule>

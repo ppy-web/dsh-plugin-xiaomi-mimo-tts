@@ -71,6 +71,7 @@ test('fresh enabled Passport exposes editable Host settings without a token or A
   assert.equal(run.entry.fiber.state, 2)
   const view = run.view()
   assert.ok(view)
+  assert.equal(view.autoGenerate, false)
   assert.equal(view.value.host, '127.0.0.1')
   assert.equal(Object.hasOwn(view.value, 'accessToken'), false)
   assert.ok(view.secrets.some(value => value.path[0] === 'accessToken'))

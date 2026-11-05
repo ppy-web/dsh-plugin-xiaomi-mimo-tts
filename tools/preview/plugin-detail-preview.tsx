@@ -1,6 +1,8 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import type { PluginsSubject } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import { PluginDetailActions, PluginDetailBadge } from '../../src/client/settings/plugin-detail.js'
+import { BundleSettingsCard } from '../../src/client/settings/bundle-settings.js'
+import type { SettingsCardProps } from '../../src/client/settings/card.js'
 import type { ApiKeyStatus } from '../../src/client/settings/api-key-state.js'
 import type { LocaleKey, Translate } from '../../src/client/localization.js'
 import { useSettingsSnapshot } from '../../src/client/settings/scope.js'
@@ -16,6 +18,7 @@ export const previewPluginChanges = {
 
 const pkg = { name: 'dsh-xiaomi-tts', installed: true, availability: 'available', official: false, enabled: true, rows: [] } as const
 const subject = { kind: 'bundle', pkg } satisfies PluginsSubject
+export const PREVIEW_PLUGIN_SUBJECT = subject
 
 const statusKeys: Record<ApiKeyStatus, LocaleKey> = {
   loading: 'detail.keyLoading', missing: 'detail.keyMissing', recognized: 'detail.keyRecognized',
@@ -23,7 +26,7 @@ const statusKeys: Record<ApiKeyStatus, LocaleKey> = {
 }
 
 /** A host-shaped harness for the real detail contributions, with no cloud credentials. */
-export function PluginDetailPreview({ scope, t }: { scope: PreviewSettingsScope; t: Translate }) {
+export function PluginDetailPreview({ scope, t, settingsProps, onOpenWorkbench }: { scope: PreviewSettingsScope; t: Translate; settingsProps: Omit<SettingsCardProps, 'view'>; onOpenWorkbench: () => void }) {
   const activity = useSyncExternalStore(previewPluginChanges.subscribe, previewPluginChanges.getSnapshot)
   const snapshot = useSettingsSnapshot(scope)
   useEffect(() => {
@@ -48,7 +51,8 @@ export function PluginDetailPreview({ scope, t }: { scope: PreviewSettingsScope;
       <div><h2>MiMo & Seed TTS</h2>
         <PluginDetailBadge subject={subject} t={t} scope={scope} changes={previewPluginChanges} />
       </div>
-      <PluginDetailActions subject={subject} t={t} />
+      <PluginDetailActions subject={subject} t={t} scope={scope} onOpenWorkbench={onOpenWorkbench} />
     </header>
+    <BundleSettingsCard {...settingsProps} view="page" />
   </div>
 }

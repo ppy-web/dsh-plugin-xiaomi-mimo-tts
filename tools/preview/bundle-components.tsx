@@ -43,7 +43,7 @@ export function BundleComponents({ locale, readOnly = false }: { locale: Preview
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [agentEnabled, setAgentEnabled] = useState(false)
   const [qqbotEnabled, setQqbotEnabled] = useState(false)
-  const [passportEnabled, setPassportEnabled] = useState(false)
+  const [passportEnabled, setPassportEnabled] = useState(true)
   const components = [
     { id: 'xiaomi-mimo-tts', icon: pluginIcon, title: copy.ttsTitle, description: copy.ttsDescription, module: 'dsh-xiaomi-tts', enabled: ttsEnabled, setEnabled: setTtsEnabled },
     { id: 'speech-delivery-qqbot', icon: qqbotIcon, title: copy.qqbotTitle, description: copy.qqbotDescription, module: 'dsh-xiaomi-tts/qqbot', enabled: qqbotEnabled, setEnabled: setQqbotEnabled },

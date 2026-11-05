@@ -21,7 +21,14 @@
 .xmimo-tts-settings-page { box-sizing: border-box; height: 100%; min-height: 0; overflow-y: auto; padding: 24px; color: var(--xmimo-ui-text); }
 .xmimo-tts-settings-page-content { width: 100%; max-width: 800px; margin-inline: auto; }
 .xmimo-tts-settings-page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-block-end: 24px; padding-inline-start: var(--dsh-frame-leading-clearance, 0px); }
-.xmimo-tts-settings-page-header h1 { margin: 0; font-size: 24px; font-weight: 600; line-height: 1.4; }
+.xmimo-tts-settings-page-header h1 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 24px; font-weight: 600; line-height: 1.4; }
+.xmimo-tts-settings-page-header h1 img { flex: none; object-fit: contain; }
+.xmimo-tts-sidebar-loading { max-width: calc(100vw - 32px); border: 0; padding: 0; color: var(--xmimo-ui-text); background: transparent; }
+.xmimo-tts-sidebar-loading::backdrop { background: rgb(0 0 0 / 12%); }
+.xmimo-tts-sidebar-loading-status { display: flex; align-items: center; gap: 10px; border-radius: 10px; padding: 16px 20px; background: color-mix(in srgb, var(--xmimo-ui-surface) 92%, transparent); font-size: 14px; line-height: 1.5; }
+.xmimo-tts-sidebar-loading-spinner { flex: none; width: 18px; height: 18px; box-sizing: border-box; border: 2px solid var(--xmimo-ui-border); border-top-color: currentColor; border-radius: 50%; animation: xmimo-tts-sidebar-loading-spin 800ms linear infinite; }
+@keyframes xmimo-tts-sidebar-loading-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .xmimo-tts-sidebar-loading-spinner { animation: none; } }
 .xmimo-tts-settings-page-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .xmimo-tts-settings-page-actions .xmimo-tts-action-button { min-height: 24px; padding: 2px 7px; font-size: 12px; line-height: 18px; }
 @media (max-width: 560px) {

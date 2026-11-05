@@ -184,7 +184,7 @@ test('detail actions open the project and manual separately and remain available
     else delete globalThis.window
   })
   const actions = PluginDetailActions({ subject, t: key => key }).props.children
-  for (const action of actions) action.props.onClick()
+  for (const action of actions.filter(Boolean)) action.props.onClick()
   assert.deepEqual(open.mock.calls.map(call => call.arguments), [
     [SOURCE_URL, '_blank', 'noopener,noreferrer'],
     [MANUAL_URL, '_blank', 'noopener,noreferrer'],

@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-experimental-speech-to-text'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { readFileSync } from 'node:fs'
 import { PassportBridge } from './passport/bridge.js'
@@ -38,6 +39,9 @@ export type Config = ReturnType<typeof Config>
 
 /** Optional Host-only transport. No client or provider-specific registration is required. */
 export function apply(ctx: Context, config: Config): void {
+  ctx.inject(['settings'], child => {
+    child.effect(() => child.settings.configure({ auto: false }, ctx.fiber), 'speech-delivery-passport: custom settings page')
+  })
   let connection: PassportBridge | undefined
   let lastError: string | undefined
   let sessionError: string | undefined

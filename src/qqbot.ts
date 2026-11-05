@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import AgentPreset from '@deepseek-ai/dsh-agent-preset'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import type {} from '@deepseek-ai/dsh-settings'
 import type { ServerResponse } from 'node:http'
 import { TTS_QQ_MEMORY_ROUTE } from './constants.js'
 import { json, readJsonBody } from './host/http.js'
@@ -55,6 +56,9 @@ export function createQqbotSpeechDelivery(ctx: Context, directory = QQBOT_MEDIA_
 }
 
 export function apply(ctx: Context, config: Config): void {
+  ctx.inject(['settings'], child => {
+    child.effect(() => child.settings.configure({ auto: false }, ctx.fiber), 'speech-delivery-qqbot: custom settings page')
+  })
   const current = () => readWhaleConfig(config)
   ctx.provide('qqbotSettings', { current })
   const companion = createQqCompanion(ctx, current)

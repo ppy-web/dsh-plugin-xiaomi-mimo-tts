@@ -18,7 +18,9 @@ export function VoiceSettingsSidebarIcon({ size }: { size: number }): ReactEleme
 export function registerVoiceSettingsSidebar(ctx: Context, props: Omit<VoiceSettingsPageProps, 'onOpenPluginSettings'>): () => void {
   const { scope, t } = props
   // The page stays available when its shortcut is hidden, including just after saving that preference.
-  const pageProps: VoiceSettingsPageProps = { ...props, onOpenPluginSettings: () => ctx.pluginNavigation.openBundle('dsh-xiaomi-tts') }
+  const pageProps: VoiceSettingsPageProps = { ...props, onOpenPluginSettings: () => ctx.pluginNavigation.openBundle('dsh-xiaomi-tts'),
+    onSidebarChange: mounted => { if (!mounted) ctx.pluginNavigation.openBundle('dsh-xiaomi-tts') },
+  }
   const removePanel = ctx.slots.register({ name: 'main', key: VOICE_SETTINGS_PANEL_ID, inject: () => pageProps }, VoiceSettingsPage)
   let remove: (() => void) | undefined
   const update = (): void => {

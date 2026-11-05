@@ -32,7 +32,7 @@ export function PreviewSidebar({ copy, activeView, readOnly, onReadOnlyChange, o
       {onClose ? <button type="button" className="preview-icon-button" aria-label={copy.closeNavigation} onClick={onClose}><LuX /></button> : null}
     </div>
     <nav aria-label={copy.navigation} className="preview-navigation">
-      {voiceSettingsLabel ? <div className="preview-nav-group"><ul><li><a href="#settings" title={voiceSettingsLabel} onClick={onNavigate}><LuVolume2 aria-hidden="true" /><span className="preview-sidebar-label">{voiceSettingsLabel}</span></a></li></ul></div> : null}
+      {voiceSettingsLabel ? <div className="preview-nav-group"><ul><li><a href="#workbench" title={voiceSettingsLabel} aria-current={activeView === 'workbench' ? 'page' : undefined} onClick={onNavigate}><LuVolume2 aria-hidden="true" /><span className="preview-sidebar-label">{voiceSettingsLabel}</span></a></li></ul></div> : null}
       {GROUPS.map(group => <div className="preview-nav-group" key={group.label}>
         <p className="preview-nav-group-label">{copy[group.label]}</p>
         <ul>

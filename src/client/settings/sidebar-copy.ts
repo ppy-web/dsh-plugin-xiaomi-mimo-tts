@@ -1,11 +1,17 @@
 export const sidebarZh = {
-  'settings.showInSidebar': '侧栏快捷入口',
-  'settings.showInSidebarHint': '保存后在宿主侧栏顶部显示「语音配置」入口',
-  'settings.voiceSettingsNav': '语音配置',
+  'settings.mountSidebar': '挂载侧栏',
+  'settings.unmountSidebar': '退出侧栏',
+  'settings.mountingSidebar': '正在挂载侧栏，请稍候…',
+  'settings.unmountingSidebar': '正在退出侧栏，请稍候…',
+  'settings.voiceSettingsNav': '语音工作台',
+  'settings.pluginDetails': '插件详情',
 } as const
 
 export const sidebarEn = {
-  'settings.showInSidebar': 'Sidebar shortcut',
-  'settings.showInSidebarHint': 'Show Voice settings at the top of the host sidebar after saving',
-  'settings.voiceSettingsNav': 'Voice settings',
+  'settings.mountSidebar': 'Mount to sidebar',
+  'settings.unmountSidebar': 'Remove from sidebar',
+  'settings.mountingSidebar': 'Mounting to sidebar, please wait…',
+  'settings.unmountingSidebar': 'Removing from sidebar, please wait…',
+  'settings.voiceSettingsNav': 'Voice workbench',
+  'settings.pluginDetails': 'Plugin details',
 } as const

@@ -2,7 +2,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { LuPanelLeft, LuSun, LuMoon, LuChevronRight } from 'react-icons/lu'
-import { SettingsCard } from '../../src/client/settings/card.js'
+import { BundleSettingsCard } from '../../src/client/settings/bundle-settings.js'
+import { VoiceSettingsPage } from '../../src/client/settings/voice-settings-page.js'
+import { PluginDetailActions } from '../../src/client/settings/plugin-detail.js'
 import { createSoundEffectsController } from '../../src/client/sound-effects/index.js'
 import { CLIENT_STYLES } from '../../src/client/style/index.js'
 import { en, zh, ja, fr } from '../../src/client/localization.js'
@@ -27,7 +29,7 @@ import { AudioHistory } from '../../src/client/history/audio-history.js'
 import { ConversationPreview } from './conversation-preview.js'
 import { VoiceReadingPreview } from './voice-reading-preview.js'
 import { bindApiKeyStatus } from '../../src/client/settings/api-key-status-store.js'
-import { PluginDetailPreview, previewPluginChanges } from './plugin-detail-preview.js'
+import { PluginDetailPreview, previewPluginChanges, PREVIEW_PLUGIN_SUBJECT } from './plugin-detail-preview.js'
 import { PREVIEW_COPY, previewDocumentSectionId, previewViewFromHash } from './preview-copy.js'
 import type { PreviewLocale, PreviewView } from './preview-copy.js'
 import { PreviewSidebar } from './preview-sidebar.js'
@@ -112,6 +114,10 @@ function PreviewApp() {
   }
   const openActivation = (): void => { setNavigationOpen(false); setActivationOpen(true) }
   const savedSettings = useSettingsSnapshot(scope)
+  const openWorkbench = (): void => { window.location.hash = 'workbench' }
+  const settingsPageProps = { scope, t, controller: soundEffects, history,
+    onSidebarChange: (mounted: boolean) => { window.location.hash = mounted ? 'workbench' : 'detail' },
+  }
   const sidebarProps = {
     voiceSettingsLabel: savedSettings.value?.showInSidebar ? t('settings.voiceSettingsNav') : undefined,
     copy, activeView, readOnly, onReadOnlyChange: toggleReadOnly,
@@ -145,17 +151,19 @@ function PreviewApp() {
       </header>
       <main className="preview-canvas" id="preview-main">
         <div className="preview-page">
-          <header className="preview-page-heading">
+          {activeView !== 'workbench' ? <header className="preview-page-heading">
             <h1 ref={headingRef} tabIndex={-1}>{page.title}</h1><p>{page.description}</p>
-          </header>
+          </header> : null}
           <div className="preview-page-body" key={instance}>
             {activeView === 'settings' ? <div className="preview-plugin-surface">
               <div className="preview-surface-heading"><img src={pluginIcon} alt="" width={36} height={36} /><div><strong>MiMo & Seed TTS</strong><span>dsh-xiaomi-tts</span></div><span className="preview-surface-version">v{TTS_VERSION}</span></div>
-              <SettingsCard view="page" scope={scope} t={t} controller={soundEffects} history={history} />
+              <PluginDetailActions subject={PREVIEW_PLUGIN_SUBJECT} scope={scope} t={t} onOpenWorkbench={openWorkbench} />
+              <BundleSettingsCard {...settingsPageProps} view="page" />
             </div>
+              : activeView === 'workbench' ? <VoiceSettingsPage {...settingsPageProps} onOpenPluginSettings={() => { window.location.hash = 'detail' }} />
               : activeView === 'voice' ? <div className="preview-voice-surface"><VoiceReadingPreview scope={scope} t={t} onOpenPluginSettings={() => { window.location.hash = 'settings' }} /></div>
               : activeView === 'conversation' ? <ConversationPreview scope={scope} />
-              : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} />
+              : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} settingsProps={settingsPageProps} onOpenWorkbench={openWorkbench} />
               : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} readOnly={readOnly} />
               : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'qqbot' ? <DocumentPage key="qqbot" copy={QQBOT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />

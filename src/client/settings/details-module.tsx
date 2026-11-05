@@ -19,7 +19,7 @@ import { LocalVoiceModule } from './local-voice-module.js'
 import { DoubaoVoicePicker } from './controls/doubao-voice-picker.js'
 import { BreezeVoicePicker } from './controls/breeze-voice-picker.js'
 import { VoiceIdInput } from './controls/voice-id-input.js'
-import { SpeechInstructionPicker } from './controls/speech-instruction-picker.js'
+import { SpeechInstructionPicker, speechInstructionLabel } from './controls/speech-instruction-picker.js'
 import type { TtsProvider, DoubaoTtsModel } from '../../types/providers.js'
 import {
   VoiceDesignPresetPicker,
@@ -148,6 +148,9 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
   const summaryVoiceVolume = `${Math.round(voiceVolume * 100)}%`
   const summaryVoiceRate = `${voiceRate.toFixed(1)}×`
   const instructionField = provider === 'doubao' ? 'doubaoInstruction' : provider === 'breeze' ? 'breezeInstruction' : 'instruction'
+  const supportsInstruction = provider !== 'doubao' || doubaoModel === 'seed-tts-2.0'
+  const instruction = provider === 'breeze' ? breezeInstruction : speechInstruction
+  const summaryInstruction = supportsInstruction ? speechInstructionLabel(provider, instruction, t) : null
   const readScopeControl = <div className="xmimo-tts-format">
     <SettingFieldHeading label={t('settings.readScope')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('readScope')} resettable disabled={!writable} onReset={() => { resetField('readScope') }} />
     <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
@@ -168,7 +171,7 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
     title={<span className="xmimo-ui-module-title"><RiEqualizerLine size={14} aria-hidden="true" focusable="false" />{t('settings.detailedVoiceConfig')}</span>}
     ariaLabel={t('settings.detailedVoiceConfig')}
     summary={<span className="xmimo-tts-details-summary xmimo-ui-summary">
-      <span>{summaryVoiceVolume}</span><span>{summaryVoiceRate}</span><span>{summaryReadScope}</span>{provider === 'breeze' ? null : <span>{summaryModel}</span>}<span>{summaryVoice}</span>{minimal ? null : <span>{summaryStrategy}</span>}
+      <span>{summaryVoiceVolume}</span><span>{summaryVoiceRate}</span><span>{summaryReadScope}</span>{provider === 'breeze' ? null : <span>{summaryModel}</span>}<span>{summaryVoice}</span>{summaryInstruction === null ? null : <span title={`${t('settings.speechInstruction')}: ${instruction.trim() || summaryInstruction}`}>{summaryInstruction}</span>}{minimal ? null : <span>{summaryStrategy}</span>}
     </span>}
     open={open}
     onToggle={onToggle}
@@ -233,7 +236,7 @@ export function DetailsModule({ t, provider, doubaoModel, doubaoVoice, doubaoClo
           <BuiltInVoicePicker value={voice} disabled={!writable} label={t('settings.voice')} minimal={minimal} onChange={onVoiceChange} />
         </div>
       </> : null}
-      {provider === 'xiaomi' || provider === 'breeze' || doubaoModel === 'seed-tts-2.0' ? <div className="xmimo-tts-voice xmimo-tts-speech-instruction">
+      {supportsInstruction ? <div className="xmimo-tts-voice xmimo-tts-speech-instruction">
         <SettingFieldHeading label={t('settings.speechInstruction')} suffix={<FieldInfo label={t('settings.speechInstructionInfo')} text={t('settings.speechInstructionLimitations')} />} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden(instructionField)} resettable disabled={!writable} onReset={() => resetField(instructionField)} />
         {provider === 'breeze' ? <SpeechInstructionPicker provider={provider} value={breezeInstruction} disabled={!writable} minimal={minimal} onChange={onBreezeInstructionChange} t={t} /> : <SpeechInstructionPicker provider={provider} value={speechInstruction} disabled={!writable} minimal={minimal} onChange={onSpeechInstructionChange} t={t} />}
       </div> : null}

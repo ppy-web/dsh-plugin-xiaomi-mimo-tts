@@ -7,6 +7,8 @@ import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { registerVoiceSettingsSidebar } = await loadClientModule('src/client/settings/sidebar-action.tsx')
 const { SidebarSettings } = await loadClientModule('src/client/settings/sidebar-settings.tsx')
+const { BundleSettingsCard, registerBundleSettings } = await loadClientModule('src/client/settings/bundle-settings.tsx')
+const { PluginDetailActions } = await loadClientModule('src/client/settings/plugin-detail.tsx')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
 const t = key => key
 
@@ -52,7 +54,7 @@ test('saved shortcut opens a standalone settings page using the shared configura
   assert.equal(panel.options.inject().scope, h.scope)
   assert.equal(panel.options.inject().controller, h.page.controller)
   const html = renderToStaticMarkup(createElement(panel.component, panel.options.inject()))
-  assert.ok(html.includes('<h1>settings.voiceSettingsNav</h1>'))
+  assert.match(html, /<h1\b[^>]*>[\s\S]*?settings\.voiceSettingsNav[\s\S]*?<\/h1>/u)
   assert.ok(html.includes('type="password"'), 'provider credentials remain editable on the standalone page')
   assert.deepEqual(h.opened, [], 'opening settings must not navigate to plugin management')
   panel.options.inject().onOpenPluginSettings()
@@ -105,15 +107,62 @@ test('failed navigation-row registration rolls back its destination and settings
   assert.equal(h.listeners.size, 0)
 })
 
-test('independent shortcut control reflects saved state and read-only permissions', () => {
-  for (const value of [false, true]) for (const writable of [false, true]) {
-    const html = renderToStaticMarkup(createElement(SidebarSettings, { t, value, writable, overridden: false, onChange() {}, onReset() {} }))
-    const control = html.match(/<input\b[^>]*role="switch"[^>]*>/u)?.[0]
+test('sidebar placement action reflects saved state and disables interaction while unavailable or saving', () => {
+  for (const value of [false, true]) for (const disabled of [false, true]) {
+    const html = renderToStaticMarkup(createElement(SidebarSettings, { t, value, disabled, onToggle() {} }))
+    const control = html.match(/<button\b[^>]*>/u)?.[0]
     assert.ok(control)
-    assert.ok(control.includes('aria-label="settings.showInSidebar"'))
-    assert.equal(control.includes('checked=""'), value)
-    assert.equal(control.includes('disabled=""'), !writable)
+    assert.ok(control.includes(`aria-pressed="${value}"`))
+    assert.equal(control.includes('disabled=""'), disabled)
+    assert.ok(html.includes(t(value ? 'settings.unmountSidebar' : 'settings.mountSidebar')))
   }
+})
+
+test('mounted workbench replaces the bundle config form with a detail action, and exit restores the form', () => {
+  const h = host()
+  const subject = { kind: 'bundle', pkg: { name: 'dsh-xiaomi-tts' } }
+  const form = () => renderToStaticMarkup(createElement(BundleSettingsCard, { ...h.page, view: 'page' }))
+  const actions = () => renderToStaticMarkup(createElement(PluginDetailActions, { subject, scope: h.scope, t, onOpenWorkbench() {} }))
+  assert.ok(form().includes('type="password"'), 'unmounted workbench stays editable in plugin details')
+  assert.ok(!actions().includes('settings.voiceSettingsNav'))
+  h.update({ showInSidebar: true })
+  assert.equal(form(), '', 'mounting must not leave a second copy of the settings form')
+  assert.ok(actions().includes('settings.voiceSettingsNav'), 'the workbench remains reachable from plugin details')
+  h.update({ showInSidebar: false })
+  assert.ok(form().includes('type="password"'))
+  assert.ok(!actions().includes('settings.voiceSettingsNav'))
+})
+
+test('exiting the standalone workbench returns to plugin details', () => {
+  const h = host({ showInSidebar: true })
+  const dispose = registerVoiceSettingsSidebar(h.ctx, h.page)
+  try {
+    const panel = [...h.entries.values()].find(entry => entry.options.name === 'main')
+    const props = panel.options.inject()
+    props.onSidebarChange(true)
+    assert.deepEqual(h.opened, [])
+    h.update({ showInSidebar: false })
+    props.onSidebarChange(false)
+    assert.deepEqual(h.opened, ['dsh-xiaomi-tts'])
+  } finally { dispose() }
+})
+
+test('mounting withdraws the Host config section and exiting registers it again without duplicate contributions', () => {
+  const h = host()
+  const dispose = registerBundleSettings(h.ctx, h.page)
+  assert.equal(h.entries.size, 1)
+  const config = [...h.entries.values()][0]
+  assert.equal(config.options.name, 'plugins.bundle.config')
+  assert.equal(config.options.inject().scope, h.scope)
+  h.update({ showInSidebar: true })
+  assert.equal(h.entries.size, 0, 'the Host must not retain an empty settings section')
+  h.update({ showInSidebar: false })
+  h.update({ showInSidebar: false })
+  assert.equal(h.entries.size, 1)
+  dispose()
+  dispose()
+  assert.equal(h.entries.size, 0)
+  assert.equal(h.listeners.size, 0)
 })
 
 test('shortcut setting saves separately, skips unchanged writes and restores the default', async () => {
@@ -135,4 +184,35 @@ test('shortcut setting saves separately, skips unchanged writes and restores the
   assert.equal(writes.length, 1)
   await saveSettingsDraft(scope, resolveTtsSettings(), { showInSidebar: { kind: 'clear' } }, keys)
   assert.equal(resolveTtsSettings(value).showInSidebar, false)
+})
+
+test('placement and unsaved voice settings commit together, while a rejected write preserves the old state', async () => {
+  for (const accepted of [false, true]) {
+    const original = resolveTtsSettings({ instruction: 'old style' })
+    let value = original
+    const writes = []
+    const scope = {
+      getSnapshot: () => ({ value, user: value, writable: true }),
+      async mutate(ops) {
+        writes.push(ops)
+        if (!accepted) return false
+        value = { ...value }
+        for (const op of ops) value[op.path[0]] = op.value
+        return true
+      },
+    }
+    const task = saveSettingsDraft(scope, { ...value, showInSidebar: true, instruction: 'new style' },
+      { showInSidebar: { kind: 'set' }, instruction: { kind: 'set' } }, { xiaomi: '', doubao: '', breeze: '' })
+    if (accepted) {
+      await task
+      assert.equal(value.showInSidebar, true)
+      assert.equal(value.instruction, 'new style')
+    } else {
+      await assert.rejects(task, { code: 'host-rejected' })
+      assert.equal(value, original)
+      assert.equal(value.showInSidebar, false)
+      assert.equal(value.instruction, 'old style')
+    }
+    assert.equal(writes.length, 1, 'placement and the draft must be one atomic Host mutation')
+  }
 })

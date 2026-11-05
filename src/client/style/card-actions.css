@@ -108,7 +108,7 @@
     padding-inline: 8px
   }
 
-  .xmimo-tts-card-actions .xmimo-tts-action-label {
+  .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle) .xmimo-tts-action-label {
     position: absolute;
     width: 1px;
     height: 1px;

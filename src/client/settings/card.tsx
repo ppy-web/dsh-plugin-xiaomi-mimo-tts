@@ -25,6 +25,8 @@ import { resolveApiKeyViewState } from './api-key-state.js'
 import { DetailsModule } from './details-module.js'
 import { PreviewModule } from './preview-module.js'
 import { SoundEffectsPanel } from './sound-effects-module.js'
+import { SidebarSettings } from './sidebar-settings.js'
+import { withSidebarLoading } from './sidebar-loading.js'
 import { SwitchModule } from './switch-module.js'
 import { readMinimalMode, writeMinimalMode } from './minimal-mode.js'
 import { hostRoute } from '../host-route.js'
@@ -40,6 +42,7 @@ import type { AudioFocus } from '../playback/tab-audio-focus.js'
 export interface SettingsCardProps {
   view: 'summary' | 'page'
   initialPanel?: 'mixer' | undefined
+  onSidebarChange?: ((mounted: boolean) => void) | undefined
   scope: ConfigForm<TtsSettings>
   t: Translate
   controller: SoundEffectsController
@@ -82,16 +85,16 @@ function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory;
   const view = useSyncExternalStore(history.subscribe, history.getSnapshot)
   return <Button ref={buttonRef} type="button" className="xmimo-tts-history-link" variant="toolbar" size="sm" onClick={onOpen}>
     <GoHistory size={14} aria-hidden="true" focusable="false" />
-    <span className="xmimo-tts-action-label">{t('history.title')} · {view.entries.length}</span>
+    <span className="xmimo-tts-action-label">{t('history.shortTitle')} · {view.entries.length}</span>
   </Button>
 }
 
 export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   if (props.view === 'summary') return <>{props.t('settings.description')}</>
-  return <SettingsPage scope={props.scope} t={props.t} controller={props.controller} history={props.history} audioFocus={props.audioFocus} speechActivity={props.speechActivity} beforePreview={props.beforePreview} beforeHistoryPlayback={props.beforeHistoryPlayback} changes={props.changes} initialPanel={props.initialPanel} />
+  return <SettingsPage {...props} />
 }
 
-function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, onSidebarChange, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(pluginChanges.subscribe, pluginChanges.getSnapshot, pluginChanges.getSnapshot)
   const writable = snapshot.writable && !changing
@@ -138,6 +141,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [saveError, setSaveError] = useState<'api-key-rejected' | 'host-rejected' | 'unknown' | null>(null)
+  const saveInFlight = useRef(false)
   const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | null>(initialPanel ?? null)
   const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast'): void => setOpenPanel(current => current === panel ? null : panel)
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
@@ -347,22 +351,30 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setState('idle')
   }
 
-  const save = async (): Promise<void> => {
-    if (!writable || pluginChanges.getSnapshot()) return
+  const save = async (sidebar?: boolean): Promise<void> => {
+    if (!writable || pluginChanges.getSnapshot() || saveInFlight.current) return
+    saveInFlight.current = true
     setOpenPanel(null)
     setState('saving')
     setSaveError(null)
     try {
-      await saveSettingsDraft(scope, draft, changes, apiKeys)
-      if (changes.apiKey !== undefined || changes.doubaoApiKey !== undefined || changes.breezeApiKey !== undefined) invalidateApiKeyStatus()
-      setApiKeys({ xiaomi: '', doubao: '', breeze: '' })
-      setChanges({})
-      setState('saved')
+      const commit = async (): Promise<void> => {
+        const nextDraft = sidebar === undefined ? draft : { ...draft, showInSidebar: sidebar }
+        const nextChanges: DraftChanges = sidebar === undefined ? changes : { ...changes, showInSidebar: { kind: 'set' } }
+        await saveSettingsDraft(scope, nextDraft, nextChanges, apiKeys)
+        if (changes.apiKey !== undefined || changes.doubaoApiKey !== undefined || changes.breezeApiKey !== undefined) invalidateApiKeyStatus()
+        setApiKeys({ xiaomi: '', doubao: '', breeze: '' })
+        setChanges({})
+        setState('saved')
+        if (sidebar !== undefined) onSidebarChange?.(sidebar)
+      }
+      if (sidebar === undefined) await commit()
+      else await withSidebarLoading(sidebar, t, commit)
     } catch (error) {
       const code = error instanceof SaveSettingsError ? error.code : null
       setSaveError(code === 'api-key-rejected' ? 'api-key-rejected' : code === 'host-rejected' ? 'host-rejected' : 'unknown')
       setState('failed')
-    }
+    } finally { saveInFlight.current = false }
   }
 
   const previewBusy = previewView.status === 'loading' || previewView.status === 'playing'
@@ -588,10 +600,6 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onToggle={toggleSettingsPreview}
           onTextChange={next => { previewPlayer.stop(); setPreviewText(next) }}
           recording={previewPlayer.getRecording()}
-          showInSidebar={showInSidebar}
-          sidebarOverridden={fieldOverridden('showInSidebar')}
-          onShowInSidebarChange={next => { setShowInSidebar(next); markChange('showInSidebar') }}
-          onResetSidebar={() => resetField('showInSidebar')}
           sources={announcementSources}
           qqbotEnabled={qqbotEnabled}
           onQqbotChange={next => { setQqbotEnabled(next); markChange('qqbotEnabled') }}
@@ -619,6 +627,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
         <div className="xmimo-tts-card-footer">
           <div className="xmimo-tts-card-actions">
             <div className="xmimo-tts-card-action-links">
+              <SidebarSettings t={t} value={accepted.showInSidebar} disabled={!writable || state === 'saving' || validationError !== null}
+                onToggle={() => { void save(!accepted.showInSidebar) }} />
               {history ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
                 previewPlayer.stop()
                 toggleSoundPlayer.dispose()
