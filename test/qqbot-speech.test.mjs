@@ -9,7 +9,7 @@ import { createScope } from '@deepseek-ai/dsh-scope'
 import { createQqbotSpeechDelivery } from '../lib/qqbot.js'
 import * as qqbotSpeech from '../lib/qqbot.js'
 import { readFileSync } from 'node:fs'
-import yaml from 'js-yaml'
+import * as yaml from 'js-yaml'
 
 const settle = () => new Promise(resolve => setImmediate(resolve))
 
@@ -121,7 +121,7 @@ test('QQ relay owns its adapter and separate preset and withdraws both on unload
     await plugin.dispose()
     assert.equal(adapters.size, 0)
     assert.equal(presets.size, 0)
-    const schema = yaml.JSON_SCHEMA.extend([new yaml.Type('tag:yaml.org,2002:js', { kind: 'scalar', construct: value => value })])
+    const schema = new yaml.Schema([...yaml.JSON_SCHEMA.tags, yaml.defineScalarTag('tag:yaml.org,2002:js', { resolve: value => value })])
     const patch = yaml.load(readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8'), { schema })
     const entries = patch.flatMap(row => row.insert ?? [])
     assert.deepEqual(entries.filter(entry => entry.name === 'dsh-xiaomi-tts/qqbot').map(entry => entry.disabled), [true])

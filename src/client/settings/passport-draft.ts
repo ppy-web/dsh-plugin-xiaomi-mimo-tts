@@ -2,6 +2,13 @@ import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, isPassportAccessToken } from '../../types/passport.js'
 import type { PassportSettings, PassportNumberField, PassportPreset } from '../../types/passport.js'
 
+/** Reject the incomplete range so every four-digit code is equally likely. */
+export function generatePassportPairingCode(): string {
+  const sample = new Uint16Array(1)
+  do { crypto.getRandomValues(sample) } while (sample[0]! >= 60_000)
+  return String(sample[0]! % 10_000).padStart(4, '0')
+}
+
 export function validatePassportDraft(value: PassportSettings, tokenConfigured = false): keyof PassportSettings | null {
   if (!value.host.trim() || /[\s/]/u.test(value.host)) return 'host'
   if (!(tokenConfigured && value.accessToken === '') && !isPassportAccessToken(value.accessToken)) return 'accessToken'
