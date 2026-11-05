@@ -50,7 +50,7 @@ async function host(t, config = {}) {
   ctx.provide('webServer', { register(route) { routes.set(route.path, route.handler); return () => routes.delete(route.path) } })
   const web = createHttpServer((req, res) => {
     const handler = routes.get(req.url)
-    if (handler) handler(req, res)
+    if (typeof handler === 'function') handler(req, res)
     else { res.writeHead(404); res.end() }
   }).listen(0, '127.0.0.1')
   await once(web, 'listening')
@@ -62,7 +62,7 @@ async function host(t, config = {}) {
     child.provide('speechSynthesis', { registerDelivery(adapter) { registered.push(adapter); return () => registered.splice(registered.indexOf(adapter), 1) } })
     for (const name of ['speechToText', 'agents', 'agentPresets', 'agentDefaultModel']) child.provide(name, {})
   } })
-  return { ctx, view, registered, services, status, entry: ctx.loader.resolve(id) }
+  return { ctx, view, registered, services, status, webBaseURL: `http://127.0.0.1:${web.address().port}`, entry: ctx.loader.resolve(id) }
 }
 
 test('fresh enabled Passport exposes editable Host settings without a token or ASR services', async t => {
@@ -76,6 +76,10 @@ test('fresh enabled Passport exposes editable Host settings without a token or A
   assert.equal(Object.hasOwn(view.value, 'accessToken'), false)
   assert.ok(view.secrets.some(value => value.path[0] === 'accessToken'))
   assert.equal((await run.status()).configured, false)
+  for (const path of ['missing', 'constructor', 'toString', '__defineSetter__']) {
+    const response = await fetch(`${run.webBaseURL}/${path}`)
+    assert.equal(response.status, 404)
+  }
   await assert.rejects(fetch(`http://127.0.0.1:${port}/api/health`, { signal: AbortSignal.timeout(1000) }))
   await run.services()
   await pause()

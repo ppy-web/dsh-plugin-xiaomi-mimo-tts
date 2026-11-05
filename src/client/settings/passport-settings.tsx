@@ -10,7 +10,7 @@ import type { PassportConnectionStatus, PassportPreset } from '../../types/passp
 import { IDLE_PLUGIN_CHANGES } from '../plugin-activity.js'
 import type { SnapshotSource } from '../plugin-activity.js'
 import type { LocaleKey, Translate } from '../localization.js'
-import { savePassportDraft, validatePassportDraft, refreshPassportSession } from './passport-draft.js'
+import { savePassportDraft, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } from './passport-draft.js'
 import { useSettingsSnapshot } from './scope.js'
 import { hostRoute } from '../host-route.js'
 
@@ -113,7 +113,7 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
   }
   const quickConnect = async (): Promise<void> => {
     if (disabled || conflict || snapshot.revision === undefined) return
-    const code = String(crypto.getRandomValues(new Uint32Array(1))[0]! % 10000).padStart(4, '0')
+    const code = generatePassportPairingCode()
     const next = { ...value, host: '0.0.0.0', accessToken: code }
     setState('saving')
     try {

@@ -2,17 +2,30 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { readFileSync } from 'node:fs'
-import yaml from 'js-yaml'
+import * as yaml from 'js-yaml'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Config } from '../lib/passport.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, isPassportLanAddress } = await loadClientModule('src/types/passport.ts')
-const { savePassportDraft, validatePassportDraft, refreshPassportSession } = await loadClientModule('src/client/settings/passport-draft.ts')
+const { savePassportDraft, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } = await loadClientModule('src/client/settings/passport-draft.ts')
 const { PassportSettingsPage } = await loadClientModule('src/client/settings/passport-settings.tsx')
 const { registerPassportSettings } = await loadClientModule('src/client/settings/passport-registration.ts')
 const configured = () => ({ ...DEFAULT_PASSPORT_SETTINGS, accessToken: 'test-passport-private-token-123456789' })
+
+test('pairing codes preserve leading zeros and reject the biased tail of the random range', t => {
+  const samples = [0, 42, 59999, 60000, 65535, 1234]
+  t.mock.method(crypto, 'getRandomValues', array => {
+    assert.ok(samples.length, 'pairing must finish after an accepted sample')
+    array[0] = samples.shift()
+    return array
+  })
+  assert.equal(generatePassportPairingCode(), '0000')
+  assert.equal(generatePassportPairingCode(), '0042')
+  assert.equal(generatePassportPairingCode(), '9999')
+  assert.equal(generatePassportPairingCode(), '1234')
+})
 
 test('Passport form defaults match the Host configuration contract', () => {
   const host = Config({})
@@ -93,7 +106,7 @@ test('Passport configuration registration owns only its component and can be wit
 })
 
 test('the bundle enables the connector so its own settings page survives the install restart', () => {
-  const schema = yaml.JSON_SCHEMA.extend([new yaml.Type('tag:yaml.org,2002:js', { kind: 'scalar', construct: value => value })])
+  const schema = new yaml.Schema([...yaml.JSON_SCHEMA.tags, yaml.defineScalarTag('tag:yaml.org,2002:js', { resolve: value => value })])
   const patch = yaml.load(readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8'), { schema })
   const entry = patch.flatMap(row => row.insert ?? []).find(item => item.id === 'speech-delivery-passport')
   assert.equal(entry?.name, 'dsh-xiaomi-tts/passport')

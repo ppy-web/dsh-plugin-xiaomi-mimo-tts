@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import test from 'node:test'
 import { Context, Service } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
@@ -7,11 +8,12 @@ import Sessions from '@deepseek-ai/dsh-session'
 import Projections from '@deepseek-ai/dsh-session-projection'
 import Agents from '@deepseek-ai/dsh-agent'
 import Presets from '@deepseek-ai/dsh-agent-preset-registry'
-import { load } from 'js-yaml'
 import { entryListSchema, applyEntryPatches } from '@deepseek-ai/cordis-plugin-include'
 import * as child from 'dsh-xiaomi-tts/whale-girl'
 
 const specifier = 'dsh-xiaomi-tts/whale-girl'
+// The host's Schema must be consumed by the same js-yaml major that created it.
+const { load } = createRequire(import.meta.resolve('@deepseek-ai/cordis-plugin-include'))('js-yaml')
 const patch = load(await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8'), { schema: entryListSchema })
 const presetRow = applyEntryPatches([], patch, message => assert.fail(message))
   .find(row => row.name === specifier)
