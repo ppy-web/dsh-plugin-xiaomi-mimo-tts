@@ -32,7 +32,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     notice: '仅用于预览，不会修改 DSH 设置。',
     pages: {
       settings: { title: '插件设置', description: '配置语音服务商、音色与音效，体验完整的设置面板。' },
-      workbench: { title: '语音工作台', description: '在独立工作台配置音色、试听与音效。' },
+      workbench: { title: '音色工坊', description: '在音色工坊配置音色、试听与音效。' },
       voice: { title: '语音朗读', description: '宿主设置中的快捷入口，调整音色、语速和自动朗读。' },
       conversation: { title: '对话效果', description: '在一段示例对话中体验消息朗读与播放控制。' },
       detail: { title: '插件详情', description: '检查详情扩展在不同服务商和密钥状态下的显示。' },
@@ -55,7 +55,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     notice: 'Preview only. Your DSH settings stay unchanged.',
     pages: {
       settings: { title: 'Plugin settings', description: 'Explore providers, voices, and sound effects in the full settings panel.' },
-      workbench: { title: 'Voice workbench', description: 'Configure voices, previews, and sound effects in a dedicated workbench.' },
+      workbench: { title: 'Voice Studio', description: 'Configure voices, previews, and sound effects in a dedicated studio.' },
       voice: { title: 'Voice reading', description: 'Quick voice, speed, and automatic reading controls from host settings.' },
       conversation: { title: 'Conversation', description: 'Try message reading and playback controls in a sample conversation.' },
       detail: { title: 'Plugin details', description: 'Inspect contributions across providers and key states.' },
@@ -78,7 +78,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     notice: 'プレビュー専用です。DSH の設定は変更しません。',
     pages: {
       settings: { title: 'プラグイン設定', description: 'サービス、音声、効果音を設定できる実際のパネルです。' },
-      workbench: { title: 'Voice workbench', description: 'Configure voices, previews, and sound effects in a dedicated workbench.' },
+      workbench: { title: 'Voice Studio', description: 'Configure voices, previews, and sound effects in a dedicated studio.' },
       voice: { title: '音声読み上げ', description: 'ホスト設定から音声、速度、自動読み上げを調整します。' },
       conversation: { title: '会話プレビュー', description: 'サンプル会話でメッセージの読み上げと再生操作を試せます。' },
       detail: { title: 'プラグイン詳細', description: 'サービス、キー状態ごとの詳細表示を確認します。' },
@@ -101,7 +101,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     notice: 'Aperçu uniquement. Les réglages de DSH restent inchangés.',
     pages: {
       settings: { title: 'Réglages du plugin', description: 'Découvrez les services, les voix et les effets sonores du panneau complet.' },
-      workbench: { title: 'Voice workbench', description: 'Configure voices, previews, and sound effects in a dedicated workbench.' },
+      workbench: { title: 'Voice Studio', description: 'Configure voices, previews, and sound effects in a dedicated studio.' },
       voice: { title: 'Lecture vocale', description: 'Réglez la voix, la vitesse et la lecture automatique depuis les paramètres de l’hôte.' },
       conversation: { title: 'Conversation', description: 'Essayez la lecture des messages dans un exemple de conversation.' },
       detail: { title: 'Détails du plugin', description: 'Vérifiez l’affichage selon le service et l’état de la clé.' },

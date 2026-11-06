@@ -13,6 +13,10 @@ export function Menu({ anchor }: { anchor: ReactElement }) { return anchor }
 export function IconChevronDownOutlineRegular() { return null }
 export function IconChevronDownOutlineMedium() { return null }
 export function IconRefreshOutlineMedium() { return null }
+export function IconCloseOutlineRegular() { return null }
+
+/** Preserve shortcut children while leaving portaled positioning to browser checks. */
+export function Tooltip({ children }: { children: ReactNode }) { return children }
 
 /** Closed overlays have no positioning or outside-pointer work during server rendering. */
 export function useAnchoredPosition() { return undefined }

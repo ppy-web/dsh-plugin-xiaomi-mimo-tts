@@ -55,6 +55,9 @@ button, input, select, textarea { font: inherit; }
 }
 :root a.preview-source-link::before, :root a.xmimo-voice-reading-action::before { margin-inline-end: 0; }
 :root a.xmimo-voice-reading-action > svg { display: none; }
+:root .preview-app .xmimo-voice-reading-actions.xmimo-tts-settings-page-actions a.xmimo-voice-reading-action { text-decoration: none; }
+:root .preview-app .xmimo-voice-reading-actions.xmimo-tts-settings-page-actions a.xmimo-voice-reading-action::before { display: none; }
+:root .xmimo-tts-settings-page-actions a.xmimo-voice-reading-action > svg { display: block; }
 .preview-app :is(a, button, select, summary):focus-visible,
 .preview-mobile-sidebar :is(a, button, summary):focus-visible { outline: 2px solid var(--preview-ring); outline-offset: 3px; }
 .preview-app, .preview-app *, .preview-mobile-sidebar { scrollbar-width: thin; scrollbar-color: var(--preview-rule) transparent; }

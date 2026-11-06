@@ -160,7 +160,7 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
     <section className="xmimo-passport-quick" aria-labelledby={`${id}-quick`}>
       <div className="xmimo-passport-heading">
         <div><h4 id={`${id}-quick`}>{t('passport.quickTitle')}</h4><p className="xmimo-qq-hint">{t('passport.quickHint')}</p></div>
-        <Button className="xmimo-passport-generate" type="button" variant="primary" size="sm" disabled={disabled || conflict} onClick={() => { void quickConnect() }}>
+        <Button type="button" variant="primary" size="sm" disabled={disabled || conflict} onClick={() => { void quickConnect() }}>
           {pairingCode ? <FiRefreshCw aria-hidden="true" /> : <FiLink aria-hidden="true" />}
           {t(state === 'saving' ? 'settings.saving' : 'passport.quickEnable')}
         </Button>

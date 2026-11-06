@@ -123,14 +123,15 @@ test('mounted workbench replaces the bundle config form with a detail action, an
   const subject = { kind: 'bundle', pkg: { name: 'dsh-xiaomi-tts' } }
   const form = () => renderToStaticMarkup(createElement(BundleSettingsCard, { ...h.page, view: 'page' }))
   const actions = () => renderToStaticMarkup(createElement(PluginDetailActions, { subject, scope: h.scope, t, onOpenWorkbench() {} }))
+  const actionCount = () => (actions().match(/<button\b/gu) ?? []).length
+  const baseActions = actionCount()
   assert.ok(form().includes('type="password"'), 'unmounted workbench stays editable in plugin details')
-  assert.ok(!actions().includes('settings.voiceSettingsNav'))
   h.update({ showInSidebar: true })
   assert.equal(form(), '', 'mounting must not leave a second copy of the settings form')
-  assert.ok(actions().includes('settings.voiceSettingsNav'), 'the workbench remains reachable from plugin details')
+  assert.equal(actionCount(), baseActions + 1, 'mounting exposes one additional navigation button in plugin details')
   h.update({ showInSidebar: false })
   assert.ok(form().includes('type="password"'))
-  assert.ok(!actions().includes('settings.voiceSettingsNav'))
+  assert.equal(actionCount(), baseActions, 'unmounting removes the navigation button')
 })
 
 test('exiting the standalone workbench returns to plugin details', () => {

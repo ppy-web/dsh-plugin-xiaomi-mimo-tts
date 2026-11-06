@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "MiMo & Seed TTS",
+    "title": "Voice Studio (dsh-xiaomi-tts)",
     "description": "DSH に Xiaomi MiMo TTS、Doubao Seed TTS、Breeze Blue TTS、ローカル音声合成を追加。音声ダウンロード、効果音、デスクトップペット・QQBot 連携、AI Passport 接続に対応します。",
     "detail": "intro.md"
   }

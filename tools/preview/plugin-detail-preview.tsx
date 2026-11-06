@@ -48,7 +48,7 @@ export function PluginDetailPreview({ scope, t, settingsProps, onOpenWorkbench }
       <label className="preview-detail-checkbox"><input type="checkbox" checked={activity} onChange={event => previewPluginChanges.set(event.target.checked)} />{t('detail.previewChanging')}</label>
     </div>
     <header className="preview-detail-header">
-      <div><h2>MiMo & Seed TTS</h2>
+      <div><h2>{t('settings.voiceSettingsNav')}</h2>
         <PluginDetailBadge subject={subject} t={t} scope={scope} changes={previewPluginChanges} />
       </div>
       <PluginDetailActions subject={subject} t={t} scope={scope} onOpenWorkbench={onOpenWorkbench} />

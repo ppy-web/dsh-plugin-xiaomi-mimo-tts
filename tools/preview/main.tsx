@@ -73,8 +73,8 @@ function PreviewApp() {
   useEffect(() => {
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : locale
     document.documentElement.dataset.theme = theme
-    document.title = `${page.title} · MiMo & Seed TTS`
-  }, [locale, theme, page.title])
+    document.title = `${page.title} · ${t('settings.voiceSettingsNav')}`
+  }, [locale, theme, page.title, t])
 
   useEffect(() => {
     const navigate = (): void => {
@@ -120,6 +120,7 @@ function PreviewApp() {
   }
   const sidebarProps = {
     voiceSettingsLabel: savedSettings.value?.showInSidebar ? t('settings.voiceSettingsNav') : undefined,
+    showInHostSettings: savedSettings.value?.showInHostSettings !== false,
     copy, activeView, readOnly, onReadOnlyChange: toggleReadOnly,
     onNavigate: () => setNavigationOpen(false), onActivation: openActivation, onReset: reset,
   }
@@ -156,7 +157,7 @@ function PreviewApp() {
           </header> : null}
           <div className="preview-page-body" key={instance}>
             {activeView === 'settings' ? <div className="preview-plugin-surface">
-              <div className="preview-surface-heading"><img src={pluginIcon} alt="" width={36} height={36} /><div><strong>MiMo & Seed TTS</strong><span>dsh-xiaomi-tts</span></div><span className="preview-surface-version">v{TTS_VERSION}</span></div>
+              <div className="preview-surface-heading"><img src={pluginIcon} alt="" width={36} height={36} /><div><strong>{t('settings.voiceSettingsNav')}</strong><span>dsh-xiaomi-tts</span></div><span className="preview-surface-version">v{TTS_VERSION}</span></div>
               <PluginDetailActions subject={PREVIEW_PLUGIN_SUBJECT} scope={scope} t={t} onOpenWorkbench={openWorkbench} />
               <BundleSettingsCard {...settingsPageProps} view="page" />
             </div>

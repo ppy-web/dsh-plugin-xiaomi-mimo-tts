@@ -40,7 +40,7 @@ export function VoiceReadingHeaderActions({ t, openPluginSettings }: VoiceReadin
  * handler attempt, no waiting on QQ, just the invite that works everywhere —
  * phone scan, or the group number typed into QQ by hand.
  */
-function QqGroupAction({ t }: { t: Translate }): ReactElement {
+export function QqGroupAction({ t }: { t: Translate }): ReactElement {
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)

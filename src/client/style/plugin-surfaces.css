@@ -19,21 +19,67 @@
 .xmimo-tts-plugin-status { margin: 0; padding: 16px; color: var(--xmimo-ui-text-muted); }
 
 .xmimo-tts-settings-page { box-sizing: border-box; height: 100%; min-height: 0; overflow-y: auto; padding: 24px; color: var(--xmimo-ui-text); }
-.xmimo-tts-settings-page-content { width: 100%; max-width: 800px; margin-inline: auto; }
-.xmimo-tts-settings-page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-block-end: 24px; padding-inline-start: var(--dsh-frame-leading-clearance, 0px); }
-.xmimo-tts-settings-page-header h1 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 24px; font-weight: 600; line-height: 1.4; }
-.xmimo-tts-settings-page-header h1 img { flex: none; object-fit: contain; }
+/* Match the Host's plugin manager and task manager content column. */
+.xmimo-tts-settings-page-content { width: 100%; max-width: 960px; margin-inline: auto; container-type: inline-size; }
+.xmimo-tts-settings-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  min-height: 112px;
+  gap: 20px 24px;
+  margin-block-end: 28px;
+  padding-block: 24px;
+  padding-inline-start: var(--dsh-frame-leading-clearance, 0px);
+}
+.xmimo-tts-settings-page-identity { display: flex; flex: 1 1 300px; align-items: center; min-width: 0; gap: 16px; }
+.xmimo-tts-settings-page-icon { display: grid; flex: none; place-items: center; box-sizing: border-box; width: 64px; height: 64px; border: 1px solid var(--xmimo-ui-border); border-radius: 16px; background: var(--xmimo-ui-surface); }
+.xmimo-tts-settings-page-icon img { display: block; width: 56px; height: 56px; object-fit: contain; }
+.xmimo-tts-settings-page-heading { min-width: 0; }
+.xmimo-tts-settings-page-header h1 { display: flex; align-items: center; gap: 14px; margin: 0; font-size: 30px; font-weight: 900; line-height: 1.3; }
+.xmimo-tts-settings-page-title { min-width: 0; font-family: 'Xmimo Voice Studio', ui-rounded, system-ui, sans-serif; overflow-wrap: anywhere; }
+.xmimo-tts-settings-page-heading p { margin: 6px 0 0; color: var(--xmimo-ui-text-muted); font-size: 14px; line-height: 1.6; text-wrap: pretty; }
+.xmimo-tts-settings-page-wave { display: inline-flex; flex: none; align-items: center; gap: 3px; height: 26px; color: var(--xmimo-ui-brand); }
+.xmimo-tts-settings-page-wave > span { width: 3px; height: 8px; border-radius: 999px; background: currentColor; }
+.xmimo-tts-settings-page-wave > span:nth-child(2) { height: 16px; animation-delay: 70ms; }
+.xmimo-tts-settings-page-wave > span:nth-child(3) { height: 24px; animation-delay: 140ms; }
+.xmimo-tts-settings-page-wave > span:nth-child(4) { height: 18px; animation-delay: 210ms; }
+.xmimo-tts-settings-page-wave > span:nth-child(5) { height: 10px; animation-delay: 280ms; }
+@media (prefers-reduced-motion: no-preference) {
+  .xmimo-tts-settings-page-wave > span { animation-name: xmimo-tts-studio-wave; animation-duration: 760ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); animation-iteration-count: 1; }
+}
+@keyframes xmimo-tts-studio-wave {
+  0%, 100% { transform: scaleY(1); }
+  25% { transform: scaleY(0.4); }
+  55% { transform: scaleY(1.25); }
+}
 .xmimo-tts-sidebar-loading { max-width: calc(100vw - 32px); border: 0; padding: 0; color: var(--xmimo-ui-text); background: transparent; }
 .xmimo-tts-sidebar-loading::backdrop { background: rgb(0 0 0 / 12%); }
 .xmimo-tts-sidebar-loading-status { display: flex; align-items: center; gap: 10px; border-radius: 10px; padding: 16px 20px; background: color-mix(in srgb, var(--xmimo-ui-surface) 92%, transparent); font-size: 14px; line-height: 1.5; }
 .xmimo-tts-sidebar-loading-spinner { flex: none; width: 18px; height: 18px; box-sizing: border-box; border: 2px solid var(--xmimo-ui-border); border-top-color: currentColor; border-radius: 50%; animation: xmimo-tts-sidebar-loading-spin 800ms linear infinite; }
 @keyframes xmimo-tts-sidebar-loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .xmimo-tts-sidebar-loading-spinner { animation: none; } }
-.xmimo-tts-settings-page-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-.xmimo-tts-settings-page-actions .xmimo-tts-action-button { min-height: 24px; padding: 2px 7px; font-size: 12px; line-height: 18px; }
+.xmimo-tts-settings-page-actions { position: relative; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.xmimo-tts-settings-page-actions .xmimo-voice-reading-action { box-sizing: border-box; width: 36px; height: 36px; border: 1px solid transparent; text-decoration: none; transition: background-color 150ms ease-out, border-color 150ms ease-out; }
+.xmimo-tts-settings-page-actions .xmimo-voice-reading-action:is(:hover, :focus-visible, [aria-expanded='true']) { border-color: var(--xmimo-ui-border); background: var(--xmimo-ui-hover); }
+.xmimo-tts-settings-page-actions .xmimo-voice-reading-qq { position: static; }
+@container (max-width: 560px) {
+  .xmimo-tts-settings-page-header { align-items: flex-start; flex-direction: column; gap: 16px; margin-block-end: 24px; padding-block: 16px; }
+  .xmimo-tts-settings-page-identity { flex-basis: auto; gap: 12px; }
+  .xmimo-tts-settings-page-icon { width: 56px; height: 56px; border-radius: 14px; }
+  .xmimo-tts-settings-page-icon img { width: 48px; height: 48px; }
+  .xmimo-tts-settings-page-header h1 { gap: 10px; font-size: 26px; }
+  .xmimo-tts-settings-page-actions { align-self: flex-end; }
+}
+@media (pointer: coarse) {
+  .xmimo-tts-settings-page-actions .xmimo-voice-reading-action { width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-settings-page-actions .xmimo-voice-reading-action { transition: none; }
+}
 @media (max-width: 560px) {
   .xmimo-tts-settings-page { padding: 16px; }
-  .xmimo-tts-settings-page-header h1 { font-size: 20px; }
 }
 
 .xmimo-tts-experimental-tag {

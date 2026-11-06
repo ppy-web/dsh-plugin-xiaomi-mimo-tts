@@ -1,23 +1,38 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, RefObject } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Button, useAnchoredPosition, useDismissOnOutsidePointer } from '@deepseek-ai/dsh-client-ui-primitives'
-import { RiArrowDownSLine } from 'react-icons/ri'
+import { Button, useAnchoredPosition } from '@deepseek-ai/dsh-client-ui-primitives'
+import { RiArrowDownSLine, RiPushpinFill, RiPushpinLine } from 'react-icons/ri'
 import { BREEZE_AUDIO_TAG_GROUPS, type BreezeAudioTagLanguage } from '../breeze-audio-tags.js'
 import { XIAOMI_AUDIO_TAG_GROUPS } from '../../../text/xiaomi-audio-tags.js'
 import type { Translate } from '../../localization.js'
 
-/** Anchored tag palette; selection inserts at the caret and returns to the text. */
-export function AudioTagPicker({ provider, disabled, onInsert, t }: { provider: 'xiaomi' | 'breeze'; disabled: boolean; onInsert: (tag: string, placement?: 'start') => void; t: Translate }): ReactElement {
+/** Continuous insertion keeps the palette open only while working with its text field. */
+export function AudioTagPicker({ provider, disabled, textRef, onInsert, t }: { provider: 'xiaomi' | 'breeze'; disabled: boolean; textRef: RefObject<HTMLTextAreaElement | null>; onInsert: (tag: string, placement?: 'start') => void; t: Translate }): ReactElement {
   const [language, setLanguage] = useState<BreezeAudioTagLanguage>('zh')
   const [open, setOpen] = useState(false)
+  const [continuous, setContinuous] = useState(false)
   const panelId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const expanded = open && !disabled
   const position = useAnchoredPosition({ open: expanded, anchorRef: triggerRef, panelRef, side: 'bottom', align: 'start', gap: 6, margin: 12, layoutKey: `${provider}:${language}` })
-  useDismissOnOutsidePointer(rootRef, expanded, setOpen, panelRef)
+  useEffect(() => {
+    if (!expanded) return
+    const dismissOutside = (event: Event): void => {
+      const target = event.target
+      if (!(target instanceof Node) || rootRef.current?.contains(target) || panelRef.current?.contains(target)
+        || (continuous && textRef.current?.contains(target))) return
+      setOpen(false)
+    }
+    document.addEventListener('pointerdown', dismissOutside)
+    document.addEventListener('focusin', dismissOutside)
+    return () => {
+      document.removeEventListener('pointerdown', dismissOutside)
+      document.removeEventListener('focusin', dismissOutside)
+    }
+  }, [expanded, continuous, textRef])
   useEffect(() => {
     if (!expanded) return
     panelRef.current?.querySelector('button')?.focus({ preventScroll: true })
@@ -50,17 +65,19 @@ export function AudioTagPicker({ provider, disabled, onInsert, t }: { provider: 
       <RiArrowDownSLine className="xmimo-tts-chevron" size={14} aria-hidden="true" focusable="false" />
     </button>
     {expanded ? createPortal(<div ref={panelRef} id={panelId} className="xmimo-ui-scope xmimo-tts-breeze-audio-tags-panel"
-      role="dialog" aria-label={t('settings.breezeAudioTags')} style={position ?? { visibility: 'hidden' }}
-      onBlur={event => { if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget) && !rootRef.current?.contains(event.relatedTarget)) setOpen(false) }}>
+      role="dialog" aria-label={t('settings.breezeAudioTags')} style={position ?? { visibility: 'hidden' }}>
       <small>{t(provider === 'xiaomi' ? 'settings.xiaomiAudioTagsHint' : 'settings.breezeAudioTagsHint')}</small>
       <div className="xmimo-tts-settings-segmented-wrap">
         <Button type="button" aria-pressed={language === 'zh'} variant={language === 'zh' ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setLanguage('zh')}>{t('settings.breezeAudioTagsChinese')}</Button>
         <Button type="button" aria-pressed={language === 'en'} variant={language === 'en' ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setLanguage('en')}>{t('settings.breezeAudioTagsEnglish')}</Button>
+        <Button type="button" className="xmimo-tts-audio-tags-continuous" aria-label={t('settings.audioTagsContinuous')} aria-pressed={continuous} title={t('settings.audioTagsContinuousHint')} variant={continuous ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setContinuous(value => !value)}>
+          {continuous ? <RiPushpinFill size={14} aria-hidden="true" /> : <RiPushpinLine size={14} aria-hidden="true" />}
+        </Button>
       </div>
       {groups.map(group => <div key={group.label} className="xmimo-tts-breeze-audio-tag-group">
         <strong>{group.label}</strong>
         <div className="xmimo-tts-breeze-audio-tag-list">
-          {group.tags.map(tag => <Button key={tag} type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => { setOpen(false); onInsert(tag, group.placement) }}>{tag}</Button>)}
+          {group.tags.map(tag => <Button key={tag} type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => { if (!continuous) setOpen(false); onInsert(tag, group.placement) }}>{tag}</Button>)}
         </div>
       </div>)}
     </div>, document.body) : null}

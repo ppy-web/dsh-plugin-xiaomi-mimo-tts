@@ -14,6 +14,7 @@ const GROUPS: { label: 'speech' | 'plugin' | 'help'; items: { view: PreviewView;
 
 interface PreviewSidebarProps {
   voiceSettingsLabel?: string | undefined
+  showInHostSettings: boolean
   copy: PreviewCopy
   activeView: PreviewView
   readOnly: boolean
@@ -24,11 +25,11 @@ interface PreviewSidebarProps {
   onClose?: () => void
 }
 
-export function PreviewSidebar({ copy, activeView, readOnly, onReadOnlyChange, onNavigate, onActivation, onReset, onClose, voiceSettingsLabel }: PreviewSidebarProps) {
+export function PreviewSidebar({ copy, activeView, readOnly, onReadOnlyChange, onNavigate, onActivation, onReset, onClose, voiceSettingsLabel, showInHostSettings }: PreviewSidebarProps) {
   return <div className="preview-sidebar-content">
     <div className="preview-workspace-brand">
       <img src={pluginIcon} alt="" width={36} height={36} />
-      <div className="preview-sidebar-label"><strong>MiMo & Seed TTS</strong><span>{copy.workspace}</span></div>
+      <div className="preview-sidebar-label"><strong>{copy.pages.workbench.title}</strong><span>{copy.workspace}</span></div>
       {onClose ? <button type="button" className="preview-icon-button" aria-label={copy.closeNavigation} onClick={onClose}><LuX /></button> : null}
     </div>
     <nav aria-label={copy.navigation} className="preview-navigation">
@@ -36,7 +37,7 @@ export function PreviewSidebar({ copy, activeView, readOnly, onReadOnlyChange, o
       {GROUPS.map(group => <div className="preview-nav-group" key={group.label}>
         <p className="preview-nav-group-label">{copy[group.label]}</p>
         <ul>
-          {group.items.map(({ view, icon: Icon }) => <li key={view}>
+          {group.items.filter(({ view }) => view !== 'voice' || showInHostSettings).map(({ view, icon: Icon }) => <li key={view}>
             <a href={`#${view}`} onClick={onNavigate} aria-current={view === activeView ? 'page' : undefined} title={copy.pages[view].title}>
               <Icon aria-hidden="true" /><span className="preview-sidebar-label">{copy.pages[view].title}</span>
             </a>

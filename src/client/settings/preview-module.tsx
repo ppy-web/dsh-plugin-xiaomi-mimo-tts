@@ -121,7 +121,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
                 onClick={() => changeText(t(preset.text))}>{t(preset.label)}</button>)}
             </div>
             <div className="xmimo-tts-preview-actions">
-              {audioTagProvider ? <AudioTagPicker key={audioTagProvider} provider={audioTagProvider} disabled={!enabled} onInsert={insertTag} t={t} /> : null}
+              {audioTagProvider ? <AudioTagPicker key={audioTagProvider} provider={audioTagProvider} disabled={!enabled} textRef={textRef} onInsert={insertTag} t={t} /> : null}
               <div className="xmimo-tts-preview-playback-actions">
                 <Button
                   type="button"

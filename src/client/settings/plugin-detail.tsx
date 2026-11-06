@@ -33,7 +33,7 @@ function isTtsBundle({ subject }: PluginDetailProps): boolean {
 
 export function PluginDetailActions(props: DetailProps): ReactElement | null {
   if (!isTtsBundle(props)) return null
-  const sourceLabel = props.t('settings.source')
+  const sourceLabel = props.t('detail.star')
   const manualLabel = props.t('detail.manual')
   return <div className="xmimo-ui-scope xmimo-tts-detail-actions">
     <Button variant="outline" size="sm" className="xmimo-tts-star" aria-label={sourceLabel} title={sourceLabel} onClick={() => window.open(SOURCE_URL, '_blank', 'noopener,noreferrer')}>
@@ -53,7 +53,7 @@ function WorkbenchAction({ scope, t, onOpen }: { scope: ConfigForm<TtsSettings>;
   if (snapshot.status !== 'ready' || !resolveTtsSettings(snapshot.value).showInSidebar || !onOpen) return null
   return <Button type="button" variant="outline" size="sm" onClick={onOpen}>
     <LuAudioLines size={14} aria-hidden="true" focusable="false" />
-    <span>{t('settings.voiceSettingsNav')}</span>
+    <span>{t('detail.workshop')}</span>
   </Button>
 }
 

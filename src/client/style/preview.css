@@ -161,7 +161,8 @@
   min-width: 0;
   width: 340px;
   max-width: min(340px, var(--dsh-anchored-max-width, calc(100vw - 24px)));
-  max-height: min(320px, var(--dsh-anchored-max-height, calc(100dvh - 24px)));
+  /* Keep the palette compact even when the host supplies an inline viewport limit. */
+  max-height: min(320px, var(--dsh-anchored-max-height, calc(100dvh - 24px))) !important;
   overflow-y: auto;
   overscroll-behavior: contain;
   flex-direction: column;
@@ -177,6 +178,7 @@
 }
 .xmimo-tts-breeze-audio-tags-panel > small { color: var(--xmimo-ui-text-muted); line-height: 18px; }
 .xmimo-tts-breeze-audio-tags-panel > .xmimo-tts-settings-segmented-wrap { display: flex; gap: 6px; }
+.xmimo-tts-audio-tags-continuous { display: inline-flex; align-items: center; justify-content: center; width: 28px; margin-inline-start: auto; padding: 0; }
 .xmimo-tts-breeze-audio-tag-group { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
 .xmimo-tts-breeze-audio-tag-group > strong { color: var(--xmimo-ui-text-subtle); font-size: 12px; font-weight: 600; }
 .xmimo-tts-breeze-audio-tag-list { display: flex; flex-wrap: wrap; gap: 6px; }

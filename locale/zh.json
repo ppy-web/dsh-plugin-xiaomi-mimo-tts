@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "MiMo & Seed TTS",
-    "description": "为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS、Breeze Blue TTS、本地语音；支持音频下载、音效、桌宠/ QQBot 联动、AI Passport连接",
+    "title": "音色工坊 (dsh-xiaomi-tts)",
+    "description": "为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS、Breeze Blue TTS、浏览器语音播报；连接本地模型、音频下载、音效、桌宠联动、QQBot 联动、AI Passport连接器",
     "detail": "intro.md"
   }
 }
