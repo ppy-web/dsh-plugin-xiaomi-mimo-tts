@@ -83,6 +83,7 @@
     "lib/client/index.d.ts",
     "lib/client-api.d.ts",
     "lib/host-api.d.ts",
+    "lib/host/provider-error.d.ts",
     "lib/speech-host.d.ts",
     "lib/speech-agent.d.ts",
     "lib/qqbot.d.ts",

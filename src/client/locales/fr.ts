@@ -4,6 +4,14 @@ import { whaleEn } from '../settings/whale-copy.js'
 import { passportEn } from '../settings/passport-copy.js'
 
 export const fr: Record<LocaleKey, string> = {
+  'settings.externalManage': 'Gérer les fournisseurs',
+  'settings.externalOptionsHint': 'Les options disponibles sont définies par le plugin externe.',
+  'settings.externalManaged': 'Géré par un plugin externe. Configurez la voix dans ce plugin.',
+  'settings.externalNotReady': 'Le service vocal externe n’est pas prêt. Vérifiez sa configuration.',
+  'settings.externalDisconnected': 'Connexion au service vocal interrompue. La synthèse reprendra après reconnexion.',
+  'settings.externalLoading': 'Génération audio avec le service vocal externe',
+  'settings.externalPlaying': 'Lecture de l’audio du service externe',
+  'settings.externalCompleted': 'Aperçu vocal externe terminé',
   'settings.previewPresets': 'Exemples de texte',
   'settings.previewPresetGreeting': 'Bonjour',
   'settings.previewPresetPoetry': 'Poésie',

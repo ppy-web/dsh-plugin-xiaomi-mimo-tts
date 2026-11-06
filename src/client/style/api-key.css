@@ -58,3 +58,16 @@
 }
 
 .xmimo-tts-api-key-bubble, .xmimo-tts-api-key-whale { pointer-events: none; }
+
+.xmimo-tts-api-key-link[aria-disabled="true"] {
+  color: var(--xmimo-ui-text-subtle);
+  cursor: default
+}
+
+button.xmimo-tts-api-key-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer
+}

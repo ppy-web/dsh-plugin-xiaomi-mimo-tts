@@ -248,6 +248,12 @@
   opacity: .48
 }
 
+.xmimo-tts-provider-toggle:disabled[data-external] {
+  cursor: default;
+  filter: none;
+  opacity: 1
+}
+
 .xmimo-tts-provider-portrait {
   position: relative;
   perspective: 420px
@@ -276,4 +282,12 @@
 .xmimo-tts-provider-state svg {
   width: 12px;
   height: 12px
+}
+
+.xmimo-tts-provider-toggle .xmimo-tts-character-copy,
+.xmimo-tts-provider-toggle .xmimo-tts-character-copy strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
 }

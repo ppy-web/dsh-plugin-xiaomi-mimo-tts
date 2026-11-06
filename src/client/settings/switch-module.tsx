@@ -7,6 +7,9 @@ import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
 import { providerLabelKey } from './provider-label.js'
 import { useHoloHover } from './use-holo-hover.js'
+import { useEngineState } from '../use-engine-state.js'
+import { externalEngine } from '../engine-state.js'
+import { TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE } from '../../shared.js'
 
 interface CharacterToggleProps {
   kind: 'voice' | 'autoplay' | 'sound'
@@ -57,6 +60,8 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
   writable: boolean
   onChange: (provider: TtsProvider) => void
 }): ReactElement {
+  useEngineState()
+  const external = externalEngine()
   const [portrait, setPortrait] = useState(() => ({ provider, turns: 0, front: provider, back: provider }))
   if (portrait.provider !== provider) {
     const turns = portrait.turns + 1
@@ -69,9 +74,9 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
     })
   }
   const nextProvider = nextTtsProvider(provider, doubaoEnabled, breezeEnabled)
-  const label = t(providerLabelKey(provider))
+  const label = external?.name ?? t(providerLabelKey(provider))
   const nextLabel = t(providerLabelKey(nextProvider))
-  const switchLabel = `${t('settings.provider')}: ${label} · ${t('settings.switchProvider')}: ${nextLabel}`
+  const switchLabel = external ? `${label} · ${t('settings.externalManaged')}` : `${t('settings.provider')}: ${label} · ${t('settings.switchProvider')}: ${nextLabel}`
   const switchIcon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M3 7h18m-4-4 4 4-4 4M21 17H3m4-4-4 4 4 4" />
   </svg>
@@ -84,7 +89,7 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
     data-xmimo-sound-toggle="provider"
     aria-label={switchLabel}
     title={switchLabel}
-    disabled={!writable}
+    disabled={!writable || external !== null}
     onClick={() => onChange(nextProvider)}
   >
     <span>{label}</span>
@@ -95,16 +100,17 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
     type="button"
     className="xmimo-tts-character-toggle xmimo-tts-character-toggle-on xmimo-tts-provider-toggle"
     data-provider={provider}
+    data-external={external ? 'true' : undefined}
     data-xmimo-sound-toggle="provider"
     aria-label={switchLabel}
     title={switchLabel}
-    disabled={!writable}
+    disabled={!writable || external !== null}
     onClick={() => onChange(nextProvider)}
   >
     <span className="xmimo-tts-character-control">
       <span className="xmimo-tts-character-portrait xmimo-tts-provider-portrait" aria-hidden="true">
-        <span className="xmimo-tts-provider-flipper" style={{ transform: `rotateY(${portrait.turns * 180}deg)` }}>
-          <span className="xmimo-tts-provider-face" style={{ backgroundImage: `url(${hostRoute(TTS_PROVIDER_CHARACTER_ASSET_ROUTES[portrait.front])})` }} />
+        <span className="xmimo-tts-provider-flipper" style={{ transform: `rotateY(${external ? 0 : portrait.turns * 180}deg)` }}>
+          <span className="xmimo-tts-provider-face" style={{ backgroundImage: `url(${hostRoute(external ? TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE : TTS_PROVIDER_CHARACTER_ASSET_ROUTES[portrait.front])})` }} />
           <span className="xmimo-tts-provider-face xmimo-tts-provider-face-back" style={{ backgroundImage: `url(${hostRoute(TTS_PROVIDER_CHARACTER_ASSET_ROUTES[portrait.back])})` }} />
         </span>
       </span>

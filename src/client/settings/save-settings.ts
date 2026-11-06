@@ -8,6 +8,8 @@ export const EDITABLE_SETTING_FIELDS: readonly EditableSettingField[] = ['showIn
 
 export type SaveSettingsErrorCode = 'voice-required' | 'api-key-rejected' | 'host-rejected'
 
+export const BUILTIN_SETTING_FIELDS = new Set<string>(['provider', 'apiKey', 'doubaoEnabled', 'doubaoApiKey', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'breezeEnabled', 'breezeApiKey', 'breezeVoice', 'breezeInstruction', 'instruction', 'model', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt'])
+
 /** A failed draft write with a stable code, so the settings card never matches messages. */
 export class SaveSettingsError extends Error {
   constructor(readonly code: SaveSettingsErrorCode) {
@@ -22,8 +24,9 @@ export function validateSettingsDraft(draft: SettingsValues): 'voice-required' |
 }
 
 /** Commit the draft atomically so credentials and provider selection change together. */
-export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: SettingsValues, changes: DraftChanges, keys: { xiaomi: string; doubao: string; breeze: string }): Promise<void> {
-  const invalid = validateSettingsDraft(draft)
+export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: SettingsValues, changes: DraftChanges, keys: { xiaomi: string; doubao: string; breeze: string }, external = false): Promise<void> {
+  if (external) changes = Object.fromEntries(Object.entries(changes).filter(([field]) => !BUILTIN_SETTING_FIELDS.has(field)))
+  const invalid = external ? null : validateSettingsDraft(draft)
   if (invalid) throw new SaveSettingsError(invalid)
   for (const [provider, field] of [['xiaomi', 'apiKey'], ['doubao', 'doubaoApiKey'], ['breeze', 'breezeApiKey']] as const) {
     if (changes[field]?.kind === 'set' && keys[provider].trim() && !isSupportedTtsApiKey(keys[provider], provider)) throw new SaveSettingsError('api-key-rejected')

@@ -9,6 +9,7 @@ import { SettingFieldHeading } from './field-heading.js'
 export interface ProviderSettingsProps {
   t: Translate
   writable: boolean
+  providerLocked?: boolean
   doubaoEnabled: boolean
   breezeEnabled: boolean
   mossEnabled: boolean
@@ -16,7 +17,8 @@ export interface ProviderSettingsProps {
   onProviderEnabledChange: (provider: 'doubao' | 'breeze', enabled: boolean) => void
 }
 
-export function ProviderSettings({ t, writable, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange }: ProviderSettingsProps): ReactElement {
+export function ProviderSettings({ t, writable, providerLocked = false, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange }: ProviderSettingsProps): ReactElement {
+  const providerWritable = writable && !providerLocked
   return <section className="xmimo-tts-format xmimo-tts-provider-settings xmimo-tts-switch-grid" aria-label={t('settings.provider')}>
     <SettingFieldHeading label={t('settings.provider')} suffix={<FieldInfo label={t('settings.provider')} text={t('settings.providerMinimum')} />} resettable={false} disabled={!writable} />
     <div className="xmimo-tts-announcement-source">
@@ -25,14 +27,14 @@ export function ProviderSettings({ t, writable, doubaoEnabled, breezeEnabled, mo
     </div>
     <div className="xmimo-tts-announcement-source">
       <span className="xmimo-tts-provider-settings-brand"><img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES.doubao)} alt="" /><span>DouBao Seed</span></span>
-      <Switch checked={doubaoEnabled} disabled={!writable || (doubaoEnabled && !breezeEnabled)} label="DouBao Seed" onChange={next => onProviderEnabledChange('doubao', next)} />
+      <Switch checked={doubaoEnabled} disabled={!providerWritable || (doubaoEnabled && !breezeEnabled)} label="DouBao Seed" onChange={next => onProviderEnabledChange('doubao', next)} />
     </div>
     <div className="xmimo-tts-announcement-source">
       <span className="xmimo-tts-more-provider-brand">
         <span className="xmimo-tts-breeze-wordmark" role="img" aria-label="Breeze Blue" style={{ '--xmimo-breeze-wordmark': `url(${hostRoute(TTS_BREEZE_WORDMARK_ASSET_ROUTE)})` } as CSSProperties} />
         <Tag tone="info" className="xmimo-tts-experimental-tag">{t('settings.experimental')}</Tag>
       </span>
-      <Switch checked={breezeEnabled} disabled={!writable || (breezeEnabled && !doubaoEnabled)} label={t('settings.breezeEnabled')} onChange={next => onProviderEnabledChange('breeze', next)} />
+      <Switch checked={breezeEnabled} disabled={!providerWritable || (breezeEnabled && !doubaoEnabled)} label={t('settings.breezeEnabled')} onChange={next => onProviderEnabledChange('breeze', next)} />
     </div>
     <div className="xmimo-tts-announcement-source">
       <span className="xmimo-tts-provider-settings-brand xmimo-tts-provider-settings-local">

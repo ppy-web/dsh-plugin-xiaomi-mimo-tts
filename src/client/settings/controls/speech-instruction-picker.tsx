@@ -41,15 +41,16 @@ export function speechInstructionLabel(provider: TtsProvider, value: string, t: 
   return speechInstructionPresets(provider, t).find(preset => preset.prompt === value.trim())?.label ?? t('settings.speechInstructionCustom')
 }
 
-export function SpeechInstructionPicker({ provider, value, disabled, minimal = false, onChange, t }: { provider: TtsProvider; value: string; disabled: boolean; minimal?: boolean; onChange: (value: string) => void; t: Translate }): ReactElement {
-  const presets = speechInstructionPresets(provider, t)
-  const hint = t(provider === 'xiaomi' ? 'settings.mimoInstructionHint' : provider === 'breeze' ? 'settings.breezeInstructionHint' : 'settings.doubaoInstructionHint')
+export function SpeechInstructionPicker({ provider, value, disabled, minimal = false, onChange, t, options }: { provider: TtsProvider | 'external'; value: string; disabled: boolean; minimal?: boolean; onChange: (value: string) => void; t: Translate; options?: { id: string; name: string }[] | undefined }): ReactElement {
+  const presets = provider === 'external' ? [{ preset: '', prompt: '', label: t('settings.speechInstructionNatural') }, ...(options ?? []).map(item => ({ preset: item.id, prompt: item.id, label: item.name }))] : speechInstructionPresets(provider, t)
+  const hint = t(provider === 'external' ? 'settings.externalOptionsHint' : provider === 'xiaomi' ? 'settings.mimoInstructionHint' : provider === 'breeze' ? 'settings.breezeInstructionHint' : 'settings.doubaoInstructionHint')
   return <>
     <div className="xmimo-tts-instruction-editor">
       <textarea
         value={value}
         rows={minimal ? 3 : 4}
         disabled={disabled}
+        readOnly={provider === 'external' && options !== undefined}
         aria-label={t('settings.speechInstruction')}
         placeholder={t('settings.speechInstructionPlaceholder')}
         onChange={event => onChange(event.target.value)}

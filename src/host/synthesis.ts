@@ -1,6 +1,7 @@
 import type { ResolvedTtsSettings } from '../types/index.js'
 
 export interface SynthesizeBody {
+  engineRevision?: number
   provider?: unknown
   text?: unknown
   /** Segmented VoiceDesign playback requests WAV for reliable per-segment decoding. */

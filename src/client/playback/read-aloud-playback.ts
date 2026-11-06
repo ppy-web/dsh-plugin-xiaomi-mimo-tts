@@ -1,9 +1,10 @@
-import { prepareProviderTtsText, stripXiaomiAudioTags, applyBreezeTtsPlaybackScope, applyTtsPlaybackScope, splitTtsSegments, stripBreezeAudioTags, supportsRealtimeTts } from '../../shared.js'
+import { prepareProviderTtsText, stripXiaomiAudioTags, applyBreezeTtsPlaybackScope, applyTtsPlaybackScope, splitTtsSegments, stripBreezeAudioTags } from '../../shared.js'
 import type { ResolvedTtsSettings } from '../../shared.js'
 import type { LiveSpeechController } from './live-speech-controller.js'
 import type { LocalSpeechController } from './local-speech-controller.js'
 import type { PlaybackController } from './playback-controller.js'
 import type { PlaybackView } from './types.js'
+import { engineSupportsRealtime, externalEngine, externalText, externalFallbackText } from '../engine-state.js'
 
 export interface ReadAloudRequest {
   sessionId: string
@@ -18,14 +19,14 @@ export interface ReadAloudRequest {
 }
 
 function readAloudText(text: string, settings: ResolvedTtsSettings, automatic: boolean): string {
-  return settings.provider === 'breeze'
+  return externalEngine() ? applyTtsPlaybackScope(text, settings.readScope, automatic, undefined, externalText) : settings.provider === 'breeze'
     ? applyBreezeTtsPlaybackScope(text, settings.readScope, automatic)
     : applyTtsPlaybackScope(text, settings.readScope, automatic, undefined, value => prepareProviderTtsText(value, settings))
 }
 
 /** Browser speech cannot synthesize provider audio tags, so strip them instead of reading tag words aloud. */
 function fallbackText(text: string, settings: ResolvedTtsSettings): string {
-  return settings.provider === 'breeze' ? stripBreezeAudioTags(text) : settings.provider === 'xiaomi' ? stripXiaomiAudioTags(text) : text
+  return externalEngine() ? externalFallbackText(text) : settings.provider === 'breeze' ? stripBreezeAudioTags(text) : settings.provider === 'xiaomi' ? stripXiaomiAudioTags(text) : text
 }
 
 /** Start a completed reply with one directed fallback, using the selected playback range. */
@@ -38,9 +39,9 @@ export function playCompletedReply(request: ReadAloudRequest, automatic: boolean
   const localFallback = settings.localSpeechMode === 'auto' ? () => local.playCompleted(sessionId, messageId, localText) : undefined
   const playRemote = (): void => {
     local.cancelSession(sessionId)
-    if (!supportsRealtimeTts(settings)) {
+    if (!engineSupportsRealtime(settings)) {
       live.cancelSession(sessionId)
-      if (splitTtsSegments(scopedText).length > 1) void playback.segmented(sessionId, messageId, scopedText, automatic, localFallback)
+      if (externalEngine() || splitTtsSegments(scopedText).length > 1) void playback.segmented(sessionId, messageId, scopedText, automatic, localFallback)
       else void playback.toggle(sessionId, messageId, scopedText, automatic, localFallback, 'mp3')
     } else {
       playback.cancelPlayback(sessionId)

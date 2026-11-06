@@ -5,6 +5,7 @@ import type { ResolvedTtsSettings } from '../../shared.js'
 import { useApiKeyStatus } from '../conversation/api-key-status.js'
 import type { Translate } from '../localization.js'
 import { voiceReadingWarningKey } from './voice-reading-options.js'
+import { externalEngine } from '../engine-state.js'
 
 interface VoiceReadingWarningProps {
   active?: boolean
@@ -16,7 +17,8 @@ interface VoiceReadingWarningProps {
 export function VoiceReadingWarning({ settings, t, openPluginSettings, active: enabled = true }: VoiceReadingWarningProps): ReactElement | null {
   const { provider } = settings
   const status = useApiKeyStatus(enabled, provider)
-  const warning = voiceReadingWarningKey(settings, status)
+  const external = externalEngine()
+  const warning = external ? status === 'unavailable' ? 'settings.externalDisconnected' : external.ready ? null : 'settings.externalNotReady' : voiceReadingWarningKey(settings, status)
   return warning === null ? null : <WarningBar
     key={`${provider}:${warning}`}
     message={t(warning)}

@@ -1,6 +1,76 @@
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { TtsProvider } from './types/providers.js'
 
+export { TtsProviderError } from './host/provider-error.js'
+
+export type SpeechProviderId = TtsProvider | `external:${string}`
+
+export interface ExternalSpeechSelection {
+  model: string
+  voice: string
+  speechInstruction?: string
+}
+
+export interface ExternalSpeechModel {
+  id: string
+  name: string
+  voices: { id: string; name: string }[]
+  streaming?: boolean
+  speechInstruction?: boolean
+  /** If present, instructions are restricted to these values (for example emotions). */
+  instructions?: { id: string; name: string }[]
+  audioTags?: { value: string; name: string }[]
+}
+
+export interface ExternalSpeechProviderSnapshot {
+  name: string
+  ready: boolean
+  unavailableReason?: string
+  formats: ('wav' | 'mp3')[]
+  maxTextLength: number
+  modelName?: string
+  voiceName?: string
+  models?: ExternalSpeechModel[]
+  selection?: ExternalSpeechSelection
+  configurable?: boolean
+  managementPath?: string
+  /** Package whose settings are opened through the DSH plugin manager. */
+  managementBundle?: string
+  configurationId?: string
+}
+
+/** Host-only adapter. Registration owns the external takeover until disposed. */
+export interface ExternalSpeechProvider {
+  apiVersion: 1
+  id: `external:${string}`
+  getSnapshot(): ExternalSpeechProviderSnapshot
+  subscribe(listener: () => void): () => void
+  synthesize(request: { text: string; format: 'wav' | 'mp3'; signal: AbortSignal } & Partial<ExternalSpeechSelection>): Promise<{ data: Uint8Array; format: 'wav' | 'mp3' }>
+  /** Raw 24 kHz mono signed little-endian PCM16, without a WAV header. */
+  streamPcm?(request: { text: string; signal: AbortSignal } & Partial<ExternalSpeechSelection>): AsyncIterable<Uint8Array>
+  /** Persist the selection in the adapter, then notify subscribers. */
+  configure?(selection: ExternalSpeechSelection, options: { signal: AbortSignal }): Promise<void>
+}
+
+export interface SpeechEngineState {
+  provider: SpeechProviderId
+  revision: number
+  name: string
+  ready: boolean
+  unavailableReason?: string
+  formats: ('wav' | 'mp3')[]
+  maxTextLength: number
+  streaming: boolean
+  modelName?: string
+  voiceName?: string
+  models?: ExternalSpeechModel[]
+  selection?: ExternalSpeechSelection
+  configurable?: boolean
+  managementPath?: string
+  managementBundle?: string
+  configurationId?: string
+}
+
 export type SpeechFormat = 'mp3' | 'wav' | 'silk'
 
 export interface SpeechModelCapabilities {
@@ -16,7 +86,7 @@ export interface SpeechModelCapabilities {
 }
 
 export interface SpeechProviderCapabilities {
-  id: TtsProvider
+  id: SpeechProviderId
   configured: boolean
   /** Local validation only; does not probe upstream credentials or quota. */
   ready: boolean
@@ -28,7 +98,8 @@ export interface SpeechProviderCapabilities {
 }
 
 export interface SpeechCapabilities {
-  provider: TtsProvider
+  engine?: SpeechEngineState
+  provider: SpeechProviderId
   formats: SpeechFormat[]
   providers: SpeechProviderCapabilities[]
 }
@@ -47,7 +118,9 @@ export interface SpeechDownload {
 /** A complete audio request. Credentials are always resolved by the Host. */
 export interface SpeechRequest {
   text: string
-  provider?: TtsProvider
+  provider?: SpeechProviderId
+  /** Browser requests pin the effective engine to avoid dispatching stale work. */
+  engineRevision?: number
   model?: string
   voice?: string
   voiceDesignPrompt?: string
@@ -64,7 +137,7 @@ export interface SpeechRequest {
 export interface SpeechAudio {
   data: Buffer
   text: string
-  provider: TtsProvider
+  provider: SpeechProviderId
   format: SpeechFormat
   contentType: string
   durationMs?: number
@@ -103,10 +176,17 @@ export interface SpeechDeliveryAdapter {
 }
 
 export interface SpeechSynthesisService {
+  registerProvider(provider: ExternalSpeechProvider): () => void
+  engineState(): SpeechEngineState
+  subscribeEngine(listener: () => void): () => void
+  configureProvider(request: { provider: SpeechProviderId; engineRevision: number; selection: ExternalSpeechSelection; signal?: AbortSignal }): Promise<SpeechEngineState>
+  resolveProvider(request: Pick<SpeechRequest, 'provider' | 'engineRevision'>): SpeechProviderId
+  /** External PCM providers only; the Web entry wraps bytes in its existing SSE protocol. */
+  streamPcm(request: SpeechRequest, consume: (bytes: Uint8Array) => void | Promise<void>): Promise<void>
   /** Inspect saved provider configuration and supported features without synthesizing. */
   capabilities(): SpeechCapabilities
-  /** Provider selected by the saved Host settings. Per-request retries do not change it. */
-  currentProvider?(): TtsProvider
+  /** Effective provider, with external takeover taking precedence over saved built-in settings. */
+  currentProvider?(): SpeechProviderId
   /** Whether the saved provider and model accept inline audio tags. */
   supportsAudioTags?(): boolean
   synthesize(request: SpeechRequest): Promise<SpeechAudio>

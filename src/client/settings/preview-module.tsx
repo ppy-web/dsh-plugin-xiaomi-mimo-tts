@@ -10,6 +10,8 @@ import { AudioTagPicker } from './controls/audio-tag-picker.js'
 import { ProviderSettings } from './provider-settings.js'
 import type { ProviderSettingsProps } from './provider-settings.js'
 import { PREVIEW_PRESETS } from './preview-presets.js'
+import { useEngineState } from '../use-engine-state.js'
+import { externalEngine } from '../engine-state.js'
 import { HistoryDownloads } from '../history/history-list.js'
 
 export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<ProviderSettingsProps, 't' | 'writable'> {
@@ -27,6 +29,9 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<Prov
 }
 
 export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, ...settings }: PreviewModuleProps): ReactElement {
+  useEngineState()
+  const external = externalEngine()
+  const externalTags = external?.models?.find(model => model.id === external.selection?.model)?.audioTags
   const textRef = useRef<HTMLTextAreaElement>(null)
   const [downloads] = useState(() => new HistoryDownloads())
   const [downloadFailed, setDownloadFailed] = useState(false)
@@ -67,7 +72,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
             : error === 'autoplay-blocked'
               ? 'settings.previewErrorAutoplay'
               : 'settings.previewFailed'
-  const messageKey = status === 'error'
+  const messageKey = external && source === null ? external.ready ? 'settings.externalManaged' : 'settings.externalNotReady' : source === 'external' && status !== 'error' ? status === 'loading' ? 'settings.externalLoading' : status === 'playing' ? 'settings.externalPlaying' : 'settings.externalCompleted' : status === 'error'
     ? errorKey
     : status === 'loading'
       ? source === 'doubao' ? 'settings.previewLoadingDoubao' : source === 'breeze' ? 'settings.previewLoadingBreeze' : source === 'local' ? 'settings.previewLoadingLocal' : 'settings.previewLoadingMimo'
@@ -121,7 +126,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
                 onClick={() => changeText(t(preset.text))}>{t(preset.label)}</button>)}
             </div>
             <div className="xmimo-tts-preview-actions">
-              {audioTagProvider ? <AudioTagPicker key={audioTagProvider} provider={audioTagProvider} disabled={!enabled} textRef={textRef} onInsert={insertTag} t={t} /> : null}
+              {external ? externalTags?.length ? <AudioTagPicker provider="external" tags={externalTags} disabled={!enabled} textRef={textRef} onInsert={insertTag} t={t} /> : null : audioTagProvider ? <AudioTagPicker key={audioTagProvider} provider={audioTagProvider} disabled={!enabled || external !== null} textRef={textRef} onInsert={insertTag} t={t} /> : null}
               <div className="xmimo-tts-preview-playback-actions">
                 <Button
                   type="button"
@@ -144,7 +149,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
         {downloadFailed ? <small className="xmimo-tts-failed" role="alert">{t('settings.previewDownloadFailed')}</small> : null}
       </div>
-      <ProviderSettings t={t} writable={settings.writable} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} mossEnabled={mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange} />
+      <ProviderSettings t={t} writable={settings.writable} providerLocked={external !== null} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} mossEnabled={mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange} />
       <AnnouncementSettings t={t} {...settings} parentOpen={open}>
       </AnnouncementSettings>
     </div>

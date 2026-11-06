@@ -20,6 +20,7 @@ import { DuplexPcmStream } from './duplex-pcm.js'
 import { ttsSelection } from '../../types/providers.js'
 import type { TtsSelection } from '../../types/providers.js'
 import type { ResolvedTtsSettings } from '../../types/settings.js'
+import { engineMaxTextLength, externalEngine, externalText, splitExternalText } from '../engine-state.js'
 
 interface DuplexJob {
   text: string[]
@@ -85,13 +86,13 @@ export class LiveSpeechController {
     this.voiceRate = settings.voiceRate
     this.timeoutMs = settings.requestTimeoutMs
     this.maxPcmBytes = settings.maxPausedPcmBytes
-    this.maxTextLength = settings.maxTextLength
+    this.maxTextLength = engineMaxTextLength(settings.maxTextLength)
     this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
   }
 
-  prepareText(value: string): string { return prepareSpeechText(value, supportsXiaomiAudioTags(this.selection) ? 'xiaomi' : this.selection.provider === 'breeze') }
+  prepareText(value: string): string { if (externalEngine()) return externalText(value); return prepareSpeechText(value, supportsXiaomiAudioTags(this.selection) ? 'xiaomi' : this.selection.provider === 'breeze') }
 
-  isDuplex(): boolean { return this.selection.provider === 'doubao' }
+  isDuplex(): boolean { return !externalEngine() && this.selection.provider === 'doubao' }
 
   /** Close bounded read scopes before generation ends; final identity can arrive later. */
   finishInput(sessionId: string, turn: number, step: number): void {
@@ -191,7 +192,7 @@ export class LiveSpeechController {
     if (this.sessionId !== sessionId || text.length === 0) return
     this.beforePlayback?.()
     this.resetState()
-    this.audio.setPlaybackRate(this.selection.provider === 'xiaomi' ? this.voiceRate : 1)
+    this.audio.setPlaybackRate(externalEngine() || this.selection.provider === 'xiaomi' ? this.voiceRate : 1)
     this.completed = { sessionId, messageId, audioStarted: false, fallback }
     this.audioStarted = false
     this.messageId = messageId
@@ -201,7 +202,7 @@ export class LiveSpeechController {
       this.finishDuplexStep()
       return
     }
-    for (const segment of (this.selection.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text, undefined, undefined, value => prepareProviderTtsText(value, this.selection)))) this.queue.enqueue(segment)
+    for (const segment of (externalEngine() ? splitExternalText(text, this.maxTextLength) : this.selection.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text, undefined, undefined, value => prepareProviderTtsText(value, this.selection)))) this.queue.enqueue(segment)
   }
 
   finish(sessionId: string, final: LiveMessageIdentity): void {
@@ -269,7 +270,7 @@ export class LiveSpeechController {
   private reset(next: LiveSpeechCursor): void {
     this.replaceQueue()
     this.audio.stop()
-    this.audio.setPlaybackRate(this.selection.provider === 'xiaomi' ? this.voiceRate : 1)
+    this.audio.setPlaybackRate(externalEngine() || this.selection.provider === 'xiaomi' ? this.voiceRate : 1)
     this.beginSegment(next, false)
     this.setStatus('idle')
   }
@@ -325,7 +326,7 @@ export class LiveSpeechController {
       const preparedRemainder = this.prepareText(remainder)
       const needed = DEFAULT_TTS_SEGMENT_CHARACTERS - countTtsSpeechCharacters(this.pendingText)
       if (countTtsSpeechCharacters(preparedRemainder) >= needed) {
-        const provisional = takeStreamChunk(remainder, needed, this.selection.provider === 'breeze' || supportsXiaomiAudioTags(this.selection))
+        const provisional = takeStreamChunk(remainder, needed, !externalEngine() && (this.selection.provider === 'breeze' || supportsXiaomiAudioTags(this.selection)))
         if (provisional.length > 0) {
           this.stageSentences([provisional], false)
           this.consumed += provisional.length
@@ -348,7 +349,7 @@ export class LiveSpeechController {
     // Claim streamed replies before final settlement so completed autoplay cannot restart them.
     if (batch.requests.length > 0 && this.active !== null) this.handled.add(this.cursorKey(this.active))
     for (const request of batch.requests) {
-      const segments = this.selection.provider === 'breeze' ? splitBreezeTtsSegments(request) : [request]
+      const segments = externalEngine() ? splitExternalText(request, this.maxTextLength) : this.selection.provider === 'breeze' ? splitBreezeTtsSegments(request) : [request]
       for (const segment of segments) this.queue.enqueue(segment)
     }
   }

@@ -7,6 +7,16 @@ import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { ProviderSettings } = await loadClientModule('src/client/settings/provider-settings.tsx')
 
+test('external takeover locks cloud configuration without locking local MOSS availability', () => {
+  const controls = switches(ProviderSettings({
+    t: key => key, writable: true, providerLocked: true, doubaoEnabled: true, breezeEnabled: true, mossEnabled: false,
+    onMossEnabledChange() {}, onProviderEnabledChange() {},
+  }))
+  const local = controls.find(control => control.props.label === 'settings.mossProvider')
+  assert.equal(local.props.disabled, false)
+  for (const control of controls.filter(control => control !== local)) assert.equal(control.props.disabled, true)
+})
+
 function switches(node) {
   if (!isValidElement(node)) return []
   return node.type === Switch ? [node] : Children.toArray(node.props.children).flatMap(switches)

@@ -4,6 +4,8 @@ import { availableTtsProviders, TTS_PROVIDER_LOGO_ASSET_ROUTES } from '../../sha
 import type { TtsProvider } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
+import { useEngineState } from '../use-engine-state.js'
+import { externalEngine } from '../engine-state.js'
 
 const PROVIDER_NAMES: Record<TtsProvider, string> = {
   xiaomi: 'Xiaomi-MiMo',
@@ -21,10 +23,12 @@ interface VoiceReadingProviderProps {
 }
 
 export function VoiceReadingProvider({ value, doubaoEnabled, breezeEnabled, disabled, t, onChange }: VoiceReadingProviderProps): ReactElement {
+  useEngineState()
+  const external = externalEngine()
   const name = useId()
   const providers = availableTtsProviders(doubaoEnabled, breezeEnabled)
-  return <fieldset className="xmimo-voice-reading-provider" disabled={disabled}>
-    <legend className="xmimo-voice-reading-row-title">{t('settings.provider')}</legend>
+  return <fieldset className="xmimo-voice-reading-provider" disabled={disabled || external !== null}>
+    <legend className="xmimo-voice-reading-row-title">{external?.name ?? t('settings.provider')}</legend>
     <div className={providers.length === 3 ? 'xmimo-voice-reading-provider-options xmimo-voice-reading-provider-options-three' : 'xmimo-voice-reading-provider-options'}>
       {providers.map(provider => <label key={provider} className="xmimo-voice-reading-provider-option">
         <input type="radio" name={name} value={provider} checked={value === provider} onChange={() => { onChange(provider) }} />

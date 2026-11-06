@@ -1,6 +1,7 @@
 import { TTS_ROUTE } from '../../shared.js'
 import { hostRoute } from '../host-route.js'
 import { applyMediaVoiceRate } from './voice-rate.js'
+import { externalEngine, speechRequestBody } from '../engine-state.js'
 
 type SegmentAudioResult = { ok: true; blob: Blob } | { ok: false; error: unknown }
 
@@ -8,12 +9,13 @@ type SegmentAudioResult = { ok: true; blob: Blob } | { ok: false; error: unknown
 export async function prefetchSegmentAudio(text: string, signal: AbortSignal): Promise<SegmentAudioResult> {
   try {
     let lastError: unknown
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    const body = speechRequestBody({ text, format: 'wav' })
+    for (let attempt = 0; attempt < (externalEngine() ? 1 : 2); attempt += 1) {
       signal.throwIfAborted()
       try {
         const response = await fetch(hostRoute(TTS_ROUTE), {
           method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text, format: 'wav' }), signal,
+          body: JSON.stringify(body), signal,
         })
         if (!response.ok) throw new Error(`segment-request-${response.status}`)
         return { ok: true, blob: await response.blob() }

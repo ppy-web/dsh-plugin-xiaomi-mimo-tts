@@ -34,10 +34,21 @@ import { PREVIEW_COPY, previewDocumentSectionId, previewViewFromHash } from './p
 import type { PreviewLocale, PreviewView } from './preview-copy.js'
 import { PreviewSidebar } from './preview-sidebar.js'
 import { VoiceReadingSelect } from '../../src/client/settings/voice-reading-select.js'
+import { engineStateStore } from '../../src/client/engine-state.js'
 import './preview.css'
 import './preview-shell.css'
 
 const scope = new PreviewSettingsScope()
+// Development-only takeover fixture; production activation belongs to the external Host plugin.
+const externalDemo = new URL(window.location.href).searchParams.get('external')
+const adapterDemo = externalDemo === 'adapter'
+engineStateStore.accept({ provider: externalDemo ? 'external:demo-tone' : 'xiaomi', revision: 1,
+  name: adapterDemo ? 'SenseAudio · 预览演示' : externalDemo ? '外部测试音（非语音）' : 'xiaomi', ready: externalDemo !== 'unready',
+  formats: externalDemo ? ['wav'] : ['mp3', 'wav'], maxTextLength: externalDemo ? 1000 : 12000, streaming: externalDemo === 'pcm',
+  ...(adapterDemo ? { configurable: true, configurationId: 'senseaudio',
+    selection: { model: 'sensenova-tts-2.0', voice: 'female_0033_b', speechInstruction: '' },
+    models: ['sensenova-tts-2.0', 'senseaudio-tts-1.5-260319'].map(id => ({ id, name: id, streaming: false, speechInstruction: false,
+      voices: [{ id: 'female_0033_b', name: '女声 · 预览演示' }, { id: 'male_0004_a', name: '男声 · 预览演示' }], audioTags: [{ value: '<break time=500>', name: 'Pause' }] })) } : {}) })
 const restorePreviewFetch = installPreviewFetch(scope)
 const restorePreviewHostIcons = installPreviewHostIcons()
 const unbindApiKeyStatus = bindApiKeyStatus(scope, previewPluginChanges)

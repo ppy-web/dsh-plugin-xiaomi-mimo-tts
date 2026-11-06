@@ -61,7 +61,7 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
       if (!method(req, res, ['GET']) || !authorize(req, res, currentToken())) return
       json(res, 200, {
         ...ctx.speechSynthesis.capabilities(),
-        http: { formats: ['mp3', 'wav'], exportFormats: ['mp3', 'wav', 'silk'], downloadTtlMs: SPEECH_FILE_TTL_MS },
+        http: { formats: ctx.speechSynthesis.capabilities().formats.filter(format => format !== 'silk'), exportFormats: ctx.speechSynthesis.capabilities().formats, downloadTtlMs: SPEECH_FILE_TTL_MS },
       })
     },
   }))
@@ -88,7 +88,7 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
         if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TtsProviderError('invalid-request', undefined, 400)
         // Explicit allowlist: callers cannot supply credentials, addresses, paths or cancellation objects.
         const input = body as Record<string, unknown>
-        const allowed = ['text', 'provider', 'model', 'voice', 'voiceDesignPrompt', 'speechInstruction', 'voiceRate', 'format', 'maxDurationMs']
+        const allowed = ['text', 'provider', 'engineRevision', 'model', 'voice', 'voiceDesignPrompt', 'speechInstruction', 'voiceRate', 'format', 'maxDurationMs']
         if (Object.keys(input).some(key => !allowed.includes(key))) throw new TtsProviderError('unknown-request-field', undefined, 400)
         if (input.format !== undefined && !['mp3', 'wav', 'silk'].includes(input.format as string)) throw new TtsProviderError('invalid-audio-format', undefined, 400)
         const artifact = await ctx.speechSynthesis.exportAudio({ ...input, signal: controller.signal } as SpeechRequest)

@@ -13,6 +13,8 @@ import { TTS_DUPLEX_ROUTE } from '../../src/constants.js'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PcmRecording } from '../../src/client/history/pcm-recording.js'
 import type { ApiKeyStatus } from '../../src/client/settings/api-key-state.js'
+import { TTS_ENGINE_SELECTION_ROUTE } from '../../src/constants.js'
+import { engineStateStore } from '../../src/client/engine-state.js'
 
 export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
   private readonly listeners = new Set<() => void>()
@@ -150,6 +152,14 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
     const rawUrl = input instanceof Request ? input.url : String(input)
     const url = new URL(rawUrl, window.location.href)
     const pathname = url.pathname
+    if (pathname === TTS_ENGINE_SELECTION_ROUTE) {
+      const body = JSON.parse(String(init?.body))
+      const state = engineStateStore.getSnapshot().engine!
+      if (body.engineRevision !== state.revision) return jsonResponse({ error: 'speech-engine-changed' }, 409)
+      const next = { ...state, revision: state.revision + 1, selection: body.selection }
+      engineStateStore.accept(next)
+      return jsonResponse(next)
+    }
 
     if (pathname === TTS_API_KEY_STATUS_ROUTE) {
       if (scope.keyStatusPreview === 'unavailable') return jsonResponse({}, 503)
@@ -161,6 +171,7 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
       return jsonResponse(scope.apiKeyStatus(url.searchParams.get('provider') === 'doubao' ? 'doubao' : 'xiaomi'))
     }
     if (pathname === TTS_ROUTE || pathname === TTS_STREAM_ROUTE) {
+      if (new URL(window.location.href).searchParams.get('external') === 'unready') return jsonResponse({ error: 'external-provider-not-ready' }, 409)
       return previewAudioResponse(pathname === TTS_STREAM_ROUTE)
     }
     if (pathname === TTS_MOSS_PROBE_ROUTE) {

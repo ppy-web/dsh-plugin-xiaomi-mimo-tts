@@ -112,6 +112,21 @@ export function prepareTtsText(value: string): string {
   return text.replace(/\s+/g, ' ').trim()
 }
 
+/** Generic external cleanup preserves only tags explicitly declared by the selected model. */
+export function prepareExternalTtsText(value: string, allowedTags: readonly string[] = []): string {
+  let text = removeFencedCode(value.replace(/[\uE000-\uE002]/gu, ' '))
+  const protectedTags: string[] = []
+  for (const tag of [...allowedTags].sort((a, b) => b.length - a.length)) {
+    if (!tag) continue
+    const marker = `\uE001${protectedTags.length}\uE002`
+    protectedTags.push(tag)
+    text = text.split(tag).join(marker)
+  }
+  text = normalizeTtsPunctuation(removeTtsSymbols(removeTtsMarkup(text).replace(/\\[rn]|\/n/gi, ' ').replace(/\r\n?|\n/g, '.')))
+    .replace(/\s+/gu, ' ').trim()
+  return text.replace(/\uE001(\d+)\uE002/gu, (_match, index: string) => protectedTags[Number(index)] ?? '')
+}
+
 /** Preserve MiMo's open tag vocabulary after removing code, links and paths. */
 export function prepareXiaomiTtsText(value: string): string {
   const tags: string[] = []

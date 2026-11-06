@@ -17,6 +17,9 @@ export const TTS_DUPLEX_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-duplex'
 export const TTS_CAPABILITIES_ROUTE = '/plugins/xiaomi-mimo-tts/capabilities'
 export const TTS_EXPORT_ROUTE = '/plugins/xiaomi-mimo-tts/export-audio'
 export const TTS_DOWNLOAD_ROUTE = '/plugins/xiaomi-mimo-tts/audio'
+export const TTS_ENGINE_STATE_ROUTE = '/plugins/xiaomi-mimo-tts/engine-state'
+export const TTS_ENGINE_SELECTION_ROUTE = '/plugins/xiaomi-mimo-tts/engine-selection'
+export const TTS_ENGINE_EVENTS_ROUTE = '/plugins/xiaomi-mimo-tts/engine-events'
 export const DOUBAO_TTS_ENDPOINT = 'wss://openspeech.bytedance.com/api/v3/tts/bidirection'
 export const DOUBAO_AGENT_PLAN_TTS_ENDPOINT = 'wss://openspeech.bytedance.com/api/v3/plan/tts/bidirection'
 
@@ -56,6 +59,8 @@ export const TTS_PROVIDER_CHARACTER_ASSET_ROUTES = {
   doubao: '/plugins/xiaomi-mimo-tts/provider-doubao.webp',
   breeze: '/plugins/xiaomi-mimo-tts/provider-breeze.webp',
 } as const
+
+export const TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/provider-external-takeover.webp'
 
 /** Provider brand marks used by the Voice reading selector. */
 export const TTS_PROVIDER_LOGO_ASSET_ROUTES = {

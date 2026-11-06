@@ -13,15 +13,17 @@ import { applyMediaVoiceRate, applySpeechVoiceRate } from './voice-rate.js'
 import type { AudioHistory } from '../history/audio-history.js'
 import { PcmRecording } from '../history/pcm-recording.js'
 import { ttsSelection, BREEZE_TTS_MODEL } from '../../types/providers.js'
+import { engineText, externalFallbackText, externalEngine, speechRequestBody, splitExternalText } from '../engine-state.js'
 import { resolveTtsSettings } from '../../utils/settings.js'
 import type { TtsProvider, DoubaoTtsModel } from '../../types/providers.js'
 import { DuplexPcmStream, DuplexPcmError } from './duplex-pcm.js'
 import { fetchMossAudio } from '../moss-service.js'
 import { playMossAudio } from './moss-playback.js'
 import type { MossAudioHandle } from './moss-playback.js'
+import type { ExternalSpeechSelection } from '../../host-api.js'
 
 export type PreviewStatus = 'idle' | 'loading' | 'playing' | 'error'
-export type PreviewSource = 'mimo' | 'doubao' | 'breeze' | 'local' | null
+export type PreviewSource = 'mimo' | 'doubao' | 'breeze' | 'external' | 'local' | null
 export type PreviewError = 'api-key-not-configured' | 'api-key-rejected' | 'rate-limited' | 'timeout' | 'local-voice-unavailable' | 'autoplay-blocked' | 'request-failed' | 'save-key-first' | 'voice-required' | 'voice-unavailable' | 'resource-unavailable' | 'stream-buffer-limit'
 
 export interface PreviewView {
@@ -37,6 +39,7 @@ export interface PreviewRecording {
 }
 
 export interface PreviewSettings {
+  externalSelection?: ExternalSpeechSelection | undefined
   provider?: TtsProvider
   doubaoModel?: DoubaoTtsModel
   doubaoVoice?: string
@@ -134,7 +137,7 @@ export class PreviewPlayer {
       this.pcmBusy = busy
       this.maybeFinishPcm()
     },
-    onPlaybackStart: () => this.publish('playing'),
+    onPlaybackStart: () => { this.remoteStarted = true; this.publish('playing') },
   })
   private generation = 0
   private request: AbortController | null = null
@@ -152,6 +155,7 @@ export class PreviewPlayer {
   private volume = 1
   private voiceRate = 1
   private recording: PreviewRecording | null = null
+  private remoteStarted = false
 
   constructor(private readonly onViewChange: (view: PreviewView) => void, private readonly history?: AudioHistory) {}
 
@@ -183,7 +187,7 @@ export class PreviewPlayer {
       return
     }
     const generation = this.generation
-    const localText = settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : (settings.provider ?? 'xiaomi') === 'xiaomi' ? stripXiaomiAudioTags(normalized) : normalized
+    const localText = externalEngine() ? externalFallbackText(normalized) : engineText(normalized, () => settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : (settings.provider ?? 'xiaomi') === 'xiaomi' ? stripXiaomiAudioTags(normalized) : normalized)
     try {
       if (settings.localSpeechMode === 'local-first') {
         try {
@@ -195,7 +199,7 @@ export class PreviewPlayer {
         try {
           await this.playRemote(normalized, settings, generation)
         } catch (remoteError) {
-          if (settings.localSpeechMode !== 'auto' || generation !== this.generation || this.status === 'playing') throw remoteError
+          if (settings.localSpeechMode !== 'auto' || generation !== this.generation || this.remoteStarted) throw remoteError
           this.request = null
           this.requestBusy = false
           this.pcmBusy = false
@@ -241,6 +245,7 @@ export class PreviewPlayer {
   }
 
   stop(): void {
+    this.remoteStarted = false
     this.generation += 1
     this.request?.abort()
     this.request = null
@@ -293,6 +298,15 @@ export class PreviewPlayer {
   }
 
   private async playRemote(text: string, settings: PreviewSettings, generation: number): Promise<void> {
+    const external = externalEngine()
+    if (external) {
+      for (const segment of splitExternalText(text)) {
+        if (generation !== this.generation) return
+        if (external.streaming && (!settings.externalSelection || external.models?.find(model => model.id === settings.externalSelection?.model)?.streaming)) await this.playPcm(segment, settings, generation)
+        else await this.playComplete(segment, settings, generation, 'wav', 'external')
+      }
+      return
+    }
     if (settings.provider === 'doubao') {
       this.pcm.setPlaybackRate(1)
       this.publish('loading', 'doubao')
@@ -341,14 +355,14 @@ export class PreviewPlayer {
     const response = await fetch(hostRoute(TTS_ROUTE), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(this.requestBody(text, settings, format)),
+      body: JSON.stringify(speechRequestBody({ ...this.requestBody(text, settings, format) }, settings.externalSelection)),
       signal: controller.signal,
     })
     if (!response.ok) throw await responseError(response)
     const blob = await response.blob()
     if (generation !== this.generation) return
     if (capture && blob.size > 0) this.setRecording({ blob, text, format })
-    const voiceRateApplied = settings.provider === 'breeze'
+    const voiceRateApplied = !externalEngine() && settings.provider === 'breeze'
     void this.history?.add({ blob, text, format, source: 'preview', voiceRateApplied })
     this.request = null
     const url = URL.createObjectURL(blob)
@@ -380,7 +394,7 @@ export class PreviewPlayer {
       audio.onended = () => finish()
       audio.onerror = () => finish(new PreviewPlaybackError('request-failed', 'preview-audio-failed'))
       void audio.play().then(() => {
-        if (generation === this.generation) this.publish('playing', source)
+        if (generation === this.generation) { this.remoteStarted = true; this.publish('playing', source) }
       }).catch(() => finish(new PreviewPlaybackError('autoplay-blocked', 'preview-audio-blocked')))
     })
   }
@@ -395,14 +409,14 @@ export class PreviewPlayer {
   }
 
   private async playPcm(text: string, settings: PreviewSettings, generation: number): Promise<void> {
-    this.publish('loading', 'mimo')
+    this.publish('loading', externalEngine() ? 'external' : 'mimo')
     const controller = new AbortController()
     this.request = controller
     this.requestBusy = true
     const response = await fetch(hostRoute(TTS_STREAM_ROUTE), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(this.requestBody(text, settings)),
+      body: JSON.stringify(speechRequestBody({ ...this.requestBody(text, settings) }, settings.externalSelection)),
       signal: controller.signal,
     })
     if (!response.ok) throw await responseError(response)

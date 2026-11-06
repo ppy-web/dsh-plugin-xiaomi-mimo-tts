@@ -12,6 +12,7 @@ import {
   TTS_TOGGLE_CHARACTER_ASSET_ROUTE,
   TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE,
   TTS_PROVIDER_CHARACTER_ASSET_ROUTES,
+  TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE,
   TTS_PROVIDER_LOGO_ASSET_ROUTES,
   TTS_BREEZE_WORDMARK_ASSET_ROUTE,
   TTS_MOSS_LOGO_ASSET_ROUTE,
@@ -40,6 +41,7 @@ import { registerStaticAsset, registerStaticAssetMap, json } from './host/index.
 import { registerSynthesisRoutes } from './host/synthesis-routes.js'
 import { registerMossRoutes } from './host/moss-routes.js'
 import { registerOpenApiRoutes } from './host/open-api-routes.js'
+import { registerEngineRoutes } from './host/engine-routes.js'
 import SpeechHost from './host/speech-service.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, ttsApiKey } from './shared.js'
 import type { ResolvedTtsSettings } from './shared.js'
@@ -127,7 +129,7 @@ export function readConfig(config: Config): ResolvedTtsSettings {
 export function apply(ctx: Context, config: Config): void {
   const current = () => readConfig(config)
   ctx.inject(['webServer'], host => { host.plugin(SpeechHost, { current, updates: (listener: () => void) => ctx.on('loader/volatile-update', listener) }) })
-  ctx.inject(['speechSynthesis'], host => { registerOpenApiRoutes(host, () => config.openApiToken.get()) })
+  ctx.inject(['speechSynthesis'], host => { registerOpenApiRoutes(host, () => config.openApiToken.get()); registerEngineRoutes(host) })
 
   // Load all assets
   const voicePresetAssets = new Map(TTS_VOICE_DESIGN_PRESETS.map((preset) => {
@@ -182,6 +184,13 @@ export function apply(ctx: Context, config: Config): void {
       description: `${provider} provider character asset`,
     })
   }
+
+  registerStaticAsset(ctx, {
+    path: TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE,
+    data: readFileSync(new URL('../assets/ui/provider-external-takeover.webp', import.meta.url)),
+    contentType: 'image/webp',
+    description: 'External speech provider takeover character',
+  })
 
   registerStaticAsset(ctx, {
     path: TTS_BREEZE_WORDMARK_ASSET_ROUTE,

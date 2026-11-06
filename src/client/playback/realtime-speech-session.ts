@@ -4,6 +4,7 @@ import type { LiveSpeechController } from './live-speech-controller.js'
 import type { LocalSpeechController } from './local-speech-controller.js'
 import type { LiveMessageIdentity } from './types.js'
 import { prepareSpeechText } from './speech-text.js'
+import { externalEngine, externalFallbackText } from '../engine-state.js'
 
 interface SpeechOptions {
   localSpeechMode: TtsLocalSpeechMode
@@ -129,7 +130,7 @@ export class RealtimeSpeechSession {
   }
 
   private backendText(backend: SpeechBackend, text: string): string {
-    return backend === 'system' ? stripXiaomiAudioTags(stripBreezeAudioTags(text)) : text
+    return backend === 'system' ? externalEngine() ? externalFallbackText(text) : stripXiaomiAudioTags(stripBreezeAudioTags(text)) : text
   }
 
   private controller(backend: SpeechBackend): LiveSpeechController | LocalSpeechController {

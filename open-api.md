@@ -35,7 +35,7 @@ export async function apply(ctx: Context) {
 | 方法 | 契约 |
 | --- | --- |
 | `capabilities()` | 读取当前保存的供应商、模型、音色及功能支持情况，不发起上游请求。返回结构见下方能力查询。 |
-| `currentProvider()` | 返回宿主保存的当前供应商。 |
+| `currentProvider()` | 返回当前有效供应商 ID；外部接管优先，内置配置不变。 |
 | `supportsAudioTags()` | 当前供应商与模型是否支持正文内音频标签。 |
 | `synthesize(request)` | 返回 `SpeechAudio`：`data: Buffer`、`text`、`provider`、`format`、`contentType`、可选 `durationMs`。不写文件。 |
 | `exportAudio(request)` | 返回 `SpeechArtifact`：`path`、`size`、`format`、`contentType`、可选 `durationMs` 与幂等的 `remove()`。不会自动生成下载 URL。 |
@@ -49,7 +49,8 @@ export async function apply(ctx: Context) {
 | 字段 | 类型与含义 |
 | --- | --- |
 | `text` | 必填字符串，按所选供应商规则清理后合成。 |
-| `provider` | 可选 `xiaomi` / `doubao` / `breeze`，省略时使用保存的供应商。 |
+| `provider` | 可选 `xiaomi` / `doubao` / `breeze` / 已注册的 `external:*` ID；省略时使用当前有效引擎，外部接管优先。显式指定内置供应商时使用其保存配置。 |
+| `engineRevision` | 可选引擎状态版本。浏览器请求携带此值；过期返回 `speech-engine-changed`，不会改用其他引擎执行。 |
 | `model` / `voice` | 可选模型或音色覆盖；省略时使用所选供应商保存的值。Breeze 固定为 `breeze-tts-2`。 |
 | `speechInstruction` | 本次语气、情绪、方言等自然语言指令，不写回设置；豆包复刻模型不支持。空字符串清除本次请求的默认指令。 |
 | `voiceDesignPrompt` | 小米 VoiceDesign 的本次声音描述。 |
@@ -93,17 +94,17 @@ Authorization: Bearer <openApiToken>
 | 字段 | 含义 |
 | --- | --- |
 | `provider` | 保存的当前供应商。 |
-| `formats` | 宿主合成及文件导出支持的格式：`mp3`、`wav`、`silk`。 |
+| `formats` | 当前有效引擎支持的完整音频格式，以及由 WAV 转换的 `silk`。 |
 | `providers[]` | 各供应商的本地配置与模型能力。 |
-| `providers[].id` | `xiaomi` / `doubao` / `breeze`。 |
+| `providers[].id` | `xiaomi` / `doubao` / `breeze`，以及当前已注册的 `external:*`。 |
 | `providers[].configured` | 是否保存了非空密钥。 |
 | `providers[].ready` | 当前保存的密钥格式、音色等是否通过本地校验。 |
 | `providers[].unavailableReason` | 未就绪时的稳定错误码，例如 `api-key-not-configured`、`api-key-rejected`、`voice-required`。 |
 | `providers[].selectedModel` / `selectedVoice` | 该供应商保存的模型与音色 ID。 |
 | `providers[].maxTextLength` | 清理后单次文本上限；Breeze 还会取插件上限与 1000 的较小值。 |
 | `providers[].models[]` | 模型能力清单，结构见下表。 |
-| `http.formats` | 完整二进制 `/synthesize` 路由支持的格式：MP3 / WAV。 |
-| `http.exportFormats` | `/export-audio` 支持的格式：MP3 / WAV / SILK。 |
+| `http.formats` | 当前引擎完整二进制 `/synthesize` 支持的格式。内置为 MP3 / WAV，外部必需 WAV、可选 MP3。 |
+| `http.exportFormats` | 当前引擎可导出的格式，包含其完整音频格式及基于 WAV 转换的 SILK。 |
 | `http.downloadTtlMs` | 下载 URL 的有效期，当前为 86400000 毫秒（24 小时）。 |
 
 每个模型对象包含：
@@ -229,3 +230,101 @@ tts?.play('欢迎回来')
 ```
 
 动态获取可选服务，插件未安装或未就绪时跳过。`play(text)` 尽力播放并立即返回，不向调用方抛错；新的播放会中断当前朗读。播放受插件启用状态及鲸鱼娘桌宠播报来源开关控制。`stop()` 幂等停止此服务的播放。两者都不返回音频或播放结果；需要音频内容时使用宿主合成或 HTTP 导出接口。
+
+## 外部供应商插件接管
+
+供应商插件负责配置和调用上游，本插件负责播放、历史、下载、取消和渠道交付。
+
+外部插件注入 `speechSynthesis`，仅在用户打开其接管开关时注册；默认关闭。`registerProvider(adapter)` 返回幂等注销函数，用 `ctx.effect()` 绑定生命周期。注册即接管，注销恢复本插件保存的内置选择；不覆盖或迁移内置配置。仅允许一个外部注册者，冲突返回 `external-provider-conflict`。已注册但未就绪时保持接管，不静默切回内置云端服务。
+
+```ts
+import type { ExternalSpeechProvider } from 'dsh-xiaomi-tts/host-api'
+import { TtsProviderError } from 'dsh-xiaomi-tts/host-api'
+
+export const inject = ['speechSynthesis']
+
+// adapter 在外部插件中实现，并读取该插件自己的配置。
+ctx.effect(() => ctx.speechSynthesis.registerProvider(adapter))
+```
+
+`ExternalSpeechProvider` 接口：
+
+| 字段或方法 | 契约 |
+| --- | --- |
+| `apiVersion` | 固定 `1`。 |
+| `id` | 稳定的 `external:<plugin-id>`；后缀由小写字母、数字、点、下划线和连字符组成，最长 120 字符。 |
+| `getSnapshot()` | 返回 `{ name, ready, formats, maxTextLength, unavailableReason?, modelName?, voiceName? }`。名称必填；单次文本上限是正整数；支持可选 `models`、`selection`、`configurationId`、`managementPath`、`managementBundle`，详见下方目录契约。凭据和地址留在外部插件。 |
+| `subscribe(listener)` | 配置、就绪状态或能力变化时通知监听者，返回注销函数；每次通知使主插件推进状态版本并取消旧任务。 |
+| `synthesize({ text, format, signal })` | 返回 `Promise<{ data: Uint8Array, format: 'wav' \| 'mp3' }>`。每次请求固定本次配置；响应必须符合请求格式。 |
+| `streamPcm?({ text, signal })` | 可选 `AsyncIterable<Uint8Array>`，仅输出 24 kHz 单声道有符号小端 PCM16，不带 WAV 头。不实现时使用完整音频分段播放。 |
+
+`formats` 必须包含 `wav`，可额外包含 `mp3`。WAV 必须是有效的未压缩 PCM，允许有效采样率及 8/16/24/32 位采样。SILK 由本插件基于 WAV 转换，外部插件无需实现。默认合成有 MP3 则使用 MP3，否则使用 WAV；显式请求不支持的格式返回 `audio-format-unsupported`。
+
+声明模型目录及当前选择的适配器支持本次 `model`、`voice`、`speechInstruction` 覆盖；模型和音色必须存在且匹配，指令必须符合模型能力及可选枚举。无目录的旧适配器仍拒绝这些覆盖。`voiceDesignPrompt`、`voiceRate` 始终返回 `external-option-unsupported`；音量与播放语速在播放端应用。单次覆盖不写回配置。默认 Agent 调用应省略覆盖及 `provider`；显式内置供应商保持原契约。
+
+外部插件可抛出公开的 `TtsProviderError('external-auth-failed', undefined, 401)` 等稳定错误。外部错误只透传合法错误码及状态码，不透传错误说明、请求 ID、上游正文或任意异常内容。取消信号应传入网络请求并终止读取；主插件同时约束超时和音频大小。
+
+### 当前有效引擎和浏览器同步
+
+宿主新增 `engineState()`、`subscribeEngine(listener)` 和 `resolveProvider(request)`。状态字段为 `provider`、`revision`、`name`、`ready`、`formats`、`maxTextLength`、`streaming` 及可选展示名称和未就绪错误码；引擎 ID 使用公开的 `SpeechProviderId`，原内置 `TtsProvider` 配置不变。接管期间 `capabilities().engine` 提供同一状态，`provider`、`formats` 及音频结果反映实际引擎。
+
+Web 客户端通过同源 `GET /plugins/xiaomi-mimo-tts/engine-state` 读取状态，通过 `GET /plugins/xiaomi-mimo-tts/engine-events` 订阅初始及后续状态。SSE 的每条 `data` 是完整状态 JSON。沿用宿主 Web 访问控制，无需管理令牌；跨域请求拒绝，无 CORS。独立管理客户端继续使用带令牌的 `/capabilities`。
+
+浏览器合成请求携带 `engineRevision`。版本过期返回 `speech-engine-changed`，禁止把旧任务转交给新引擎。浏览器状态断线时停止当前播放并暂停新的默认合成；重连读取新状态，不重播旧回复。宿主 `streamPcm(request, consume)` 提供外部 PCM 消费接口；Web 路由将其包装为原有 SSE 音频结构，外部首版不扩展豆包双工协议。
+
+注销、配置变化和主插件卸载都会取消受影响的任务。已开始播放的音频或结果不明的渠道发送不会自动重试；本地回退仍遵循本插件原有策略。
+
+新增错误码包括 `external-provider-invalid`、`external-provider-conflict`、`external-provider-unavailable`、`external-provider-not-ready`、`external-option-unsupported`、`external-synthesis-failed`、`audio-format-unsupported`、`speech-engine-changed`。
+
+### 外部模型目录与选择持久化
+
+接口保持 `apiVersion: 1`，以下字段和方法为可选扩展；只提供音频的旧适配器无需修改。
+
+```ts
+interface ExternalSpeechSelection {
+  model: string
+  voice: string
+  speechInstruction?: string
+}
+
+interface ExternalSpeechModel {
+  id: string
+  name: string
+  voices: { id: string; name: string }[]
+  streaming?: boolean
+  speechInstruction?: boolean
+  instructions?: { id: string; name: string }[]
+  audioTags?: { value: string; name: string }[]
+}
+
+// 可选添加到 getSnapshot() 返回值
+const catalog = {
+  configurationId: 'senseaudio-profile',
+  models: [{
+    id: 'sensenova-tts-2.0', name: 'SenseNova TTS 2.0', streaming: true,
+    voices: [{ id: 'female_0033_b', name: 'female_0033_b' }],
+    audioTags: [{ value: '<break time=500>', name: 'Pause 500 ms' }],
+  }],
+  selection: { model: 'sensenova-tts-2.0', voice: 'female_0033_b' },
+  managementPath: '/plugins/speech-provider-adapter',
+  managementBundle: 'dsh-speech-provider-adapter',
+}
+
+// 可选添加到 ExternalSpeechProvider；成功持久化后通知 subscribe() 监听者
+async function configure(selection: ExternalSpeechSelection, { signal }: { signal: AbortSignal }): Promise<void> {
+  await saveInAdapter(selection, signal)
+  notifySubscribers()
+}
+```
+
+目录由适配器提供，本插件不直接访问上游目录。`models` 最多 200 项，每个模型音色最多 2000 项；ID、显示名最多 200 字符，不能重复。`selection` 必须指向目录中存在的模型、音色。`configurationId` 标识当前供应商配置；在 供应商适配器 切换供应商时更换该值，防止 音色工坊 把另一套配置的草稿写入当前供应商。`managementBundle` 为已安装插件的 npm 包名，音色工坊通过 DSH 内部插件导航打开其设置，不新建标签页；未声明该字段的插件仍可提供 `managementPath`。`managementPath` 只接受同源 `/plugins/` 路径，不得放入上游地址、查询参数或密钥。
+
+音色工坊 从 `configure` 方法是否存在派生 `configurable`。有目录和配置能力时，复用原模型、音色及语音指令控件；变更先作为草稿，点击保存后调用 `configure`。适配器负责验证、持久化、更新快照并通知，失败必须抛出稳定错误。语音朗读设置页的外部模型、音色也使用保存/放弃操作，其他播放设置保持原行为。内置配置和未保存内置草稿独立保留。音色工坊 和 供应商适配器 的配置分别保存，外部保存失败不会继续提交本次其他设置；若外部保存成功后本插件设置保存失败，已保存的外部选择会保留，可重试其余设置。
+
+`speechInstruction: true` 表示支持指令；有 `instructions` 时只接受其中的值及空字符串，例如 MiniMax 的情绪。没有枚举时允许最长 4096 字符的自由文本。`audioTags` 是精确匹配的可插入标签：通用文本清理只保留当前模型声明的标签，不套用内置供应商标签规则。代码块中的标签仍被移除，本地回退移除外部标签。实际流式能力要求同时实现 `streamPcm` 且当前模型声明支持流式。
+
+`synthesize` / `streamPcm` 请求可以收到经验证的可选 `model`、`voice`、`speechInstruction` 单次覆盖。适配器必须在调用开始时固定配置。省略时使用 供应商适配器 保存的选择，单次请求不得写回默认值。`capabilities().providers` 返回外部模型、音色目录、当前 ID 和能力；`engineState()` / SSE 同步目录与当前选择。
+
+宿主插件可调用 `configureProvider({ provider, engineRevision, selection, signal? })`；`engineRevision` 必须为当前版本。主插件浏览器使用同源 `POST /plugins/xiaomi-mimo-tts/engine-selection`，JSON 为 `{ provider, engineRevision, selection }`，成功返回最新引擎状态。此浏览器端点要求同源 Origin 和 JSON Content-Type，沿用宿主访问控制，不使用开放接口令牌。旧版本返回 `speech-engine-changed`，不把草稿写入另一个引擎。新的稳定错误包括 `external-selection-invalid`、`external-configuration-busy`。
+
+完整管理页与协议适配实现见独立插件“供应商适配器”（`dsh-speech-provider-adapter`）的 `usage.md`。

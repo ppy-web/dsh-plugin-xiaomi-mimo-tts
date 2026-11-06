@@ -1,3 +1,4 @@
+import { useExternalSelection } from './external-selection.js'
 import type { ReactElement, RefObject } from 'react'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -10,7 +11,9 @@ import {
   resolveSoundEffectsScope,
   resolveTtsSettings,
 } from '../../shared.js'
-import { saveSettingsDraft, validateSettingsDraft, EDITABLE_SETTING_FIELDS, SaveSettingsError } from './save-settings.js'
+import { saveSettingsDraft, validateSettingsDraft, EDITABLE_SETTING_FIELDS, BUILTIN_SETTING_FIELDS, SaveSettingsError } from './save-settings.js'
+import { useEngineState } from '../use-engine-state.js'
+import { engineStateStore, externalEngine } from '../engine-state.js'
 import { invalidateApiKeyStatus, useApiKeyStatus } from '../conversation/api-key-status.js'
 import type { TtsSettings, SoundEffectsScope } from '../../shared.js'
 import type { Translate } from '../localization.js'
@@ -43,6 +46,7 @@ export interface SettingsCardProps {
   view: 'summary' | 'page'
   initialPanel?: 'mixer' | undefined
   onSidebarChange?: ((mounted: boolean) => void) | undefined
+  onOpenProviderSettings?: ((bundle: string) => void) | undefined
   scope: ConfigForm<TtsSettings>
   t: Translate
   controller: SoundEffectsController
@@ -94,7 +98,10 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   return <SettingsPage {...props} />
 }
 
-function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, onSidebarChange, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, onSidebarChange, onOpenProviderSettings, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+  useEngineState()
+  const external = externalEngine()
+  const externalDraft = useExternalSelection(external)
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(pluginChanges.subscribe, pluginChanges.getSnapshot, pluginChanges.getSnapshot)
   const writable = snapshot.writable && !changing
@@ -151,6 +158,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
   const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView, history))
+  useEffect(() => engineStateStore.subscribe(() => previewPlayer.stop()), [previewPlayer])
   useEffect(() => speechActivity?.register(() => isSpeechBusy(previewPlayer.getView().status), () => previewPlayer.stop()), [speechActivity, previewPlayer])
   const [toggleSoundPlayer] = useState(() => new ToggleSoundPlayer())
   useEffect(() => audioFocus.subscribe(() => {
@@ -185,8 +193,9 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     return Array.isArray(draft[field]) ? JSON.stringify(draft[field]) !== JSON.stringify(acceptedValue(field)) : !Object.is(draft[field], acceptedValue(field))
   }
   const apiKeyDirty = (Object.keys(API_KEY_STATE) as ApiKeyField[]).some(field => changes[field]?.kind === 'set' && apiKeys[API_KEY_STATE[field]].trim().length > 0)
-  const dirty = EDITABLE_SETTING_FIELDS.some(fieldDirty) || apiKeyDirty
-  const validationError = validateSettingsDraft(draft)
+  const dirty = EDITABLE_SETTING_FIELDS.some(fieldDirty) || apiKeyDirty || externalDraft.dirty
+  const validationError = external ? null : validateSettingsDraft(draft)
+  const saveableDirty = external ? externalDraft.dirty || EDITABLE_SETTING_FIELDS.some(field => !BUILTIN_SETTING_FIELDS.has(field) && fieldDirty(field)) : dirty
   const apiKeyViewState = resolveApiKeyViewState(apiKey, isSupportedTtsApiKey(apiKey, provider), apiKeyStatus, changes[apiKeyField]?.kind)
   const apiKeyMessage = t(apiKeyViewState === 'loading'
     ? 'settings.apiKeyLoading'
@@ -322,6 +331,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   }
 
   const discard = (): void => {
+    externalDraft.discard()
     const next = resolveTtsSettings(scope.getSnapshot().value)
     setProvider(next.provider)
     setDoubaoModel(next.doubaoModel)
@@ -377,10 +387,11 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       const commit = async (): Promise<void> => {
         const nextDraft = sidebar === undefined ? draft : { ...draft, showInSidebar: sidebar }
         const nextChanges: DraftChanges = sidebar === undefined ? changes : { ...changes, showInSidebar: { kind: 'set' } }
-        await saveSettingsDraft(scope, nextDraft, nextChanges, apiKeys)
+        await externalDraft.save()
+        await saveSettingsDraft(scope, nextDraft, nextChanges, apiKeys, external !== null)
         if (changes.apiKey !== undefined || changes.doubaoApiKey !== undefined || changes.breezeApiKey !== undefined) invalidateApiKeyStatus()
-        setApiKeys({ xiaomi: '', doubao: '', breeze: '' })
-        setChanges({})
+        if (!external) setApiKeys({ xiaomi: '', doubao: '', breeze: '' })
+        setChanges(external ? Object.fromEntries(Object.entries(changes).filter(([field]) => BUILTIN_SETTING_FIELDS.has(field))) : {})
         setState('saved')
         if (sidebar !== undefined) onSidebarChange?.(sidebar)
       }
@@ -402,13 +413,13 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       previewPlayer.stop()
       return
     }
-    if (validationError !== null || changes[apiKeyField] !== undefined) {
+    if (validationError !== null || (!external && changes[apiKeyField] !== undefined)) {
       previewPlayer.stop()
       setPreviewView({ status: 'error', source: provider === 'doubao' ? 'doubao' : provider === 'breeze' ? 'breeze' : 'mimo', error: validationError !== null ? 'voice-required' : 'save-key-first' })
       return
     }
     beforePreview?.()
-    void previewPlayer.play(text, draft)
+    void previewPlayer.play(text, { ...draft, ...(external ? { externalSelection: externalDraft.value } : {}) })
   }
 
   const toggleSettingsPreview = (): void => { togglePreview(previewText) }
@@ -508,6 +519,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onSoundEnabledChange={changeSoundEnabled}
         />
         <ApiKeyModule
+          onOpenProviderSettings={onOpenProviderSettings}
           t={t}
           provider={provider}
           value={apiKey}
@@ -518,6 +530,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onChange={(next) => { setApiKey(next); markChange(apiKeyField) }}
         />
         <DetailsModule
+          externalSelection={externalDraft.value}
+          onExternalSelectionChange={next => { previewPlayer.stop(); externalDraft.change(next); setState('idle') }}
           t={t}
           provider={provider}
           doubaoModel={doubaoModel}
@@ -686,7 +700,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
               <Button type="button" variant="outline" size="sm" className="xmimo-tts-discard" disabled={!writable || !dirty || state === 'saving'} onClick={discard}>
                 {t('settings.discard')}
               </Button>
-              <Button type="button" variant="primary" size="sm" className="xmimo-tts-save" disabled={!writable || !dirty || state === 'saving' || validationError !== null} onClick={() => { void save() }}>
+              <Button type="button" variant="primary" size="sm" className="xmimo-tts-save" disabled={!writable || !saveableDirty || state === 'saving' || validationError !== null} onClick={() => { void save() }}>
                 {state === 'saving' ? t('settings.saving') : t('settings.save')}
               </Button>
             </div>

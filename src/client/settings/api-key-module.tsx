@@ -7,6 +7,8 @@ import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
 import { SettingFieldHeading } from './field-heading.js'
 import { ModuleShell } from './module-shell.js'
+import { useEngineState } from '../use-engine-state.js'
+import { externalEngine } from '../engine-state.js'
 
 const API_KEY_IDLE_COPY_KEYS = [
   'settings.apiKeyIdleCopy1',
@@ -40,9 +42,13 @@ export interface ApiKeyModuleProps {
   writable: boolean
   minimal: boolean
   onChange: (value: string) => void
+  onOpenProviderSettings?: ((bundle: string) => void) | undefined
 }
 
-export function ApiKeyModule({ t, provider, value, message, invalid, writable, minimal, onChange }: ApiKeyModuleProps): ReactElement {
+export function ApiKeyModule({ t, provider, value, message, invalid, writable, minimal, onChange, onOpenProviderSettings }: ApiKeyModuleProps): ReactElement {
+  const engineView = useEngineState()
+  const external = externalEngine()
+  if (external) { message = `${external.name} · ${t(engineView.status !== 'ready' ? 'settings.externalDisconnected' : external.ready ? 'settings.externalManaged' : 'settings.externalNotReady')}`; invalid = false; writable = false }
   const [bubbleKey, setBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const inputId = useId()
   const messageId = useId()
@@ -51,14 +57,16 @@ export function ApiKeyModule({ t, provider, value, message, invalid, writable, m
   return <ModuleShell className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-ui-module-padded" title={<SettingFieldHeading
       label={<span className="xmimo-ui-module-title">
         <RiKey2Line size={14} aria-hidden="true" focusable="false" />
-        {provider === 'doubao' ? t('settings.providerDoubao') : provider === 'breeze' ? t('settings.providerBreeze') : <span
+        {external ? external.name : provider === 'doubao' ? t('settings.providerDoubao') : provider === 'breeze' ? t('settings.providerBreeze') : <span
           className="xmimo-tts-api-key-logo"
           role="img"
           aria-label={t('settings.apiKey')}
           style={{ '--xmimo-tts-api-key-logo-image': `url(${hostRoute(TTS_MIMO_LOGO_ASSET_ROUTE)})` } as CSSProperties}
         />}
       </span>}
-      suffix={<a className="xmimo-tts-api-key-link" href={keyUrl} target="_blank" rel="noopener noreferrer">{t('settings.getApiKey')}</a>}
+      suffix={external?.managementBundle && onOpenProviderSettings
+        ? <button type="button" className="xmimo-tts-api-key-link" onClick={() => onOpenProviderSettings(external.managementBundle!)}>{t('settings.externalManage')}</button>
+        : <a className="xmimo-tts-api-key-link" href={external ? external.managementPath ? hostRoute(external.managementPath) : undefined : keyUrl} aria-disabled={external !== null && !external.managementPath} target="_blank" rel="noopener noreferrer">{t(external?.managementPath ? 'settings.externalManage' : 'settings.getApiKey')}</a>}
       disabled={!writable}
       resettable={false}
     />} action={minimal ? undefined : <span className="xmimo-tts-api-key-decoration" aria-hidden="true" />}>
@@ -95,7 +103,7 @@ export function ApiKeyModule({ t, provider, value, message, invalid, writable, m
       </div>
       <small
         id={messageId}
-        className={`xmimo-tts-api-key-message${invalid ? ' xmimo-tts-api-key-warning' : ''}${minimal && !invalid ? ' xmimo-tts-visually-hidden' : ''}`}
+        className={`xmimo-tts-api-key-message${invalid ? ' xmimo-tts-api-key-warning' : ''}${minimal && !invalid && !external ? ' xmimo-tts-visually-hidden' : ''}`}
         role={invalid ? 'alert' : 'status'}
       >
         {message}

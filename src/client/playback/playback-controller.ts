@@ -7,6 +7,7 @@ import type { AudioHistory } from '../history/audio-history.js'
 import { ttsSelection } from '../../types/providers.js'
 import type { TtsSelection } from '../../types/providers.js'
 import type { ResolvedTtsSettings } from '../../types/settings.js'
+import { externalEngine, speechRequestBody, splitExternalText } from '../engine-state.js'
 
 interface SynthesizedAudio {
   url: string
@@ -163,7 +164,7 @@ export class PlaybackController {
     const previous = this.segmentedState
     const resume = previous !== null && previous.sessionId === sessionId && previous.messageId === messageId
     this.stopCurrent()
-    const segments = resume ? previous.segments : (this.selection?.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text, undefined, undefined, value => prepareProviderTtsText(value, this.selection ?? {})))
+    const segments = resume ? previous.segments : (externalEngine() ? splitExternalText(text) : this.selection?.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text, undefined, undefined, value => prepareProviderTtsText(value, this.selection ?? {})))
     const startIndex = resume ? previous.index : 0
     const voiceRate = resume ? previous.voiceRate : this.voiceRate
     if (segments.length === 0) {
@@ -249,7 +250,7 @@ export class PlaybackController {
 
     this.stopCurrent()
     const selection = this.selection
-    const voiceRateApplied = selection?.provider === 'doubao' || selection?.provider === 'breeze'
+    const voiceRateApplied = !externalEngine() && (selection?.provider === 'doubao' || selection?.provider === 'breeze')
     const voiceRate = voiceRateApplied ? 1 : this.voiceRate
     const generation = ++this.generation
     const controller = new AbortController()
@@ -261,7 +262,7 @@ export class PlaybackController {
       const response = await fetch(hostRoute(TTS_ROUTE), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...selection, text, format }),
+        body: JSON.stringify(speechRequestBody({ ...selection, text, format })),
         signal: controller.signal,
       })
       if (!response.ok) {
@@ -278,7 +279,8 @@ export class PlaybackController {
 
       const blob = await response.blob()
       if (generation !== this.generation || this.activeSessionId !== sessionId) return
-      void this.history?.add({ blob, text, format, source: 'conversation', sessionId, messageId, voiceRateApplied })
+      const actualFormat = response.headers.get('content-type')?.includes('wav') ? 'wav' : format
+      void this.history?.add({ blob, text, format: actualFormat, source: 'conversation', sessionId, messageId, voiceRateApplied })
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
       audio.volume = this.volume

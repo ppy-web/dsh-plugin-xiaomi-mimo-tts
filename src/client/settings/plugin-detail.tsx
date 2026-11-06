@@ -9,6 +9,7 @@ import { resolveTtsSettings } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import type { LocaleKey, Translate } from '../localization.js'
 import { useApiKeyStatus } from '../conversation/api-key-status.js'
+import { externalEngine } from '../engine-state.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { ApiKeyStatus } from './api-key-state.js'
 import { apiKeyStatusStore } from './api-key-status-store.js'
@@ -86,9 +87,10 @@ function KeyBadge({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Omit<DetailBadgeP
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
   const { provider } = resolveTtsSettings(snapshot.value)
   const status = useApiKeyStatus(snapshot.status === 'ready' && !changing, provider)
-  const key = changing ? 'plugin.changing' : snapshot.status === 'unavailable' ? 'detail.keyUnavailable' : STATUS_KEYS[status]
+  const external = externalEngine()
+  const key = changing ? 'plugin.changing' : external ? status === 'unavailable' ? 'settings.externalDisconnected' : external.ready ? 'settings.externalManaged' : 'settings.externalNotReady' : snapshot.status === 'unavailable' ? 'detail.keyUnavailable' : STATUS_KEYS[status]
   return <span className="xmimo-ui-scope xmimo-tts-detail-status">
-    <span role="status">{t(providerLabelKey(provider))} · {t(key)}</span>
+    <span role="status">{external?.name ?? t(providerLabelKey(provider))} · {t(key)}</span>
     {!changing && snapshot.status === 'ready' && status === 'unavailable'
       ? <Button type="button" variant="toolbar" size="sm" onClick={apiKeyStatusStore.invalidate}>{t('detail.retry')}</Button>
       : null}

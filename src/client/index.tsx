@@ -22,6 +22,7 @@ import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { registerWhalePersonaSettings, registerQqbotSpeechSettings } from './settings/qqbot-registration.js'
 import { registerPassportSettings } from './settings/passport-registration.js'
 import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
+import { engineStateStore } from './engine-state.js'
 import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
 import { ActivationGuide } from './settings/activation-guide.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
@@ -237,6 +238,11 @@ export function apply(ctx: Context): void {
     live.interrupt(); local.interrupt(); playback.interrupt()
     pcmService.stop(); questionPlayback?.stop(); history.stopReplay()
   }
+  ctx.effect(() => {
+    const off = engineStateStore.subscribe(stopAllPlayback)
+    const stop = engineStateStore.start()
+    return () => { off(); stop() }
+  }, 'xiaomi-mimo-tts: speech engine state')
   ctx.effect(() => observePluginActivity(changes, stopAllPlayback), 'xiaomi-mimo-tts: plugin changes')
   const updateVoiceVolume = () => { const volume = resolveTtsSettings(scope.getSnapshot().value).voiceVolume; live.setVolume(volume); local.setVolume(volume); playback.setVolume(volume); pcmService.setVolume(volume); questionPlayback?.setVolume(volume) }
   updateVoiceVolume()
@@ -298,7 +304,9 @@ export function apply(ctx: Context): void {
     inject: () => ({ t, scope, changes }),
   }, PluginDetailBadge))
 
-  const settingsPageProps = { scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback }
+  const settingsPageProps = { scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback,
+    onOpenProviderSettings: (bundle: string) => ctx.pluginNavigation.openBundle(bundle),
+  }
   registerSlotContribution(ctx, 'plugins.bundle.config', () => registerBundleSettings(ctx, {
     ...settingsPageProps, onSidebarChange: mounted => { if (mounted) ctx.layout.selectPanel(VOICE_SETTINGS_PANEL_ID as MainPanelId) },
   }))

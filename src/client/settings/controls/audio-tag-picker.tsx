@@ -8,7 +8,7 @@ import { XIAOMI_AUDIO_TAG_GROUPS } from '../../../text/xiaomi-audio-tags.js'
 import type { Translate } from '../../localization.js'
 
 /** Continuous insertion keeps the palette open only while working with its text field. */
-export function AudioTagPicker({ provider, disabled, textRef, onInsert, t }: { provider: 'xiaomi' | 'breeze'; disabled: boolean; textRef: RefObject<HTMLTextAreaElement | null>; onInsert: (tag: string, placement?: 'start') => void; t: Translate }): ReactElement {
+export function AudioTagPicker({ provider, disabled, textRef, onInsert, t, tags }: { provider: 'xiaomi' | 'breeze' | 'external'; disabled: boolean; textRef: RefObject<HTMLTextAreaElement | null>; onInsert: (tag: string, placement?: 'start') => void; t: Translate; tags?: { value: string; name: string }[] | undefined }): ReactElement {
   const [language, setLanguage] = useState<BreezeAudioTagLanguage>('zh')
   const [open, setOpen] = useState(false)
   const [continuous, setContinuous] = useState(false)
@@ -49,7 +49,7 @@ export function AudioTagPicker({ provider, disabled, textRef, onInsert, t }: { p
   }, [expanded])
   const groups: readonly { label: string; tags: readonly string[]; placement?: 'start' }[] = provider === 'xiaomi'
     ? XIAOMI_AUDIO_TAG_GROUPS.map(group => ({ label: group[language], tags: (language === 'zh' ? group.tags : group.english).map(tag => `(${tag})`), ...('placement' in group ? { placement: group.placement } : {}) }))
-    : BREEZE_AUDIO_TAG_GROUPS[language]
+    : provider === 'external' ? [{ label: t('settings.breezeAudioTags'), tags: (tags ?? []).map(tag => tag.value) }] : BREEZE_AUDIO_TAG_GROUPS[language]
   return <div ref={rootRef} className={expanded ? 'xmimo-tts-breeze-audio-tags xmimo-tts-breeze-audio-tags-open' : 'xmimo-tts-breeze-audio-tags'}>
     <button
       type="button"
@@ -66,10 +66,10 @@ export function AudioTagPicker({ provider, disabled, textRef, onInsert, t }: { p
     </button>
     {expanded ? createPortal(<div ref={panelRef} id={panelId} className="xmimo-ui-scope xmimo-tts-breeze-audio-tags-panel"
       role="dialog" aria-label={t('settings.breezeAudioTags')} style={position ?? { visibility: 'hidden' }}>
-      <small>{t(provider === 'xiaomi' ? 'settings.xiaomiAudioTagsHint' : 'settings.breezeAudioTagsHint')}</small>
+      <small>{t(provider === 'external' ? 'settings.externalOptionsHint' : provider === 'xiaomi' ? 'settings.xiaomiAudioTagsHint' : 'settings.breezeAudioTagsHint')}</small>
       <div className="xmimo-tts-settings-segmented-wrap">
-        <Button type="button" aria-pressed={language === 'zh'} variant={language === 'zh' ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setLanguage('zh')}>{t('settings.breezeAudioTagsChinese')}</Button>
-        <Button type="button" aria-pressed={language === 'en'} variant={language === 'en' ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setLanguage('en')}>{t('settings.breezeAudioTagsEnglish')}</Button>
+        {provider !== 'external' ? <><Button type="button" aria-pressed={language === 'zh'} variant={language === 'zh' ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setLanguage('zh')}>{t('settings.breezeAudioTagsChinese')}</Button>
+        <Button type="button" aria-pressed={language === 'en'} variant={language === 'en' ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setLanguage('en')}>{t('settings.breezeAudioTagsEnglish')}</Button></> : null}
         <Button type="button" className="xmimo-tts-audio-tags-continuous" aria-label={t('settings.audioTagsContinuous')} aria-pressed={continuous} title={t('settings.audioTagsContinuousHint')} variant={continuous ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setContinuous(value => !value)}>
           {continuous ? <RiPushpinFill size={14} aria-hidden="true" /> : <RiPushpinLine size={14} aria-hidden="true" />}
         </Button>
