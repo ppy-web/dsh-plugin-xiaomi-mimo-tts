@@ -58,11 +58,17 @@ export function useAccordionViewport(open: boolean, onToggle: () => void) {
     // A deliberate user gesture takes precedence over automatic positioning.
     const gestures = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
     for (const event of gestures) window.addEventListener(event, cancel, { passive: true })
-    const observer = new ResizeObserver(sizeContent)
+    // Updating a child's height during observer delivery can resize its observed parent.
+    let sizeFrame = 0
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(sizeFrame)
+      sizeFrame = requestAnimationFrame(sizeContent)
+    })
     for (const scroller of scrollers) if (scroller !== page) observer.observe(scroller)
     return () => {
       cancel()
       observer.disconnect()
+      cancelAnimationFrame(sizeFrame)
       window.removeEventListener('resize', sizeContent)
       window.visualViewport?.removeEventListener('resize', sizeContent)
       for (const event of gestures) window.removeEventListener(event, cancel)
