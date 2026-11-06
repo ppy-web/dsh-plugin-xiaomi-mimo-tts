@@ -260,11 +260,6 @@
   transition: transform 440ms cubic-bezier(.16, 1, .3, 1)
 }
 
-.xmimo-tts-provider-toggle[data-provider="doubao"] .xmimo-tts-provider-flipper,
-.xmimo-tts-provider-toggle[data-provider="breeze"] .xmimo-tts-provider-flipper {
-  transform: rotateY(180deg)
-}
-
 .xmimo-tts-provider-face {
   position: absolute;
   inset: 0;
@@ -274,7 +269,7 @@
   background-size: contain
 }
 
-.xmimo-tts-provider-face-doubao {
+.xmimo-tts-provider-face-back {
   transform: rotateY(180deg)
 }
 

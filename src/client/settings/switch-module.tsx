@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { useState } from 'react'
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { nextTtsProvider, TTS_PROVIDER_CHARACTER_ASSET_ROUTES, TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE, TTS_TOGGLE_CHARACTER_ASSET_ROUTE } from '../../shared.js'
 import type { TtsProvider } from '../../types/providers.js'
@@ -56,6 +57,17 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
   writable: boolean
   onChange: (provider: TtsProvider) => void
 }): ReactElement {
+  const [portrait, setPortrait] = useState(() => ({ provider, turns: 0, front: provider, back: provider }))
+  if (portrait.provider !== provider) {
+    const turns = portrait.turns + 1
+    // Replace the hidden face, then flip another half turn for every provider change.
+    setPortrait({
+      provider,
+      turns,
+      front: turns % 2 === 0 ? provider : portrait.front,
+      back: turns % 2 === 1 ? provider : portrait.back,
+    })
+  }
   const nextProvider = nextTtsProvider(provider, doubaoEnabled, breezeEnabled)
   const label = t(providerLabelKey(provider))
   const nextLabel = t(providerLabelKey(nextProvider))
@@ -91,9 +103,9 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
   >
     <span className="xmimo-tts-character-control">
       <span className="xmimo-tts-character-portrait xmimo-tts-provider-portrait" aria-hidden="true">
-        <span className="xmimo-tts-provider-flipper">
-          <span className="xmimo-tts-provider-face xmimo-tts-provider-face-xiaomi" style={{ backgroundImage: `url(${hostRoute(TTS_PROVIDER_CHARACTER_ASSET_ROUTES.xiaomi)})` }} />
-          <span className="xmimo-tts-provider-face xmimo-tts-provider-face-doubao" style={{ backgroundImage: `url(${hostRoute(TTS_PROVIDER_CHARACTER_ASSET_ROUTES[provider === 'breeze' ? 'breeze' : 'doubao'])})` }} />
+        <span className="xmimo-tts-provider-flipper" style={{ transform: `rotateY(${portrait.turns * 180}deg)` }}>
+          <span className="xmimo-tts-provider-face" style={{ backgroundImage: `url(${hostRoute(TTS_PROVIDER_CHARACTER_ASSET_ROUTES[portrait.front])})` }} />
+          <span className="xmimo-tts-provider-face xmimo-tts-provider-face-back" style={{ backgroundImage: `url(${hostRoute(TTS_PROVIDER_CHARACTER_ASSET_ROUTES[portrait.back])})` }} />
         </span>
       </span>
       <span className="xmimo-tts-character-copy"><strong>{label}</strong></span>
