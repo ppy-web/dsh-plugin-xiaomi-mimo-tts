@@ -21,6 +21,10 @@
   color: var(--dsw-alias-label-secondary);
 }
 
+.xmimo-tts-action.xmimo-tts-failed {
+  color: var(--dsw-alias-state-error-primary, #dc2626);
+}
+
 .xmimo-tts-action:disabled {
   cursor: default;
   opacity: 0.45;

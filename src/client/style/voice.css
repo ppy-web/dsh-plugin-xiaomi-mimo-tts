@@ -224,11 +224,6 @@
   background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, var(--dsw-alias-bg-layer-1, #fff))
 }
 
-.xmimo-tts-local-fallback-status {
-  color: var(--dsw-alias-label-tertiary, #8b93a1);
-  font-size: 12px
-}
-
 .xmimo-tts-builtin-voice-option-custom {
   grid-column: 1/-1
 }

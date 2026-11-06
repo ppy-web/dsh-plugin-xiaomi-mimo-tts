@@ -119,27 +119,26 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
           : t('action.play')
   const error = mine ? view.error : null
   const errorText = error === null ? null : t(PLAYBACK_ERROR_KEYS[error] ?? 'error.request')
+  const statusText = errorText ?? (source === 'system' && (status === 'loading' || status === 'playing' || status === 'paused') ? t('action.localFallback') : null)
+  const tooltipLabel = statusText === null ? label : `${label} · ${statusText}`
 
   return (
-    <>
-      <Tooltip label={label} side="bottom">
-        <Button
-          type="button"
-          variant="toolbar"
-          size="sm"
-          className="xmimo-tts-action"
-          aria-label={label}
-          aria-pressed={status === 'playing' || liveActive}
-          disabled={status === 'loading' && source === 'complete'}
-          onClick={() => { audioFocus.claim(); if (audioFocus.canPlay()) { automaticReading.markManual(); handleReadAloudClick(request, view) } }}
-        >
-          {status === 'playing'
-            ? <AnimatedAudioLines size={16} />
-            : <RiVoiceAiFill className={status === 'loading' ? 'xmimo-tts-pulse' : undefined} size={16} />}
-        </Button>
-      </Tooltip>
-      {source === 'system' && (status === 'loading' || status === 'playing' || status === 'paused') ? <span className="xmimo-tts-local-fallback-status" role="status">{t('action.localFallback')}</span> : null}
-      {errorText === null ? null : <span className="xmimo-tts-inline-error" role="status">{errorText}</span>}
-    </>
+    <Tooltip label={tooltipLabel} side="bottom" portal>
+      <Button
+        type="button"
+        variant="toolbar"
+        size="sm"
+        className={errorText === null ? 'xmimo-tts-action' : 'xmimo-tts-action xmimo-tts-failed'}
+        aria-label={label}
+        aria-description={statusText ?? undefined}
+        aria-pressed={status === 'playing' || liveActive}
+        disabled={status === 'loading' && source === 'complete'}
+        onClick={() => { audioFocus.claim(); if (audioFocus.canPlay()) { automaticReading.markManual(); handleReadAloudClick(request, view) } }}
+      >
+        {status === 'playing'
+          ? <AnimatedAudioLines size={16} />
+          : <RiVoiceAiFill className={status === 'loading' ? 'xmimo-tts-pulse' : undefined} size={16} />}
+      </Button>
+    </Tooltip>
   )
 }
