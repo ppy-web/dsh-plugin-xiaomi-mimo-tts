@@ -30,19 +30,18 @@ button, input, select, textarea { font: inherit; }
 ::selection { background: var(--preview-selected); color: var(--preview-foreground); }
 .preview-app { --preview-sidebar-width: 240px; display: grid; grid-template-columns: var(--preview-sidebar-width) minmax(0, 1fr); min-height: 100dvh; }
 .preview-app[data-collapsed="true"] { --preview-sidebar-width: 64px; }
-.preview-app a { text-underline-offset: 3px; }
-/* Shared link treatment for external URLs and document references; navigation keeps its own styles. */
-:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"], .preview-manual-section a[href^="#"]) {
+/* Preview-owned links only; embedded plugin components keep their production styles. */
+:is(.preview-manual-article a, a.preview-source-link):any-link {
   color: var(--preview-link);
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   overflow-wrap: anywhere;
 }
-:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"], .preview-manual-section a[href^="#"]):hover {
+:is(.preview-manual-article a, a.preview-source-link):any-link:hover {
   text-decoration-thickness: 2px;
 }
-:root a:any-link:is([href^="https://"], [href^="http://"], [href^="//"], [href^="mailto:"], .preview-manual-section a[href^="#"])::before {
+:is(.preview-manual-article a, a.preview-source-link):any-link::before {
   content: '';
   display: inline-block;
   flex: none;
@@ -53,11 +52,7 @@ button, input, select, textarea { font: inherit; }
   background: currentColor;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m10 13 4-4m1-2 1-1a4.24 4.24 0 0 1 6 6l-3 3a4.24 4.24 0 0 1-6 0m-4 2-1 1a4.24 4.24 0 0 1-6-6l3-3a4.24 4.24 0 0 1 6 0'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-:root a.preview-source-link::before, :root a.xmimo-voice-reading-action::before { margin-inline-end: 0; }
-:root a.xmimo-voice-reading-action > svg { display: none; }
-:root .preview-app .xmimo-voice-reading-actions.xmimo-tts-settings-page-actions a.xmimo-voice-reading-action { text-decoration: none; }
-:root .preview-app .xmimo-voice-reading-actions.xmimo-tts-settings-page-actions a.xmimo-voice-reading-action::before { display: none; }
-:root .xmimo-tts-settings-page-actions a.xmimo-voice-reading-action > svg { display: block; }
+a.preview-source-link::before { margin-inline-end: 0; }
 .preview-app :is(a, button, select, summary):focus-visible,
 .preview-mobile-sidebar :is(a, button, summary):focus-visible { outline: 2px solid var(--preview-ring); outline-offset: 3px; }
 .preview-app, .preview-app *, .preview-mobile-sidebar { scrollbar-width: thin; scrollbar-color: var(--preview-rule) transparent; }
