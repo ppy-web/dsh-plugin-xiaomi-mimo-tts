@@ -10,9 +10,6 @@ export interface PreviewCopy {
   speech: string
   plugin: string
   help: string
-  environment: string
-  readOnly: string
-  reset: string
   source: string
   language: string
   lightTheme: string
@@ -26,8 +23,8 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
   zh: {
     skipContent: '跳至内容',
     workspace: '交互预览', navigation: '功能导航', closeNavigation: '关闭导航', toggleNavigation: '切换侧栏',
-    speech: '语音体验', plugin: '插件管理', help: '工具与帮助', environment: '预览环境',
-    readOnly: '只读配置', reset: '重置演示配置', source: '查看源码', language: '语言',
+    speech: '语音体验', plugin: '插件管理', help: '工具与帮助',
+    source: '查看源码', language: '语言',
     lightTheme: '切换浅色主题', darkTheme: '切换深色主题', activation: '版本新功能',
     notice: '仅用于预览，不会修改 DSH 设置。',
     pages: {
@@ -49,8 +46,8 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
   en: {
     skipContent: 'Skip to content',
     workspace: 'Interactive preview', navigation: 'Navigation', closeNavigation: 'Close navigation', toggleNavigation: 'Toggle sidebar',
-    speech: 'Speech', plugin: 'Plugin', help: 'Tools & help', environment: 'Preview controls',
-    readOnly: 'Read-only settings', reset: 'Reset demo settings', source: 'View source', language: 'Language',
+    speech: 'Speech', plugin: 'Plugin', help: 'Tools & help',
+    source: 'View source', language: 'Language',
     lightTheme: 'Switch to light theme', darkTheme: 'Switch to dark theme', activation: 'What’s new',
     notice: 'Preview only. Your DSH settings stay unchanged.',
     pages: {
@@ -72,8 +69,8 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
   ja: {
     skipContent: '本文に移動',
     workspace: '操作プレビュー', navigation: '機能ナビゲーション', closeNavigation: 'ナビゲーションを閉じる', toggleNavigation: 'サイドバーを切り替え',
-    speech: '音声体験', plugin: 'プラグイン管理', help: 'ツールとヘルプ', environment: 'プレビュー設定',
-    readOnly: '設定を読み取り専用にする', reset: 'デモ設定をリセット', source: 'ソースを見る', language: '言語',
+    speech: '音声体験', plugin: 'プラグイン管理', help: 'ツールとヘルプ',
+    source: 'ソースを見る', language: '言語',
     lightTheme: 'ライトテーマに切り替え', darkTheme: 'ダークテーマに切り替え', activation: '新機能のご紹介',
     notice: 'プレビュー専用です。DSH の設定は変更しません。',
     pages: {
@@ -95,8 +92,8 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
   fr: {
     skipContent: 'Aller au contenu',
     workspace: 'Aperçu interactif', navigation: 'Navigation', closeNavigation: 'Fermer la navigation', toggleNavigation: 'Afficher ou masquer le menu',
-    speech: 'Lecture vocale', plugin: 'Plugin', help: 'Outils et aide', environment: 'Réglages de l’aperçu',
-    readOnly: 'Configuration en lecture seule', reset: 'Réinitialiser la démo', source: 'Voir le code', language: 'Langue',
+    speech: 'Lecture vocale', plugin: 'Plugin', help: 'Outils et aide',
+    source: 'Voir le code', language: 'Langue',
     lightTheme: 'Passer au thème clair', darkTheme: 'Passer au thème sombre', activation: 'Les nouveautés',
     notice: 'Aperçu uniquement. Les réglages de DSH restent inchangés.',
     pages: {

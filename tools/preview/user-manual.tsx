@@ -18,7 +18,6 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: '功能入口', detail: '侧栏按语音体验、插件管理和工具与帮助分组。插件设置、语音朗读、对话效果、详情、组件、文本过滤和手册均可单独打开；音频历史从插件设置页底部进入二级页面，启用引导以弹窗展示。手机上点击顶部侧栏按钮展开导航。' },
           { label: '推荐操作顺序', detail: '在真实 DSH 中选择语音服务商 → 填写 API Key 并保存 → 选择模型和音色 → 在播报台试听 → 保存确认后的语音与来源设置。试听可使用模型、音色等草稿，新密钥必须先保存；QQ 联动使用已保存配置。' },
-          { label: '只读状态', detail: '在侧栏底部开启“只读配置”，可检查设置面板中输入、开关和选择器的禁用状态；关闭后即可继续编辑。' },
         ],
       },
       {
@@ -127,8 +126,6 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: '语言', detail: '顶部语言菜单支持中文、英文、日语和法语，切换语言保留配置。手册提供中文和英文版本，日语与法语界面显示英文手册。' },
           { label: '主题', detail: '点击顶部的太阳或月亮图标切换浅色和深色主题，不改变设置值。' },
-          { label: '只读', detail: '侧栏底部的“只读配置”模拟 DSH 只读设置层；关闭后恢复编辑。' },
-          { label: '重置状态', detail: '清空 Preview 的本地草稿、关闭只读并重新载入设置卡片，用于重新开始一次演示；不会改动真实 DSH 配置。' },
         ],
       },
     ],
@@ -150,7 +147,6 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: 'Feature navigation', detail: 'The sidebar groups speech, plugin management, and tools. Audio history opens as a subpage from the plugin settings footer; Activation guide opens a modal. On a phone, use the sidebar button in the top bar to open navigation.' },
           { label: 'Recommended order', detail: 'In DSH, choose a provider → enter and save its API key → select a model and voice → test in Broadcast Desk → save the confirmed voice and source settings. Previews can use voice drafts, but a new key must be saved first. QQ delivery uses saved configuration.' },
-          { label: 'Read-only state', detail: 'Turn on Read-only settings at the bottom of the sidebar to inspect disabled controls. Turn it off to edit again.' },
         ],
       },
       {
@@ -259,8 +255,6 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: 'Language', detail: 'The top-bar language menu supports Chinese, English, Japanese, and French without resetting configuration. The manual is available in Chinese and English; Japanese and French use the English manual.' },
           { label: 'Theme', detail: 'Use the sun or moon button in the top bar to switch themes without changing settings.' },
-          { label: 'Read-only', detail: 'Use Read-only settings at the bottom of the sidebar to inspect a read-only DSH settings layer; turn it off to edit again.' },
-          { label: 'Reset state', detail: 'Clears the local Preview draft, turns off read-only, and reloads the settings card for a fresh walkthrough. It does not modify real DSH configuration.' },
         ],
       },
     ],

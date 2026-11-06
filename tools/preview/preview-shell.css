@@ -70,17 +70,13 @@ a.preview-source-link::before { margin-inline-end: 0; }
 .preview-nav-group + .preview-nav-group { margin-top: 24px; }
 .preview-nav-group-label { margin: 0 0 8px; padding-inline: 10px; color: var(--preview-muted); font-size: 12px; font-weight: 500; line-height: 20px; }
 .preview-nav-group ul { display: grid; gap: 3px; list-style: none; margin: 0; padding: 0; }
-.preview-nav-group :is(a, button), .preview-source-link, .preview-reset-button { display: flex; align-items: center; width: 100%; min-height: 36px; gap: 10px; border: 0; border-radius: 6px; padding: 8px 10px; color: var(--preview-foreground); background: transparent; font-size: 14px; text-decoration: none; text-align: start; cursor: pointer; }
-.preview-nav-group svg, .preview-source-link svg, .preview-reset-button svg { flex: none; width: 16px; height: 16px; color: var(--preview-muted); }
-.preview-nav-group :is(a, button):hover, .preview-source-link:hover, .preview-reset-button:hover { background: var(--preview-hover); }
+.preview-nav-group :is(a, button), .preview-source-link { display: flex; align-items: center; width: 100%; min-height: 36px; gap: 10px; border: 0; border-radius: 6px; padding: 8px 10px; color: var(--preview-foreground); background: transparent; font-size: 14px; text-decoration: none; text-align: start; cursor: pointer; }
+.preview-nav-group svg, .preview-source-link svg { flex: none; width: 16px; height: 16px; color: var(--preview-muted); }
+.preview-nav-group :is(a, button):hover, .preview-source-link:hover { background: var(--preview-hover); }
 .preview-nav-group a[aria-current="page"] { background: var(--preview-selected); font-weight: 500; }
 .preview-nav-group a[aria-current="page"] svg { color: var(--preview-foreground); }
 .preview-nav-group .preview-nav-trailing { margin-inline-start: auto; width: 14px; height: 14px; }
 .preview-sidebar-bottom { display: grid; gap: 12px; }
-.preview-environment { padding-top: 16px; border-top: 1px solid var(--preview-rule); }
-.preview-environment > summary { min-height: 28px; cursor: pointer; }
-.preview-readonly-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 4px 10px; font-size: 13px; }
-.preview-reset-button { font-size: 13px; }
 .preview-source-link { font-size: 13px; }
 .preview-version { margin-inline-start: auto; color: var(--preview-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .preview-sidebar-notice { margin: 0; padding-inline: 10px; color: var(--preview-muted); font-size: 12px; line-height: 1.6; }
@@ -118,7 +114,7 @@ a.preview-source-link::before { margin-inline-end: 0; }
 .preview-filter-heading h2 { font-size: 18px; }
 .preview-voice-surface { max-width: 900px; }
 .preview-app[data-collapsed="true"] .preview-sidebar { --dsw-alias-label-primary: var(--preview-foreground); }
-.preview-app[data-collapsed="true"] .preview-sidebar :is(.preview-sidebar-label, .preview-nav-group-label, .preview-environment, .preview-sidebar-notice, .preview-version, .preview-nav-trailing) { display: none; }
+.preview-app[data-collapsed="true"] .preview-sidebar :is(.preview-sidebar-label, .preview-nav-group-label, .preview-sidebar-notice, .preview-version, .preview-nav-trailing) { display: none; }
 .preview-app[data-collapsed="true"] .preview-nav-group + .preview-nav-group { margin-top: 20px; }
 .preview-app[data-collapsed="true"] .preview-nav-group :is(a, button), .preview-app[data-collapsed="true"] .preview-source-link { justify-content: center; padding: 10px; }
 .preview-app[data-collapsed="true"] .preview-workspace-brand { padding: 0; justify-content: center; }
@@ -179,8 +175,7 @@ a.preview-source-link::before { margin-inline-end: 0; }
   .preview-page-heading { margin-bottom: 24px; }
   .preview-page-heading h1 { font-size: 22px; }
   .preview-plugin-surface, .preview-voice-surface { padding: 12px; }
-  .preview-source-link, .preview-reset-button, .preview-readonly-row { min-height: 44px; }
-  .preview-environment > summary { min-height: 44px; padding-block: 12px; margin-bottom: 0; }
+  .preview-source-link { min-height: 44px; }
 }
 @media (forced-colors: active) {
   .preview-nav-group a[aria-current="page"] { outline: 1px solid Highlight; }

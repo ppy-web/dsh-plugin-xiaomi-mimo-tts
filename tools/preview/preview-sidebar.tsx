@@ -1,5 +1,4 @@
-import { LuSettings2, LuVolume2, LuMessageSquare, LuInfo, LuPackage, LuBookOpen, LuTextSearch, LuSparkles, LuRotateCcw, LuArrowUpRight, LuX, LuMessagesSquare, LuMic, LuRadio } from 'react-icons/lu'
-import { Switch } from '@deepseek-ai/dsh-client-ui-primitives'
+import { LuSettings2, LuVolume2, LuMessageSquare, LuInfo, LuPackage, LuBookOpen, LuTextSearch, LuSparkles, LuArrowUpRight, LuX, LuMessagesSquare, LuCpu, LuAudioLines, LuWind, LuRadio } from 'react-icons/lu'
 import type { IconType } from 'react-icons'
 import type { PreviewCopy, PreviewView } from './preview-copy.js'
 import pluginIcon from '../../assets/plugin-icons/avatar.webp'
@@ -9,7 +8,7 @@ import { SOURCE_URL } from '../../src/client/settings/plugin-links.js'
 const GROUPS: { label: 'speech' | 'plugin' | 'help'; items: { view: PreviewView; icon: IconType }[] }[] = [
   { label: 'speech', items: [{ view: 'settings', icon: LuSettings2 }, { view: 'voice', icon: LuVolume2 }, { view: 'conversation', icon: LuMessageSquare }] },
   { label: 'plugin', items: [{ view: 'detail', icon: LuInfo }, { view: 'components', icon: LuPackage }] },
-  { label: 'help', items: [{ view: 'filter', icon: LuTextSearch }, { view: 'manual', icon: LuBookOpen }, { view: 'qqbot', icon: LuMessagesSquare }, { view: 'xiaomi', icon: LuMic }, { view: 'doubao', icon: LuMic }, { view: 'breeze', icon: LuMic }, { view: 'passport', icon: LuRadio }] },
+  { label: 'help', items: [{ view: 'filter', icon: LuTextSearch }, { view: 'manual', icon: LuBookOpen }, { view: 'qqbot', icon: LuMessagesSquare }, { view: 'xiaomi', icon: LuCpu }, { view: 'doubao', icon: LuAudioLines }, { view: 'breeze', icon: LuWind }, { view: 'passport', icon: LuRadio }] },
 ]
 
 interface PreviewSidebarProps {
@@ -17,15 +16,12 @@ interface PreviewSidebarProps {
   showInHostSettings: boolean
   copy: PreviewCopy
   activeView: PreviewView
-  readOnly: boolean
-  onReadOnlyChange: (value: boolean) => void
   onNavigate: () => void
   onActivation: () => void
-  onReset: () => void
   onClose?: () => void
 }
 
-export function PreviewSidebar({ copy, activeView, readOnly, onReadOnlyChange, onNavigate, onActivation, onReset, onClose, voiceSettingsLabel, showInHostSettings }: PreviewSidebarProps) {
+export function PreviewSidebar({ copy, activeView, onNavigate, onActivation, onClose, voiceSettingsLabel, showInHostSettings }: PreviewSidebarProps) {
   return <div className="preview-sidebar-content">
     <div className="preview-workspace-brand">
       <img src={pluginIcon} alt="" width={36} height={36} />
@@ -49,11 +45,6 @@ export function PreviewSidebar({ copy, activeView, readOnly, onReadOnlyChange, o
       </div>)}
     </nav>
     <div className="preview-sidebar-bottom">
-      <details className="preview-environment" open={onClose === undefined}>
-        <summary className="preview-nav-group-label">{copy.environment}</summary>
-        <label className="preview-readonly-row"><span>{copy.readOnly}</span><Switch checked={readOnly} onChange={onReadOnlyChange} label={copy.readOnly} /></label>
-        <button type="button" className="preview-reset-button" onClick={onReset} title={copy.reset}><LuRotateCcw aria-hidden="true" /><span>{copy.reset}</span></button>
-      </details>
       <a href={SOURCE_URL} className="preview-source-link" target="_blank" rel="noopener noreferrer" title={copy.source}><span className="preview-sidebar-label">{copy.source}</span><span className="preview-version">v{TTS_VERSION}</span></a>
       <p className="preview-sidebar-notice">{copy.notice}</p>
     </div>

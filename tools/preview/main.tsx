@@ -69,8 +69,6 @@ function translator(locale: PreviewLocale): Translate {
 function PreviewApp() {
   const [locale, setLocale] = useState<PreviewLocale>('zh')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const [readOnly, setReadOnly] = useState(false)
-  const [instance, setInstance] = useState(0)
   const [activeView, setActiveView] = useState<PreviewView>(() => previewViewFromHash(window.location.hash))
   const [collapsed, setCollapsed] = useState(false)
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
@@ -114,15 +112,6 @@ function PreviewApp() {
     return () => query.removeEventListener('change', update)
   }, [])
 
-  const toggleReadOnly = (next: boolean): void => {
-    setReadOnly(next)
-    scope.setWritable(!next)
-  }
-  const reset = (): void => {
-    scope.reset()
-    setReadOnly(false)
-    setInstance(current => current + 1)
-  }
   const openActivation = (): void => { setNavigationOpen(false); setActivationOpen(true) }
   const savedSettings = useSettingsSnapshot(scope)
   const openWorkbench = (): void => { window.location.hash = 'workbench' }
@@ -132,8 +121,8 @@ function PreviewApp() {
   const sidebarProps = {
     voiceSettingsLabel: savedSettings.value?.showInSidebar ? t('settings.voiceSettingsNav') : undefined,
     showInHostSettings: savedSettings.value?.showInHostSettings !== false,
-    copy, activeView, readOnly, onReadOnlyChange: toggleReadOnly,
-    onNavigate: () => setNavigationOpen(false), onActivation: openActivation, onReset: reset,
+    copy, activeView,
+    onNavigate: () => setNavigationOpen(false), onActivation: openActivation,
   }
 
   return <div className="preview-app" data-collapsed={collapsed && !mobile}>
@@ -166,7 +155,7 @@ function PreviewApp() {
           {activeView !== 'workbench' ? <header className="preview-page-heading">
             <h1 ref={headingRef} tabIndex={-1}>{page.title}</h1><p>{page.description}</p>
           </header> : null}
-          <div className="preview-page-body" key={instance}>
+          <div className="preview-page-body">
             {activeView === 'settings' ? <div className="preview-plugin-surface">
               <div className="preview-surface-heading"><img src={pluginIcon} alt="" width={36} height={36} /><div><strong>{t('settings.voiceSettingsNav')}</strong><span>dsh-xiaomi-tts</span></div><span className="preview-surface-version">v{TTS_VERSION}</span></div>
               <PluginDetailActions subject={PREVIEW_PLUGIN_SUBJECT} scope={scope} t={t} onOpenWorkbench={openWorkbench} />
@@ -176,7 +165,7 @@ function PreviewApp() {
               : activeView === 'voice' ? <div className="preview-voice-surface"><VoiceReadingPreview scope={scope} t={t} onOpenPluginSettings={() => { window.location.hash = 'settings' }} /></div>
               : activeView === 'conversation' ? <ConversationPreview scope={scope} />
               : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} settingsProps={settingsPageProps} onOpenWorkbench={openWorkbench} />
-              : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} readOnly={readOnly} />
+              : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'qqbot' ? <DocumentPage key="qqbot" copy={QQBOT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
               : activeView === 'doubao' ? <DocumentPage key="doubao" copy={DOUBAO_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
