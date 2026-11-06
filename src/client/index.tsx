@@ -25,7 +25,10 @@ import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-s
 import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
 import { ActivationGuide } from './settings/activation-guide.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
+import { VoiceInputActivity } from './voice-input-activity.js'
+import { ComposerInputActivity } from './composer-input-activity.js'
 import { registerVoiceReadingNavIcon } from './settings/nav-icon.js'
+import { observeHostSettingsEntry } from './settings/host-settings-entry.js'
 import { registerVoiceSettingsSidebar, VOICE_SETTINGS_PANEL_ID } from './settings/sidebar-action.js'
 import { VoiceReadingSection } from './settings/voice-reading-section.js'
 import type { VoiceReadingSectionInjected } from './settings/voice-reading-section.js'
@@ -100,7 +103,10 @@ export function apply(ctx: Context): void {
     window.addEventListener('online', apiKeyStatusStore.invalidate)
     return () => { window.removeEventListener('online', apiKeyStatusStore.invalidate); off() }
   }, 'xiaomi-mimo-tts: API key status')
-  const audioFocus = new PluginAudioFocus(focusOwner, changes)
+  const voiceInput = new VoiceInputActivity(document)
+  const audioFocus = new PluginAudioFocus(new PluginAudioFocus(focusOwner, changes), voiceInput)
+  const composerInput = new ComposerInputActivity(document)
+  const announcementAudioFocus = new PluginAudioFocus(audioFocus, composerInput)
   const soundEffects = createSoundEffectsController(audioFocus.canPlay)
   const getSoundSettings = () => {
     const resolved = resolveTtsSettings(scope.getSnapshot().value)
@@ -125,18 +131,23 @@ export function apply(ctx: Context): void {
   const live = new LiveSpeechController(history)
   const local = new LocalSpeechController()
   const speechActivity = new SpeechActivity()
-  speechActivity.register(() => isSpeechBusy(playback.getSnapshot().status))
-  speechActivity.register(live.isBusy)
-  speechActivity.register(local.isBusy)
+  speechActivity.register(() => isSpeechBusy(playback.getSnapshot().status), () => { playback.resetAutomaticPlayback(); playback.interrupt() })
+  speechActivity.register(live.isBusy, () => live.interrupt())
+  speechActivity.register(local.isBusy, () => local.interrupt())
   let questionPlayback: QuestionTitlePlayback | undefined
   const pcmService = new XiaomiMimoTtsPcmService(ctx, scope, () => {
     questionPlayback?.stop()
     live.interrupt()
     local.interrupt()
     playback.interrupt()
-  }, history, audioFocus.canPlay)
+  }, history, announcementAudioFocus.canPlay)
+  const automaticAudioFocus = new PluginAudioFocus(announcementAudioFocus, pcmService.priorityActivity)
   questionPlayback = new QuestionTitlePlayback(speechActivity, () => resolveTtsSettings(scope.getSnapshot().value), pcmService.isBusy)
   const automaticReading = new AutomaticReading()
+  ctx.effect(() => pcmService.priorityActivity.subscribe(() => {
+    playback.resetAutomaticPlayback()
+    if (pcmService.priorityActivity.getSnapshot()) automaticReading.interruptAutomatic(() => {})
+  }), 'xiaomi-mimo-tts: important announcement focus')
   const hostChatSettings = ctx.configForms.get<{ foldedReplies?: 'all' | 'final' }>('ui-chat')
   const updateAutomaticReading = () => automaticReading.update(hostChatSettings.getSnapshot().value?.foldedReplies, () => {
     live.interrupt(); local.interrupt(); playback.interrupt()
@@ -144,7 +155,8 @@ export function apply(ctx: Context): void {
   updateAutomaticReading()
   ctx.effect(() => hostChatSettings.subscribe(updateAutomaticReading), 'xiaomi-mimo-tts: host reading preference')
   const questions = new QuestionTitleCollector()
-  const announcements = new AnnouncementPlayback(pcmService, speechActivity, questionPlayback)
+  const announcements = new AnnouncementPlayback(pcmService, speechActivity, questionPlayback,
+    () => resolveTtsSettings(scope.getSnapshot().value).importantAnnouncementsFirst)
   const collectors = new AnnouncementManager([
     new DshPetCollector(), questions,
     hostCollector(ctx, 'approvals', 'uiSession', (child, options) => observeApprovals(
@@ -157,12 +169,12 @@ export function apply(ctx: Context): void {
       const snapshot = scope.getSnapshot()
       const settings = resolveTtsSettings(snapshot.value)
       const sources = settings.announcementSources.filter(source => source !== 'question-titles' || settings.autoPlay)
-      collectors.update(sources, snapshot.status === 'ready' && settings.enabled && audioFocus.canPlay())
+      collectors.update(sources, snapshot.status === 'ready' && settings.enabled && announcementAudioFocus.canPlay())
       if (!settings.announcementSources.includes('dsh-whale-musume')) pcmService.stopExternal()
       if (snapshot.status !== 'ready' || !settings.enabled) pcmService.stop()
     }
     const offSettings = scope.subscribe(update)
-    const offFocus = audioFocus.subscribe(update)
+    const offFocus = announcementAudioFocus.subscribe(update)
     update()
     return () => { offSettings(); offFocus(); collectors.dispose() }
   }, 'xiaomi-mimo-tts: announcement collectors')
@@ -181,6 +193,24 @@ export function apply(ctx: Context): void {
     const deactivate = focusOwner.activate()
     return () => { deactivate(); off() }
   }, 'xiaomi-mimo-tts: tab audio focus')
+  ctx.effect(() => {
+    const update = () => voiceInput.configure(resolveTtsSettings(scope.getSnapshot().value).voiceInputCompatibility)
+    const off = scope.subscribe(update)
+    update()
+    return () => { off(); voiceInput.dispose() }
+  }, 'xiaomi-mimo-tts: voice input compatibility')
+  ctx.effect(() => {
+    const offActivity = composerInput.subscribe(() => {
+      playback.resetAutomaticPlayback()
+      if (!composerInput.getSnapshot()) return
+      automaticReading.interruptAutomatic(() => { live.interrupt(); local.interrupt(); playback.interrupt() })
+      pcmService.stop(); questionPlayback?.stop()
+    })
+    const update = () => composerInput.configure(resolveTtsSettings(scope.getSnapshot().value).inputAvoidance)
+    const offSettings = scope.subscribe(update)
+    update()
+    return () => { offSettings(); offActivity(); composerInput.dispose() }
+  }, 'xiaomi-mimo-tts: composer input avoidance')
   let providerSelectionKey: string | null = null
   const updateProvider = () => {
     const settings = resolveTtsSettings(scope.getSnapshot().value)
@@ -237,13 +267,13 @@ export function apply(ctx: Context): void {
 
   // The settings shell owns the nav glyph per section id and only falls back to
   // its gear when no `settings.section.icon` entry matches the section.
-  registerSlotContribution(ctx, 'settings.section.icon', () => registerVoiceReadingNavIcon(ctx))
+  registerSlotContribution(ctx, 'settings.section.icon', () => observeHostSettingsEntry(scope, () => registerVoiceReadingNavIcon(ctx)))
 
   registerSlotContribution(ctx, 'conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock',
     id: 'xiaomi-mimo-tts-session-playback-observer',
     order: 998,
-    inject: (_sessionId: string) => ({ playback, live, local, settings: scope, audioFocus, questions, automaticReading }),
+    inject: (_sessionId: string) => ({ playback, live, local, settings: scope, audioFocus, automaticAudioFocus, questions, automaticReading }),
   }, SessionPlaybackObserver))
 
   registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
@@ -251,7 +281,7 @@ export function apply(ctx: Context): void {
     id: 'xiaomi-mimo-tts',
     order: 20,
     locale: NS,
-    inject: (_sessionId: string) => ({ playback, live, local, settings: scope, t, audioFocus, automaticReading }),
+    inject: (_sessionId: string) => ({ playback, live, local, settings: scope, t, audioFocus, automaticAudioFocus, automaticReading }),
   }, ReadAloudAction))
 
   registerSlotContribution(ctx, 'plugins.detail.actions', () => ctx.slots.register({
@@ -284,7 +314,7 @@ export function apply(ctx: Context): void {
 
   registerSlotContribution(ctx, 'sidebar.panellist', () => registerVoiceSettingsSidebar(ctx, settingsPageProps))
 
-  registerSlotContribution(ctx, 'settings.section', () => ctx.slots.register({
+  registerSlotContribution(ctx, 'settings.section', () => observeHostSettingsEntry(scope, () => ctx.slots.register({
     name: 'settings.section',
     id: 'voice-reading',
     order: 20,
@@ -295,5 +325,5 @@ export function apply(ctx: Context): void {
       changes,
       openPluginSettings: () => ctx.pluginNavigation.openBundle('dsh-xiaomi-tts'),
     }),
-  }, VoiceReadingSection))
+  }, VoiceReadingSection)))
 }

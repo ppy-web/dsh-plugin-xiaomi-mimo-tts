@@ -115,10 +115,14 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const apiKeyField = API_KEY_BY_PROVIDER[provider]
   const setApiKey = (next: string): void => { setApiKeys(current => ({ ...current, [provider]: next })) }
   const [showInSidebar, setShowInSidebar] = useState(initial.showInSidebar)
+  const [showInHostSettings, setShowInHostSettings] = useState(initial.showInHostSettings)
   const [announcementSources, setAnnouncementSources] = useState(initial.announcementSources)
   const [qqbotEnabled, setQqbotEnabled] = useState(initial.qqbotEnabled)
   const [enabled, setEnabled] = useState(initial.enabled)
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
+  const [voiceInputCompatibility, setVoiceInputCompatibility] = useState(initial.voiceInputCompatibility)
+  const [inputAvoidance, setInputAvoidance] = useState(initial.inputAvoidance)
+  const [importantAnnouncementsFirst, setImportantAnnouncementsFirst] = useState(initial.importantAnnouncementsFirst)
   const [voiceVolume, setVoiceVolume] = useState(initial.voiceVolume)
   const [voiceRate, setVoiceRate] = useState(initial.voiceRate)
   const [readScope, setReadScope] = useState(initial.readScope)
@@ -147,7 +151,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
   const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView, history))
-  useEffect(() => speechActivity?.register(() => isSpeechBusy(previewPlayer.getView().status)), [speechActivity, previewPlayer])
+  useEffect(() => speechActivity?.register(() => isSpeechBusy(previewPlayer.getView().status), () => previewPlayer.stop()), [speechActivity, previewPlayer])
   const [toggleSoundPlayer] = useState(() => new ToggleSoundPlayer())
   useEffect(() => audioFocus.subscribe(() => {
     if (audioFocus.canPlay()) return
@@ -162,7 +166,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { showInSidebar, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { showInSidebar, showInHostSettings, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceInputCompatibility, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -213,10 +217,14 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setBreezeInstruction(next.breezeInstruction)
     setInstruction(next.instruction)
     setShowInSidebar(next.showInSidebar)
+    setShowInHostSettings(next.showInHostSettings)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
+    setVoiceInputCompatibility(next.voiceInputCompatibility)
+    setInputAvoidance(next.inputAvoidance)
+    setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
     setVoiceVolume(next.voiceVolume)
     setVoiceRate(next.voiceRate)
     setReadScope(next.readScope)
@@ -278,10 +286,14 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'breezeInstruction') setBreezeInstruction(base.breezeInstruction)
     if (field === 'instruction') setInstruction(base.instruction)
     if (field === 'showInSidebar') setShowInSidebar(base.showInSidebar)
+    if (field === 'showInHostSettings') setShowInHostSettings(base.showInHostSettings)
     if (field === 'announcementSources') setAnnouncementSources(base.announcementSources)
     if (field === 'qqbotEnabled') setQqbotEnabled(base.qqbotEnabled)
     if (field === 'enabled') setEnabled(base.enabled)
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
+    if (field === 'voiceInputCompatibility') setVoiceInputCompatibility(base.voiceInputCompatibility)
+    if (field === 'inputAvoidance') setInputAvoidance(base.inputAvoidance)
+    if (field === 'importantAnnouncementsFirst') setImportantAnnouncementsFirst(base.importantAnnouncementsFirst)
     if (field === 'voiceVolume') setVoiceVolume(base.voiceVolume)
     if (field === 'voiceRate') setVoiceRate(base.voiceRate)
     if (field === 'readScope') setReadScope(base.readScope)
@@ -322,10 +334,14 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setBreezeInstruction(next.breezeInstruction)
     setInstruction(next.instruction)
     setShowInSidebar(next.showInSidebar)
+    setShowInHostSettings(next.showInHostSettings)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
+    setVoiceInputCompatibility(next.voiceInputCompatibility)
+    setInputAvoidance(next.inputAvoidance)
+    setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
     setVoiceVolume(next.voiceVolume)
     setVoiceRate(next.voiceRate)
     setReadScope(next.readScope)
@@ -399,10 +415,9 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const changeEnabled = (next: boolean): void => {
     if (minimalMode && soundEnabled && clickSounds) controller.play(next ? 'toggle-on' : 'toggle-off')
-    else toggleSoundPlayer.schedule(next ? 'on' : 'off')
+    else if (audioFocus.canPlay()) toggleSoundPlayer.schedule(next ? 'on' : 'off')
     setEnabled(next)
     if (!next) {
-      previewPlayer.stop()
       setAutoPlay(false)
       setChanges((current) => ({ ...current, enabled: { kind: 'set' }, autoPlay: { kind: 'set' } }))
     } else {
@@ -413,7 +428,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const changeAutoPlay = (next: boolean): void => {
     if (minimalMode && soundEnabled && clickSounds) controller.play(next ? 'toggle-on' : 'toggle-off')
-    else toggleSoundPlayer.schedule(next ? 'auto-on' : 'auto-off')
+    else if (audioFocus.canPlay()) toggleSoundPlayer.schedule(next ? 'auto-on' : 'auto-off')
     setAutoPlay(next)
     if (next) {
       setEnabled(true)
@@ -502,7 +517,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           minimal={minimalMode}
           onChange={(next) => { setApiKey(next); markChange(apiKeyField) }}
         />
-        {enabled ? <DetailsModule
+        <DetailsModule
           t={t}
           provider={provider}
           doubaoModel={doubaoModel}
@@ -543,7 +558,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           resetField={resetField}
           onToggle={() => togglePanel('mixer')}
           onVoiceVolumeChange={(next) => { previewPlayer.setVolume(next); toggleSoundPlayer.setPreviewVolume(next); setVoiceVolume(next); markChange('voiceVolume') }}
-          onVoiceVolumeInteractionEnd={(next) => { if (minimalMode) controller.previewVolume(); else toggleSoundPlayer.previewVolume(next) }}
+          onVoiceVolumeInteractionEnd={(next) => { if (!audioFocus.canPlay()) return; if (minimalMode) controller.previewVolume(); else toggleSoundPlayer.previewVolume(next) }}
           onVoiceRateChange={(next) => { setVoiceRate(next); markChange('voiceRate') }}
           onVoiceRateInteractionEnd={(next) => { controller.play('success', { playbackRate: next }) }}
           onReadScopeChange={(next) => { setReadScope(next); markChange('readScope') }}
@@ -565,8 +580,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
             setState('idle')
           }}
           onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
-        /> : null}
-        {enabled ? <PreviewModule
+        />
+        <PreviewModule
           mossEnabled={mossEnabled}
           onMossEnabledChange={next => {
             previewPlayer.stop()
@@ -589,7 +604,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
             setState('idle')
           }}
           t={t}
-          enabled={enabled && !changing}
+          enabled={!changing}
           open={openPanel === 'broadcast'}
           onToggleOpen={() => togglePanel('broadcast')}
           status={previewView.status}
@@ -600,6 +615,22 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onToggle={toggleSettingsPreview}
           onTextChange={next => { previewPlayer.stop(); setPreviewText(next) }}
           recording={previewPlayer.getRecording()}
+          showInHostSettings={showInHostSettings}
+          onShowInHostSettingsChange={next => { setShowInHostSettings(next); markChange('showInHostSettings') }}
+          showInHostSettingsOverridden={fieldOverridden('showInHostSettings')}
+          onShowInHostSettingsReset={() => resetField('showInHostSettings')}
+          inputAvoidance={inputAvoidance}
+          onInputAvoidanceChange={next => { setInputAvoidance(next); markChange('inputAvoidance') }}
+          inputAvoidanceOverridden={fieldOverridden('inputAvoidance')}
+          onInputAvoidanceReset={() => resetField('inputAvoidance')}
+          importantAnnouncementsFirst={importantAnnouncementsFirst}
+          onImportantAnnouncementsFirstChange={next => { setImportantAnnouncementsFirst(next); markChange('importantAnnouncementsFirst') }}
+          importantAnnouncementsFirstOverridden={fieldOverridden('importantAnnouncementsFirst')}
+          onImportantAnnouncementsFirstReset={() => resetField('importantAnnouncementsFirst')}
+          voiceInputCompatibility={voiceInputCompatibility}
+          onVoiceInputCompatibilityChange={next => { setVoiceInputCompatibility(next); markChange('voiceInputCompatibility') }}
+          voiceInputCompatibilityOverridden={fieldOverridden('voiceInputCompatibility')}
+          onVoiceInputCompatibilityReset={() => resetField('voiceInputCompatibility')}
           sources={announcementSources}
           qqbotEnabled={qqbotEnabled}
           onQqbotChange={next => { setQqbotEnabled(next); markChange('qqbotEnabled') }}
@@ -607,7 +638,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           overridden={fieldOverridden('announcementSources')}
           onReset={() => resetField('announcementSources')}
           onChange={next => { setAnnouncementSources(next); markChange('announcementSources') }}
-        /> : null}
+        />
         {soundEnabled ? <SoundEffectsPanel
           t={t}
           controller={controller}

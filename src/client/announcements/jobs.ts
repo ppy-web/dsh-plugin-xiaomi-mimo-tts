@@ -29,6 +29,7 @@ export function observeJobs(sessions: Pick<ISessions, 'list'>, jobs: Announcemen
         const result = job.status === 'completed' ? t('announcements.jobCompleted')
           : job.status === 'failed' ? t('announcements.jobFailed') : t('announcements.jobKilled')
         emit({ source: 'job-results', id: JSON.stringify([sessionId, job.id]),
+          important: job.status === 'failed',
           text: `${briefText(job.label) || t('announcements.job')}: ${result}`,
           signal: AbortSignal.any([signal, lifetime.signal]) })
       }

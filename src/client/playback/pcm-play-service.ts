@@ -9,10 +9,11 @@ import type { AudioHistory } from '../history/audio-history.js'
 import { PcmRecording } from '../history/pcm-recording.js'
 import { ttsSelection } from '../../types/providers.js'
 import { DuplexPcmStream } from './duplex-pcm.js'
+import type { SnapshotSource } from '../plugin-activity.js'
 
 export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsService {
   private readonly audio = new PcmAudioQueue({
-    onBusyChange: (busy) => { this.audioBusy = busy },
+    onBusyChange: (busy) => { this.audioBusy = busy; this.refreshPriority() },
     onPlaybackStart: () => {},
   })
   private request: AbortController | null = null
@@ -20,17 +21,38 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
   private disposed = false
   private audioBusy = false
   private externalGeneration: number | null = null
+  private priorityGeneration: number | null = null
+  private priorityBusy = false
+  private readonly priorityListeners = new Set<() => void>()
+
+  readonly priorityActivity: SnapshotSource<boolean> = {
+    getSnapshot: () => this.priorityBusy,
+    subscribe: listener => {
+      this.priorityListeners.add(listener)
+      return () => { this.priorityListeners.delete(listener) }
+    },
+  }
+
+  private refreshPriority(): void {
+    const busy = this.priorityGeneration === this.generation && this.isBusy()
+    if (busy === this.priorityBusy) return
+    this.priorityBusy = busy
+    for (const listener of this.priorityListeners) listener()
+  }
 
   isBusy = (): boolean => this.request !== null || this.audioBusy
 
   /** Returns a generation-scoped stop handle; public play() keeps its interrupting behavior. */
-  tryPlay(text: string, isBusy: () => boolean): (() => void) | null {
-    if (this.isBusy() || isBusy()) return null
+  tryPlay(text: string, isBusy: () => boolean, interrupt?: () => void): (() => void) | null {
+    if (this.isBusy() && this.priorityGeneration === this.generation) return null
+    if (interrupt === undefined && (this.isBusy() || isBusy())) return null
     const previous = this.generation
     // An idle collector must not mark a waiting conversation turn as stopped.
-    this.start(text, false)
+    this.start(text, false, interrupt)
     if (this.generation === previous) return null
     const generation = this.generation
+    if (interrupt !== undefined) this.priorityGeneration = generation
+    this.refreshPriority()
     return () => { if (this.generation === generation) this.stop() }
   }
 
@@ -46,6 +68,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
 
   play(text: string): void {
     try {
+      if (this.isBusy() && this.priorityGeneration === this.generation) return
       if (!resolveTtsSettings(this.settings.getSnapshot().value).announcementSources.includes('dsh-whale-musume')) return
       const previous = this.generation
       this.start(text)
@@ -59,7 +82,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
     if (this.externalGeneration === this.generation) this.stop()
   }
 
-  private start(text: string, interruptConversation = true): void {
+  private start(text: string, interruptConversation = true, beforePlayback?: () => void): void {
     try {
       if (this.disposed || !this.canPlay() || typeof text !== 'string') {
         return
@@ -79,6 +102,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
 
       this.stop()
       this.history?.stopReplay()
+      beforePlayback?.()
       if (interruptConversation) this.interruptConversationPlayback()
       this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
       this.audio.setVolume(settings.voiceVolume)
@@ -118,6 +142,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
         this.audio.stop()
       }).finally(() => {
         if (this.request === controller) this.request = null
+        this.refreshPriority()
       })
     } catch (error) {
       this.ctx.logger.warn(`xiaomi-mimo-tts: optional PCM playback could not start: ${error instanceof Error ? error.message : String(error)}`)
@@ -127,9 +152,11 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
   stop(): void {
     try {
       this.generation += 1
+      this.priorityGeneration = null
       this.request?.abort()
       this.request = null
       this.audio.stop()
+      this.refreshPriority()
     } catch (error) {
       this.ctx.logger.warn(`xiaomi-mimo-tts: optional PCM playback could not stop cleanly: ${error instanceof Error ? error.message : String(error)}`)
     }

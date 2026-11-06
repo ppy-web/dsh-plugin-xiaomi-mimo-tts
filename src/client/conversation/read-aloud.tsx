@@ -63,10 +63,11 @@ interface ReadAloudActionProps {
   t: Translate
   automaticReading: AutomaticReading
   audioFocus?: AudioFocus
+  automaticAudioFocus?: AudioFocus
 }
 
-export function ReadAloudAction({ sessionId, messageId, useSession, useChat, playback, live, local, settings, t, automaticReading, audioFocus = unrestrictedAudioFocus }: ReadAloudActionProps): ReactElement | null {
-  const ownsAudio = useSyncExternalStore(audioFocus.subscribe, audioFocus.canPlay, audioFocus.canPlay)
+export function ReadAloudAction({ sessionId, messageId, useSession, useChat, playback, live, local, settings, t, automaticReading, audioFocus = unrestrictedAudioFocus, automaticAudioFocus = audioFocus }: ReadAloudActionProps): ReactElement | null {
+  const ownsAudio = useSyncExternalStore(automaticAudioFocus.subscribe, automaticAudioFocus.canPlay, automaticAudioFocus.canPlay)
   const sessionSnapshot = useSession(snapshot => snapshot)
   const legacy = useChat(chat => chat.legacy)
   const foldedReplies = useSyncExternalStore(automaticReading.subscribe, automaticReading.getSnapshot, automaticReading.getSnapshot)
@@ -94,12 +95,12 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   }
 
   useEffect(() => {
-    if (!automaticReading.allowed(sessionId) || (foldedReplies === 'final' && finalMessageId !== messageId) || !ownsAudio || !audioFocus.canPlay() || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (!automaticReading.allowed(sessionId) || (foldedReplies === 'final' && finalMessageId !== messageId) || !ownsAudio || !automaticAudioFocus.canPlay() || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
-      if (audioFocus.canPlay() && !live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity) && automaticReading.allowed(sessionId) && playback.claimAutomaticPlayback(sessionId, messageId)) { automaticReading.markAutomatic(); playCompletedReply(request, true) }
+      if (automaticAudioFocus.canPlay() && !live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity) && automaticReading.allowed(sessionId) && playback.claimAutomaticPlayback(sessionId, messageId)) { automaticReading.markAutomatic(); playCompletedReply(request, true) }
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [automaticReading, foldedReplies, finalMessageId, audioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.latestMessageId, message.time, messageId, playback, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.breezeVoice, resolvedSettings.breezeInstruction, resolvedSettings.readScope, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [automaticReading, foldedReplies, finalMessageId, automaticAudioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.latestMessageId, message.time, messageId, playback, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.breezeVoice, resolvedSettings.breezeInstruction, resolvedSettings.readScope, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 

@@ -57,6 +57,7 @@ export const XIAOMI_MIMO_TTS_SETTINGS_NAMESPACE = TTS_SETTINGS_NAMESPACE
 export const Config = z.object({
   openApiToken: z.string().role('secret').default('').volatile(),
   showInSidebar: z.boolean().default(false).volatile(),
+  showInHostSettings: z.boolean().default(DEFAULT_TTS_SETTINGS.showInHostSettings).volatile(),
   qqbotEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.qqbotEnabled).volatile(),
   qqbotMaxAutoCharacters: z.number().step(1).min(0).max(12000).default(0).volatile(),
   qqbotMaxDurationSeconds: z.number().step(1).min(0).max(6000).default(0).volatile(),
@@ -91,6 +92,9 @@ export const Config = z.object({
   voiceDesignPlaybackMode: z.union(TTS_VOICE_DESIGN_PLAYBACK_MODES).default(DEFAULT_TTS_SETTINGS.voiceDesignPlaybackMode).volatile(),
   readScope: z.union(TTS_READ_SCOPES).default(DEFAULT_TTS_SETTINGS.readScope).volatile(),
   autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay).volatile(),
+  voiceInputCompatibility: z.boolean().default(DEFAULT_TTS_SETTINGS.voiceInputCompatibility).volatile(),
+  inputAvoidance: z.boolean().default(DEFAULT_TTS_SETTINGS.inputAvoidance).volatile(),
+  importantAnnouncementsFirst: z.boolean().default(DEFAULT_TTS_SETTINGS.importantAnnouncementsFirst).volatile(),
   instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction).volatile(),
   maxTextLength: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxTextLength).volatile(),
   requestTimeoutMs: z.number().step(1).min(1000).default(DEFAULT_TTS_SETTINGS.requestTimeoutMs).volatile(),

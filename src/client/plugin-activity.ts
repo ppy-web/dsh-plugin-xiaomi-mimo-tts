@@ -10,12 +10,12 @@ export const IDLE_PLUGIN_CHANGES: SnapshotSource<boolean> = {
   subscribe: () => () => {},
 }
 
-/** Management activity gates every playback owner through the same audio permission. */
+/** Temporary blocking activity gates every playback owner through the same audio permission. */
 export class PluginAudioFocus implements AudioFocus {
-  constructor(private readonly focus: AudioFocus, private readonly changes: SnapshotSource<boolean>) {}
+  constructor(private readonly focus: AudioFocus, private readonly blocked: SnapshotSource<boolean>) {}
 
-  canPlay = (): boolean => !this.changes.getSnapshot() && this.focus.canPlay()
-  claim = (): void => { if (!this.changes.getSnapshot()) this.focus.claim() }
+  canPlay = (): boolean => !this.blocked.getSnapshot() && this.focus.canPlay()
+  claim = (): void => { if (!this.blocked.getSnapshot()) this.focus.claim() }
   subscribe = (listener: () => void): (() => void) => {
     let previous = this.canPlay()
     const update = (): void => {
@@ -25,7 +25,7 @@ export class PluginAudioFocus implements AudioFocus {
       listener()
     }
     const offFocus = this.focus.subscribe(update)
-    const offChanges = this.changes.subscribe(update)
+    const offChanges = this.blocked.subscribe(update)
     return () => { offChanges(); offFocus() }
   }
 }

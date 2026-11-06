@@ -137,6 +137,41 @@ test('busy notifications are skipped permanently; request cancellation stops onl
   off()
 })
 
+test('priority routing interrupts for new approvals and failed jobs, while successful jobs stay quiet when busy', () => {
+  const scope = sessions(), approvals = store(status(undefined)), background = jobs()
+  const activity = new SpeechActivity()
+  let busy = true, interruptions = 0, plays = 0
+  const offActivity = activity.register(() => busy, () => { busy = false; interruptions++ })
+  const playback = new AnnouncementPlayback({ tryPlay(_text, isBusy, interrupt) {
+    if (isBusy() && interrupt === undefined) return null
+    interrupt?.()
+    plays++
+    return () => {}
+  } }, activity, undefined, () => true)
+  const run = options()
+  run.emit = playback.play
+  const offJobs = observeJobs(scope, background, t, run)
+  const offApprovals = observeApprovals(scope, { sessionStatus: approvals }, t, run)
+  try {
+    background.set([job('success', 'running')])
+    background.set([job('success', 'completed')])
+    assert.equal(plays, 0)
+    assert.equal(interruptions, 0)
+    background.set([job('failure', 'running')])
+    background.set([job('failure', 'failed')])
+    assert.equal(plays, 1)
+    assert.equal(interruptions, 1)
+    background.set([job('failure', 'failed')])
+    assert.equal(plays, 1, 'a repeated failed snapshot must not produce another reminder')
+    busy = true
+    approvals.set(status(pending('new')))
+    assert.equal(plays, 2)
+    assert.equal(interruptions, 2)
+    approvals.set(status(pending('new')))
+    assert.equal(plays, 2)
+  } finally { offApprovals(); offJobs(); offActivity(); run.controller.abort() }
+})
+
 test('optional service collectors wait without polling and dispose observers on service removal and abort', async () => {
   const ctx = new Context(), run = options(), mounts = [], cleanups = []
   ctx.provide('sessions', sessions())

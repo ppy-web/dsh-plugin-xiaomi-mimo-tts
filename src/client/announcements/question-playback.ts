@@ -14,7 +14,7 @@ export class QuestionTitlePlayback {
     private readonly settings: () => ResolvedTtsSettings,
     private readonly pcmBusy: () => boolean,
   ) {
-    this.unregister = activity.register(() => isSpeechBusy(this.player.getView().status))
+    this.unregister = activity.register(() => isSpeechBusy(this.player.getView().status), () => this.stop())
   }
 
   play(event: Announcement): void {

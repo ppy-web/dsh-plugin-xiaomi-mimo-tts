@@ -187,17 +187,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.xmimo-voice-reading-intro {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
-  color: var(--dsw-alias-label-tertiary, #66707d);
-}
-
 .xmimo-voice-reading-notice {
   margin: 0;
   font-size: 12px;

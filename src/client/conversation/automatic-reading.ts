@@ -33,6 +33,12 @@ export class AutomaticReading implements SnapshotSource<FoldedReplies> {
   }
 
   allowed(sessionId: string): boolean { return !this.blocked.has(sessionId) }
+  isAutomatic(): boolean { return this.automatic }
+  interruptAutomatic(stop: () => void): void {
+    for (const [id, running] of this.running) if (running) this.blocked.add(id)
+    if (this.automatic) stop()
+    this.automatic = false
+  }
   markAutomatic(): void { this.automatic = true }
   markManual(): void { this.automatic = false }
   release(sessionId: string): void { this.running.delete(sessionId); this.blocked.delete(sessionId) }

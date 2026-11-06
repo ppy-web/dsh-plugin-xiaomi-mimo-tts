@@ -20,6 +20,7 @@ export function observeApprovals(sessions: Pick<ISessions, 'list'>, uiSession: P
       const reason = briefText((approval as unknown as { reason?: unknown }).reason)
       current = { key: approval.key, controller: new AbortController() }
       emit({ source: 'approvals', id: JSON.stringify([sessionId, approval.key]),
+        important: true,
         text: reason ? `${t('announcements.approval')} ${reason}` : t('announcements.approval'),
         signal: AbortSignal.any([signal, current.controller.signal]) })
     }

@@ -1,0 +1,12 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>输入避让浏览器回归</title>
+<style>body{font:16px sans-serif;padding:32px} [data-composer-input]{min-height:80px;padding:12px;border:1px solid #888} textarea{display:block;margin:20px 0}</style>
+<h1>输入避让浏览器回归</h1><div data-composer-card><div data-composer-input role="textbox" aria-label="宿主对话输入框" contenteditable="true"></div></div>
+<textarea aria-label="插件设置文本"></textarea><button id="clear">清空草稿</button><button id="remove">移除输入框</button><p role="status" id="status">自动播报：允许</p>
+<script type="module">
+import { ComposerInputActivity } from '../../src/client/composer-input-activity.js'
+const activity = new ComposerInputActivity(document)
+activity.subscribe(() => { document.querySelector('#status').textContent = activity.getSnapshot() ? '自动播报：避让中' : '自动播报：允许' })
+activity.configure(true)
+document.querySelector('#clear').onclick = () => { const editor = document.querySelector('[data-composer-input]'); editor.textContent=''; editor.focus() }
+document.querySelector('#remove').onclick = () => document.querySelector('[data-composer-card]')?.remove()
+</script></html>

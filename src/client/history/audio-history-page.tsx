@@ -28,7 +28,7 @@ export interface AudioHistoryPageProps {
 export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, speechActivity, beforePlayback, onBack }: AudioHistoryPageProps): ReactElement {
   const view = useSyncExternalStore(history.subscribe, history.getSnapshot)
   const [replay] = useState(() => new HistoryReplay(history, beforePlayback))
-  useEffect(() => speechActivity?.register(() => isSpeechBusy(replay.getSnapshot().status)), [speechActivity, replay])
+  useEffect(() => speechActivity?.register(() => isSpeechBusy(replay.getSnapshot().status), () => replay.stop()), [speechActivity, replay])
   const playback = useSyncExternalStore(replay.subscribe, replay.getSnapshot)
   const [downloads] = useState(() => new HistoryDownloads())
   const [query, setQuery] = useState('')

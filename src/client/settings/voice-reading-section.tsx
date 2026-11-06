@@ -114,13 +114,6 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
       <h2 className="xmimo-voice-reading-title">{t('settings.voiceReadingTitle')}</h2>
       <VoiceReadingHeaderActions t={t} openPluginSettings={openPluginSettings} />
     </div>
-    <p className="xmimo-voice-reading-intro">
-      <span>{t('settings.voiceReadingIntro')}</span>
-      <button type="button" className="xmimo-voice-reading-link" onClick={openPluginSettings}>
-        <span className="xmimo-voice-reading-link-label">{t('settings.voiceReadingPluginSettings')}</span>
-        <span aria-hidden="true">↗</span>
-      </button>
-    </p>
     {changing ? <p role="status">{t('plugin.changing')}</p> : null}
     <VoiceReadingProvider value={settings.provider} doubaoEnabled={settings.doubaoEnabled} breezeEnabled={settings.breezeEnabled} disabled={disabled} t={t} onChange={provider => {
       write([{ op: 'set', path: ['provider'], value: provider }])

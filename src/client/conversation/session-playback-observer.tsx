@@ -24,14 +24,15 @@ interface SessionPlaybackObserverProps {
   local: LocalSpeechController
   settings: ConfigForm<TtsSettings>
   audioFocus?: AudioFocus
+  automaticAudioFocus?: AudioFocus
   automaticReading: AutomaticReading
   questions?: QuestionTitleCollector
 }
 
 /** Own the active-session boundary and feed its partial assistant output into realtime speech. */
-export function SessionPlaybackObserver({ sessionId, useSession, useChat, playback, live, local, settings, questions, automaticReading, audioFocus = unrestrictedAudioFocus }: SessionPlaybackObserverProps): null {
+export function SessionPlaybackObserver({ sessionId, useSession, useChat, playback, live, local, settings, questions, automaticReading, audioFocus = unrestrictedAudioFocus, automaticAudioFocus = audioFocus }: SessionPlaybackObserverProps): null {
   useEffect(() => questions?.activateSession(sessionId), [questions, sessionId])
-  const ownsAudio = useSyncExternalStore(audioFocus.subscribe, audioFocus.canPlay, audioFocus.canPlay)
+  const ownsAudio = useSyncExternalStore(automaticAudioFocus.subscribe, automaticAudioFocus.canPlay, automaticAudioFocus.canPlay)
   const settingsSnapshot = useSettingsSnapshot(settings)
   const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
   const apiKeySupported = useApiKeySupported(ownsAudio && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider)
@@ -105,9 +106,9 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
     if (!automaticReading.allowed(sessionId)) runArmed.current = false
     const localModel = supportsRealtimeTts(resolvedSettings)
     const realtimeSpeechEnabled = localModel
-    playback.observeSession(sessionId, ownsAudio && audioFocus.canPlay() && runningSnapshot && runArmed.current, latestMessageId, attachedMidRun.current)
-    if (!ownsAudio || !audioFocus.canPlay() || !resolvedSettings.enabled || !resolvedSettings.autoPlay || !realtimeSpeechEnabled) {
-      speech.cancel()
+    playback.observeSession(sessionId, ownsAudio && automaticAudioFocus.canPlay() && runningSnapshot && runArmed.current, latestMessageId, attachedMidRun.current)
+    if (!ownsAudio || !automaticAudioFocus.canPlay() || !resolvedSettings.enabled || !resolvedSettings.autoPlay || !realtimeSpeechEnabled) {
+      if (!audioFocus.canPlay() || !resolvedSettings.enabled || automaticReading.isAutomatic()) speech.cancel()
       active.current = null
       if (runningSnapshot) runArmed.current = false
       return
@@ -149,7 +150,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       }
       // Keep the cursor across a gap between the partial and durable message snapshots.
     }
-  }, [automaticReading, foldedReplies, audioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
+  }, [automaticReading, foldedReplies, audioFocus, automaticAudioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
 
   return null
 }

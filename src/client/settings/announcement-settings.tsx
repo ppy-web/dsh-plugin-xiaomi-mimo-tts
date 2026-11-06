@@ -12,6 +12,22 @@ export interface AnnouncementSettingsProps {
   t: Translate
   sources: AnnouncementSourceId[]
   qqbotEnabled: boolean
+  voiceInputCompatibility: boolean
+  onVoiceInputCompatibilityChange: (enabled: boolean) => void
+  voiceInputCompatibilityOverridden: boolean
+  onVoiceInputCompatibilityReset: () => void
+  showInHostSettings: boolean
+  onShowInHostSettingsChange: (enabled: boolean) => void
+  showInHostSettingsOverridden: boolean
+  onShowInHostSettingsReset: () => void
+  inputAvoidance: boolean
+  onInputAvoidanceChange: (enabled: boolean) => void
+  inputAvoidanceOverridden: boolean
+  onInputAvoidanceReset: () => void
+  importantAnnouncementsFirst: boolean
+  onImportantAnnouncementsFirstChange: (enabled: boolean) => void
+  importantAnnouncementsFirstOverridden: boolean
+  onImportantAnnouncementsFirstReset: () => void
   onQqbotChange: (enabled: boolean) => void
   writable: boolean
   overridden: boolean
@@ -37,8 +53,14 @@ const SOURCE_GROUPS = [
   { label: 'settings.announcementsPlugins', hint: 'settings.announcementsPluginsHint', options: PLUGIN_SOURCE_OPTIONS },
 ] as const
 
-export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, writable, overridden, onChange, onReset, parentOpen = true }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
+export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, voiceInputCompatibility, onVoiceInputCompatibilityChange, voiceInputCompatibilityOverridden, onVoiceInputCompatibilityReset, showInHostSettings, onShowInHostSettingsChange, showInHostSettingsOverridden, onShowInHostSettingsReset, inputAvoidance, onInputAvoidanceChange, inputAvoidanceOverridden, onInputAvoidanceReset, importantAnnouncementsFirst, onImportantAnnouncementsFirstChange, importantAnnouncementsFirstOverridden, onImportantAnnouncementsFirstReset, writable, overridden, onChange, onReset, parentOpen = true }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
   const moreSettings = useNestedDisclosure(parentOpen)
+  const hostOptions = [
+    { label: 'settings.voiceInputCompatibility', hint: 'settings.voiceInputCompatibilityHint', checked: voiceInputCompatibility, overridden: voiceInputCompatibilityOverridden, onChange: onVoiceInputCompatibilityChange, onReset: onVoiceInputCompatibilityReset },
+    { label: 'settings.showInHostSettings', hint: 'settings.showInHostSettingsHint', checked: showInHostSettings, overridden: showInHostSettingsOverridden, onChange: onShowInHostSettingsChange, onReset: onShowInHostSettingsReset },
+    { label: 'settings.inputAvoidance', hint: 'settings.inputAvoidanceHint', checked: inputAvoidance, overridden: inputAvoidanceOverridden, onChange: onInputAvoidanceChange, onReset: onInputAvoidanceReset },
+    { label: 'settings.importantAnnouncementsFirst', hint: 'settings.importantAnnouncementsFirstHint', checked: importantAnnouncementsFirst, overridden: importantAnnouncementsFirstOverridden, onChange: onImportantAnnouncementsFirstChange, onReset: onImportantAnnouncementsFirstReset },
+  ] as const
   return <details ref={moreSettings} className="xmimo-tts-more-settings">
     <summary className="xmimo-tts-builtin-voice-trigger">
       <span>{t('settings.more')}</span>
@@ -47,6 +69,18 @@ export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqb
     </summary>
     <div className="xmimo-tts-more-settings-body">
       {children}
+      <section className="xmimo-tts-format xmimo-tts-switch-grid" aria-label={t('settings.hostIntegration')}>
+        <SettingFieldHeading label={t('settings.hostIntegration')} resettable={false} disabled={!writable} />
+        {hostOptions.map(option => <div key={option.label} className="xmimo-tts-announcement-source">
+          <div>
+            <SettingFieldHeading label={t(option.label)}
+              overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')}
+              overridden={option.overridden} resettable disabled={!writable} onReset={option.onReset} />
+            <small>{t(option.hint)}</small>
+          </div>
+          <Switch checked={option.checked} disabled={!writable} label={t(option.label)} onChange={option.onChange} />
+        </div>)}
+      </section>
       {SOURCE_GROUPS.map((group, index) => <section key={group.label} className="xmimo-tts-format xmimo-tts-switch-grid" aria-label={t(group.label)}>
         <SettingFieldHeading label={t(group.label)}
           suffix={<FieldInfo label={t(group.label)} text={t(group.hint)} />}

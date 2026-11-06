@@ -15,6 +15,7 @@ export type AnnouncementSourceId = typeof ANNOUNCEMENT_SOURCES[number]
 
 export interface TtsSettings {
   showInSidebar?: boolean
+  showInHostSettings?: boolean
   qqbotEnabled?: boolean
   qqbotMaxAutoCharacters?: number
   qqbotMaxDurationSeconds?: number
@@ -51,6 +52,9 @@ export interface TtsSettings {
   voiceDesignPlaybackMode?: TtsVoiceDesignPlaybackMode
   readScope?: TtsReadScope
   autoPlay?: boolean
+  voiceInputCompatibility?: boolean
+  inputAvoidance?: boolean
+  importantAnnouncementsFirst?: boolean
   instruction?: string
   maxTextLength?: number
   requestTimeoutMs?: number
@@ -68,6 +72,7 @@ export interface TtsSettings {
 
 export interface ResolvedTtsSettings {
   showInSidebar: boolean
+  showInHostSettings: boolean
   qqbotEnabled: boolean
   qqbotMaxAutoCharacters: number
   qqbotMaxDurationSeconds: number
@@ -102,6 +107,9 @@ export interface ResolvedTtsSettings {
   voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
   readScope: TtsReadScope
   autoPlay: boolean
+  voiceInputCompatibility: boolean
+  inputAvoidance: boolean
+  importantAnnouncementsFirst: boolean
   instruction: string
   maxTextLength: number
   requestTimeoutMs: number
@@ -120,6 +128,7 @@ export interface ResolvedTtsSettings {
 /** Defaults shared by the Schemastery config and the Web settings form. */
 export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   showInSidebar: false,
+  showInHostSettings: true,
   qqbotEnabled: false,
   qqbotMaxAutoCharacters: 0,
   qqbotMaxDurationSeconds: 0,
@@ -154,6 +163,9 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   voiceDesignPlaybackMode: 'complete',
   readScope: 'smart',
   autoPlay: false,
+  voiceInputCompatibility: true,
+  inputAvoidance: false,
+  importantAnnouncementsFirst: false,
   instruction: '',
   maxTextLength: 12000,
   requestTimeoutMs: 120000,

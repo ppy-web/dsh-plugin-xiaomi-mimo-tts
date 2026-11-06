@@ -6,12 +6,13 @@ import type { QuestionTitlePlayback } from './question-playback.js'
 export class AnnouncementPlayback {
   private readonly stops = new Map<AnnouncementSourceId, () => void>()
 
-  constructor(private readonly service: XiaomiMimoTtsPcmService, private readonly activity: SpeechActivity, private readonly questions?: QuestionTitlePlayback) {}
+  constructor(private readonly service: XiaomiMimoTtsPcmService, private readonly activity: SpeechActivity, private readonly questions?: QuestionTitlePlayback,
+    private readonly importantFirst: () => boolean = () => false) {}
 
   play = (event: Announcement): void => {
     if (event.signal?.aborted) return
     if (event.source === 'question-titles') { this.questions?.play(event); return }
-    const stop = this.service.tryPlay(event.text, this.activity.isBusy)
+    const stop = this.service.tryPlay(event.text, this.activity.isBusy, event.important && this.importantFirst() ? this.activity.interrupt : undefined)
     if (!stop) return
     this.stops.get(event.source)?.()
     const cleanup = () => {
