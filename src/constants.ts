@@ -20,6 +20,8 @@ export const TTS_DOWNLOAD_ROUTE = '/plugins/xiaomi-mimo-tts/audio'
 export const TTS_ENGINE_STATE_ROUTE = '/plugins/xiaomi-mimo-tts/engine-state'
 export const TTS_ENGINE_SELECTION_ROUTE = '/plugins/xiaomi-mimo-tts/engine-selection'
 export const TTS_ENGINE_EVENTS_ROUTE = '/plugins/xiaomi-mimo-tts/engine-events'
+/** Desktop forwards validated requests without Origin; writes carry this marker instead. */
+export const TTS_DESKTOP_WRITE_HEADER = 'x-dsh-speech-adapter'
 export const DOUBAO_TTS_ENDPOINT = 'wss://openspeech.bytedance.com/api/v3/tts/bidirection'
 export const DOUBAO_AGENT_PLAN_TTS_ENDPOINT = 'wss://openspeech.bytedance.com/api/v3/plan/tts/bidirection'
 

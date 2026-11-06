@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { TTS_ENGINE_EVENTS_ROUTE, TTS_ENGINE_STATE_ROUTE, TTS_ENGINE_SELECTION_ROUTE } from '../constants.js'
+import { TTS_DESKTOP_WRITE_HEADER, TTS_ENGINE_EVENTS_ROUTE, TTS_ENGINE_STATE_ROUTE, TTS_ENGINE_SELECTION_ROUTE } from '../constants.js'
 import { json, readJsonBody } from './http.js'
 import { TtsProviderError } from './provider-error.js'
 
@@ -11,8 +11,15 @@ export function registerEngineRoutes(ctx: Context): void {
     kind: 'exact', path: TTS_ENGINE_SELECTION_ROUTE,
     async handler(req, res) {
       if (req.method !== 'POST') { res.setHeader('allow', 'POST'); json(res, 405, { error: 'method-not-allowed' }); return }
+      const origin = req.headers.origin
       let allowed = false
-      try { const origin = new URL(req.headers.origin ?? ''); allowed = ['http:', 'https:'].includes(origin.protocol) && origin.host === req.headers.host } catch { /* rejected below */ }
+      if (origin === undefined) {
+        // The desktop shell checks the app origin, then strips browser origin
+        // metadata. Cross-site HTML forms cannot set this marker header.
+        allowed = req.headers['sec-fetch-site'] === undefined && req.headers[TTS_DESKTOP_WRITE_HEADER] === '1'
+      } else {
+        try { const parsed = new URL(origin); allowed = ['http:', 'https:'].includes(parsed.protocol) && parsed.host === req.headers.host } catch { /* rejected below */ }
+      }
       if (!allowed || ['cross-site', 'same-site'].includes(String(req.headers['sec-fetch-site']))) { json(res, 403, { error: 'cross-origin-denied' }); return }
       if (!String(req.headers['content-type']).startsWith('application/json')) { json(res, 415, { error: 'invalid-content-type' }); return }
       const controller = new AbortController()

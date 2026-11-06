@@ -142,8 +142,8 @@ test('external selection routes reject cross-origin and stale writes, then unreg
   try {
     const before = service.engineState()
     const change = { provider: before.provider, engineRevision: before.revision, selection: { ...before.selection, voice: 'second' } }
-    for (const headers of [{}, { origin: 'https://foreign.test' }, { origin, 'sec-fetch-site': 'cross-site' }]) assert.equal((await post(change, headers)).status, 403)
-    const selection = await post(change)
+    for (const headers of [{}, { 'x-dsh-speech-adapter': '0' }, { origin: 'https://foreign.test' }, { origin, 'sec-fetch-site': 'cross-site' }]) assert.equal((await post(change, headers)).status, 403)
+    const selection = await post(change, { 'x-dsh-speech-adapter': '1' })
     assert.equal(selection.status, 200)
     assert.equal((await selection.json()).selection.voice, 'second')
     assert.equal((await post(change)).status, 409)
@@ -155,7 +155,10 @@ test('external selection routes reject cross-origin and stale writes, then unreg
     engineStateStore.accept(current)
     try {
       const nativeFetch = globalThis.fetch
-      globalThis.fetch = (path, init) => nativeFetch(origin + path, { ...init, headers: { ...init.headers, origin } })
+      globalThis.fetch = (path, init) => {
+        assert.equal(init.headers['x-dsh-speech-adapter'], '1')
+        return nativeFetch(origin + path, { ...init, headers: { ...init.headers, origin } })
+      }
       try { await switchExternalConfiguration(current, 'secondary') } finally { globalThis.fetch = nativeFetch }
       assert.equal(engineStateStore.getSnapshot().engine.configurationId, 'secondary')
       assert.equal(service.engineState().configurationId, 'secondary')

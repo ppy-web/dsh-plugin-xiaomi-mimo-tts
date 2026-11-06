@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import type { ExternalSpeechConfigurationChange, ExternalSpeechSelection, SpeechEngineState } from '../../host-api.js'
-import { TTS_ENGINE_SELECTION_ROUTE } from '../../constants.js'
+import { TTS_DESKTOP_WRITE_HEADER, TTS_ENGINE_SELECTION_ROUTE } from '../../constants.js'
 import { engineStateStore } from '../engine-state.js'
 import { hostRoute } from '../host-route.js'
 
 async function configureExternal(engine: SpeechEngineState, change: ExternalSpeechConfigurationChange, revision = engine.revision): Promise<void> {
   const response = await fetch(hostRoute(TTS_ENGINE_SELECTION_ROUTE), {
-    method: 'POST', headers: { 'content-type': 'application/json' },
+    method: 'POST', headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
     body: JSON.stringify({ provider: engine.provider, engineRevision: revision, ...change }),
   })
   const body = await response.json() as SpeechEngineState & { error?: string }
