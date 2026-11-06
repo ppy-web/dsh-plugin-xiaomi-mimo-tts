@@ -21,14 +21,18 @@ export function registerEngineRoutes(ctx: Context): void {
       try {
         const body = await readJsonBody(req, 16384) as Record<string, unknown>
         const selection = body?.selection as Record<string, unknown>
+        const switching = body?.configurationId !== undefined
         if (!body || typeof body.provider !== 'string' || !body.provider.startsWith('external:') || !Number.isSafeInteger(body.engineRevision)
-          || !selection || typeof selection.model !== 'string' || typeof selection.voice !== 'string'
-          || (selection.speechInstruction !== undefined && typeof selection.speechInstruction !== 'string')
-          || Object.keys(selection).some(key => !['model', 'voice', 'speechInstruction'].includes(key))) {
+          || Object.keys(body).some(key => !['provider', 'engineRevision', 'selection', 'configurationId'].includes(key))
+          || (switching ? selection !== undefined || typeof body.configurationId !== 'string' || !body.configurationId.trim() || body.configurationId.length > 200
+            : !selection || typeof selection.model !== 'string' || typeof selection.voice !== 'string'
+              || (selection.speechInstruction !== undefined && typeof selection.speechInstruction !== 'string')
+              || Object.keys(selection).some(key => !['model', 'voice', 'speechInstruction'].includes(key)))) {
           json(res, 400, { error: 'external-selection-invalid' }); return
         }
         const state = await ctx.speechSynthesis.configureProvider({ provider: body.provider as `external:${string}`, engineRevision: body.engineRevision as number,
-          selection: { model: selection.model, voice: selection.voice, ...(selection.speechInstruction === undefined ? {} : { speechInstruction: selection.speechInstruction as string }) }, signal: controller.signal })
+          ...(switching ? { configurationId: body.configurationId as string }
+            : { selection: { model: selection.model as string, voice: selection.voice as string, ...(selection.speechInstruction === undefined ? {} : { speechInstruction: selection.speechInstruction as string }) } }), signal: controller.signal })
         json(res, 200, state)
       } catch (error) { json(res, error instanceof TtsProviderError ? error.status : 400, { error: error instanceof TtsProviderError ? error.code : 'external-selection-invalid' }) }
       finally { res.off('close', close) }

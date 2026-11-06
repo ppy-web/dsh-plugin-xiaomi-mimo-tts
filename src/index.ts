@@ -60,6 +60,7 @@ export const Config = z.object({
   openApiToken: z.string().role('secret').default('').volatile(),
   showInSidebar: z.boolean().default(false).volatile(),
   showInHostSettings: z.boolean().default(DEFAULT_TTS_SETTINGS.showInHostSettings).volatile(),
+  acceptExternalProviders: z.boolean().default(DEFAULT_TTS_SETTINGS.acceptExternalProviders).volatile(),
   qqbotEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.qqbotEnabled).volatile(),
   qqbotMaxAutoCharacters: z.number().step(1).min(0).max(12000).default(0).volatile(),
   qqbotMaxDurationSeconds: z.number().step(1).min(0).max(6000).default(0).volatile(),

@@ -1,4 +1,4 @@
-import type { ExternalSpeechProvider, ExternalSpeechProviderSnapshot, ExternalSpeechSelection, SpeechEngineState, SpeechRequest } from '../host-api.js'
+import type { ExternalSpeechConfigurationChange, ExternalSpeechProvider, ExternalSpeechProviderSnapshot, SpeechEngineState, SpeechRequest } from '../host-api.js'
 import type { ResolvedTtsSettings } from '../types/settings.js'
 import { prepareExternalTtsText } from '../shared.js'
 import { TtsProviderError } from './provider-error.js'
@@ -42,6 +42,7 @@ function snapshot(provider: ExternalSpeechProvider): ExternalSpeechProviderSnaps
     ...(typeof value.voiceName === 'string' ? { voiceName: value.voiceName.slice(0, 120) } : {}),
     ...externalCatalog(value),
     configurable: typeof provider.configure === 'function',
+    configurationSwitchable: typeof provider.selectConfiguration === 'function',
   }
 }
 
@@ -52,8 +53,15 @@ export class ExternalProviders {
   revision = nextRevision()
   private disposed = false
   private configuring = false
+  private enabled = true
 
-  get id() { return this.active?.provider.id }
+  get id() { return this.enabled ? this.active?.provider.id : undefined }
+  setEnabled(enabled: boolean): boolean {
+    if (this.enabled === enabled) return false
+    this.enabled = enabled
+    this.changed()
+    return true
+  }
   subscribe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
 
   changed(reason = new TtsProviderError('speech-engine-changed', undefined, 409)): void {
@@ -63,26 +71,36 @@ export class ExternalProviders {
   }
 
   state(settings: ResolvedTtsSettings): SpeechEngineState | undefined {
-    if (!this.active) return
+    if (!this.enabled || !this.active) return
     const state = structuredClone(this.active.state)
     const model = state.models?.find(item => item.id === state.selection?.model)
     return { ...state, provider: this.active.provider.id, revision: this.revision,
       maxTextLength: Math.min(settings.maxTextLength, state.maxTextLength), streaming: typeof this.active.provider.streamPcm === 'function' && (model?.streaming ?? true) }
   }
 
-  async configure(selection: ExternalSpeechSelection, settings: ResolvedTtsSettings, signal?: AbortSignal): Promise<SpeechEngineState> {
+  async configure(change: ExternalSpeechConfigurationChange, settings: ResolvedTtsSettings, signal?: AbortSignal): Promise<SpeechEngineState> {
     const entry = this.active
-    if (!entry?.provider.configure) throw new TtsProviderError('external-option-unsupported', undefined, 400)
+    if (!this.enabled || !entry) throw new TtsProviderError('external-provider-unavailable', undefined, 409)
     if (this.configuring) throw new TtsProviderError('external-configuration-busy', undefined, 409)
-    validateExternalSelection(selection, entry.state.models)
+    if ((change.configurationId === undefined) === (change.selection === undefined)) throw new TtsProviderError('external-selection-invalid', undefined, 400)
+    let update: (signal: AbortSignal) => Promise<void>
+    if (change.configurationId !== undefined) {
+      if (!entry.provider.selectConfiguration) throw new TtsProviderError('external-option-unsupported', undefined, 400)
+      if (!entry.state.configurations?.some(item => item.id === change.configurationId)) throw new TtsProviderError('external-selection-invalid', undefined, 400)
+      update = signal => entry.provider.selectConfiguration!(change.configurationId!, { signal })
+    } else {
+      if (!entry.provider.configure) throw new TtsProviderError('external-option-unsupported', undefined, 400)
+      validateExternalSelection(change.selection, entry.state.models)
+      update = signal => entry.provider.configure!({ ...change.selection }, { signal })
+    }
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(new TtsProviderError('tts-timeout', undefined, 504)), settings.requestTimeoutMs)
     const combined = AbortSignal.any([controller.signal, ...(signal ? [signal] : [])])
-    const off = this.subscribe(() => { if (this.active !== entry) controller.abort(new TtsProviderError('speech-engine-changed', undefined, 409)) })
+    const off = this.subscribe(() => { if (!this.enabled || this.active !== entry) controller.abort(new TtsProviderError('speech-engine-changed', undefined, 409)) })
     this.configuring = true
     try {
       combined.throwIfAborted()
-      await abortable(entry.provider.configure({ ...selection }, { signal: combined }), combined)
+      await abortable(update(combined), combined)
       combined.throwIfAborted()
       if (this.active !== entry) throw new TtsProviderError('speech-engine-changed', undefined, 409)
       entry.state = snapshot(entry.provider)
@@ -110,21 +128,21 @@ export class ExternalProviders {
       entry.off = provider.subscribe(() => {
         if (this.active !== entry || this.disposed) return
         try { entry.state = snapshot(provider) } catch { entry.state = { ...entry.state, ready: false, unavailableReason: 'external-provider-invalid' } }
-        this.changed()
+        if (this.enabled) this.changed()
       })
       if (typeof entry.off !== 'function') throw new TtsProviderError('external-provider-invalid', undefined, 400)
     } catch (error) { this.active = undefined; throw externalError(error) }
-    this.changed()
+    if (this.enabled) this.changed()
     return () => {
       if (this.active !== entry) return
       this.active = undefined
-      try { entry.off() } finally { this.changed() }
+      try { entry.off() } finally { if (this.enabled) this.changed() }
     }
   }
 
   async run<T>(request: SpeechRequest, settings: ResolvedTtsSettings, action: (provider: ExternalSpeechProvider, text: string, signal: AbortSignal, state: SpeechEngineState) => Promise<T>): Promise<T> {
     const entry = this.active
-    if (!entry || (request.provider !== undefined && request.provider !== entry.provider.id)) throw new TtsProviderError('external-provider-unavailable', undefined, 409)
+    if (!this.enabled || !entry || (request.provider !== undefined && request.provider !== entry.provider.id)) throw new TtsProviderError('external-provider-unavailable', undefined, 409)
     const state = this.state(settings)!
     if (!state.ready) throw new TtsProviderError(state.unavailableReason ?? 'external-provider-not-ready', undefined, 409)
     if (['voiceDesignPrompt', 'voiceRate'].some(key => request[key as keyof SpeechRequest] !== undefined)) throw new TtsProviderError('external-option-unsupported', undefined, 400)

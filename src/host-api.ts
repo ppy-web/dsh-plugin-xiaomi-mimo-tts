@@ -11,6 +11,8 @@ export interface ExternalSpeechSelection {
   speechInstruction?: string
 }
 
+export type ExternalSpeechConfigurationChange = { selection: ExternalSpeechSelection; configurationId?: never } | { configurationId: string; selection?: never }
+
 export interface ExternalSpeechModel {
   id: string
   name: string
@@ -37,6 +39,8 @@ export interface ExternalSpeechProviderSnapshot {
   /** Package whose settings are opened through the DSH plugin manager. */
   managementBundle?: string
   configurationId?: string
+  configurations?: { id: string; name: string }[]
+  configurationSwitchable?: boolean
 }
 
 /** Host-only adapter. Registration owns the external takeover until disposed. */
@@ -50,6 +54,8 @@ export interface ExternalSpeechProvider {
   streamPcm?(request: { text: string; signal: AbortSignal } & Partial<ExternalSpeechSelection>): AsyncIterable<Uint8Array>
   /** Persist the selection in the adapter, then notify subscribers. */
   configure?(selection: ExternalSpeechSelection, options: { signal: AbortSignal }): Promise<void>
+  /** Switch and persist a configuration owned by the adapter. */
+  selectConfiguration?(configurationId: string, options: { signal: AbortSignal }): Promise<void>
 }
 
 export interface SpeechEngineState {
@@ -69,6 +75,8 @@ export interface SpeechEngineState {
   managementPath?: string
   managementBundle?: string
   configurationId?: string
+  configurations?: { id: string; name: string }[]
+  configurationSwitchable?: boolean
 }
 
 export type SpeechFormat = 'mp3' | 'wav' | 'silk'
@@ -179,7 +187,7 @@ export interface SpeechSynthesisService {
   registerProvider(provider: ExternalSpeechProvider): () => void
   engineState(): SpeechEngineState
   subscribeEngine(listener: () => void): () => void
-  configureProvider(request: { provider: SpeechProviderId; engineRevision: number; selection: ExternalSpeechSelection; signal?: AbortSignal }): Promise<SpeechEngineState>
+  configureProvider(request: { provider: SpeechProviderId; engineRevision: number; signal?: AbortSignal } & ExternalSpeechConfigurationChange): Promise<SpeechEngineState>
   resolveProvider(request: Pick<SpeechRequest, 'provider' | 'engineRevision'>): SpeechProviderId
   /** External PCM providers only; the Web entry wraps bytes in its existing SSE protocol. */
   streamPcm(request: SpeechRequest, consume: (bytes: Uint8Array) => void | Promise<void>): Promise<void>

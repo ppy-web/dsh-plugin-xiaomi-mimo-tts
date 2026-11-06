@@ -14,7 +14,7 @@ function entries(value: unknown): { id: string; name: string }[] {
 }
 
 /** Allowlist every public field. Adapter URLs and arbitrary config never enter the browser state. */
-export function externalCatalog(value: ExternalSpeechProviderSnapshot): Pick<ExternalSpeechProviderSnapshot, 'models' | 'selection' | 'managementPath' | 'managementBundle' | 'configurationId'> {
+export function externalCatalog(value: ExternalSpeechProviderSnapshot): Pick<ExternalSpeechProviderSnapshot, 'models' | 'selection' | 'managementPath' | 'managementBundle' | 'configurationId' | 'configurations'> {
   const result: ReturnType<typeof externalCatalog> = {}
   if (value.models !== undefined) {
     if (!Array.isArray(value.models) || value.models.length > 200) return invalid()
@@ -35,6 +35,11 @@ export function externalCatalog(value: ExternalSpeechProviderSnapshot): Pick<Ext
   if (typeof value.managementPath === 'string' && /^\/plugins\/[a-z0-9][a-z0-9/_-]*$/u.test(value.managementPath) && value.managementPath.length < 200) result.managementPath = value.managementPath
   if (typeof value.managementBundle === 'string' && value.managementBundle.length < 200 && /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u.test(value.managementBundle)) result.managementBundle = value.managementBundle
   if (value.configurationId !== undefined) result.configurationId = label(value.configurationId)
+  if (value.configurations !== undefined) {
+    if (!Array.isArray(value.configurations) || value.configurations.length > 200) return invalid()
+    result.configurations = entries(value.configurations)
+    if (result.configurationId !== undefined && !result.configurations.some(item => item.id === result.configurationId)) return invalid()
+  }
   return result
 }
 

@@ -36,6 +36,65 @@ function fixture(overrides = {}, config = {}) {
   return { service, provider, state, change, calls, settings }
 }
 
+test('external reception defaults on, restores built-in configuration when disabled and resumes without registration', async () => {
+  assert.equal(resolveTtsSettings().acceptExternalProviders, true)
+  const f = fixture({}, { acceptExternalProviders: false, provider: 'doubao' })
+  const off = f.service.registerProvider(f.provider)
+  try {
+    assert.equal(f.service.currentProvider(), 'doubao')
+    assert.throws(() => f.service.resolveProvider({ provider: f.provider.id }), { code: 'external-provider-unavailable' })
+    f.settings.acceptExternalProviders = true
+    f.service.refreshEngine()
+    assert.equal(f.service.currentProvider(), f.provider.id)
+    assert.equal((await f.service.synthesize({ text: 'hello' })).format, 'wav')
+    f.settings.acceptExternalProviders = false
+    f.service.refreshEngine()
+    assert.equal(f.service.engineState().provider, 'doubao')
+    assert.equal(f.service.capabilities().providers.some(item => item.id === f.provider.id), false)
+    f.change({ name: 'Updated while reception was disabled' })
+    f.settings.acceptExternalProviders = true
+    f.service.refreshEngine()
+    assert.equal(f.service.engineState().name, 'Updated while reception was disabled')
+    off()
+    assert.equal(f.service.currentProvider(), 'doubao')
+  } finally { off(); await f.service.dispose() }
+})
+
+test('disabling external reception cancels in-flight audio and rejects stale requests', async () => {
+  let started
+  const ready = new Promise(resolve => { started = resolve })
+  const f = fixture({ synthesize: () => { started(); return new Promise(() => {}) } })
+  const off = f.service.registerProvider(f.provider)
+  try {
+    const revision = f.service.engineState().revision
+    const pending = assert.rejects(f.service.synthesize({ text: 'hello' }), { code: 'speech-engine-changed' })
+    await ready
+    f.settings.acceptExternalProviders = false
+    f.service.refreshEngine()
+    await pending
+    assert.throws(() => f.service.resolveProvider({ engineRevision: revision }), { code: 'speech-engine-changed' })
+    assert.equal(f.service.currentProvider(), f.settings.provider)
+  } finally { off(); await f.service.dispose() }
+})
+
+test('reception preference saves and resets during takeover without touching built-in settings', async () => {
+  let user = {}
+  const saved = resolveTtsSettings({ provider: 'doubao' })
+  const scope = { getSnapshot: () => ({ value: { ...saved, ...user }, user }), async mutate(ops) {
+    for (const op of ops) {
+      assert.equal(op.path[0], 'acceptExternalProviders')
+      if (op.op === 'set') user[op.path[0]] = op.value
+      else delete user[op.path[0]]
+    }
+    return true
+  } }
+  await saveSettingsDraft(scope, { ...saved, acceptExternalProviders: false }, { acceptExternalProviders: { kind: 'set' }, provider: { kind: 'set' } }, { xiaomi: '', doubao: '', breeze: '' }, true)
+  assert.equal(resolveTtsSettings(scope.getSnapshot().value).acceptExternalProviders, false)
+  assert.equal(scope.getSnapshot().value.provider, 'doubao')
+  await saveSettingsDraft(scope, saved, { acceptExternalProviders: { kind: 'clear' } }, { xiaomi: '', doubao: '', breeze: '' }, true)
+  assert.equal(resolveTtsSettings(scope.getSnapshot().value).acceptExternalProviders, true)
+})
+
 test('registration takes over without changing saved settings and unregistering is idempotent', async () => {
   const f = fixture()
   const off = f.service.registerProvider(f.provider)

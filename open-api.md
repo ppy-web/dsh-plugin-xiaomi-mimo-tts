@@ -253,7 +253,7 @@ ctx.effect(() => ctx.speechSynthesis.registerProvider(adapter))
 | --- | --- |
 | `apiVersion` | 固定 `1`。 |
 | `id` | 稳定的 `external:<plugin-id>`；后缀由小写字母、数字、点、下划线和连字符组成，最长 120 字符。 |
-| `getSnapshot()` | 返回 `{ name, ready, formats, maxTextLength, unavailableReason?, modelName?, voiceName? }`。名称必填；单次文本上限是正整数；支持可选 `models`、`selection`、`configurationId`、`managementPath`、`managementBundle`，详见下方目录契约。凭据和地址留在外部插件。 |
+| `getSnapshot()` | 返回 `{ name, ready, formats, maxTextLength, unavailableReason?, modelName?, voiceName? }`。名称必填；单次文本上限是正整数；支持可选 `models`、`selection`、`configurationId`、`configurations`、`managementPath`、`managementBundle`，详见下方目录契约。凭据和地址留在外部插件。 |
 | `subscribe(listener)` | 配置、就绪状态或能力变化时通知监听者，返回注销函数；每次通知使主插件推进状态版本并取消旧任务。 |
 | `synthesize({ text, format, signal })` | 返回 `Promise<{ data: Uint8Array, format: 'wav' \| 'mp3' }>`。每次请求固定本次配置；响应必须符合请求格式。 |
 | `streamPcm?({ text, signal })` | 可选 `AsyncIterable<Uint8Array>`，仅输出 24 kHz 单声道有符号小端 PCM16，不带 WAV 头。不实现时使用完整音频分段播放。 |
@@ -328,3 +328,13 @@ async function configure(selection: ExternalSpeechSelection, { signal }: { signa
 宿主插件可调用 `configureProvider({ provider, engineRevision, selection, signal? })`；`engineRevision` 必须为当前版本。主插件浏览器使用同源 `POST /plugins/xiaomi-mimo-tts/engine-selection`，JSON 为 `{ provider, engineRevision, selection }`，成功返回最新引擎状态。此浏览器端点要求同源 Origin 和 JSON Content-Type，沿用宿主访问控制，不使用开放接口令牌。旧版本返回 `speech-engine-changed`，不把草稿写入另一个引擎。新的稳定错误包括 `external-selection-invalid`、`external-configuration-busy`。
 
 完整管理页与协议适配实现见独立插件“供应商适配器”（`dsh-speech-provider-adapter`）的 `usage.md`。
+
+### 接收开关与供应商卡片切换
+
+宿主配置 `acceptExternalProviders` 默认 `true`，对应「播报台 → 更多 → 宿主适配 → 接收外部供应商」。保存为 `false` 后，已注册的外部适配器仍保留注册和配置，但不参与默认合成、显式外部请求、能力查询或浏览器引擎状态；正在运行的外部任务取消，恢复内置供应商。重新开启后直接使用现有注册，无需适配器重载。
+
+多供应商适配器可在快照中添加 `configurations: { id: string; name: string }[]`，并用 `configurationId` 标识当前项。列表最多 200 项，ID 和名称最长 200 字符；浏览器只接收这两个字段，不接收凭据、地址或供应商配置。提供可选方法 `selectConfiguration(configurationId, { signal }): Promise<void>`，在适配器中保存当前供应商并通知订阅者；供应商各自的模型、音色和密钥应保持不变。Host 根据方法是否存在派生 `configurationSwitchable`。
+
+当适配器声明至少两项且支持切换时，顶部卡片按列表顺序循环切换。切换立即保存到适配器，更新引擎版本并取消旧任务；失败保留当前显示并提示重试。旧适配器或单项列表保持只读。现有模型、音色、指令仍使用草稿与保存机制。
+
+切换复用 `configureProvider({ provider, engineRevision, configurationId, signal? })` 与同源 `POST /plugins/xiaomi-mimo-tts/engine-selection`；JSON 为 `{ provider, engineRevision, configurationId }`，不能同时提供 `selection`。原有同源校验、过期版本拒绝、超时和取消规则保持生效。

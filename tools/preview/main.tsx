@@ -45,7 +45,8 @@ const adapterDemo = externalDemo === 'adapter'
 engineStateStore.accept({ provider: externalDemo ? 'external:demo-tone' : 'xiaomi', revision: 1,
   name: adapterDemo ? 'SenseAudio · 预览演示' : externalDemo ? '外部测试音（非语音）' : 'xiaomi', ready: externalDemo !== 'unready',
   formats: externalDemo ? ['wav'] : ['mp3', 'wav'], maxTextLength: externalDemo ? 1000 : 12000, streaming: externalDemo === 'pcm',
-  ...(adapterDemo ? { configurable: true, configurationId: 'senseaudio',
+  ...(adapterDemo ? { configurable: true, configurationId: 'senseaudio', configurationSwitchable: true,
+    configurations: [{ id: 'senseaudio', name: 'SenseAudio · 预览演示' }, { id: 'backup', name: '备用供应商 · 预览演示' }],
     selection: { model: 'sensenova-tts-2.0', voice: 'female_0033_b', speechInstruction: '' },
     models: ['sensenova-tts-2.0', 'senseaudio-tts-1.5-260319'].map(id => ({ id, name: id, streaming: false, speechInstruction: false,
       voices: [{ id: 'female_0033_b', name: '女声 · 预览演示' }, { id: 'male_0004_a', name: '男声 · 预览演示' }], audioTags: [{ value: '<break time=500>', name: 'Pause' }] })) } : {}) })

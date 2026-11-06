@@ -1,17 +1,26 @@
 import { useState } from 'react'
-import type { ExternalSpeechSelection, SpeechEngineState } from '../../host-api.js'
+import type { ExternalSpeechConfigurationChange, ExternalSpeechSelection, SpeechEngineState } from '../../host-api.js'
 import { TTS_ENGINE_SELECTION_ROUTE } from '../../constants.js'
 import { engineStateStore } from '../engine-state.js'
 import { hostRoute } from '../host-route.js'
 
-export async function saveExternalSelection(engine: SpeechEngineState, selection: ExternalSpeechSelection, revision = engine.revision): Promise<void> {
+async function configureExternal(engine: SpeechEngineState, change: ExternalSpeechConfigurationChange, revision = engine.revision): Promise<void> {
   const response = await fetch(hostRoute(TTS_ENGINE_SELECTION_ROUTE), {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ provider: engine.provider, engineRevision: revision, selection }),
+    body: JSON.stringify({ provider: engine.provider, engineRevision: revision, ...change }),
   })
   const body = await response.json() as SpeechEngineState & { error?: string }
   if (!response.ok) throw new Error(body.error ?? 'external-configuration-failed')
   if ((engineStateStore.getSnapshot().engine?.revision ?? -1) <= body.revision) engineStateStore.accept(body)
+}
+
+export const saveExternalSelection = (engine: SpeechEngineState, selection: ExternalSpeechSelection, revision = engine.revision): Promise<void> => configureExternal(engine, { selection }, revision)
+export const switchExternalConfiguration = (engine: SpeechEngineState, configurationId: string): Promise<void> => configureExternal(engine, { configurationId })
+
+export function nextExternalConfiguration(engine: SpeechEngineState) {
+  const configurations = engine.configurations ?? []
+  if (!engine.configurationSwitchable || configurations.length < 2) return
+  return configurations[(configurations.findIndex(item => item.id === engine.configurationId) + 1) % configurations.length]
 }
 
 /** Drafts belong to a profile and revision, separate from every built-in configuration field. */

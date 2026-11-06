@@ -9,16 +9,19 @@ import { loadClientModule } from './helpers/client-modules.mjs'
 const { HostSpeechService } = await loadClientModule('src/host/speech-service.ts')
 const { registerEngineRoutes } = await loadClientModule('src/host/engine-routes.ts')
 const { engineStateStore, externalText, externalFallbackText, splitExternalText } = await loadClientModule('src/client/engine-state.ts')
+const { nextExternalConfiguration, switchExternalConfiguration } = await loadClientModule('src/client/settings/external-selection.ts')
 
 /** An in-memory provider exercising the public contract without a real adapter dependency. */
 function configurableProvider() {
   const listeners = new Set()
   const provider = createTestProvider()
   let selection = { model: 'test-model', voice: 'first' }
+  let configurationId = 'primary'
   const adapter = {
     ...provider,
     id: 'external:catalog-test',
-    getSnapshot: () => ({ ...provider.getSnapshot(), selection,
+    getSnapshot: () => ({ ...provider.getSnapshot(), selection, configurationId,
+      configurations: [{ id: 'primary', name: 'Primary', secret: 'private-test-key' }, { id: 'secondary', name: 'Secondary' }],
       managementBundle: 'test-provider-settings', managementPath: '/plugins/test-provider',
       models: [{ id: 'test-model', name: 'Test model', voices: [{ id: 'first', name: 'First' }, { id: 'second', name: 'Second' }],
         audioTags: [{ value: '<break time=500>', name: 'Pause' }] }],
@@ -27,6 +30,12 @@ function configurableProvider() {
     async configure(next, { signal }) {
       signal.throwIfAborted()
       selection = structuredClone(next)
+      for (const listener of listeners) listener()
+    },
+    async selectConfiguration(next, { signal }) {
+      signal.throwIfAborted()
+      configurationId = next
+      selection = { ...selection, voice: next === 'secondary' ? 'second' : 'first' }
       for (const listener of listeners) listener()
     },
   }
@@ -71,6 +80,35 @@ test('external selection writes cancel old synthesis, retain built-in settings a
   } finally { off(); await service.dispose() }
 })
 
+test('provider card cycles adapter configurations, cancels old audio and preserves built-in settings', async () => {
+  const settings = resolveTtsSettings({ provider: 'doubao' })
+  const service = new HostSpeechService(() => settings)
+  const adapter = configurableProvider()
+  let started
+  const ready = new Promise(resolve => { started = resolve })
+  adapter.synthesize = () => { started(); return new Promise(() => {}) }
+  const off = service.registerProvider(adapter)
+  try {
+    const before = service.engineState()
+    assert.equal(JSON.stringify(before).includes('private-test-key'), false)
+    const next = nextExternalConfiguration(before)
+    assert.equal(next.id, 'secondary')
+    const pending = assert.rejects(service.synthesize({ text: 'pending' }), { code: 'speech-engine-changed' })
+    await ready
+    const after = await service.configureProvider({ provider: adapter.id, engineRevision: before.revision, configurationId: next.id })
+    await pending
+    assert.equal(after.configurationId, 'secondary')
+    assert.equal(after.selection.voice, 'second')
+    assert.equal(nextExternalConfiguration(after).id, 'primary')
+    assert.equal(settings.provider, 'doubao')
+    await assert.rejects(service.configureProvider({ provider: adapter.id, engineRevision: before.revision, configurationId: 'primary' }), { code: 'speech-engine-changed' })
+    await assert.rejects(service.configureProvider({ provider: adapter.id, engineRevision: after.revision, configurationId: 'missing' }), { code: 'external-selection-invalid' })
+    assert.equal(service.engineState().configurationId, 'secondary')
+    assert.equal(nextExternalConfiguration({ ...after, configurations: [next] }), undefined)
+    assert.equal(nextExternalConfiguration({ ...after, configurationSwitchable: false }), undefined)
+  } finally { off(); await service.dispose() }
+})
+
 test('browser external text preserves declared tags through splitting and removes them for local fallback', () => {
   engineStateStore.accept({ provider: 'external:adapter', revision: 1, name: 'Test provider', ready: true, formats: ['wav'], streaming: true, maxTextLength: 100,
     selection: { model: 'm', voice: 'v' }, models: [{ id: 'm', name: 'M', voices: [{ id: 'v', name: 'V' }], audioTags: [{ value: '<break time=500>', name: 'Pause' }] }] })
@@ -109,6 +147,20 @@ test('external selection routes reject cross-origin and stale writes, then unreg
     assert.equal(selection.status, 200)
     assert.equal((await selection.json()).selection.voice, 'second')
     assert.equal((await post(change)).status, 409)
+    const current = service.engineState()
+    const switchBody = { provider: current.provider, engineRevision: current.revision, configurationId: 'secondary' }
+    for (const headers of [{}, { origin: 'https://foreign.test' }, { origin, 'sec-fetch-site': 'cross-site' }]) assert.equal((await post(switchBody, headers)).status, 403)
+    assert.equal((await post({ ...switchBody, selection: current.selection })).status, 400)
+    assert.equal((await post({ ...switchBody, configurationId: 'missing' })).status, 400)
+    engineStateStore.accept(current)
+    try {
+      const nativeFetch = globalThis.fetch
+      globalThis.fetch = (path, init) => nativeFetch(origin + path, { ...init, headers: { ...init.headers, origin } })
+      try { await switchExternalConfiguration(current, 'secondary') } finally { globalThis.fetch = nativeFetch }
+      assert.equal(engineStateStore.getSnapshot().engine.configurationId, 'secondary')
+      assert.equal(service.engineState().configurationId, 'secondary')
+      assert.equal((await post(switchBody)).status, 409)
+    } finally { engineStateStore.accept({ provider: 'xiaomi', revision: 1, name: 'xiaomi', ready: true, formats: ['wav'], maxTextLength: 1000, streaming: true }) }
     off()
     assert.equal(service.currentProvider(), 'xiaomi')
   } finally {

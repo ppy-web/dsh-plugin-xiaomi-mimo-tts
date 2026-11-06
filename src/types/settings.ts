@@ -16,6 +16,7 @@ export type AnnouncementSourceId = typeof ANNOUNCEMENT_SOURCES[number]
 export interface TtsSettings {
   showInSidebar?: boolean
   showInHostSettings?: boolean
+  acceptExternalProviders?: boolean
   qqbotEnabled?: boolean
   qqbotMaxAutoCharacters?: number
   qqbotMaxDurationSeconds?: number
@@ -73,6 +74,7 @@ export interface TtsSettings {
 export interface ResolvedTtsSettings {
   showInSidebar: boolean
   showInHostSettings: boolean
+  acceptExternalProviders: boolean
   qqbotEnabled: boolean
   qqbotMaxAutoCharacters: number
   qqbotMaxDurationSeconds: number
@@ -129,6 +131,7 @@ export interface ResolvedTtsSettings {
 export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   showInSidebar: false,
   showInHostSettings: true,
+  acceptExternalProviders: true,
   qqbotEnabled: false,
   qqbotMaxAutoCharacters: 0,
   qqbotMaxDurationSeconds: 0,

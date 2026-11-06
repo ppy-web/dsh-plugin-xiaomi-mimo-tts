@@ -5,6 +5,9 @@ import { passportEn } from '../settings/passport-copy.js'
 
 export const fr: Record<LocaleKey, string> = {
   'settings.externalManage': 'Gérer les fournisseurs',
+  'settings.acceptExternalProviders': 'Accepter les fournisseurs externes',
+  'settings.acceptExternalProvidersHint': 'Autoriser les plugins externes à fournir la voix. Désactivez puis enregistrez pour revenir au fournisseur intégré.',
+  'settings.externalSwitchFailed': 'Impossible de changer de fournisseur. Veuillez réessayer.',
   'settings.externalOptionsHint': 'Les options disponibles sont définies par le plugin externe.',
   'settings.externalManaged': 'Géré par un plugin externe. Configurez la voix dans ce plugin.',
   'settings.externalNotReady': 'Le service vocal externe n’est pas prêt. Vérifiez sa configuration.',

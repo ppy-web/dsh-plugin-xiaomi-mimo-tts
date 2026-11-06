@@ -11,7 +11,7 @@ import { cleanupSpeechArtifacts, writeSpeechArtifact } from './speech-files.js'
 import { speechCapabilities } from './capabilities.js'
 import { abortable, ExternalProviders, validateExternalAudio } from './external-providers.js'
 import { externalRequestOptions } from './external-catalog.js'
-import type { ExternalSpeechSelection, SpeechProviderId } from '../host-api.js'
+import type { ExternalSpeechConfigurationChange, SpeechProviderId } from '../host-api.js'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -33,6 +33,7 @@ export class HostSpeechService implements SpeechSynthesisService {
   private readonly defaultJobs = new Set<AbortController>()
 
   constructor(private readonly current: () => ResolvedTtsSettings, private readonly runtime: SynthesisRuntime = {}) {
+    this.external.setEnabled(current().acceptExternalProviders !== false)
     this.external.subscribe(() => {
       for (const controller of this.defaultJobs) controller.abort(new TtsProviderError('speech-engine-changed', undefined, 409))
     })
@@ -40,12 +41,12 @@ export class HostSpeechService implements SpeechSynthesisService {
 
   registerProvider(provider: ExternalSpeechProvider): () => void { return this.external.register(provider) }
   subscribeEngine = (listener: () => void): (() => void) => this.external.subscribe(listener)
-  refreshEngine(): void { this.external.changed() }
+  refreshEngine(): void { if (!this.external.setEnabled(this.current().acceptExternalProviders !== false)) this.external.changed() }
 
-  async configureProvider(request: { provider: SpeechProviderId; engineRevision: number; selection: ExternalSpeechSelection; signal?: AbortSignal }): Promise<SpeechEngineState> {
+  async configureProvider(request: { provider: SpeechProviderId; engineRevision: number; signal?: AbortSignal } & ExternalSpeechConfigurationChange): Promise<SpeechEngineState> {
     const id = this.resolveProvider(request)
     if (!id.startsWith('external:')) throw new TtsProviderError('external-option-unsupported', undefined, 400)
-    return this.track(this.external.configure(request.selection, this.current(), request.signal))
+    return this.track(this.external.configure(request, this.current(), request.signal))
   }
 
   engineState(): SpeechEngineState {

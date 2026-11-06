@@ -123,6 +123,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const setApiKey = (next: string): void => { setApiKeys(current => ({ ...current, [provider]: next })) }
   const [showInSidebar, setShowInSidebar] = useState(initial.showInSidebar)
   const [showInHostSettings, setShowInHostSettings] = useState(initial.showInHostSettings)
+  const [acceptExternalProviders, setAcceptExternalProviders] = useState(initial.acceptExternalProviders)
   const [announcementSources, setAnnouncementSources] = useState(initial.announcementSources)
   const [qqbotEnabled, setQqbotEnabled] = useState(initial.qqbotEnabled)
   const [enabled, setEnabled] = useState(initial.enabled)
@@ -174,7 +175,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { showInSidebar, showInHostSettings, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceInputCompatibility, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { showInSidebar, showInHostSettings, acceptExternalProviders, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceInputCompatibility, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -227,6 +228,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setInstruction(next.instruction)
     setShowInSidebar(next.showInSidebar)
     setShowInHostSettings(next.showInHostSettings)
+    setAcceptExternalProviders(next.acceptExternalProviders)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
@@ -296,6 +298,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'instruction') setInstruction(base.instruction)
     if (field === 'showInSidebar') setShowInSidebar(base.showInSidebar)
     if (field === 'showInHostSettings') setShowInHostSettings(base.showInHostSettings)
+    if (field === 'acceptExternalProviders') setAcceptExternalProviders(base.acceptExternalProviders)
     if (field === 'announcementSources') setAnnouncementSources(base.announcementSources)
     if (field === 'qqbotEnabled') setQqbotEnabled(base.qqbotEnabled)
     if (field === 'enabled') setEnabled(base.enabled)
@@ -345,6 +348,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setInstruction(next.instruction)
     setShowInSidebar(next.showInSidebar)
     setShowInHostSettings(next.showInHostSettings)
+    setAcceptExternalProviders(next.acceptExternalProviders)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
@@ -630,6 +634,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onTextChange={next => { previewPlayer.stop(); setPreviewText(next) }}
           recording={previewPlayer.getRecording()}
           showInHostSettings={showInHostSettings}
+          acceptExternalProviders={acceptExternalProviders}
+          onAcceptExternalProvidersChange={next => { setAcceptExternalProviders(next); markChange('acceptExternalProviders') }}
+          acceptExternalProvidersOverridden={fieldOverridden('acceptExternalProviders')}
+          onAcceptExternalProvidersReset={() => resetField('acceptExternalProviders')}
           onShowInHostSettingsChange={next => { setShowInHostSettings(next); markChange('showInHostSettings') }}
           showInHostSettingsOverridden={fieldOverridden('showInHostSettings')}
           onShowInHostSettingsReset={() => resetField('showInHostSettings')}

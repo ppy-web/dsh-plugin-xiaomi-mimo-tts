@@ -1,5 +1,6 @@
 import {
   DEFAULT_TTS_SETTINGS,
+  resolveTtsSettings,
   isSupportedTtsApiKey,
   TTS_API_KEY_STATUS_ROUTE,
   TTS_MOSS_PROBE_ROUTE,
@@ -148,6 +149,19 @@ function previewAudioResponse(stream: boolean): Response {
 export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
   const originalFetch = globalThis.fetch.bind(globalThis)
   const restoreSockets = installPreviewSockets()
+  let external = engineStateStore.getSnapshot().engine
+  if (!external?.provider.startsWith('external:')) external = null
+  const offSettings = scope.subscribe(() => {
+    if (!external) return
+    const current = engineStateStore.getSnapshot().engine!
+    if (current.provider.startsWith('external:')) external = current
+    const settings = resolveTtsSettings(scope.getSnapshot().value)
+    if (settings.acceptExternalProviders && !current.provider.startsWith('external:')) engineStateStore.accept({ ...external, revision: current.revision + 1 })
+    else if (!settings.acceptExternalProviders && current.provider.startsWith('external:')) engineStateStore.accept({
+      provider: settings.provider, name: settings.provider, revision: current.revision + 1,
+      ready: true, formats: ['mp3', 'wav'], maxTextLength: settings.maxTextLength, streaming: true,
+    })
+  })
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const rawUrl = input instanceof Request ? input.url : String(input)
     const url = new URL(rawUrl, window.location.href)
@@ -156,7 +170,10 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
       const body = JSON.parse(String(init?.body))
       const state = engineStateStore.getSnapshot().engine!
       if (body.engineRevision !== state.revision) return jsonResponse({ error: 'speech-engine-changed' }, 409)
-      const next = { ...state, revision: state.revision + 1, selection: body.selection }
+      const configuration = state.configurations?.find(item => item.id === body.configurationId)
+      if (body.configurationId !== undefined && !configuration) return jsonResponse({ error: 'external-selection-invalid' }, 400)
+      const next = { ...state, revision: state.revision + 1,
+        ...(configuration ? { configurationId: configuration.id, name: configuration.name } : { selection: body.selection }) }
       engineStateStore.accept(next)
       return jsonResponse(next)
     }
@@ -192,7 +209,7 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
     }
     return originalFetch(input, init)
   }
-  return () => { globalThis.fetch = originalFetch; restoreSockets() }
+  return () => { offSettings(); globalThis.fetch = originalFetch; restoreSockets() }
 }
 
 /** Standalone previews exercise the real duplex consumer using a local synthetic tone. */
