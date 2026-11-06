@@ -35,7 +35,7 @@ const selection = {
   voiceRate: { type: 'number', minimum: 0.5, maximum: 2 },
 } as const
 
-const EXTERNAL_SPEECH_GUIDANCE = ' When an external speech plugin has taken over, omit provider, model, voice, voiceDesignPrompt, speechInstruction and voiceRate to use its configured voice. External engines do not support these per-request overrides or built-in provider audio tags. Use WAV when the engine does not advertise MP3 support.'
+const EXTERNAL_SPEECH_GUIDANCE = ' When an external speech plugin has taken over, omit provider, model, voice, voiceDesignPrompt, speechInstruction and voiceRate to use its configured voice. Only pass model, voice, speechInstruction or audio tags when the external engine advertises support for those options. External engines do not accept voiceDesignPrompt or voiceRate overrides. Use WAV when the engine does not advertise MP3 support.'
 
 function request(args: unknown, signal: AbortSignal): SpeechRequest {
   if (!args || typeof args !== 'object' || typeof (args as SpeechRequest).text !== 'string') throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)

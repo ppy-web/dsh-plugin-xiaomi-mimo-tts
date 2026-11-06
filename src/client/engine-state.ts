@@ -60,9 +60,13 @@ export const externalEngine = (): SpeechEngineState | null => {
   return state?.provider.startsWith('external:') ? state : null
 }
 export const engineSupportsRealtime = (settings: ResolvedTtsSettings): boolean => externalEngine()?.streaming ?? supportsRealtimeTts(settings)
-export const externalText = (text: string): string => prepareExternalTtsText(text, externalEngine()?.models?.find(model => model.id === externalEngine()?.selection?.model)?.audioTags?.map(tag => tag.value))
-export const externalFallbackText = (text: string): string => {
-  for (const tag of externalEngine()?.models?.find(model => model.id === externalEngine()?.selection?.model)?.audioTags ?? []) text = text.split(tag.value).join(' ')
+function externalAudioTags(selection?: ExternalSpeechSelection) {
+  const engine = externalEngine()
+  return engine?.models?.find(model => model.id === (selection?.model ?? engine.selection?.model))?.audioTags ?? []
+}
+export const externalText = (text: string, selection?: ExternalSpeechSelection): string => prepareExternalTtsText(text, externalAudioTags(selection).map(tag => tag.value))
+export const externalFallbackText = (text: string, selection?: ExternalSpeechSelection): string => {
+  for (const tag of externalAudioTags(selection)) text = text.split(tag.value).join(' ')
   return prepareExternalTtsText(text)
 }
 export const engineText = (text: string, builtin: () => string): string => externalEngine() ? externalText(text) : builtin()
@@ -70,9 +74,9 @@ export const engineMaxTextLength = (fallback = 12000): number => externalEngine(
 export const engineCanRequest = (): boolean => ['inactive', 'ready'].includes(engineStateStore.getSnapshot().status)
 
 /** The built-in sentence grouper allows long sentences; external limits are strict UTF-16 limits. */
-export function splitExternalText(text: string, maximum = engineMaxTextLength()): string[] {
+export function splitExternalText(text: string, maximum = engineMaxTextLength(), selection?: ExternalSpeechSelection): string[] {
   const result: string[] = []
-  for (const sentence of splitTtsSegments(text, Math.min(180, maximum), maximum, externalText)) {
+  for (const sentence of splitTtsSegments(text, Math.min(180, maximum), maximum, value => externalText(value, selection))) {
     let part = ''
     for (const character of sentence.match(/<[^>]*>|\([^()]*\)|./gu) ?? []) {
       if (character.length > maximum) throw new Error('text-too-long')

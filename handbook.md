@@ -452,6 +452,8 @@ New-NetFirewallRule -DisplayName 'DSH AI Passport hotspot' -Direction Inbound -A
 
 “供应商适配器”（`dsh-speech-provider-adapter`）是独立安装的插件，在 DSH 插件详情的设置区管理供应商，提供多套供应商配置、SenseAudio / OpenAI 兼容语音 / MiniMax 原生协议，以及完整音频和 HTTP 流式。地址、密钥、协议、当前供应商在适配器管理；模型和音色可在本插件中切换并保存到适配器。目录可自动刷新与手动补充；测试连接只查询目录，不生成付费语音。配置文件保存在当前 profile 下，浏览器只接收密钥存在状态。
 
+播报台「语音服务商」标题旁的「供应商适配器 ↗」链接在新标签页打开[独立适配器仓库](https://github.com/ppy-web/dsh-speech-provider-adapter)。
+
 开发接入见 [开放接口](open-api.md#外部供应商插件接管)。在独立预览页添加 `?external=wav`、`?external=pcm` 或 `?external=unready` 可检查接管的完整音频、流式或未就绪界面；这些参数只用于预览环境。
 
 ## 仓库依赖维护

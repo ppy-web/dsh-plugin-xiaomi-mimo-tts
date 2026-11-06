@@ -600,6 +600,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
         />
         <PreviewModule
+          externalSelection={externalDraft.value}
           mossEnabled={mossEnabled}
           onMossEnabledChange={next => {
             previewPlayer.stop()

@@ -5,6 +5,7 @@ import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
 import { FieldInfo } from './controls/field-info.js'
 import { SettingFieldHeading } from './field-heading.js'
+import { SPEECH_PROVIDER_ADAPTER_URL } from './plugin-links.js'
 
 export interface ProviderSettingsProps {
   t: Translate
@@ -20,7 +21,10 @@ export interface ProviderSettingsProps {
 export function ProviderSettings({ t, writable, providerLocked = false, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange }: ProviderSettingsProps): ReactElement {
   const providerWritable = writable && !providerLocked
   return <section className="xmimo-tts-format xmimo-tts-provider-settings xmimo-tts-switch-grid" aria-label={t('settings.provider')}>
-    <SettingFieldHeading label={t('settings.provider')} suffix={<FieldInfo label={t('settings.provider')} text={t('settings.providerMinimum')} />} resettable={false} disabled={!writable} />
+    <SettingFieldHeading label={t('settings.provider')} suffix={<>
+      <FieldInfo label={t('settings.provider')} text={t('settings.providerMinimum')} />
+      <a className="xmimo-tts-api-key-link" href={SPEECH_PROVIDER_ADAPTER_URL} target="_blank" rel="noopener noreferrer">{t('settings.externalProviderAdapter')} ↗</a>
+    </>} resettable={false} disabled={!writable} />
     <div className="xmimo-tts-announcement-source">
       <span className="xmimo-tts-provider-settings-brand"><img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES.xiaomi)} alt="" /><span>XiaoMi Mimo</span></span>
       <Switch checked disabled label="XiaoMi Mimo" onChange={() => {}} />

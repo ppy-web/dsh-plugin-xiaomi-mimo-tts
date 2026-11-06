@@ -9,6 +9,7 @@ import { PlaybackIcon } from '../playback/playback-icon.js'
 import { AudioTagPicker } from './controls/audio-tag-picker.js'
 import { ProviderSettings } from './provider-settings.js'
 import type { ProviderSettingsProps } from './provider-settings.js'
+import type { ExternalSpeechSelection } from '../../host-api.js'
 import { PREVIEW_PRESETS } from './preview-presets.js'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
@@ -26,12 +27,13 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<Prov
   open: boolean
   onToggleOpen: () => void
   audioTagProvider?: 'xiaomi' | 'breeze' | undefined
+  externalSelection?: ExternalSpeechSelection | undefined
 }
 
-export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, ...settings }: PreviewModuleProps): ReactElement {
+export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, externalSelection, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, ...settings }: PreviewModuleProps): ReactElement {
   useEngineState()
   const external = externalEngine()
-  const externalTags = external?.models?.find(model => model.id === external.selection?.model)?.audioTags
+  const externalTags = external?.models?.find(model => model.id === (externalSelection?.model ?? external.selection?.model))?.audioTags
   const textRef = useRef<HTMLTextAreaElement>(null)
   const [downloads] = useState(() => new HistoryDownloads())
   const [downloadFailed, setDownloadFailed] = useState(false)

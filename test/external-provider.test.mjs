@@ -389,6 +389,31 @@ test('external takeover saves global settings without writing or validating buil
   assert.deepEqual(writes, [{ op: 'set', path: ['voiceVolume'], value: 0.5 }])
 })
 
+test('preview requests preserve tags declared by an unsaved external model without changing the saved selection', async () => {
+  const saved = { model: 'saved', voice: 'voice' }
+  const draft = { model: 'draft', voice: 'voice' }
+  engineStateStore.accept({ ...externalState, selection: saved,
+    models: [
+      { id: 'saved', name: 'Saved', voices: [{ id: 'voice', name: 'Voice' }], audioTags: [] },
+      { id: 'draft', name: 'Draft', voices: [{ id: 'voice', name: 'Voice' }], audioTags: [{ value: '<draft-pause>', name: 'Draft pause' }] },
+    ],
+  })
+  try {
+    await withBrowserPlayback(async state => {
+      const player = new PreviewPlayer(() => {})
+      try {
+        const playing = player.play('Hello <draft-pause> world.', { ...resolveTtsSettings({ localSpeechMode: 'disabled' }), externalSelection: draft })
+        await settle()
+        assert.equal(state.requests[0].model, 'draft')
+        assert.ok(state.requests[0].text.includes('<draft-pause>'))
+        assert.deepEqual(engineStateStore.getSnapshot().engine.selection, saved)
+        state.media[0].onended()
+        await playing
+      } finally { await player.dispose() }
+    }, { fetch: () => new Response('audio', { headers: { 'content-type': 'audio/wav' } }) })
+  } finally { engineStateStore.accept(builtin) }
+})
+
 test('a partially played external preview never restarts the passage through local fallback', async () => {
   engineStateStore.accept({ ...externalState, maxTextLength: 3 })
   try {

@@ -187,7 +187,7 @@ export class PreviewPlayer {
       return
     }
     const generation = this.generation
-    const localText = externalEngine() ? externalFallbackText(normalized) : engineText(normalized, () => settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : (settings.provider ?? 'xiaomi') === 'xiaomi' ? stripXiaomiAudioTags(normalized) : normalized)
+    const localText = externalEngine() ? externalFallbackText(normalized, settings.externalSelection) : engineText(normalized, () => settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : (settings.provider ?? 'xiaomi') === 'xiaomi' ? stripXiaomiAudioTags(normalized) : normalized)
     try {
       if (settings.localSpeechMode === 'local-first') {
         try {
@@ -300,7 +300,7 @@ export class PreviewPlayer {
   private async playRemote(text: string, settings: PreviewSettings, generation: number): Promise<void> {
     const external = externalEngine()
     if (external) {
-      for (const segment of splitExternalText(text)) {
+      for (const segment of splitExternalText(text, external.maxTextLength, settings.externalSelection)) {
         if (generation !== this.generation) return
         if (external.streaming && (!settings.externalSelection || external.models?.find(model => model.id === settings.externalSelection?.model)?.streaming)) await this.playPcm(segment, settings, generation)
         else await this.playComplete(segment, settings, generation, 'wav', 'external')

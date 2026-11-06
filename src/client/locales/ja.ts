@@ -5,6 +5,7 @@ import { passportEn } from '../settings/passport-copy.js'
 
 export const ja: Record<LocaleKey, string> = {
   'settings.externalManage': 'プロバイダーを管理',
+  'settings.externalProviderAdapter': 'プロバイダーアダプター',
   'settings.acceptExternalProviders': '外部プロバイダーを受け入れる',
   'settings.acceptExternalProvidersHint': '外部プラグインの音声を使用します。オフにして保存すると内蔵プロバイダーに戻ります。',
   'settings.externalSwitchFailed': 'プロバイダーを切り替えられませんでした。もう一度お試しください。',

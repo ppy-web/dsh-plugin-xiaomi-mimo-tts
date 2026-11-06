@@ -7,3 +7,4 @@
 
 export const SOURCE_URL = 'https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts'
 export const MANUAL_URL = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual'
+export const SPEECH_PROVIDER_ADAPTER_URL = 'https://github.com/ppy-web/dsh-speech-provider-adapter'
