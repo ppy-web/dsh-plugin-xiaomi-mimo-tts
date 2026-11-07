@@ -24,7 +24,6 @@ import { FilterLab } from './filter-lab.js'
 import { useSettingsSnapshot } from '../../src/client/settings/scope.js'
 import { TTS_VERSION } from '../../src/shared.js'
 import { ActivationGuide } from '../../src/client/settings/activation-guide.js'
-import { unrestrictedAudioFocus } from '../../src/client/playback/tab-audio-focus.js'
 import { AudioHistory } from '../../src/client/history/audio-history.js'
 import { ConversationPreview } from './conversation-preview.js'
 import { VoiceReadingPreview } from './voice-reading-preview.js'
@@ -181,7 +180,8 @@ function PreviewApp() {
     {mobile && navigationOpen ? <Modal open headless title={copy.navigation} onClose={() => setNavigationOpen(false)} className="preview-mobile-sidebar">
       <div id="preview-mobile-navigation"><PreviewSidebar {...sidebarProps} onClose={() => setNavigationOpen(false)} /></div>
     </Modal> : null}
-    {activationOpen ? <ActivationGuide packageName="dsh-xiaomi-tts" scope={scope} t={t} audioFocus={unrestrictedAudioFocus} beforePreview={() => history.stopReplay()}
+    {activationOpen ? <ActivationGuide packageName="dsh-xiaomi-tts" t={t}
+      onOpenWorkbench={() => { window.location.hash = scope.getSnapshot().value?.showInSidebar ? 'workbench' : 'settings' }}
       onOpenDetails={() => { setActivationOpen(false); window.location.hash = 'settings' }} onDismiss={() => setActivationOpen(false)} /> : null}
     <style>{CLIENT_STYLES}</style>
   </div>

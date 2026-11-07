@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { ReactElement } from 'react'
 import { RiVoiceAiFill } from 'react-icons/ri'
 import { resolveTtsSettings } from '../../shared.js'
@@ -9,6 +10,16 @@ import { VoiceSettingsPage } from './voice-settings-page.js'
 import type { VoiceSettingsPageProps } from './voice-settings-page.js'
 
 export const VOICE_SETTINGS_PANEL_ID = 'xiaomi-mimo-tts.settings'
+
+/** Follow the saved placement at click time, including changes made while the guide is open. */
+export function openVoiceWorkbench(ctx: Pick<Context, 'layout' | 'pluginNavigation'>, scope: VoiceSettingsPageProps['scope']): void {
+  const snapshot = scope.getSnapshot()
+  if (snapshot.status === 'ready' && resolveTtsSettings(snapshot.value).showInSidebar) {
+    ctx.layout.selectPanel(VOICE_SETTINGS_PANEL_ID as MainPanelId)
+  } else {
+    ctx.pluginNavigation.openBundle('dsh-xiaomi-tts')
+  }
+}
 
 /** The sidebar owns the navigation row and its collapsed-rail tooltip. */
 export function VoiceSettingsSidebarIcon({ size }: { size: number }): ReactElement {

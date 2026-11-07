@@ -18,6 +18,7 @@ import {
   TTS_MOSS_LOGO_ASSET_ROUTE,
   TTS_API_KEY_WHALE_ASSET_ROUTE,
   TTS_HISTORY_EMPTY_ASSET_ROUTE,
+  TTS_UPDATE_CELEBRATION_ASSET_ROUTE,
   TTS_QQ_GROUP_ASSET_ROUTE,
   TTS_TOGGLE_AUDIO_ASSET_ROUTE,
   TTS_TOGGLE_SOUND_FILES,
@@ -198,6 +199,13 @@ export function apply(ctx: Context, config: Config): void {
     data: readFileSync(new URL('../assets/ui/provider-breeze-logo-light.png', import.meta.url)),
     contentType: 'image/png',
     description: 'Breeze Blue wordmark',
+  })
+
+  registerStaticAsset(ctx, {
+    path: TTS_UPDATE_CELEBRATION_ASSET_ROUTE,
+    data: readFileSync(new URL('../assets/ui/update-celebration-whale.webp', import.meta.url)),
+    contentType: 'image/webp',
+    description: 'version highlights celebration mascot',
   })
 
   registerStaticAsset(ctx, {

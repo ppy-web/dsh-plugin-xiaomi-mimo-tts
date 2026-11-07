@@ -2,7 +2,7 @@
 export const TTS_SETTINGS_NAMESPACE = 'xiaomi-mimo-tts'
 
 /** Keep the UI version visible without making the browser bundle load package.json. */
-export const TTS_VERSION = '5.2.0-next.0'
+export const TTS_VERSION = '5.2.0'
 
 /** Breeze accepts at most 1000 characters in one synthesis request. */
 export const BREEZE_MAX_TEXT_LENGTH = 1000
@@ -82,6 +82,9 @@ export const TTS_API_KEY_WHALE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/api-key-w
 
 /** Same-origin illustration for an empty audio history. */
 export const TTS_HISTORY_EMPTY_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/history-empty-whale.webp'
+
+/** Transparent mascot for the version highlights celebration. */
+export const TTS_UPDATE_CELEBRATION_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/update-celebration-whale.webp'
 
 /** Same-origin QR code for the plugin's QQ discussion group. */
 export const TTS_QQ_GROUP_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/qq-group.webp'

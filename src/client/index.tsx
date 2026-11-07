@@ -30,7 +30,7 @@ import { VoiceInputActivity } from './voice-input-activity.js'
 import { ComposerInputActivity } from './composer-input-activity.js'
 import { registerVoiceReadingNavIcon } from './settings/nav-icon.js'
 import { observeHostSettingsEntry } from './settings/host-settings-entry.js'
-import { registerVoiceSettingsSidebar, VOICE_SETTINGS_PANEL_ID } from './settings/sidebar-action.js'
+import { openVoiceWorkbench, registerVoiceSettingsSidebar, VOICE_SETTINGS_PANEL_ID } from './settings/sidebar-action.js'
 import { VoiceReadingSection } from './settings/voice-reading-section.js'
 import type { VoiceReadingSectionInjected } from './settings/voice-reading-section.js'
 import { createSoundEffectsController, installClickSounds } from './sound-effects/index.js'
@@ -317,7 +317,7 @@ export function apply(ctx: Context): void {
     name: 'plugins.bundle.activation',
     key: 'dsh-xiaomi-tts',
     locale: NS,
-    inject: () => ({ scope, t, audioFocus, changes, beforePreview: stopAllPlayback }),
+    inject: () => ({ t, changes, onOpenWorkbench: () => openVoiceWorkbench(ctx, scope) }),
   }, ActivationGuide))
 
   registerSlotContribution(ctx, 'sidebar.panellist', () => registerVoiceSettingsSidebar(ctx, settingsPageProps))

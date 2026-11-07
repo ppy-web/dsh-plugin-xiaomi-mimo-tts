@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { resolveTtsSettings } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
-const { registerVoiceSettingsSidebar } = await loadClientModule('src/client/settings/sidebar-action.tsx')
+const { openVoiceWorkbench, registerVoiceSettingsSidebar, VOICE_SETTINGS_PANEL_ID } = await loadClientModule('src/client/settings/sidebar-action.tsx')
 const { SidebarSettings } = await loadClientModule('src/client/settings/sidebar-settings.tsx')
 const { BundleSettingsCard, registerBundleSettings } = await loadClientModule('src/client/settings/bundle-settings.tsx')
 const { PluginDetailActions } = await loadClientModule('src/client/settings/plugin-detail.tsx')
@@ -18,6 +18,7 @@ function host(initial = {}) {
   const entries = new Map()
   const events = []
   const opened = []
+  const selected = []
   const scope = { getSnapshot: () => snapshot, subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) } }
   const page = { scope, t, controller: { play() {}, update() {} } }
   const ctx = {
@@ -29,13 +30,31 @@ function host(initial = {}) {
       return () => { assert.ok(entries.delete(key), 'each registration is removed once'); events.push(['remove', options.name]) }
     } },
     pluginNavigation: { openBundle: name => opened.push(name) },
+    layout: { selectPanel: id => selected.push(id) },
   }
   const update = (value, status = 'ready') => {
     snapshot = { status, value: resolveTtsSettings(value) }
     for (const listener of listeners) listener()
   }
-  return { scope, page, ctx, entries, listeners, events, opened, update }
+  return { scope, page, ctx, entries, listeners, events, opened, selected, update }
 }
+
+test('workbench entry follows the latest saved placement and falls back to plugin settings when unavailable', () => {
+  const h = host()
+  const open = () => openVoiceWorkbench(h.ctx, h.scope)
+  open()
+  assert.deepEqual(h.opened, ['dsh-xiaomi-tts'])
+  h.update({ showInSidebar: true, enabled: false })
+  open()
+  assert.deepEqual(h.selected, [VOICE_SETTINGS_PANEL_ID])
+  assert.equal(h.opened.length, 1)
+  h.update({ showInSidebar: false })
+  open()
+  h.update({ showInSidebar: true }, 'unavailable')
+  open()
+  assert.deepEqual(h.opened, ['dsh-xiaomi-tts', 'dsh-xiaomi-tts', 'dsh-xiaomi-tts'])
+  assert.deepEqual(h.selected, [VOICE_SETTINGS_PANEL_ID])
+})
 
 test('saved shortcut opens a standalone settings page using the shared configuration and controls', () => {
   const h = host()
