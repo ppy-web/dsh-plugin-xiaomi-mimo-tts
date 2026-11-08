@@ -157,21 +157,6 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
       <p>{t('passport.requirements')}</p>
       <a href={guideHref} target={guideHref.startsWith('#') ? undefined : '_blank'} rel={guideHref.startsWith('#') ? undefined : 'noopener noreferrer'}>{t('passport.guide')}</a>
     </header>
-    <section aria-labelledby={`${id}-recognition`}>
-      <h4 id={`${id}-recognition`}>{t('passport.asrProvider')}</h4>
-      <label className="xmimo-qq-field" htmlFor={`${id}-asr`}>
-        <span>{t('passport.asrProvider')}</span>
-        <select id={`${id}-asr`} name="asrProvider" value={value.asrProvider} disabled={disabled}
-          aria-describedby={`${id}-asr-hint`} onChange={event => edit('asrProvider', event.currentTarget.value)}>
-          {(['host', 'xiaomi', 'doubao'] as const).map(source => <option key={source} value={source}
-            disabled={source !== 'host' && !status?.recognitionChoices?.some(choice => choice.id === source && choice.configured)}>
-            {t(`passport.asr.${source}`)}{source !== 'host' ? ` · ${t(status?.recognitionChoices?.some(choice => choice.id === source && choice.configured) ? 'passport.keyConfigured' : 'passport.keyMissing')}` : ''}
-          </option>)}
-        </select>
-        <small id={`${id}-asr-hint`}>{t(value.asrProvider === 'host' ? 'passport.asrHostHint' : 'passport.asrCloudHint')}</small>
-      </label>
-      {openTtsSettings ? <Button type="button" variant="outline" size="sm" onClick={openTtsSettings}>{t('passport.configureKeys')}</Button> : null}
-    </section>
     {changing ? <p role="status">{t('plugin.changing')}</p> : null}
     <section className="xmimo-passport-quick" aria-labelledby={`${id}-quick`}>
       <div className="xmimo-passport-heading">
@@ -223,19 +208,38 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
         <Button type="button" variant="outline" size="sm" disabled={disabled || conflict || !!invalid || !roster || !knownPreset}
           onClick={() => { void renewSession() }}><FiRefreshCw aria-hidden="true" />{t(state === 'saving' ? 'settings.saving' : 'passport.newSession')}</Button>
       </div>
-      <label className="xmimo-qq-field" htmlFor={`${id}-agentPreset`}>
-        <span>{t('passport.agentPreset')}</span>
-        <select id={`${id}-agentPreset`} name="agentPreset" disabled={disabled || !roster} value={value.agentPreset}
-          aria-describedby={`${id}-preset-hint`} onChange={event => edit('agentPreset', event.currentTarget.value)}>
-          <option value="">{t('passport.hostDefault')}</option>
-          {value.agentPreset && !roster?.some(item => item.id === value.agentPreset) ? <option value={value.agentPreset} disabled>{value.agentPreset} — {t('passport.presetUnavailable')}</option> : null}
-          {roster?.map(item => <option key={item.id} value={item.id} disabled={item.unavailable}>{item.name ? `${item.name} · ${item.id}` : item.id}{item.unavailable ? ` — ${t('passport.presetUnavailable')}` : ''}</option>)}
-        </select>
+      <div className="xmimo-qq-field">
+        <label htmlFor={`${id}-agentPreset`}>{t('passport.agentPreset')}</label>
+        <div className="xmimo-passport-control-row">
+          <select id={`${id}-agentPreset`} name="agentPreset" disabled={disabled || !roster} value={value.agentPreset}
+            aria-describedby={`${id}-preset-hint`} onChange={event => edit('agentPreset', event.currentTarget.value)}>
+            <option value="">{t('passport.hostDefault')}</option>
+            {value.agentPreset && !roster?.some(item => item.id === value.agentPreset) ? <option value={value.agentPreset} disabled>{value.agentPreset} — {t('passport.presetUnavailable')}</option> : null}
+            {roster?.map(item => <option key={item.id} value={item.id} disabled={item.unavailable}>{item.name ? `${item.name} · ${item.id}` : item.id}{item.unavailable ? ` — ${t('passport.presetUnavailable')}` : ''}</option>)}
+          </select>
+          <Button type="button" variant="ghost" size="sm" disabled={disabled} aria-label={t('passport.reloadPresets')} title={t('passport.reloadPresets')}
+            onClick={() => setRosterVersion(version => version + 1)}><FiRefreshCw aria-hidden="true" /></Button>
+        </div>
         <small id={`${id}-preset-hint`}>{t('passport.agentPresetHint')}</small>
-      </label>
-      <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => setRosterVersion(version => version + 1)}>{t('passport.reloadPresets')}</Button>
+      </div>
       <p role="status" className="xmimo-qq-hint">{rosterFailed ? t('passport.presetsFailed') : !roster ? t('passport.presetsLoading')
         : !knownPreset ? t('passport.presetUnavailable') : state === 'renewed' ? t('passport.sessionRenewed') : ''}</p>
+    </section>
+    <section aria-labelledby={`${id}-recognition`}>
+      <h4 id={`${id}-recognition`}><label htmlFor={`${id}-asr`}>{t('passport.asrProvider')}</label></h4>
+      <div className="xmimo-qq-field">
+        <div className="xmimo-passport-control-row">
+          <select id={`${id}-asr`} name="asrProvider" value={value.asrProvider} disabled={disabled}
+            aria-describedby={`${id}-asr-hint`} onChange={event => edit('asrProvider', event.currentTarget.value)}>
+            {(['host', 'xiaomi', 'doubao'] as const).map(source => <option key={source} value={source}
+              disabled={source !== 'host' && !status?.recognitionChoices?.some(choice => choice.id === source && choice.configured)}>
+              {t(`passport.asr.${source}`)}{source !== 'host' ? ` · ${t(status?.recognitionChoices?.some(choice => choice.id === source && choice.configured) ? 'passport.keyConfigured' : 'passport.keyMissing')}` : ''}
+            </option>)}
+          </select>
+          {openTtsSettings ? <Button type="button" variant="outline" size="sm" onClick={openTtsSettings}>{t('passport.configureKeys')}</Button> : null}
+        </div>
+        <small id={`${id}-asr-hint`}>{t(value.asrProvider === 'host' ? 'passport.asrHostHint' : 'passport.asrCloudHint')}</small>
+      </div>
     </section>
     <details className="xmimo-passport-advanced"><summary>{t('passport.advanced')}</summary>
     {GROUPS.map(group => <section key={group.id} aria-labelledby={`${id}-${group.id}`}>

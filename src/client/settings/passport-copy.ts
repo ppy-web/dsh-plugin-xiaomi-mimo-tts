@@ -1,6 +1,6 @@
 export const passportZh = {
   'passport.asrProvider': '语音识别来源',
-  'passport.asr.host': '宿主语音识别',
+  'passport.asr.host': 'DSH 宿主本地语音识别',
   'passport.asr.xiaomi': '小米 MiMo ASR',
   'passport.asr.doubao': '豆包流式 ASR',
   'passport.keyConfigured': '密钥已配置',
@@ -102,7 +102,7 @@ export const passportZh = {
 
 export const passportEn: Record<keyof typeof passportZh, string> = {
   'passport.asrProvider': 'Speech recognition source',
-  'passport.asr.host': 'Host speech recognition',
+  'passport.asr.host': 'DSH Host local speech recognition',
   'passport.asr.xiaomi': 'Xiaomi MiMo ASR',
   'passport.asr.doubao': 'Doubao streaming ASR',
   'passport.keyConfigured': 'Key configured',
