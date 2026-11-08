@@ -287,18 +287,38 @@ export async function apply(ctx: Context) {
 
 组件 `dsh-xiaomi-tts/passport`（默认开启，不使用时可关闭）配合 WhaleTalk Passport 固件，将设备接为通过 Wi-Fi 使用的随身 DSH 语音终端：
 
-- **语音提问与有声回复**：设备收音后，由 DSH 宿主识别文字、交给当前默认对话模型，再通过本插件已保存的 TTS 服务与音色合成回复并回传播放；播放完成后恢复收音，继续下一轮对话。
+- **语音提问与有声回复**：设备收音后，由所选识别来源转为文字、交给当前默认对话模型，再通过本插件已保存的 TTS 服务与音色合成回复并回传播放；播放完成后恢复收音，继续下一轮对话。
 - **Agent 预设与专用会话**：支持选择预设，设备会话独立于网页和 QQ 会话，重启后可恢复；工具操作仍遵循宿主权限和审批规则。
 - **快捷配对与取消**：一键生成 4 位配对码并显示电脑局域网地址；使用配套固件时，按 DOWN 可取消当前识别、对话或播报，掉线重连后不会补播旧回复。
 - **关闭网页后继续使用**：只要电脑上的 DSH 进程保持运行且设备能访问它，就能继续对话。
 
 完整分步教程见独立的 [AI Passport 接入页](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport)。[组件配置预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#components-passport)提供与真实组件相同的分组表单，但保存只修改演示数据，不启动监听、不扫描网络，也不会连接设备。
 
-组件只提供设备连接、会话编排和协议适配，语音识别、对话与合成全部复用宿主能力：`speechToText`、当前默认对话模型、Agent 预设，以及本插件的宿主 TTS。它不包含自己的 ASR 引擎，也无需 Qwen Audio Agent 后台、Windows 声卡采集或串口驱动。
+组件只提供设备连接、会话编排和协议适配，语音识别、对话与合成全部复用宿主能力：默认宿主 `speechToText` 或插件云端 ASR、当前默认对话模型、Agent 预设，以及本插件的宿主 TTS。云端识别复用本插件已保存的供应商密钥，无需 Qwen Audio Agent 后台、Windows 声卡采集或串口驱动。
+
+### 选择语音识别来源
+
+连接器配置顶部的「语音识别来源」可选宿主、小米 MiMo ASR 或豆包流式 ASR，默认宿主；不改变主应用语音输入或 TTS 来源。例如可用豆包识别、Breeze 播音。
+
+- **宿主**：沿用 DSH 已选的识别 provider、模型和语言，需要完成模型准备。
+- **小米**：复用主插件的小米 API Key，使用 `mimo-v2.5-asr`，静音断句后提交完整 WAV，自动识别语言。
+- **豆包**：复用主插件豆包 API Key，使用 ASR 2.0，达到最短有效语音后边收音边上传；本地断句并收到最终结果后才提交对话，中间文字不会触发回复。支持普通语音 Key 和 Agent Plan Key。
+
+未配置密钥的云端选项不可选，可通过「配置供应商密钥」打开主插件配置。已配置不表示识别权限、额度或网络已验证；云端模式会把录音发送到所选供应商。Breeze 当前公开 API 没有独立 ASR，识别列表不展示它。识别失败不会自动换供应商。
+
+保存来源或更新密钥会中止当前轮次并让设备重连，继续原专用会话。云端模式无需安装宿主 ASR，但对话模型、Agent 预设及 TTS 仍需可用。
+
+### 阶段、失败提示与延迟
+
+配套新固件显示收音、识别、思考、工具执行、合成和播放阶段；阶段等待超过 8 秒提示可按 DOWN 取消。空识别、过短语音、无可朗读回复及识别、对话、播音失败会保留屏幕原因并响一次本地提示音，音量跟随设备。普通轮次失败保留连接和开麦选择，下一轮有效输入清除提示；取消和持续静音不响失败音。
+
+流式播音发生中途失败或达到回复时长上限时停止并提示，保留完整会话文字，不自动重播前半段。仍以设备播放完成回执确认交付成功。
+
+宿主日志 `Passport timing` 只记录轮次 ID、阶段及单调时钟耗时，不含录音、正文或密钥。比较同一组录音的 `capture-ended` 到 `recognition-ended`，以及到 `playback-started` 的差值，可分别观察断句后的识别和首声等待；同时记录模型与首批音频耗时。区分冷启动和连续使用，并检查识别准确性与听感，云端服务不保证始终更快。
 
 ### 前提与配置
 
-- **宿主能力依赖**：DSH profile 必须已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 和识别 provider（如 SenseVoice），并在宿主语音输入设置里完成模型准备、实际测试过一次语音转文字。该识别组件由 DSH 宿主提供，**不随本插件安装**，本插件也不会代为下载模型或回退其他识别服务。缺少它时配置页会提示正在等待宿主服务，设备无法连接。
+- **宿主识别模式**：默认使用宿主识别，此模式的 DSH profile 必须已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 和识别 provider（如 SenseVoice），并在宿主语音输入设置里完成模型准备、实际测试过一次语音转文字。该识别组件由 DSH 宿主提供，**不随本插件安装**，本插件也不会代为下载模型或回退其他识别服务。缺少它时可改用小米或豆包识别；云端模式不依赖该组件。
 - 安装或更新本插件、开启或关闭该组件后，DSH 需要重启才会加载宿主插件；配置页提示“尚未加载”时，先重启 DSH 再重新打开本页。
 - 推荐使用独立托管的 [WhaleTalk Passport（鲸语通行证）固件](https://github.com/ppy-web/whaletalk-passport/blob/main/docs/guide.zh_CN.md)，包含开发环境安装、固件构建、配网和按键说明；也兼容 [Qwen Voice Bean 固件](https://github.com/liutaocode/esp32demo/tree/main/examples/qwen-voice-bean)。设备端协议为 GCP 7.0.0 的音频子集，AI Passport 官方测试基线和其他玩法固件不能直接接入；本组件不提供完整 Qwen Gateway、任务或权限协议。
 - 本插件的宿主 TTS 已能正常生成 WAV；浏览器系统语音不用于设备回传。Agent 预设和默认对话模型必须可用；工具权限与审批仍由宿主管理，不会自动批准。
@@ -340,12 +360,13 @@ New-NetFirewallRule -DisplayName 'DSH AI Passport hotspot' -Direction Inbound -A
     cwd: '~/.dsh-xiaomi-tts/passport/workspace'
 ```
 
-设备只填电脑的局域网 IPv4 和配对码。端口在设备“高级设置”中，默认 3101，与电脑保持一致；连接路径固定为 `/api/realtime`。电脑需保持 DSH 运行，且宿主 ASR、默认模型和 TTS 已准备好。
+设备只填电脑的局域网 IPv4 和配对码。端口在设备“高级设置”中，默认 3101，与电脑保持一致；连接路径固定为 `/api/realtime`。电脑需保持 DSH 运行，且所选 ASR、默认模型和 TTS 已准备好。
 
 ### 配置参数
 
 | 字段 | 默认值 / 范围 | 填写说明 |
 | --- | --- | --- |
+| `asrProvider` | `host` / `xiaomi` / `doubao` | 独立于 TTS；云端模式读取主插件已保存的对应密钥。 |
 | `host` | `127.0.0.1` | 监听地址，必须属于 DSH 主机。设备接入填写主机的局域网 IPv4，不附带协议、端口或路径。 |
 | `port` | `3101` / 1–65535 整数 | WhaleTalk Passport 支持自定义端口，与设备配网页面保持一致。 |
 | `accessToken` | 空 / 4 位数字 | 设备配对码；推荐一键生成。空值时等待配置，编辑其他设置时留空保留已保存的码。兼容已有长令牌。 |
@@ -356,7 +377,7 @@ New-NetFirewallRule -DisplayName 'DSH AI Passport hotspot' -Direction Inbound -A
 | `minSpeechMs` | 200 ms / 100–1000 ms | 最短有效语音，过滤过短噪声。 |
 | `speechThreshold` | 0.015 / 0.001–0.5 | 归一化 RMS；提高后更不易被环境声音触发。 |
 | `maxRecordingSeconds` | 30 秒 / 1–60 秒 | 含预录与尾部静音，超长录音不提交。 |
-| `maxReplySeconds` | 60 秒 / 1–120 秒 | 超长回复不发声，不截断会话文字。 |
+| `maxReplySeconds` | 60 秒 / 1–120 秒 | 流式超限停止并提示；完整音频在播放前校验，会话文字保留。 |
 | `requestTimeoutMs` | 180000 ms / 10000–600000 ms | 识别、对话与播报的整轮上限，超时取消当前任务。 |
 
 首次接入建议保留收音和超时默认值。先分别验证宿主语音转文字、普通文字对话与关闭本地兜底后的云端试听，再连接设备；不要用增大超时掩盖模型或网络未就绪的问题。
@@ -379,7 +400,7 @@ New-NetFirewallRule -DisplayName 'DSH AI Passport hotspot' -Direction Inbound -A
 
 普通「保存」仍不会新建会话。只修改 ID 导致不匹配时，页面提示点击新建会话按钮；预设不存在、创建或保存失败时，不覆盖旧的路由身份，不删除旧会话。修正预设后可再次点击该按钮。新预设从新会话开始，不会自动复制旧会话上下文。状态文件损坏仍需检查宿主日志，不以刷新按钮绕过校验。
 
-可调参数：`silenceMs` 默认 700 ms，`minSpeechMs` 默认 200 ms，`speechThreshold` 默认 0.015（归一化 RMS）；环境嘈杂时提高阈值，切句过早时延长静音时间。`maxRecordingSeconds` 默认 30 秒（含预录和尾部静音），超长录音不提交；`maxReplySeconds` 默认 60 秒，超长回复不发声、不截断文字；`requestTimeoutMs` 默认 180000 ms，限制一次识别、对话及播报的总等待时间。音频先完整合成，再转换为固件可播放的 24 kHz 单声道 PCM，按实际时长分包发送，等待设备播放回执，不把网络发送完成当作播放完成。
+可调参数：`silenceMs` 默认 700 ms，`minSpeechMs` 默认 200 ms，`speechThreshold` 默认 0.015（归一化 RMS）；环境嘈杂时提高阈值，切句过早时延长静音时间。`maxRecordingSeconds` 默认 30 秒（含预录和尾部静音），超长录音不提交；`maxReplySeconds` 默认 60 秒，流式回复到达上限时停止并提示，完整音频路径在播放前校验；会话文字保留；`requestTimeoutMs` 默认 180000 ms，限制一次识别、对话及播报的总等待时间。支持流式的 TTS 模型在最终文字生成后边合成边发送 24 kHz 单声道 PCM；不支持的模型保留完整 WAV 转换路径。音频按实际时长分包发送，等待设备播放回执，不把网络发送完成当作播放完成。
 
 宿主日志中的 `passport-asr-unavailable`／`passport-session-unavailable` 表示识别或会话未就绪；先检查宿主 ASR 准备、默认模型和预设。认证失败时核对两端的 4 位配对码、电脑 IP 和端口。掉线会取消当前工作，重连后不自动补发旧回复。模拟设备回归不能代替硬件验收；实际音质、长回复、按键取消和 Wi-Fi 重连需要在真实 AI Passport 上验证。
 

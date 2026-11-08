@@ -10,6 +10,7 @@ import { PassportSettingsPage } from './passport-settings.js'
 export function registerPassportSettings(ctx: Context, t: Translate, changes: SnapshotSource<boolean>): () => void {
   return ctx.slots.register({
     name: 'plugins.row.config', key: 'dsh-xiaomi-tts#speech-delivery-passport', locale: NS,
-    inject: () => ({ scope: ctx.configForms.get<PassportSettings>('speech-delivery-passport'), t, changes }),
+    inject: () => ({ scope: ctx.configForms.get<PassportSettings>('speech-delivery-passport'), t, changes,
+      openTtsSettings: () => ctx.pluginNavigation.openBundle('dsh-xiaomi-tts') }),
   }, PassportSettingsPage)
 }

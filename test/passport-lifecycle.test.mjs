@@ -65,6 +65,23 @@ async function host(t, config = {}) {
   return { ctx, view, registered, services, status, webBaseURL: `http://127.0.0.1:${web.address().port}`, entry: ctx.loader.resolve(id) }
 }
 
+test('cloud ASR listens without Host speechToText and exposes only credential availability', async t => {
+  const run = await host(t, { port: await freePort(), accessToken: token, asrProvider: 'xiaomi' })
+  await run.ctx.plugin({ name: 'cloud-services', apply(child) {
+    child.provide('speechSynthesis', { registerDelivery() { return () => {} } })
+    child.provide('passportRecognition', new passport.PassportRecognition(() => ({ apiKey: 'private-cloud-key', doubaoApiKey: '' })))
+    for (const name of ['agents', 'agentPresets', 'agentDefaultModel']) child.provide(name, {})
+  } })
+  await until(async () => (await run.status()).listening)
+  const status = await run.status()
+  assert.equal(status.servicesReady, true)
+  assert.equal(status.recognitionReady, true)
+  assert.equal(status.asrProvider, 'xiaomi')
+  assert.equal(run.ctx.get('speechToText'), undefined)
+  assert.equal(JSON.stringify(status).includes('private-cloud-key'), false)
+  assert.equal(status.recognitionChoices.find(c => c.id === 'doubao').configured, false)
+})
+
 test('fresh enabled Passport exposes editable Host settings without a token or ASR services', async t => {
   const port = await freePort()
   const run = await host(t, { port })

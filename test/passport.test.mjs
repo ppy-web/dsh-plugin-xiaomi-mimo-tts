@@ -111,6 +111,59 @@ async function harness(t, overrides = {}) {
     get cancelled() { return cancelled } }
 }
 
+test('feedback reports an empty transcript once and keeps the same microphone connection for the next turn', async t => {
+  let attempts = 0
+  const run = await harness(t, { recognition: { transcribe: async () => ({ text: ++attempts === 1 ? ' ' : '再试' }) } })
+  const device = await run.connect('feedback', { capabilities: ['input.audio', 'playback.receipts', 'voice.feedback'] })
+  device.audio()
+  const failed = await device.wait('voice.result', event => event.status === 'failed')
+  assert.equal(failed.code, 'passport-no-speech')
+  assert.equal(device.ws.readyState, WebSocket.OPEN)
+  assert.equal(run.submitted.length, 0)
+  device.audio(); await device.wait('voice.progress', event => event.phase === 'thinking')
+  assert.deepEqual(run.submitted, ['再试'])
+  run.reply('第二轮正常')
+  const done = await device.wait('audio.done')
+  device.send({ type: 'playback.ended', responseId: done.responseId })
+  await device.wait('voice.result', event => event.status === 'completed')
+  assert.equal(device.events.filter(event => event.type === 'voice.result' && event.turnId === failed.turnId).length, 1)
+})
+
+test('a failed synthesis ends its turn without a reconnect or waiting for the whole request timeout', async t => {
+  let calls = 0
+  const run = await harness(t, { synthesize: async () => { if (!calls++) throw new Error('private-upstream-secret'); return pcmWave(tone(40)) } })
+  const device = await run.connect('feedback', { capabilities: ['input.audio', 'playback.receipts', 'voice.feedback'] })
+  device.audio(); await device.wait('voice.progress', event => event.phase === 'thinking'); run.reply()
+  const failed = await device.wait('voice.result', event => event.status === 'failed')
+  assert.equal(failed.code, 'passport-speech-failed')
+  await device.wait('playback.clear')
+  assert.equal(device.ws.readyState, WebSocket.OPEN)
+  device.audio(); await device.wait('voice.progress', event => event.phase === 'thinking' && event.turnId !== failed.turnId); run.reply('恢复了', 2)
+  const done = await device.wait('audio.done')
+  device.send({ type: 'playback.ended', responseId: done.responseId })
+  await device.wait('voice.result', event => event.status === 'completed')
+  assert.equal(JSON.stringify(device.events).includes('private-upstream-secret'), false)
+})
+
+test('stream delivery sends the first samples before the source finishes and still waits for speaker drain', async t => {
+  const run = await harness(t), device = await run.connect()
+  device.audio(); await device.wait('voice.state', event => event.state === 'processing'); await settle()
+  const rest = Promise.withResolvers()
+  let finished = false
+  const sending = run.bridge.adapter.sendStream((async function* () {
+    yield Buffer.alloc(960, 1); await rest.promise; yield Buffer.alloc(38, 2); finished = true
+  })(), { agent: run.agent, signal: new AbortController().signal })
+  const first = await device.wait('audio.delta')
+  assert.equal(finished, false)
+  rest.resolve(); const done = await device.wait('audio.done')
+  let delivered = false; void sending.then(() => { delivered = true })
+  await settle(); assert.equal(delivered, false)
+  device.send({ type: 'playback.ended', responseId: 'old' }); await settle(); assert.equal(delivered, false)
+  device.send({ type: 'playback.ended', responseId: done.responseId }); await sending
+  assert.equal(done.responseId, first.responseId)
+  assert.deepEqual(Buffer.concat(device.events.filter(e => e.type === 'audio.delta').map(e => Buffer.from(e.audio, 'base64'))), Buffer.concat([Buffer.alloc(960, 1), Buffer.alloc(38, 2)]))
+})
+
 test('device audio uses the Host recognizer and only its dedicated final reply is delivered once', async t => {
   const run = await harness(t), device = await run.connect()
   device.audio()

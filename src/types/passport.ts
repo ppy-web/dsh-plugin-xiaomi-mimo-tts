@@ -1,4 +1,5 @@
 export interface PassportSettings {
+  asrProvider: 'host' | 'xiaomi' | 'doubao'
   host: string
   port: number
   accessToken: string
@@ -15,6 +16,7 @@ export interface PassportSettings {
 }
 
 export const DEFAULT_PASSPORT_SETTINGS: Readonly<PassportSettings> = {
+  asrProvider: 'host',
   host: '127.0.0.1', port: 3101, accessToken: '', deviceId: '', agentPreset: 'whale-girl', cwd: '~/.dsh-xiaomi-tts/passport/workspace',
   sessionRevision: '',
   silenceMs: 700, minSpeechMs: 200, speechThreshold: 0.015,
@@ -37,6 +39,8 @@ export const PASSPORT_PRESETS_ROUTE = '/plugins/xiaomi-mimo-tts/passport-presets
 export interface PassportPreset { id: string; name?: string; unavailable?: boolean }
 
 export interface PassportConnectionStatus {
+  asrProvider?: 'host' | 'xiaomi' | 'doubao'
+  recognitionChoices?: { id: 'host' | 'xiaomi' | 'doubao'; configured: boolean }[]
   configured: boolean
   listening: boolean
   connected: boolean

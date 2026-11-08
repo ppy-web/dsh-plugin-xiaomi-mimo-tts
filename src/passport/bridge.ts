@@ -1,6 +1,5 @@
 import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
 import type SpeechToText from '@deepseek-ai/dsh-experimental-speech-to-text'
-import { validateWave } from '@deepseek-ai/dsh-experimental-speech-to-text/wave'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { createServer } from 'node:http'
 import type { Server } from 'node:http'
@@ -11,7 +10,10 @@ import type { SpeechAudio, SpeechDeliveryAdapter, SpeechSynthesisService } from 
 import { SessionSpeech } from '../host/session-speech.js'
 import { prepareTtsText } from '../shared.js'
 import { playbackPcm, PcmUtterances } from './audio.js'
-import { sendPlaybackPcm } from './playback.js'
+import { sendPlaybackStream } from './playback.js'
+import { hostRecognizer } from './recognition.js'
+import type { PassportRecognizer, RecognitionInput } from './recognition.js'
+import { performance } from 'node:perf_hooks'
 import type { CaptureOptions } from './audio.js'
 import { isPassportAccessToken, isPassportLanAddress } from '../types/passport.js'
 
@@ -43,6 +45,7 @@ const MAX_FRAME_BYTES = 64 * 1024
 
 /** The local DSH Voice Companion's GCP 7 audio subset, also compatible with Qwen Voice Bean. */
 export class PassportBridge {
+  readonly recognition: PassportRecognizer
   private readonly sockets = new Set<WebSocket>()
   private readonly connections = new Set<PassportConnection>()
   private readonly pending = new Set<Promise<unknown>>()
@@ -55,11 +58,12 @@ export class PassportBridge {
   constructor(
     readonly options: PassportOptions,
     readonly session: PassportSessionPort,
-    readonly recognition: Pick<SpeechToText, 'snapshot' | 'resolve' | 'transcribe'>,
+    recognition: PassportRecognizer | Pick<SpeechToText, 'snapshot' | 'resolve' | 'transcribe'>,
     readonly synthesis: SpeechSynthesisService,
     readonly report: (code: string) => void = () => {},
     readonly delivered: (agent: Agent) => void = () => {},
-  ) {}
+    readonly metric: (turnId: string, stage: string, elapsedMs: number) => void = () => {},
+  ) { this.recognition = 'create' in recognition ? recognition : hostRecognizer(recognition) }
 
   readonly adapter: SpeechDeliveryAdapter = {
     id: 'passport', format: 'wav',
@@ -67,6 +71,11 @@ export class PassportBridge {
     send: async (audio, { agent, signal }) => {
       const connection = this.connectionFor(agent)
       await connection.play(audio, signal)
+      return { adapter: 'passport', target: connection.deviceId }
+    },
+    sendStream: async (source, { agent, signal }) => {
+      const connection = this.connectionFor(agent)
+      await connection.playStream(source, signal)
       return { adapter: 'passport', target: connection.deviceId }
     },
   }
@@ -83,9 +92,7 @@ export class PassportBridge {
   }
 
   checkRecognition(): void {
-    const snapshot = this.recognition.snapshot()
-    const provider = snapshot.providers.find(item => item.id === snapshot.selection.providerId)
-    if (!provider || !['ready', 'standby'].includes(provider.preparation.phase)) throw new Error('passport-asr-unavailable')
+    this.recognition.check()
   }
 
   claim(connection: PassportConnection): boolean {
@@ -167,6 +174,11 @@ export class PassportBridge {
 }
 
 class PassportConnection {
+  private feedback = false
+  private turnId = ''
+  private outcomeSent = false
+  private started = 0
+  private input: RecognitionInput | undefined
   deviceId = ''
   available = false
   busy = false
@@ -189,11 +201,22 @@ class PassportConnection {
   private inputBytes = 0
 
   constructor(private readonly bridge: PassportBridge, private readonly ws: WebSocket) {
-    this.capture = new PcmUtterances(bridge.options)
+    this.capture = new PcmUtterances(bridge.options, (pcm, first) => {
+      if (first) {
+        this.cycle = new AbortController()
+        this.turnId = randomUUID(); this.outcomeSent = false; this.started = performance.now()
+        this.input = bridge.recognition.create(this.cycle.signal, bridge.options.maxRecordingSeconds * 32000)
+        this.progress('capturing')
+      }
+      this.input?.append(pcm)
+    }, code => {
+      this.turnId = randomUUID(); this.outcomeSent = false; this.started = performance.now()
+      this.fail(code); this.finish()
+    })
     this.speech = new SessionSpeech(bridge.synthesis, { load: async (_id, fallback) => fallback, save: async () => {} },
       { delivery: 'passport', defaultMode: 'auto', maxAutoCharacters: 0, maxDurationMs: bridge.options.maxReplySeconds * 1000 },
       agent => { bridge.delivered(agent); this.finish() },
-      () => this.fail('passport-speech-failed'))
+      code => { if (this.busy) { this.fail(code === 'speech-too-long' ? 'passport-reply-too-long' : 'passport-speech-failed'); this.interrupt(false) } })
     this.handshake = setTimeout(() => this.close(1008, 'handshake-timeout'), 10000)
     this.heartbeat = setInterval(() => {
       if (!this.alive) { this.close(1001, 'heartbeat-timeout'); this.ws.terminate(); return }
@@ -210,7 +233,12 @@ class PassportConnection {
         const value: unknown = JSON.parse(data.toString())
         if (!value || typeof value !== 'object' || Array.isArray(value) || typeof (value as Event).type !== 'string') throw new Error('passport-invalid-event')
         this.receive(value as Event)
-      } catch { this.fail('passport-invalid-event'); this.close(1008, 'invalid-event') }
+      } catch (error) {
+        const code = error instanceof Error ? error.message : ''
+        if (/^passport-(?:recording-too-long|asr-[a-z-]+|recognition-cancelled|recognition-failed|no-speech)$/u.test(code)) {
+          this.fail(code); this.interrupt(false)
+        } else { this.fail('passport-invalid-event'); this.close(1008, 'invalid-event') }
+      }
     })
     ws.on('error', () => this.close(1011, 'transport-error'))
     ws.on('close', () => this.close())
@@ -228,8 +256,8 @@ class PassportConnection {
       this.hello = true
       void this.bridge.track(this.negotiate(event)).catch(error => {
         if (!this.disposed) {
-          const code = error instanceof Error && ['passport-asr-unavailable', 'passport-protocol-mismatch',
-            'passport-preset-unavailable', 'passport-preset-changed'].includes(error.message) ? error.message : 'passport-session-unavailable'
+          const code = error instanceof Error && (/^passport-asr-[a-z-]+$/u.test(error.message) || ['passport-protocol-mismatch',
+            'passport-preset-unavailable', 'passport-preset-changed'].includes(error.message)) ? error.message : 'passport-session-unavailable'
           this.fail(code); this.close(1013, 'service-unavailable')
         }
       })
@@ -238,12 +266,13 @@ class PassportConnection {
     if (!this.available) return
     if (event.type === 'session.ping') { this.send('session.pong', { request_event_id: event.event_id }); return }
     if (event.type === 'wake') { this.send('voice.state', { state: this.busy ? 'processing' : 'listening' }); return }
-    if (event.type === 'input.mute') { this.muted = true; this.capture.reset(); return }
+    if (event.type === 'input.mute') { this.muted = true; this.interrupt(); return }
     if (event.type === 'input.unmute') { this.muted = false; this.capture.reset(); return }
     if (event.type === 'response.cancel') { this.interrupt(); return }
     if (event.type.startsWith('playback.')) {
       if (event.responseId !== this.playback?.id) return
       if (event.type === 'playback.ended' && this.playback?.doneSent) this.playback.resolve()
+      if (event.type === 'playback.started') { this.mark('playback-started'); this.progress('playing') }
       if (event.type === 'playback.cancelled') this.interrupt()
       return
     }
@@ -260,7 +289,7 @@ class PassportConnection {
     } else if (event.type === 'input_audio_buffer.commit') {
       const wave = this.capture.commit()
       if (wave) this.recognize(wave)
-    } else if (event.type === 'input_audio_buffer.clear') this.capture.reset()
+    } else if (event.type === 'input_audio_buffer.clear') this.interrupt()
   }
 
   private async negotiate(event: Event): Promise<void> {
@@ -271,6 +300,7 @@ class PassportConnection {
       || !/^[a-zA-Z0-9_.:-]{1,128}$/u.test(client.instance_id) || !Array.isArray(capabilities)
       || !capabilities.includes('input.audio') || !capabilities.includes('playback.receipts')) throw new Error('passport-protocol-mismatch')
     this.deviceId = client.instance_id
+    this.feedback = capabilities.includes('voice.feedback')
     if (this.bridge.options.deviceId && this.deviceId !== this.bridge.options.deviceId) { this.close(4003, 'device-rejected'); return }
     if (!this.bridge.claim(this)) { this.send('voice.ownership', { state: 'busy' }); this.close(4002, 'occupied'); return }
     this.bridge.checkRecognition()
@@ -280,74 +310,95 @@ class PassportConnection {
     this.available = true
     clearTimeout(this.handshake)
     this.send('session.ready', { protocol_version: '7.0.0', session_id: agent.id,
-      request_event_id: event.event_id, capabilities: ['input.audio', 'playback.receipts'] })
+      request_event_id: event.event_id, capabilities: ['input.audio', 'playback.receipts', ...(this.feedback ? ['voice.feedback'] : [])] })
     this.send('voice.ready', { inputSampleRate: 16000, outputSampleRate: 24000 })
     this.send('voice.state', { state: 'listening' })
   }
 
   private recognize(wave: Buffer): void {
     this.busy = true
-    this.cycle = new AbortController()
     const signal = this.cycle.signal
     this.timeout = setTimeout(() => { this.fail('passport-request-timeout'); this.interrupt() }, this.bridge.options.requestTimeoutMs)
     this.timeout.unref()
     this.send('voice.state', { state: 'processing' })
+    this.progress('recognizing'); this.mark('capture-ended')
     const run = async () => {
       this.bridge.checkRecognition()
-      validateWave(wave, this.bridge.options.maxRecordingSeconds)
-      const spec = this.bridge.recognition.resolve({ audio: wave })
-      const result = await this.bridge.recognition.transcribe(spec, signal)
+      // The segmenter produces canonical 16 kHz mono WAV; cloud mode must not import Host ASR at runtime.
+      if (wave.length <= 44 || wave.length - 44 > this.bridge.options.maxRecordingSeconds * 32000) throw new Error('passport-invalid-audio')
+      const text = await this.input!.finish()
       signal.throwIfAborted()
-      if (!result.text.trim()) { this.finish(); return }
+      this.mark('recognition-ended')
+      if (!text.trim()) { this.fail('passport-no-speech'); this.finish(); return }
       this.submitted = true
-      this.bridge.session.submit(result.text.trim())
+      this.progress('thinking')
+      this.bridge.session.submit(text.trim())
     }
-    void this.bridge.track(run()).catch(() => { if (!signal.aborted) { this.fail('passport-recognition-failed'); this.finish() } })
+    void this.bridge.track(run()).catch(error => { if (!signal.aborted) {
+      const code = error instanceof Error && /^(?:passport-asr-[a-z-]+|passport-no-speech)$/u.test(error.message) ? error.message : 'passport-recognition-failed'
+      this.fail(code); this.interrupt(false)
+    } })
   }
 
   observe(event: SessionEvent): void {
     const agent = this.bridge.session.agent
     if (!this.busy || !this.submitted || !agent || event.seq <= this.lastSeq) return
     this.lastSeq = event.seq
-    if (event.type === 'turn/start') { this.turn = event.data.turn; this.hasReply = false }
+    if (event.type === 'turn/start') { this.turn = event.data.turn; this.hasReply = false; this.mark('model-started') }
     if (this.turn === undefined) return
+    if (event.type === 'tool/call' && event.data.turn === this.turn) this.progress('tool')
+    if (event.type === 'tool/result' && event.data.turn === this.turn) this.progress('thinking')
     if (event.type === 'assistant/message' && event.data.turn === this.turn) {
       const blocks = event.data.message.content
       this.hasReply = !event.data.interrupted && !blocks.some(block => block.type === 'tool-call')
         && !!prepareTtsText(blocks.filter(block => block.type === 'text').map(block => block.text).join('\n'))
     }
+    if (event.type === 'turn/end' && event.data.turn === this.turn && this.hasReply && event.data.reason.kind === 'completed') {
+      this.mark('model-ended'); this.progress('synthesizing')
+    }
     this.speech.observe(agent, event)
     if (event.type === 'turn/end' && event.data.turn === this.turn) {
-      if (event.data.reason.kind !== 'completed') { this.fail('passport-turn-failed'); this.finish() }
-      else if (!this.hasReply) this.finish()
+      if (event.data.reason.kind !== 'completed') { this.fail('passport-turn-failed'); this.interrupt(false) }
+      else if (!this.hasReply) { this.fail('passport-no-reply'); this.finish() }
     }
   }
 
   async play(audio: SpeechAudio, caller: AbortSignal): Promise<void> {
+    const pcm = playbackPcm(audio.data, this.bridge.options.maxReplySeconds)
+    await this.playStream((async function* () { yield pcm })(), caller)
+  }
+
+  async playStream(source: AsyncIterable<Uint8Array>, caller: AbortSignal): Promise<void> {
     const signal = AbortSignal.any([caller, this.cycle.signal])
     signal.throwIfAborted()
-    const pcm = playbackPcm(audio.data, this.bridge.options.maxReplySeconds)
     const id = randomUUID(), receipt = Promise.withResolvers<void>()
     // A cancellation can reject the receipt while paced sends are still in progress.
     void receipt.promise.catch(() => {})
     const aborted = () => receipt.reject(new Error('passport-playback-cancelled'))
-    const timeout = setTimeout(() => receipt.reject(new Error('passport-playback-timeout')), pcm.length / 48 + 15000)
+    const timeout = setTimeout(() => receipt.reject(new Error('passport-playback-timeout')), this.bridge.options.maxReplySeconds * 1000 + 15000)
     timeout.unref()
     this.playback = { id, doneSent: false, resolve: () => receipt.resolve(), reject: receipt.reject }
     signal.addEventListener('abort', aborted, { once: true })
+    let first = true
     try {
       this.send('response.started', { responseId: id })
-      await sendPlaybackPcm(pcm, chunk => {
+      await sendPlaybackStream(source, chunk => {
+        if (first) { this.mark('first-audio'); first = false }
         this.send('audio.delta', { responseId: id, sampleRate: 24000, audio: chunk.toString('base64') })
-      }, signal)
+      }, signal, this.bridge.options.maxReplySeconds)
       this.playback.doneSent = true
       this.send('audio.done', { responseId: id })
       await receipt.promise
+      this.mark('playback-ended')
       signal.throwIfAborted()
       this.send('response.done', { responseId: id })
     } catch (error) {
-      // Reconnect fences device queues when actual playback settlement is unknown.
-      if (!signal.aborted) this.close(1011, 'playback-failed')
+      if (!signal.aborted) {
+        if (this.feedback) {
+          this.fail(error instanceof Error && ['speech-too-long', 'passport-reply-too-long'].includes(error.message) ? 'passport-reply-too-long' : first ? 'passport-speech-failed' : 'passport-playback-failed')
+          this.interrupt(false)
+        } else this.close(1011, 'playback-failed')
+      }
       throw error
     } finally {
       clearTimeout(timeout)
@@ -359,24 +410,44 @@ class PassportConnection {
   private fail(code: string): void {
     this.bridge.report(code)
     if (!this.disposed && this.ws.readyState === WebSocket.OPEN) {
-      try { this.send('error', { code, message: code }) } catch { this.close(1011, 'transport-error') }
+      try {
+        if (this.feedback && this.turnId) this.result('failed', code)
+        else this.send('error', { code, message: code })
+      } catch { this.close(1011, 'transport-error') }
     }
   }
 
   private finish(): void {
+    if (!this.outcomeSent && this.turnId) this.result('completed')
     clearTimeout(this.timeout)
+    this.input?.cancel(); this.input = undefined
+    this.turnId = ''
     this.busy = false; this.submitted = false; this.turn = undefined; this.hasReply = false
     this.capture.reset()
     if (this.available && !this.disposed && this.ws.readyState === WebSocket.OPEN) this.send('voice.state', { state: 'listening' })
   }
 
-  private interrupt(): void {
+  private interrupt(notify = true): void {
+    if (notify && this.turnId) this.result('cancelled')
     this.cycle.abort()
     const agent = this.bridge.session.agent
     if (agent) this.speech.release(agent)
     if (this.submitted) this.bridge.session.cancel()
     if (this.available && !this.disposed) this.send('playback.clear')
     this.finish()
+  }
+
+  private mark(stage: string): void {
+    if (this.turnId) this.bridge.metric(this.turnId, stage, Math.round(performance.now() - this.started))
+  }
+  private progress(phase: string): void {
+    if (this.feedback) this.send('voice.progress', { turnId: this.turnId, phase })
+  }
+  private result(status: string, code?: string): void {
+    if (this.outcomeSent) return
+    this.outcomeSent = true
+    if (this.feedback && !this.disposed) this.send('voice.result', { turnId: this.turnId, status, ...(code ? { code } : {}) })
+    this.mark(status)
   }
 
   close(code?: number, reason?: string): void {

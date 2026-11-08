@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "AI Passport Connector",
-    "description": "Turn AI Passport into a portable DSH voice assistant with Wi-Fi conversations, Host speech recognition, Agent presets and TTS replies."
+    "description": "Use AI Passport as a portable DSH voice assistant with Host, Xiaomi or Doubao recognition, Agent presets and saved TTS voices."
   },
   "config": {
     "$description": "Enable the connector, then generate a four-digit pairing code and enable LAN access. Enter the computer IP and code on the device.",
@@ -15,8 +15,9 @@
     "minSpeechMs": "Minimum speech (ms)",
     "speechThreshold": "Speech energy threshold (normalized RMS)",
     "maxRecordingSeconds": "Maximum recording (seconds; oversized input is discarded)",
-    "maxReplySeconds": "Maximum spoken reply (seconds; longer replies are not spoken)",
+    "maxReplySeconds": "Maximum spoken reply duration (streaming stops with feedback at the limit)",
     "requestTimeoutMs": "Whole-request timeout (ms; recognition, conversation and playback)",
-    "sessionRevision": "Conversation refresh identifier (managed by the new conversation action)"
+    "sessionRevision": "Conversation refresh identifier (managed by the new conversation action)",
+    "asrProvider": "Recognition source (host / xiaomi / doubao; reuses saved provider keys)"
   }
 }

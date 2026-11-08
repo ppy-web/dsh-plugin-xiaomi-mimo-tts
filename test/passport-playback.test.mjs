@@ -2,8 +2,27 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
-const { sendPlaybackPcm } = await loadClientModule('src/passport/playback.ts')
+const { sendPlaybackPcm, sendPlaybackStream } = await loadClientModule('src/passport/playback.ts')
 const bytesPerMs = 48
+
+test('stream cancellation interrupts a stalled producer without waiting for another audio packet', async () => {
+  const controller = new AbortController(), stalled = Promise.withResolvers()
+  let sent = 0, now = 0
+  const source = (async function* () { yield Buffer.alloc(960); await stalled.promise; yield Buffer.alloc(960) })()
+  const run = sendPlaybackStream(source, () => { sent++; controller.abort() }, controller.signal, 2,
+    { now: () => now, wait: async ms => { now += ms } })
+  await assert.rejects(run, { name: 'AbortError' })
+  assert.equal(sent, 1)
+  stalled.resolve()
+})
+
+test('stream duration limits stop after already delivered samples and preserve no excess audio', async () => {
+  let count = 0, now = 0
+  await assert.rejects(sendPlaybackStream((async function* () { yield Buffer.alloc(48000 * 2) })(),
+    bytes => { count += bytes.length }, new AbortController().signal, 1,
+    { now: () => now, wait: async ms => { now += ms } }), { message: 'passport-reply-too-long' })
+  assert.equal(count, 48000)
+})
 
 test('PCM remains near real-time with coarse Windows timers and preserves every sample in order', async () => {
   const input = Buffer.alloc(5000 * bytesPerMs + 318)

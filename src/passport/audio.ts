@@ -62,12 +62,16 @@ export class PcmUtterances {
   private speechFrames = 0
   private quietFrames = 0
   private discarding = false
+  private streaming = false
 
-  constructor(private readonly options: CaptureOptions) {}
+  constructor(private readonly options: CaptureOptions,
+    private readonly captured?: (pcm: Buffer, first: boolean) => void,
+    private readonly discarded?: (code: string) => void) {}
 
   reset(): void {
     this.remainder = Buffer.alloc(0); this.pre = []; this.chunks = []
     this.frames = 0; this.speechFrames = 0; this.quietFrames = 0; this.discarding = false
+    this.streaming = false
   }
 
   append(pcm: Buffer): Buffer | undefined {
@@ -94,6 +98,10 @@ export class PcmUtterances {
         this.reset(); this.discarding = true
         throw new Error('passport-recording-too-long')
       }
+      if (this.speechFrames * 20 >= this.options.minSpeechMs) {
+        this.captured?.(this.streaming ? frame : Buffer.concat(this.chunks), !this.streaming)
+        this.streaming = true
+      }
       if (this.quietFrames * 20 >= this.options.silenceMs) return this.commit()
     }
     return undefined
@@ -101,6 +109,7 @@ export class PcmUtterances {
 
   commit(): Buffer | undefined {
     const result = this.speechFrames * 20 >= this.options.minSpeechMs ? pcmWave(Buffer.concat(this.chunks)) : undefined
+    if (!result && this.speechFrames) this.discarded?.('passport-speech-too-short')
     this.reset()
     return result
   }

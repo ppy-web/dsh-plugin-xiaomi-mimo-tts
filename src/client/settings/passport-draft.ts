@@ -10,6 +10,7 @@ export function generatePassportPairingCode(): string {
 }
 
 export function validatePassportDraft(value: PassportSettings, tokenConfigured = false): keyof PassportSettings | null {
+  if (!['host', 'xiaomi', 'doubao'].includes(value.asrProvider)) return 'asrProvider'
   if (!value.host.trim() || /[\s/]/u.test(value.host)) return 'host'
   if (!(tokenConfigured && value.accessToken === '') && !isPassportAccessToken(value.accessToken)) return 'accessToken'
   if (value.deviceId && !/^[a-zA-Z0-9_.:-]{1,128}$/u.test(value.deviceId)) return 'deviceId'

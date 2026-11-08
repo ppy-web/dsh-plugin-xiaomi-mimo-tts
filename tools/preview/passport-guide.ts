@@ -27,17 +27,17 @@ export const PASSPORT_GUIDE: Record<ManualLocale, ManualCopy> = {
       {
         id: 'passport-features', title: '我们的组件实现了什么', summary: '本插件的 AI Passport 连接器配合 WhaleTalk Passport 固件，让设备通过 Wi-Fi 成为 DSH 的随身语音终端。',
         items: [
-          { label: '语音提问与有声回复', detail: '设备收音后，由 DSH 宿主完成语音识别，将文字交给当前默认对话模型，再通过本插件已保存的 TTS 服务和音色合成回复，回传到设备播放。播放完成后恢复收音，可继续下一轮对话。' },
+          { label: '语音提问与有声回复', detail: '设备收音后，由所选宿主、小米或豆包服务完成语音识别，将文字交给当前默认对话模型，再通过本插件已保存的 TTS 服务和音色合成回复，回传到设备播放。播放完成后恢复收音，可继续下一轮对话。' },
           { label: 'Agent 预设与专用会话', detail: '支持选择 Agent 预设，使用独立于网页和 QQ 的设备会话；重启后恢复同一会话。工具操作仍遵循 DSH 的权限和审批规则。' },
           { label: '快捷配对与取消', detail: '一键生成 4 位配对码并显示电脑局域网地址。使用配套固件时，可按 DOWN 取消当前识别、对话或播报；掉线重连后不会补播旧回复。' },
           { label: 'DSH 持续运行即可使用', detail: '关闭 DSH 网页后仍可对话，电脑上的 DSH 进程需保持运行且设备能访问它。接入需要下文说明的兼容固件，官方测试基线和其他玩法不能直接连接。' },
         ],
       },
       {
-        id: 'passport-start', title: '开始前准备', summary: '需要兼容固件、可用的宿主语音识别、对话模型与 TTS，以及设备能访问的网络。',
+        id: 'passport-start', title: '开始前准备', summary: '需要兼容固件、可用的所选语音识别、对话模型与 TTS，以及设备能访问的网络。',
         items: [
           { label: '确认固件', detail: '推荐使用独立仓库 WhaleTalk Passport（鲸语通行证）应用，附有环境安装、构建和配网说明，旧 Qwen Voice Bean 仍可使用长令牌连接；4 位配对需使用新版应用。组件实现 GCP 7.0.0 音频子集，官方测试基线和其他玩法不能直接连接。' },
-          { label: '同一个 DSH 实例', detail: '本插件、@deepseek-ai/dsh-experimental-speech-to-text、识别 provider、Agent 预设和默认对话模型需在同一实例／profile 中可用。语音识别组件由 DSH 宿主提供，不随本插件安装；安装或更新组件后需重启 DSH 才会加载。关闭网页不影响使用，但 DSH 进程必须保持运行。' },
+          { label: '同一个 DSH 实例', detail: '本插件、Agent 预设和默认对话模型需在同一实例／profile 中可用。识别默认使用宿主，也可选小米或豆包，复用已保存密钥；云端模式无需宿主 ASR。语音识别组件由 DSH 宿主提供，不随本插件安装；安装或更新组件后需重启 DSH 才会加载。关闭网页不影响使用，但 DSH 进程必须保持运行。' },
           { label: '可信的局域网', detail: '设备与主机可使用同一 Wi-Fi 或手机热点，需能相互访问。默认连接是明文 WebSocket，使用私有令牌并限定可信网络，不要直接暴露到公网。' },
         ],
         links: [{ label: 'WhaleTalk Passport 固件与开发指南', href: dshFirmware }, { label: 'Qwen Voice Bean 参考项目', href: firmware }, { label: '查看 AI Passport 组件配置', href: '#components-passport' }],
@@ -45,7 +45,7 @@ export const PASSPORT_GUIDE: Record<ManualLocale, ManualCopy> = {
       {
         id: 'passport-host', title: '先让宿主能听、能说', summary: '设备不是浏览器音频的遥控器，它使用宿主识别与宿主 TTS。',
         steps: [
-          { title: '准备语音识别', detail: '在宿主语音输入设置中选择识别 provider（如 SenseVoice）和语言，完成模型准备，并实际测试一次语音转文字。本组件不下载识别模型，也不自动改用其他识别服务；若配置页提示正在等待宿主服务，先启用 @deepseek-ai/dsh-experimental-speech-to-text 与识别 provider，重启 DSH 后再试。' },
+          { title: '准备语音识别', detail: '在连接器选择识别来源：宿主需先准备识别模型；小米提交整句 WAV，豆包边收音边上传。云端复用插件密钥，已配置不代表权限或额度已验证。本组件不自动切换识别来源。失败时新固件保留屏幕原因并响本地提示音，保持开麦选择；等待超过 8 秒可按 DOWN 取消。支持的 TTS 模型边合成边播音，流式超限或中断会停止并提示。' },
           { title: '验证默认对话模型与预设', detail: '先在 DSH 正常完成一轮文字对话，确认默认模型、凭据和所选 Agent 预设可用。工具操作仍遵循宿主权限和审批。' },
           { title: '保存并测试 TTS', detail: '在插件设置中保存服务商、密钥、模型与音色，关闭浏览器本地语音兜底后试听短句，确认云端来源正常。设备需要宿主生成 WAV，再转换为 24 kHz 单声道 PCM；浏览器系统音色不能回传给设备。' },
         ], items: [],
@@ -121,7 +121,7 @@ export const PASSPORT_GUIDE: Record<ManualLocale, ManualCopy> = {
       {
         id: 'passport-features', title: 'What our component provides', summary: 'The AI Passport Connector in this plugin works with WhaleTalk Passport firmware to turn the device into a portable DSH voice terminal over Wi-Fi.',
         items: [
-          { label: 'Spoken questions and replies', detail: 'DSH transcribes audio captured by the device, sends the text to the current default conversation model, then uses this plugin’s saved TTS service and voice to generate audio for device playback. Capture resumes after playback so you can continue the conversation.' },
+          { label: 'Spoken questions and replies', detail: 'The selected Host, Xiaomi or Doubao service transcribes device audio, sends the text to the current default conversation model, then uses this plugin’s saved TTS service and voice to generate audio for device playback. Capture resumes after playback so you can continue the conversation.' },
           { label: 'Agent presets and a dedicated conversation', detail: 'Choose an Agent preset and use a device conversation separate from web and QQ conversations. The same conversation resumes after a restart. Tool actions retain DSH permission and approval rules.' },
           { label: 'Quick pairing and cancellation', detail: 'Generate a four-digit pairing code and view the computer’s LAN addresses with one click. With the companion firmware, DOWN cancels recognition, generation or playback. Reconnection does not replay old replies.' },
           { label: 'Keep DSH running', detail: 'Conversations continue after closing the DSH web page while the DSH process stays running and reachable. Install the compatible firmware described below; the official hardware-test baseline and other apps cannot connect directly.' },
@@ -131,14 +131,14 @@ export const PASSPORT_GUIDE: Record<ManualLocale, ManualCopy> = {
         id: 'passport-start', title: 'Before you begin', summary: 'Prepare compatible firmware, Host recognition, a conversation model and TTS, plus a network the device can use.',
         items: [
           { label: 'Compatible firmware', detail: 'Use the standalone WhaleTalk Passport repository for environment, build and provisioning instructions. Older Qwen Voice Bean remains compatible with long credentials; use the updated app for four-digit pairing. The adapter uses the GCP 7.0.0 audio subset; the official hardware-test baseline and other firmware cannot connect directly.' },
-          { label: 'One DSH instance', detail: 'This plugin, @deepseek-ai/dsh-experimental-speech-to-text, a recognition provider, Agent presets and a default model must be available in the same instance/profile. The recognizer is a Host capability and is not installed by this plugin; restart DSH after installing or updating it. The web page may close, but DSH must keep running.' },
+          { label: 'One DSH instance', detail: 'This plugin, Agent presets and a default model must be available in one profile. Select Host, Xiaomi or Doubao recognition independently of TTS. Cloud recognition reuses saved keys and does not require Host ASR. The recognizer is a Host capability and is not installed by this plugin; restart DSH after installing or updating it. The web page may close, but DSH must keep running.' },
           { label: 'A trusted LAN', detail: 'Use reachable Wi-Fi or a mobile hotspot. The default transport is plain WebSocket; use a private token and a trusted network instead of exposing it directly to the internet.' },
         ], links: [{ label: 'WhaleTalk Passport firmware and guide', href: dshFirmware }, { label: 'Qwen Voice Bean reference', href: firmware }, { label: 'Explore component settings', href: '#components-passport' }],
       },
       {
         id: 'passport-host', title: 'Verify Host input and speech', summary: 'The device uses Host recognition and TTS, independently of browser audio.',
         steps: [
-          { title: 'Prepare recognition', detail: 'In Host voice input settings, select a provider such as SenseVoice and a language, prepare its model and transcribe real speech. This component neither downloads recognition models nor falls back to another recognizer. If the settings page says it is waiting for Host services, enable @deepseek-ai/dsh-experimental-speech-to-text and a provider, then restart DSH.' },
+          { title: 'Prepare recognition', detail: 'Select a recognition source in the connector. Host mode needs a prepared model; Xiaomi submits full utterances and Doubao uploads while you speak. Cloud keys are reused; access and quota still need validation. The connector does not switch recognizers automatically. New firmware retains failure reasons and plays a local cue without closing the microphone. Supported TTS models stream audio; failures and duration limits stop playback with feedback. If the settings page says it is waiting for Host services, enable @deepseek-ai/dsh-experimental-speech-to-text and a provider, then restart DSH.' },
           { title: 'Test the model and preset', detail: 'Complete a text conversation in DSH to check the default model, credentials and selected Agent preset. Tools retain the Host’s permission and approval rules.' },
           { title: 'Save and test TTS', detail: 'Save the provider, key, model and voice. Disable browser speech fallback and test a short cloud preview. The device needs Host-generated WAV converted to 24 kHz mono PCM; browser system voices cannot be sent back to it.' },
         ], items: [], links: [{ label: 'Speech settings and previews', href: '#manual-console' }, { label: 'Doubao voice setup', href: '#doubao' }],

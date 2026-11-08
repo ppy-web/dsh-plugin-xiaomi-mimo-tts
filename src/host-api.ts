@@ -181,6 +181,8 @@ export interface SpeechDeliveryAdapter {
   /** Check transport prerequisites before spending a synthesis request. */
   check?(context: SpeechDeliveryContext): void | Promise<void>
   send(audio: SpeechAudio, context: SpeechDeliveryContext): Promise<SpeechDeliveryResult>
+  /** Raw PCM16LE mono 24 kHz; resolves after actual playback. */
+  sendStream?(source: AsyncIterable<Uint8Array>, context: SpeechDeliveryContext): Promise<SpeechDeliveryResult>
 }
 
 export interface SpeechSynthesisService {
@@ -189,7 +191,7 @@ export interface SpeechSynthesisService {
   subscribeEngine(listener: () => void): () => void
   configureProvider(request: { provider: SpeechProviderId; engineRevision: number; signal?: AbortSignal } & ExternalSpeechConfigurationChange): Promise<SpeechEngineState>
   resolveProvider(request: Pick<SpeechRequest, 'provider' | 'engineRevision'>): SpeechProviderId
-  /** External PCM providers only; the Web entry wraps bytes in its existing SSE protocol. */
+  /** Raw PCM16LE mono 24 kHz for streaming-capable built-in and external providers. */
   streamPcm(request: SpeechRequest, consume: (bytes: Uint8Array) => void | Promise<void>): Promise<void>
   /** Inspect saved provider configuration and supported features without synthesizing. */
   capabilities(): SpeechCapabilities

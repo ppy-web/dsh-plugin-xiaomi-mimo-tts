@@ -48,6 +48,29 @@ async function withXiaomi(run, respond) {
   }
 }
 
+test('Host streaming delivery starts before the provider completes and preserves raw samples', async () => {
+  const first = Promise.withResolvers(), release = Promise.withResolvers(), received = []
+  await withXiaomi(async ({ service, requests }) => {
+    service.registerDelivery({ id: 'stream-test', format: 'wav', send() { throw new Error('Unexpected complete WAV') },
+      async sendStream(source) {
+        for await (const bytes of source) { received.push(Buffer.from(bytes)); first.resolve() }
+        return { adapter: 'stream-test' }
+      } })
+    const task = service.deliver({ text: '测试' }, 'stream-test', { agent: {}, signal: new AbortController().signal })
+    await first.promise
+    assert.equal(received.length > 0, true)
+    assert.equal(requests[0].stream, true)
+    release.resolve()
+    assert.deepEqual(await task, { adapter: 'stream-test' })
+    assert.deepEqual(Buffer.concat(received), Buffer.from([1, 2, 3, 4]))
+  }, async (_req, res) => {
+    res.setHeader('content-type', 'text/event-stream')
+    res.write(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: 'AQI=' } } }] })}\n\n`)
+    await release.promise
+    res.end(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: 'AwQ=' } } }] })}\n\ndata: [DONE]\n\n`)
+  })
+})
+
 test('Host speech uses saved provider settings, cleans text and produces playable WAV, MP3 and SILK', async () => {
   await withXiaomi(async ({ service, requests }) => {
     const audio = await service.synthesize({ text: '**你好**。\n```js\nsecret()\n```', format: 'wav', voice: '冰糖' })

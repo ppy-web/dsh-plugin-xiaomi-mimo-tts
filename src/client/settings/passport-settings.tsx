@@ -22,6 +22,7 @@ interface Props extends PluginConfigViewProps {
   guideHref?: string
   connectionStatus?: PassportConnectionStatus
   presets?: PassportPreset[]
+  openTtsSettings?: () => void
 }
 
 const GROUPS = [
@@ -38,7 +39,7 @@ export function PassportSettingsPage(props: Props): ReactElement {
   return <PassportForm {...props} />
 }
 
-function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured, connectionStatus, presets, guideHref = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport' }: Props): ReactElement {
+function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured, connectionStatus, presets, openTtsSettings, guideHref = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport' }: Props): ReactElement {
   const id = useId()
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
@@ -156,6 +157,21 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
       <p>{t('passport.requirements')}</p>
       <a href={guideHref} target={guideHref.startsWith('#') ? undefined : '_blank'} rel={guideHref.startsWith('#') ? undefined : 'noopener noreferrer'}>{t('passport.guide')}</a>
     </header>
+    <section aria-labelledby={`${id}-recognition`}>
+      <h4 id={`${id}-recognition`}>{t('passport.asrProvider')}</h4>
+      <label className="xmimo-qq-field" htmlFor={`${id}-asr`}>
+        <span>{t('passport.asrProvider')}</span>
+        <select id={`${id}-asr`} name="asrProvider" value={value.asrProvider} disabled={disabled}
+          aria-describedby={`${id}-asr-hint`} onChange={event => edit('asrProvider', event.currentTarget.value)}>
+          {(['host', 'xiaomi', 'doubao'] as const).map(source => <option key={source} value={source}
+            disabled={source !== 'host' && !status?.recognitionChoices?.some(choice => choice.id === source && choice.configured)}>
+            {t(`passport.asr.${source}`)}{source !== 'host' ? ` · ${t(status?.recognitionChoices?.some(choice => choice.id === source && choice.configured) ? 'passport.keyConfigured' : 'passport.keyMissing')}` : ''}
+          </option>)}
+        </select>
+        <small id={`${id}-asr-hint`}>{t(value.asrProvider === 'host' ? 'passport.asrHostHint' : 'passport.asrCloudHint')}</small>
+      </label>
+      {openTtsSettings ? <Button type="button" variant="outline" size="sm" onClick={openTtsSettings}>{t('passport.configureKeys')}</Button> : null}
+    </section>
     {changing ? <p role="status">{t('plugin.changing')}</p> : null}
     <section className="xmimo-passport-quick" aria-labelledby={`${id}-quick`}>
       <div className="xmimo-passport-heading">

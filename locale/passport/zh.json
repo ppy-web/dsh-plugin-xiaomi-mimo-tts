@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "AI Passport 连接器",
-    "description": "让 AI Passport 成为随身 DSH 语音助手，通过 Wi-Fi 进行语音对话，复用宿主语音识别、Agent 预设与 TTS 回复。"
+    "description": "让 AI Passport 成为随身 DSH 语音助手，可选宿主、小米或豆包识别，复用 Agent 预设与已保存的 TTS 音色。"
   },
   "config": {
     "$description": "AI Passport 连接器配置。开启组件后，一键生成 4 位配对码并开放局域网连接；设备填写电脑 IP 和配对码。",
@@ -15,8 +15,9 @@
     "minSpeechMs": "最短有效语音（ms）",
     "speechThreshold": "语音能量阈值（归一化 RMS）",
     "maxRecordingSeconds": "最长录音（秒，超长不提交）",
-    "maxReplySeconds": "最长语音回复（秒，超长不发声）",
+    "maxReplySeconds": "最长语音回复（秒，流式超限会停止并提示）",
     "requestTimeoutMs": "整轮等待上限（ms，含识别、对话和播报）",
-    "sessionRevision": "会话刷新标识（由“刷新预设并新建会话”按钮维护）"
+    "sessionRevision": "会话刷新标识（由“刷新预设并新建会话”按钮维护）",
+    "asrProvider": "语音识别来源（host / xiaomi / doubao，云端复用插件密钥）"
   }
 }

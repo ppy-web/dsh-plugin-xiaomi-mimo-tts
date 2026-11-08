@@ -11,6 +11,9 @@ import { cleanupSpeechArtifacts, writeSpeechArtifact } from './speech-files.js'
 import { speechCapabilities } from './capabilities.js'
 import { abortable, ExternalProviders, validateExternalAudio } from './external-providers.js'
 import { externalRequestOptions } from './external-catalog.js'
+import { streamSynthesis } from './stream-synthesis.js'
+import { PcmQueue } from './pcm-queue.js'
+import { PassportRecognition } from '../passport/recognition.js'
 import type { ExternalSpeechConfigurationChange, SpeechProviderId } from '../host-api.js'
 
 declare module '@deepseek-ai/cordis' {
@@ -73,7 +76,35 @@ export class HostSpeechService implements SpeechSynthesisService {
   }
 
   async streamPcm(request: SpeechRequest, consume: (bytes: Uint8Array) => void | Promise<void>): Promise<void> {
-    this.resolveProvider(request)
+    return this.track(this.streamPcmAudio(request, consume))
+  }
+
+  private async streamPcmAudio(request: SpeechRequest, consume: (bytes: Uint8Array) => void | Promise<void>): Promise<void> {
+    if (request.maxDurationMs !== undefined && (!Number.isFinite(request.maxDurationMs) || request.maxDurationMs <= 0)) throw new TtsProviderError('invalid-duration-limit', undefined, 400)
+    const selected = this.resolveProvider(request)
+    if (!selected.startsWith('external:')) {
+      const controller = new AbortController()
+      const signal = request.signal ? AbortSignal.any([request.signal, controller.signal]) : controller.signal
+      this.controllers.add(controller)
+      this.defaultJobs.add(controller)
+      const timer = setTimeout(() => controller.abort(new TtsProviderError('tts-timeout')), this.current().requestTimeoutMs)
+      let size = 0, carry = Buffer.alloc(0)
+      try {
+        signal.throwIfAborted()
+        const prepared = prepareSpeechRequest(this.current(), { ...request, provider: selected })
+        await streamSynthesis(prepared.settings, prepared.text, signal, async chunk => {
+          size += chunk.length
+          if (size > this.current().maxWavAudioBytes) throw new TtsProviderError('audio-too-large')
+          if (request.maxDurationMs && size / 48 > request.maxDurationMs) throw new TtsProviderError('speech-too-long')
+          const bytes = Buffer.concat([carry, chunk]), end = bytes.length - bytes.length % 2
+          carry = bytes.subarray(end)
+          if (end) await abortable(Promise.resolve(consume(bytes.subarray(0, end))), signal)
+        }, this.runtime)
+        if (!size || carry.length) throw new TtsProviderError('invalid-audio-format')
+        signal.throwIfAborted()
+      } finally { clearTimeout(timer); controller.abort(); this.controllers.delete(controller); this.defaultJobs.delete(controller) }
+      return
+    }
     return this.track(this.external.run(request, this.current(), async (provider, text, signal, state) => {
       if (!provider.streamPcm) throw new TtsProviderError('streaming-model-unsupported', undefined, 409)
       if (!state.streaming) throw new TtsProviderError('streaming-model-unsupported', undefined, 409)
@@ -89,6 +120,7 @@ export class HostSpeechService implements SpeechSynthesisService {
           const bytes = Buffer.concat([carry, chunk.value])
           if (!size && bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WAVE') throw new TtsProviderError('invalid-audio-format')
           size += chunk.value.byteLength
+          if (request.maxDurationMs && size / 48 > request.maxDurationMs) throw new TtsProviderError('speech-too-long')
           if (size > this.current().maxWavAudioBytes) throw new TtsProviderError('audio-too-large', undefined, 413)
           const aligned = bytes.length - bytes.length % 2
           carry = bytes.subarray(aligned)
@@ -290,8 +322,19 @@ export class HostSpeechService implements SpeechSynthesisService {
       if (request.splitLongText && (!Number.isFinite(limit) || limit < 1)) throw new TtsProviderError('invalid-text-limit')
       const chunks = request.splitLongText ? (!external && settings.provider === 'breeze' ? splitBreezeTtsSegments(text, limit) : splitDeliveryText(text, limit, !external && supportsXiaomiAudioTags(settings), externalTags)) : [text]
       let result: SpeechDeliveryResult | undefined
+      const providerCapabilities = speechCapabilities(settings).providers.find(provider => provider.id === selected)
+      const streaming = external ? external.streaming && external.models?.find(model => model.id === (request.model ?? external.selection?.model))?.streaming !== false
+        : providerCapabilities?.models.find(model => model.id === (request.model ?? providerCapabilities.selectedModel))?.streaming === true
       for (const chunk of chunks) {
         signal.throwIfAborted()
+        if (adapter.sendStream && streaming && chunks.length === 1) {
+          const queue = new PcmQueue(settings.maxPausedPcmBytes, signal)
+          const producing = this.streamPcm({ ...request, provider: selected, engineRevision, text: chunk, signal }, bytes => queue.write(bytes))
+          void producing.then(() => queue.end(), error => queue.end(error))
+          try { result = await adapter.sendStream(queue, { ...context, signal }); await producing }
+          finally { controller.abort(); await producing.catch(() => {}) }
+          continue
+        }
         const audio = await this.synthesize({ ...request, provider: selected, engineRevision, text: chunk, format: adapter.format, signal })
         signal.throwIfAborted()
         if (this.disposed || this.adapters.get(id) !== adapter) throw new TtsProviderError('speech-delivery-unavailable')
@@ -324,6 +367,7 @@ export default class SpeechHost {
   constructor(ctx: Context, config: { current: () => ResolvedTtsSettings; updates?: (listener: () => void) => (() => void) }) {
     const service = new HostSpeechService(config.current)
     ctx.provide('speechSynthesis', service)
+    ctx.provide('passportRecognition', new PassportRecognition(config.current))
     ctx.provide('qqbotSpeechRules', { current: () => ({
       maxAutoCharacters: config.current().qqbotMaxAutoCharacters ?? 0,
       maxDurationMs: (config.current().qqbotMaxDurationSeconds ?? 0) * 1000,

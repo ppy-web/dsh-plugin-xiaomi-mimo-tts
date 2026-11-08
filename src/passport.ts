@@ -10,17 +10,20 @@ import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_
 import type { PassportSettings } from './types/passport.js'
 import { json } from './host/http.js'
 import { passportAddresses } from './passport/network.js'
+import { hostRecognizer } from './passport/recognition.js'
 
 export { PassportBridge } from './passport/bridge.js'
 export type { PassportOptions, PassportSessionPort } from './passport/bridge.js'
 export { PassportSession, PassportSessionStore } from './passport/session.js'
 export { pcmWave, playbackPcm, PcmUtterances } from './passport/audio.js'
+export { PassportRecognition, hostRecognizer } from './passport/recognition.js'
 
 export const name = 'speech-delivery-passport'
 // Keep the configuration owner alive before ASR or the conversation services are ready.
 export const inject: string[] = []
 const messages = (language: string) => JSON.parse(readFileSync(new URL(`./locale/passport/${language}.json`, import.meta.resolve('dsh-xiaomi-tts/package.json')), 'utf8')).config
 export const Config = z.object({
+  asrProvider: z.union(['host', 'xiaomi', 'doubao']).default('host').volatile(),
   host: z.string().default(defaults.host).volatile(),
   port: z.number().step(1).min(1).max(65535).default(defaults.port).volatile(),
   accessToken: z.string().max(192).pattern(/^\S*$/u).role('secret').default(defaults.accessToken).volatile(),
@@ -57,19 +60,23 @@ export function apply(ctx: Context, config: Config): void {
     } }))
     child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_STATUS_ROUTE, handler(req, res) {
       if (req.method !== 'GET') { res.setHeader('allow', 'GET'); json(res, 405, { error: 'method-not-allowed' }); return }
-      const servicesReady = ['speechSynthesis', 'speechToText', 'agents', 'agentPresets', 'agentDefaultModel'].every(name => !!ctx.get(name))
+      const asrProvider = config.asrProvider.get()
+      const servicesReady = ['speechSynthesis', 'agents', 'agentPresets', 'agentDefaultModel', ...(asrProvider === 'host' ? ['speechToText'] : ['passportRecognition'])].every(name => !!ctx.get(name))
       let recognitionReady = false
       try {
-        const snapshot = ctx.get('speechToText')?.snapshot()
-        recognitionReady = !!snapshot?.providers.some(provider => provider.id === snapshot.selection.providerId && ['ready', 'standby'].includes(provider.preparation.phase))
+        if (asrProvider !== 'host' && !ctx.get('passportRecognition')) throw new Error('passport-asr-unavailable')
+        const recognizer = ctx.get('passportRecognition')?.recognizer(asrProvider, ctx.get('speechToText')) ?? hostRecognizer(ctx.get('speechToText'))
+        recognizer.check(); recognitionReady = true
       } catch {}
       json(res, 200, { configured: isPassportAccessToken(config.accessToken.get()),
         listening: connection?.status.listening ?? false, connected: connection?.status.connected ?? false,
-        servicesReady, recognitionReady, host: config.host.get(), port: config.port.get(), addresses: passportAddresses(), error: lastError,
+        servicesReady, recognitionReady, asrProvider,
+        recognitionChoices: ctx.get('passportRecognition')?.choices().map(choice => choice.id === 'host' ? { ...choice, configured: !!ctx.get('speechToText') } : choice),
+        host: config.host.get(), port: config.port.get(), addresses: passportAddresses(), error: lastError,
         sessionError: connection?.status.connected ? undefined : sessionError })
     } }))
   })
-  ctx.inject(['speechSynthesis', 'speechToText', 'agents', 'agentPresets', 'agentDefaultModel'], child => {
+  ctx.inject(['speechSynthesis', 'agents', 'agentPresets', 'agentDefaultModel'], child => {
     let current: { bridge: PassportBridge; stop(): Promise<void> } | undefined
     let pending = Promise.resolve()
     let generation = 0
@@ -88,10 +95,14 @@ export function apply(ctx: Context, config: Config): void {
         const settings = Object.fromEntries(Object.keys(defaults).map(key => [key, config[key]!.get()])) as unknown as PassportSettings
         // An unconfigured component still owns editable settings, but exposes no network listener.
         if (!isPassportAccessToken(settings.accessToken)) return
+        if (settings.asrProvider === 'host' && !child.get('speechToText')) return
+        if (settings.asrProvider !== 'host' && !child.get('passportRecognition')) return
+        const recognition = child.get('passportRecognition')?.recognizer(settings.asrProvider, child.get('speechToText')) ?? hostRecognizer(child.get('speechToText'))
         const session = new PassportSession(child, settings.agentPreset, settings.cwd, undefined, settings.sessionRevision)
-        const bridge = new PassportBridge(settings, session, child.speechToText, child.speechSynthesis,
+        const bridge = new PassportBridge(settings, session, recognition, child.speechSynthesis,
           code => { sessionError = code; child.logger.warn(`Passport: ${code}`) },
-          agent => child.emit('speech/delivered', { agent, automatic: true, result: { adapter: 'passport' } }))
+          agent => child.emit('speech/delivered', { agent, automatic: true, result: { adapter: 'passport' } }),
+          (turnId, stage, elapsedMs) => child.logger.info(`Passport timing turn=${turnId} source=${settings.asrProvider} stage=${stage} elapsed_ms=${elapsedMs}`))
         let unregister = () => {}
         const stop = async (): Promise<void> => {
           unregister()
@@ -121,6 +132,10 @@ export function apply(ctx: Context, config: Config): void {
     })
     child.effect(() => ctx.on('loader/volatile-update', update))
     child.on('session/event', (source, event) => current?.bridge.observe(source, event))
+    child.inject(['speechToText'], recognitionCtx => {
+      if (config.asrProvider.get() === 'host') update()
+      recognitionCtx.effect(() => () => { if (config.asrProvider.get() === 'host') update() })
+    })
     update()
   })
 }
