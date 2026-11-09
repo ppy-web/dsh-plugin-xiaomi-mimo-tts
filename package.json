@@ -147,6 +147,7 @@
     "@deepseek-ai/dsh-client-locale": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/dsh-client-ui-chat": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/dsh-client-ui-conversation": ">=0.2.2-0 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-layout": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/dsh-client-ui-plugin-manager": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.2-0 <0.3.0-0",
@@ -160,8 +161,7 @@
     "@deepseek-ai/dsh-settings": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/dsh-tools": ">=0.2.2-0 <0.3.0-0",
     "@deepseek-ai/schemastery": "~3.19.0",
-    "react": "^19.3.0",
-    "@deepseek-ai/dsh-client-ui-layout": ">=0.2.2-0 <0.3.0-0"
+    "react": "^19.3.0"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-agent-default-model": {
@@ -272,6 +272,8 @@
     "@deepseek-ai/dsh-util-code-language": "0.2.2-rc.1",
     "@deepseek-ai/dsh-util-workspace-path": "0.2.2-rc.1",
     "@deepseek-ai/schemastery": "3.19.0",
+    "@livliv-dev/player": "^0.3.0",
+    "@mediapipe/tasks-vision": "1.1.1",
     "@shikijs/langs": "^4.3.1",
     "@types/node": "^26.6.1",
     "@types/react": "~19.3.0",

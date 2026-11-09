@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Live2dSettingsPage, Live2dWidget } from './live2d.js'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { LuPanelLeft, LuSun, LuMoon, LuChevronRight } from 'react-icons/lu'
 import { BundleSettingsCard } from '../../src/client/settings/bundle-settings.js'
@@ -156,7 +157,7 @@ function PreviewApp() {
             <h1 ref={headingRef} tabIndex={-1}>{page.title}</h1><p>{page.description}</p>
           </header> : null}
           <div className="preview-page-body">
-            {activeView === 'settings' ? <div className="preview-plugin-surface">
+            {activeView === 'live2d' ? <Live2dSettingsPage locale={locale} /> : activeView === 'settings' ? <div className="preview-plugin-surface">
               <div className="preview-surface-heading"><img src={pluginIcon} alt="" width={36} height={36} /><div><strong>{t('settings.voiceSettingsNav')}</strong><span>dsh-xiaomi-tts</span></div><span className="preview-surface-version">v{TTS_VERSION}</span></div>
               <PluginDetailActions subject={PREVIEW_PLUGIN_SUBJECT} scope={scope} t={t} onOpenWorkbench={openWorkbench} />
               <BundleSettingsCard {...settingsPageProps} view="page" />
@@ -177,6 +178,7 @@ function PreviewApp() {
         </div>
       </main>
     </div>
+    {activeView !== 'live2d' ? <Live2dWidget locale={locale} /> : null}
     {mobile && navigationOpen ? <Modal open headless title={copy.navigation} onClose={() => setNavigationOpen(false)} className="preview-mobile-sidebar">
       <div id="preview-mobile-navigation"><PreviewSidebar {...sidebarProps} onClose={() => setNavigationOpen(false)} /></div>
     </Modal> : null}

@@ -117,6 +117,12 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.19.0
         version: 3.19.0
+      '@livliv-dev/player':
+        specifier: ^0.3.0
+        version: 0.3.0(@mediapipe/tasks-vision@1.1.1)
+      '@mediapipe/tasks-vision':
+        specifier: 1.1.1
+        version: 1.1.1
       '@shikijs/langs':
         specifier: ^4.3.1
         version: 4.5.0
@@ -875,6 +881,23 @@ packages:
   '@js-temporal/polyfill@0.5.1':
     resolution: {integrity: sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ==}
     engines: {node: '>=12'}
+
+  '@livliv-dev/player@0.3.0':
+    resolution: {integrity: sha512-4IRlS2R3pL7DTWdm/atfUP2cBPF64WzbT+wfSTOOKWEToY+3Oh8L06B6P8S4V00PX6eVTeaaZT5rQMSVqH1vjA==}
+    peerDependencies:
+      '@mediapipe/tasks-vision': 1.1.1
+      '@pixiv/three-vrm': ^3.5.5
+      three: '>=0.170.0'
+    peerDependenciesMeta:
+      '@mediapipe/tasks-vision':
+        optional: true
+      '@pixiv/three-vrm':
+        optional: true
+      three:
+        optional: true
+
+  '@mediapipe/tasks-vision@1.1.1':
+    resolution: {integrity: sha512-jwntgT5tzDrKOkqg6xNDNpRcTUnGvmylZE5DFnzPXossiWOIDdZX+C81LI75hlXhsG58YZW+lGzcmjH1qrQE/Q==}
 
   '@napi-rs/wasm-runtime@1.2.3':
     resolution: {integrity: sha512-UMduMbqO5s5zF2NkNacMT/yK5Y5QiKvWr2+50bzIIxFDwVJ2h49b+oyjaCGPhJxd2/gC2x39EHv/gHVuu36x2Q==}
@@ -2827,6 +2850,12 @@ snapshots:
   '@js-temporal/polyfill@0.5.1':
     dependencies:
       jsbi: 4.3.2
+
+  '@livliv-dev/player@0.3.0(@mediapipe/tasks-vision@1.1.1)':
+    optionalDependencies:
+      '@mediapipe/tasks-vision': 1.1.1
+
+  '@mediapipe/tasks-vision@1.1.1': {}
 
   '@napi-rs/wasm-runtime@1.2.3(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
     dependencies:

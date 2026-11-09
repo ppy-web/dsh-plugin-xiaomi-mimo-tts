@@ -81,6 +81,19 @@ a.preview-source-link::before { margin-inline-end: 0; }
 .preview-version { margin-inline-start: auto; color: var(--preview-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .preview-sidebar-notice { margin: 0; padding-inline: 10px; color: var(--preview-muted); font-size: 12px; line-height: 1.6; }
 .preview-main-column { min-width: 0; }
+.preview-live2d-widget { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; display: flex; pointer-events: none; }
+.preview-live2d-widget > div { pointer-events: auto; }
+.xmimo-live2d-preview { display: flex; width: 100%; }
+.xmimo-live2d-canvas { display: block; width: 100%; aspect-ratio: 3 / 4; cursor: pointer; }
+.xmimo-live2d-canvas:focus-visible { outline: 2px solid var(--preview-ring); outline-offset: 2px; }
+.xmimo-live2d-settings { max-width: 760px; }
+.xmimo-live2d-settings > p { color: var(--preview-muted); line-height: 1.6; }
+.xmimo-live2d-settings > label { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-block: 18px; }
+.xmimo-live2d-settings select, .xmimo-live2d-actions button { padding: 7px 10px; color: var(--preview-foreground); background: var(--preview-background); border: 1px solid var(--preview-rule); border-radius: 6px; }
+.xmimo-live2d-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 10px; }
+.xmimo-live2d-actions button { cursor: pointer; }
+.xmimo-live2d-actions button:disabled { opacity: .5; cursor: default; }
+.xmimo-live2d-actions button[aria-pressed='true'] { color: var(--preview-link); }
 .preview-topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 64px; padding: 0 24px; background: var(--preview-frame); }
 .preview-topbar-location, .preview-topbar-actions { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .preview-icon-button { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--preview-foreground); cursor: pointer; }

@@ -1,5 +1,5 @@
 export type PreviewLocale = 'zh' | 'en' | 'ja' | 'fr'
-export type PreviewView = 'settings' | 'workbench' | 'voice' | 'conversation' | 'detail' | 'components' | 'filter' | 'manual' | 'qqbot' | 'xiaomi' | 'doubao' | 'breeze' | 'passport'
+export type PreviewView = 'settings' | 'workbench' | 'live2d' | 'voice' | 'conversation' | 'detail' | 'components' | 'filter' | 'manual' | 'qqbot' | 'xiaomi' | 'doubao' | 'breeze' | 'passport'
 
 export interface PreviewCopy {
   workspace: string
@@ -28,6 +28,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     lightTheme: '切换浅色主题', darkTheme: '切换深色主题', activation: '版本新功能',
     notice: '仅用于预览，不会修改 DSH 设置。',
     pages: {
+      live2d: { title: 'Live2D 设置', description: '选择角色，调整大小和位置。' },
       settings: { title: '插件设置', description: '配置语音服务商、音色与音效，体验完整的设置面板。' },
       workbench: { title: '音色工坊', description: '在音色工坊配置音色、试听与音效。' },
       voice: { title: '语音朗读', description: '宿主设置中的快捷入口，调整音色、语速和自动朗读。' },
@@ -51,6 +52,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     lightTheme: 'Switch to light theme', darkTheme: 'Switch to dark theme', activation: 'What’s new',
     notice: 'Preview only. Your DSH settings stay unchanged.',
     pages: {
+      live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
       settings: { title: 'Plugin settings', description: 'Explore providers, voices, and sound effects in the full settings panel.' },
       workbench: { title: 'Voice Studio', description: 'Configure voices, previews, and sound effects in a dedicated studio.' },
       voice: { title: 'Voice reading', description: 'Quick voice, speed, and automatic reading controls from host settings.' },
@@ -74,6 +76,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     lightTheme: 'ライトテーマに切り替え', darkTheme: 'ダークテーマに切り替え', activation: '新機能のご紹介',
     notice: 'プレビュー専用です。DSH の設定は変更しません。',
     pages: {
+      live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
       settings: { title: 'プラグイン設定', description: 'サービス、音声、効果音を設定できる実際のパネルです。' },
       workbench: { title: 'Voice Studio', description: 'Configure voices, previews, and sound effects in a dedicated studio.' },
       voice: { title: '音声読み上げ', description: 'ホスト設定から音声、速度、自動読み上げを調整します。' },
@@ -97,6 +100,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     lightTheme: 'Passer au thème clair', darkTheme: 'Passer au thème sombre', activation: 'Les nouveautés',
     notice: 'Aperçu uniquement. Les réglages de DSH restent inchangés.',
     pages: {
+      live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
       settings: { title: 'Réglages du plugin', description: 'Découvrez les services, les voix et les effets sonores du panneau complet.' },
       workbench: { title: 'Voice Studio', description: 'Configure voices, previews, and sound effects in a dedicated studio.' },
       voice: { title: 'Lecture vocale', description: 'Réglez la voix, la vitesse et la lecture automatique depuis les paramètres de l’hôte.' },
