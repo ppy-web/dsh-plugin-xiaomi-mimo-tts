@@ -63,11 +63,11 @@ function response(text, last = false) {
   return Buffer.concat([header, body])
 }
 
-test('Doubao uploads before finish, accepts only the final session result, and caches the successful Plan route', async t => {
+for (const [source, endpoint] of [['doubao', 'bigmodel_async'], ['doubao-nostream', 'bigmodel_nostream']]) for (const plan of [false, true]) test(`Doubao ${source} uploads and returns the final result with ${plan ? 'Plan' : 'standard'} credentials`, async t => {
   const server = createServer(), wss = new WebSocketServer({ noServer: true })
   server.on('upgrade', (req, socket, head) => {
     assert.equal(req.headers['x-api-key'], 'doubao-key')
-    if (!req.url.includes('/plan/')) { socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return }
+    if (plan && !req.url.includes('/plan/')) { socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return }
     wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws))
   })
   server.listen(0, '127.0.0.1'); await once(server, 'listening')
@@ -84,14 +84,28 @@ test('Doubao uploads before finish, accepts only the final session result, and c
     paths.push(new URL(url).pathname)
     return new WebSocket(`ws://127.0.0.1:${server.address().port}${new URL(url).pathname}`, { headers })
   })
-  const input = service.recognizer('doubao').create(new AbortController().signal, 32000)
+  const input = service.recognizer(source).create(new AbortController().signal, 32000)
   input.append(Buffer.alloc(6400, 1)); await uploaded.promise
   assert.equal(Buffer.concat(frames).length, 6400)
   input.append(Buffer.alloc(640, 2)); assert.equal(await input.finish(), '最终整句')
   assert.deepEqual(Buffer.concat(frames), Buffer.concat([Buffer.alloc(6400, 1), Buffer.alloc(640, 2)]))
-  const next = service.recognizer('doubao').create(new AbortController().signal, 32000)
+  const next = service.recognizer(source).create(new AbortController().signal, 32000)
   next.append(Buffer.alloc(640)); assert.equal(await next.finish(), '最终整句')
-  assert.deepEqual(paths, ['/api/v3/sauc/bigmodel_async', '/api/v3/plan/sauc/bigmodel_async', '/api/v3/plan/sauc/bigmodel_async'])
+  assert.deepEqual(paths, plan
+    ? [`/api/v3/sauc/${endpoint}`, `/api/v3/plan/sauc/${endpoint}`, `/api/v3/plan/sauc/${endpoint}`]
+    : [`/api/v3/sauc/${endpoint}`, `/api/v3/sauc/${endpoint}`])
+})
+
+test('both Doubao choices reflect the saved key without exposing it', () => {
+  for (const key of ['', 'secret-key']) {
+    const service = new PassportRecognition(() => resolveTtsSettings({ doubaoApiKey: key }))
+    const choices = service.choices().filter(choice => choice.id.startsWith('doubao'))
+    assert.deepEqual(choices, [{ id: 'doubao', configured: !!key }, { id: 'doubao-nostream', configured: !!key }])
+    for (const { id } of choices) {
+      if (key) service.recognizer(id).check()
+      else assert.throws(() => service.recognizer(id).check(), /passport-asr-key-required/)
+    }
+  }
 })
 
 test('segmentation streams the pre-roll once, retains all speech and does not submit short noise', () => {

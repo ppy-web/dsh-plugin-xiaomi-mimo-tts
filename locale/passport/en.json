@@ -18,6 +18,6 @@
     "maxReplySeconds": "Maximum spoken reply duration (streaming stops with feedback at the limit)",
     "requestTimeoutMs": "Whole-request timeout (ms; recognition, conversation and playback)",
     "sessionRevision": "Conversation refresh identifier (managed by the new conversation action)",
-    "asrProvider": "Recognition source (host / xiaomi / doubao; reuses saved provider keys)"
+    "asrProvider": "Recognition source (host / xiaomi / doubao / doubao-nostream; reuses saved provider keys)"
   }
 }

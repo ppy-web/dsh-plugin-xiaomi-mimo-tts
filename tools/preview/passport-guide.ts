@@ -45,7 +45,7 @@ export const PASSPORT_GUIDE: Record<ManualLocale, ManualCopy> = {
       {
         id: 'passport-host', title: '先让宿主能听、能说', summary: '设备不是浏览器音频的遥控器，它使用宿主识别与宿主 TTS。',
         steps: [
-          { title: '准备语音识别', detail: '在连接器选择识别来源：宿主需先准备识别模型；小米提交整句 WAV，豆包边收音边上传。云端复用插件密钥，已配置不代表权限或额度已验证。本组件不自动切换识别来源。失败时新固件保留屏幕原因并响本地提示音，保持开麦选择；等待超过 8 秒可按 DOWN 取消。支持的 TTS 模型边合成边播音，流式超限或中断会停止并提示。' },
+          { title: '准备语音识别', detail: '在连接器选择识别来源：宿主需先准备识别模型；小米提交整句 WAV，豆包实时和一句话识别均边收音边上传，前者侧重低延迟，后者侧重准确率。设备只提交最终文字，不显示中间结果。云端复用插件密钥，已配置不代表权限或额度已验证。本组件不自动切换识别来源。失败时新固件保留屏幕原因并响本地提示音，保持开麦选择；等待超过 8 秒可按 DOWN 取消。支持的 TTS 模型边合成边播音，流式超限或中断会停止并提示。' },
           { title: '验证默认对话模型与预设', detail: '先在 DSH 正常完成一轮文字对话，确认默认模型、凭据和所选 Agent 预设可用。工具操作仍遵循宿主权限和审批。' },
           { title: '保存并测试 TTS', detail: '在插件设置中保存服务商、密钥、模型与音色，关闭浏览器本地语音兜底后试听短句，确认云端来源正常。设备需要宿主生成 WAV，再转换为 24 kHz 单声道 PCM；浏览器系统音色不能回传给设备。' },
         ], items: [],
@@ -138,7 +138,7 @@ export const PASSPORT_GUIDE: Record<ManualLocale, ManualCopy> = {
       {
         id: 'passport-host', title: 'Verify Host input and speech', summary: 'The device uses Host recognition and TTS, independently of browser audio.',
         steps: [
-          { title: 'Prepare recognition', detail: 'Select a recognition source in the connector. Host mode needs a prepared model; Xiaomi submits full utterances and Doubao uploads while you speak. Cloud keys are reused; access and quota still need validation. The connector does not switch recognizers automatically. New firmware retains failure reasons and plays a local cue without closing the microphone. Supported TTS models stream audio; failures and duration limits stop playback with feedback. If the settings page says it is waiting for Host services, enable @deepseek-ai/dsh-experimental-speech-to-text and a provider, then restart DSH.' },
+          { title: 'Prepare recognition', detail: 'Select a recognition source in the connector. Host mode needs a prepared model; Xiaomi submits full utterances. Both Doubao modes upload while you speak: real-time favors latency, utterance recognition favors accuracy. Only the final transcript is submitted and interim text is not displayed. Cloud keys are reused; access and quota still need validation. The connector does not switch recognizers automatically. New firmware retains failure reasons and plays a local cue without closing the microphone. Supported TTS models stream audio; failures and duration limits stop playback with feedback. If the settings page says it is waiting for Host services, enable @deepseek-ai/dsh-experimental-speech-to-text and a provider, then restart DSH.' },
           { title: 'Test the model and preset', detail: 'Complete a text conversation in DSH to check the default model, credentials and selected Agent preset. Tools retain the Host’s permission and approval rules.' },
           { title: 'Save and test TTS', detail: 'Save the provider, key, model and voice. Disable browser speech fallback and test a short cloud preview. The device needs Host-generated WAV converted to 24 kHz mono PCM; browser system voices cannot be sent back to it.' },
         ], items: [], links: [{ label: 'Speech settings and previews', href: '#manual-console' }, { label: 'Doubao voice setup', href: '#doubao' }],

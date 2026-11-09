@@ -5,7 +5,7 @@ import { recognitionError } from './asr-error.js'
 import { DoubaoRecognition } from './doubao-asr.js'
 import type { WebSocket } from 'ws'
 
-export type RecognitionSource = 'host' | 'xiaomi' | 'doubao'
+export type RecognitionSource = 'host' | 'xiaomi' | 'doubao' | 'doubao-nostream'
 export interface RecognitionInput {
   append(pcm: Buffer): void
   finish(): Promise<string>
@@ -68,7 +68,7 @@ export class PassportRecognition implements PassportRecognitionService {
     private readonly connectDoubao?: (url: string, headers: Record<string, string>) => WebSocket) {}
   choices(): RecognitionChoice[] {
     const settings = this.current()
-    return [{ id: 'host', configured: true }, { id: 'xiaomi', configured: !!settings.apiKey.trim() }, { id: 'doubao', configured: !!settings.doubaoApiKey.trim() }]
+    return [{ id: 'host', configured: true }, { id: 'xiaomi', configured: !!settings.apiKey.trim() }, { id: 'doubao', configured: !!settings.doubaoApiKey.trim() }, { id: 'doubao-nostream', configured: !!settings.doubaoApiKey.trim() }]
   }
   recognizer(source: RecognitionSource, host?: Pick<SpeechToText, 'snapshot' | 'resolve' | 'transcribe'>): PassportRecognizer {
     if (source === 'host') return hostRecognizer(host)
@@ -77,11 +77,11 @@ export class PassportRecognition implements PassportRecognitionService {
     return { check, create: (signal, maxBytes) => {
       check()
       const savedKey = key()
-      if (source === 'doubao') {
+      if (source === 'doubao' || source === 'doubao-nostream') {
         if (this.doubaoKey !== savedKey) { this.doubaoKey = savedKey; this.doubaoPlan = false }
         return new DoubaoRecognition(savedKey, signal, maxBytes, this.doubaoPlan, plan => {
           if (this.doubaoKey === savedKey) this.doubaoPlan = plan
-        }, this.connectDoubao)
+        }, this.connectDoubao, source === 'doubao-nostream' ? 'nostream' : 'async')
       }
       return bufferedRecognition(signal, maxBytes, async pcm => {
         const response = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {

@@ -103,7 +103,7 @@ export function PersonaSettingsPreview({ locale, readOnly = false }: { locale: '
       <PassportSettingsPage view="page" scope={passport} t={t} guideHref="#passport" openTtsSettings={() => { window.location.hash = 'settings' }} tokenConfigured={IDLE_PLUGIN_CHANGES}
         presets={[{ id: 'whale-girl', name: locale === 'zh' ? '鲸鱼娘' : 'Whale Girl' }, { id: 'standard', name: locale === 'zh' ? '通用助手' : 'General assistant' }]}
         connectionStatus={{ configured: false, listening: false, connected: false, servicesReady: true, recognitionReady: true,
-          recognitionChoices: [{ id: 'host', configured: true }, { id: 'xiaomi', configured: true }, { id: 'doubao', configured: true }],
+          recognitionChoices: [{ id: 'host', configured: true }, { id: 'xiaomi', configured: true }, { id: 'doubao', configured: true }, { id: 'doubao-nostream', configured: true }],
           host: '127.0.0.1', port: 3101, addresses: [{ name: locale === 'zh' ? '演示电脑' : 'Demo computer', address: '192.168.1.10' }] }} />
     </div>
   </section>

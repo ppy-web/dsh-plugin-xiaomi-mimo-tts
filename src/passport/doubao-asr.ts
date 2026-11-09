@@ -20,7 +20,8 @@ export class DoubaoRecognition implements RecognitionInput {
   private readonly abort = () => this.fail(new Error('passport-recognition-cancelled'))
   constructor(private readonly key: string, private readonly signal: AbortSignal, private readonly maxBytes: number,
     plan = false, private readonly remember: (plan: boolean) => void = () => {},
-    private readonly connector?: (url: string, headers: Record<string, string>) => WebSocket) {
+    private readonly connector?: (url: string, headers: Record<string, string>) => WebSocket,
+    private readonly mode: 'async' | 'nostream' = 'async') {
     void this.result.promise.catch(() => {})
     this.timer = setTimeout(() => this.fail(new Error('passport-asr-timeout')), 10000)
     this.timer.unref()
@@ -29,7 +30,7 @@ export class DoubaoRecognition implements RecognitionInput {
     if (signal.aborted) this.abort()
   }
   private connect(plan: boolean, retry: boolean): void {
-    const url = `wss://openspeech.bytedance.com/api/v3/${plan ? 'plan/' : ''}sauc/bigmodel_async`
+    const url = `wss://openspeech.bytedance.com/api/v3/${plan ? 'plan/' : ''}sauc/bigmodel_${this.mode}`
     const headers = { 'X-Api-Key': this.key, 'X-Api-Resource-Id': 'volc.seedasr.sauc.duration', 'X-Api-Request-Id': randomUUID(), 'X-Api-Sequence': '-1' }
     const ws = this.socket = this.connector?.(url, headers) ?? new WebSocket(url, {
       headers,

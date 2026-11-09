@@ -11,7 +11,7 @@
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&amp;logo=deepseek&amp;logoColor=white" alt="deepseek-harness"></a>
 </p>
 
-> 为 DSH 添加 Xiaomi MiMo TTS、豆包 Seed TTS、Breeze Blue TTS，浏览器语音；音频下载、 UI 音效、桌宠联动、QQBot 语音；
+> 小米MIMO、豆包语音、BreezeBlue、浏览器语音 - 音色随心配，支持连接10＋供应商或本地语音模型，文本过滤、实时流式朗读、音频下载、音效、桌宠联动及 QQ Bot、AI Passport 联动
 
 ## 🎨 [在线预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts)
 
@@ -28,9 +28,10 @@
 ## ✨ 功能
 
 - 一键朗读与自动播报，过滤网址、代码等内容。
-- 小米 MiMo、豆包与 Breeze 流式语音，支持内置、自定义与复刻音色；浏览器语音可优先使用或兜底。
+- 小米 MiMo、豆包与 Breeze 语音，支持内置、自定义与复刻音色；浏览器或 MOSS 本地语音可优先使用或兜底。
+- 支持通过外部适配器接入更多语音供应商和本地语音模型。
 - 语速、音量、暂停与停止控制，音频历史试听和下载。
-- 可选 UI 音效、宿主事件播报、第三方插件联动及鲸鱼娘 Agent 预设。
+- 可选 UI 音效、宿主事件播报、桌宠及 QQ Bot 联动、AI Passport 语音对话与鲸鱼娘 Agent 预设。
 
 ## 🚀 安装与使用
 

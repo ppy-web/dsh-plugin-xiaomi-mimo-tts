@@ -18,6 +18,6 @@
     "maxReplySeconds": "最长语音回复（秒，流式超限会停止并提示）",
     "requestTimeoutMs": "整轮等待上限（ms，含识别、对话和播报）",
     "sessionRevision": "会话刷新标识（由“刷新预设并新建会话”按钮维护）",
-    "asrProvider": "语音识别来源（host / xiaomi / doubao，云端复用插件密钥）"
+    "asrProvider": "语音识别来源（host / xiaomi / doubao / doubao-nostream，云端复用插件密钥）"
   }
 }

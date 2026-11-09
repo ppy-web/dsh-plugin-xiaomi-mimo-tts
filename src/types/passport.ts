@@ -1,5 +1,5 @@
 export interface PassportSettings {
-  asrProvider: 'host' | 'xiaomi' | 'doubao'
+  asrProvider: 'host' | 'xiaomi' | 'doubao' | 'doubao-nostream'
   host: string
   port: number
   accessToken: string
@@ -39,8 +39,8 @@ export const PASSPORT_PRESETS_ROUTE = '/plugins/xiaomi-mimo-tts/passport-presets
 export interface PassportPreset { id: string; name?: string; unavailable?: boolean }
 
 export interface PassportConnectionStatus {
-  asrProvider?: 'host' | 'xiaomi' | 'doubao'
-  recognitionChoices?: { id: 'host' | 'xiaomi' | 'doubao'; configured: boolean }[]
+  asrProvider?: PassportSettings['asrProvider']
+  recognitionChoices?: { id: PassportSettings['asrProvider']; configured: boolean }[]
   configured: boolean
   listening: boolean
   connected: boolean

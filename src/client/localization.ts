@@ -76,7 +76,7 @@ export const zh = {
   "settings.providerDoubao": "豆包语音",
   "settings.providerBreeze": "Breeze Blue",
   'settings.externalManage': '管理供应商',
-  'settings.externalProviderAdapter': '供应商适配器',
+  'settings.externalProviderAdapter': '我想连接其他 TTS 服务商',
   'settings.acceptExternalProviders': '接收外部供应商',
   'settings.acceptExternalProvidersHint': '允许外部插件提供语音服务；关闭并保存后恢复内置供应商。',
   'settings.externalSwitchFailed': '供应商切换失败，请重试。',

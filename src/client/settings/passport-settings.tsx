@@ -231,7 +231,7 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
         <div className="xmimo-passport-control-row">
           <select id={`${id}-asr`} name="asrProvider" value={value.asrProvider} disabled={disabled}
             aria-describedby={`${id}-asr-hint`} onChange={event => edit('asrProvider', event.currentTarget.value)}>
-            {(['host', 'xiaomi', 'doubao'] as const).map(source => <option key={source} value={source}
+            {(['host', 'xiaomi', 'doubao', 'doubao-nostream'] as const).map(source => <option key={source} value={source}
               disabled={source !== 'host' && !status?.recognitionChoices?.some(choice => choice.id === source && choice.configured)}>
               {t(`passport.asr.${source}`)}{source !== 'host' ? ` · ${t(status?.recognitionChoices?.some(choice => choice.id === source && choice.configured) ? 'passport.keyConfigured' : 'passport.keyMissing')}` : ''}
             </option>)}

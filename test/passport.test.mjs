@@ -129,6 +129,161 @@ test('feedback reports an empty transcript once and keeps the same microphone co
   assert.equal(device.events.filter(event => event.type === 'voice.result' && event.turnId === failed.turnId).length, 1)
 })
 
+test('push to talk holds silence until release, works while muted and keeps legacy clients unchanged', async t => {
+  const run = await harness(t), device = await run.connect('manual', {
+    capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'],
+    connection: { input_enabled: false },
+  })
+  const ready = await device.wait('session.ready')
+  assert.ok(ready.capabilities.includes('input.push_to_talk'))
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' })
+  await device.wait('voice.ptt.started', event => event.captureId === '1')
+  const spoken = Buffer.concat([Buffer.alloc(6400), tone(), Buffer.alloc(12800), tone()])
+  device.audio(spoken)
+  device.send({ type: 'session.ping', event_id: 'manual-fence' })
+  await device.wait('session.pong', event => event.request_event_id === 'manual-fence')
+  assert.equal(run.submitted.length, 0)
+  assert.equal(device.events.some(event => event.type === 'voice.state' && event.state === 'processing'), false)
+  device.send({ type: 'input_audio_buffer.commit', captureId: '1' })
+  await device.wait('voice.progress', event => event.phase === 'thinking')
+  assert.deepEqual(run.submitted, ['你好'])
+  assert.deepEqual(run.recognized[0].spec.audio.subarray(44), spoken)
+  run.reply()
+  const done = await device.wait('audio.done')
+  device.send({ type: 'playback.ended', responseId: done.responseId })
+  await device.wait('voice.result', event => event.status === 'completed')
+  device.audio(); device.send({ type: 'session.ping', event_id: 'muted-fence' })
+  await device.wait('session.pong', event => event.request_event_id === 'muted-fence')
+  assert.deepEqual(run.submitted, ['你好'])
+  const legacy = await run.connect('manual')
+  assert.equal((await legacy.wait('session.ready')).capabilities.includes('input.push_to_talk'), false)
+})
+
+test('empty and stale push-to-talk events cannot submit or destroy a new capture', async t => {
+  const run = await harness(t), device = await run.connect('manual-empty', {
+    capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'],
+  })
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' })
+  device.audio(Buffer.alloc(6400)); device.send({ type: 'input_audio_buffer.commit', captureId: '1' })
+  await device.wait('voice.ptt.empty', event => event.captureId === '1')
+  device.send({ type: 'input_audio_buffer.start', captureId: '2' })
+  device.audio(tone())
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' })
+  device.send({ type: 'input_audio_buffer.commit', captureId: '1' })
+  device.send({ type: 'session.ping', event_id: 'stale-fence' })
+  await device.wait('session.pong', event => event.request_event_id === 'stale-fence')
+  assert.equal(run.submitted.length, 0)
+  device.send({ type: 'input_audio_buffer.commit', captureId: '2' })
+  await device.wait('voice.progress', event => event.phase === 'thinking')
+  assert.deepEqual(run.submitted, ['你好'])
+  device.send({ type: 'input_audio_buffer.commit', captureId: '2' })
+  await settle(); assert.deepEqual(run.submitted, ['你好'])
+})
+
+test('silent held recording is bounded and does not submit on overflow', async t => {
+  const run = await harness(t, { options: { maxRecordingSeconds: 1 } })
+  const device = await run.connect('manual-limit', {
+    capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'],
+  })
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' })
+  device.audio(Buffer.alloc(32000)); device.audio(Buffer.alloc(640))
+  const error = await device.wait('error', event => event.code === 'passport-recording-too-long')
+  assert.equal(error.code, 'passport-recording-too-long')
+  assert.equal(run.submitted.length, 0)
+  assert.equal(device.ws.readyState, WebSocket.OPEN)
+})
+
+test('repeated manual starts cannot reset the input rate limit', async t => {
+  const run = await harness(t, { options: { maxRecordingSeconds: 10 } })
+  const device = await run.connect('manual-rate', {
+    capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'],
+  })
+  for (let id = 1; id <= 4; id++) {
+    device.send({ type: 'input_audio_buffer.start', captureId: String(id) })
+    device.audio(Buffer.alloc(32000))
+  }
+  assert.equal((await device.closed).code, 1008)
+  assert.equal(run.submitted.length, 0)
+})
+
+test('continuous microphone resumes after a manual turn', async t => {
+  const run = await harness(t), device = await run.connect('manual-continuous', {
+    capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'],
+  })
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' }); device.audio(tone())
+  device.send({ type: 'input_audio_buffer.commit', captureId: '1' })
+  const first = await device.wait('voice.progress', event => event.phase === 'thinking')
+  run.reply(); const done = await device.wait('audio.done')
+  device.send({ type: 'playback.ended', responseId: done.responseId })
+  await device.wait('voice.result', event => event.turnId === first.turnId && event.status === 'completed')
+  device.audio()
+  await device.wait('voice.progress', event => event.phase === 'thinking' && event.turnId !== first.turnId)
+  assert.deepEqual(run.submitted, ['你好', '你好'])
+})
+
+test('disconnect drops an unfinished manual capture and reconnect starts cleanly', async t => {
+  const run = await harness(t)
+  const options = { capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'] }
+  const old = await run.connect('manual-reconnect', options)
+  old.send({ type: 'input_audio_buffer.start', captureId: '1' }); old.audio(tone())
+  await old.wait('voice.progress', event => event.phase === 'capturing')
+  const device = await run.connect('manual-reconnect', options)
+  await old.closed
+  assert.equal(run.submitted.length, 0)
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' }); device.audio(tone())
+  device.send({ type: 'input_audio_buffer.commit', captureId: '1' })
+  await device.wait('voice.progress', event => event.phase === 'thinking')
+  assert.deepEqual(run.submitted, ['你好'])
+})
+
+test('very short manual speech fails without submitting', async t => {
+  const run = await harness(t), device = await run.connect('manual-short', {
+    capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'],
+  })
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' }); device.audio(tone(20))
+  device.send({ type: 'input_audio_buffer.commit', captureId: '1' })
+  const failure = await device.wait('voice.result', event => event.status === 'failed')
+  assert.equal(failure.code, 'passport-speech-too-short')
+  assert.equal(run.submitted.length, 0)
+})
+
+test('cancelling a held recording discards it and permits a new turn', async t => {
+  const run = await harness(t), device = await run.connect('manual-cancel', {
+    capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'],
+  })
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' }); device.audio(tone())
+  const progress = await device.wait('voice.progress', event => event.phase === 'capturing')
+  device.send({ type: 'response.cancel' })
+  await device.wait('voice.result', event => event.turnId === progress.turnId && event.status === 'cancelled')
+  device.send({ type: 'input_audio_buffer.start', captureId: '2' }); device.audio(tone())
+  device.send({ type: 'input_audio_buffer.commit', captureId: '2' })
+  await device.wait('voice.progress', event => event.phase === 'thinking' && event.turnId !== progress.turnId)
+  assert.deepEqual(run.submitted, ['你好'])
+})
+
+test('interrupting playback fences its late receipt from the next held recording', async t => {
+  const run = await harness(t), device = await run.connect('manual-playback', {
+    capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'],
+  })
+  device.audio()
+  const firstTurn = await device.wait('voice.progress', event => event.phase === 'thinking')
+  const rest = Promise.withResolvers()
+  const sending = run.bridge.adapter.sendStream((async function* () {
+    yield Buffer.alloc(960, 1); await rest.promise; yield Buffer.alloc(960, 2)
+  })(), { agent: run.agent, signal: new AbortController().signal })
+  void sending.catch(() => {})
+  const oldAudio = await device.wait('audio.delta')
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' })
+  await device.wait('voice.ptt.started', event => event.captureId === '1')
+  device.audio(tone())
+  const next = await device.wait('voice.progress', event => event.phase === 'capturing' && event.turnId !== firstTurn.turnId)
+  device.send({ type: 'playback.cancelled', responseId: oldAudio.responseId })
+  device.send({ type: 'input_audio_buffer.commit', captureId: '1' })
+  await device.wait('voice.progress', event => event.turnId === next.turnId && event.phase === 'thinking')
+  assert.deepEqual(run.submitted, ['你好', '你好'])
+  rest.resolve(); await assert.rejects(sending)
+})
+
 test('a failed synthesis ends its turn without a reconnect or waiting for the whole request timeout', async t => {
   let calls = 0
   const run = await harness(t, { synthesize: async () => { if (!calls++) throw new Error('private-upstream-secret'); return pcmWave(tone(40)) } })

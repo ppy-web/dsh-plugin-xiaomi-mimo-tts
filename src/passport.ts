@@ -23,7 +23,7 @@ export const name = 'speech-delivery-passport'
 export const inject: string[] = []
 const messages = (language: string) => JSON.parse(readFileSync(new URL(`./locale/passport/${language}.json`, import.meta.resolve('dsh-xiaomi-tts/package.json')), 'utf8')).config
 export const Config = z.object({
-  asrProvider: z.union(['host', 'xiaomi', 'doubao']).default('host').volatile(),
+  asrProvider: z.union(['host', 'xiaomi', 'doubao', 'doubao-nostream']).default('host').volatile(),
   host: z.string().default(defaults.host).volatile(),
   port: z.number().step(1).min(1).max(65535).default(defaults.port).volatile(),
   accessToken: z.string().max(192).pattern(/^\S*$/u).role('secret').default(defaults.accessToken).volatile(),

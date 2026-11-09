@@ -74,7 +74,7 @@ export class PcmUtterances {
     this.streaming = false
   }
 
-  append(pcm: Buffer): Buffer | undefined {
+  append(pcm: Buffer, manual = false): Buffer | undefined {
     this.remainder = Buffer.concat([this.remainder, pcm])
     while (this.remainder.length >= 640) {
       const frame = this.remainder.subarray(0, 640)
@@ -87,11 +87,11 @@ export class PcmUtterances {
         if (this.quietFrames * 20 >= this.options.silenceMs) this.reset()
         continue
       }
-      if (!this.chunks.length && !voiced) {
+      if (!manual && !this.chunks.length && !voiced) {
         this.pre.push(Buffer.from(frame)); if (this.pre.length > 10) this.pre.shift()
         continue
       }
-      if (!this.chunks.length) { this.chunks = this.pre; this.pre = []; this.frames = this.chunks.length }
+      if (!this.chunks.length) { this.chunks = manual ? [] : this.pre; this.pre = []; this.frames = this.chunks.length }
       this.chunks.push(Buffer.from(frame)); this.frames++
       if (voiced) this.speechFrames++
       if (this.frames * 20 > this.options.maxRecordingSeconds * 1000) {
@@ -102,7 +102,7 @@ export class PcmUtterances {
         this.captured?.(this.streaming ? frame : Buffer.concat(this.chunks), !this.streaming)
         this.streaming = true
       }
-      if (this.quietFrames * 20 >= this.options.silenceMs) return this.commit()
+      if (!manual && this.quietFrames * 20 >= this.options.silenceMs) return this.commit()
     }
     return undefined
   }

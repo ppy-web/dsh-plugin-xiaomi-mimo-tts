@@ -175,6 +175,10 @@ export class PassportBridge {
 
 class PassportConnection {
   private feedback = false
+  private pushToTalk = false
+  private manualCapture = false
+  private manualId = ''
+  private lastManualSequence = 0
   private turnId = ''
   private outcomeSent = false
   private started = 0
@@ -269,6 +273,28 @@ class PassportConnection {
     if (event.type === 'input.mute') { this.muted = true; this.interrupt(); return }
     if (event.type === 'input.unmute') { this.muted = false; this.capture.reset(); return }
     if (event.type === 'response.cancel') { this.interrupt(); return }
+    if (event.type === 'input_audio_buffer.start' && this.pushToTalk) {
+      if (typeof event.captureId !== 'string' || !/^[1-9][0-9]{0,9}$/u.test(event.captureId) || Number(event.captureId) > 0xffffffff) throw new Error('passport-invalid-event')
+      const sequence = Number(event.captureId)
+      if (sequence <= this.lastManualSequence) return
+      this.lastManualSequence = sequence
+      this.interrupt()
+      this.manualCapture = true
+      this.manualId = event.captureId
+      this.send('voice.ptt.started', { captureId: this.manualId })
+      return
+    }
+    if (event.type === 'input_audio_buffer.commit' && this.manualCapture) {
+      if (event.captureId !== this.manualId) return
+      const captureId = this.manualId
+      this.manualCapture = false
+      this.manualId = ''
+      const wave = this.capture.commit()
+      if (wave) this.recognize(wave)
+      else if (this.available && !this.disposed) this.send('voice.ptt.empty', { captureId })
+      return
+    }
+    if (event.type === 'input_audio_buffer.commit' && this.pushToTalk && event.captureId !== undefined) return
     if (event.type.startsWith('playback.')) {
       if (event.responseId !== this.playback?.id) return
       if (event.type === 'playback.ended' && this.playback?.doneSent) this.playback.resolve()
@@ -276,15 +302,17 @@ class PassportConnection {
       if (event.type === 'playback.cancelled') this.interrupt()
       return
     }
-    if (this.muted || this.busy) return
+    if ((this.muted && !this.manualCapture) || this.busy) return
     if (event.type === 'input_audio_buffer.append') {
       if (typeof event.audio !== 'string' || !event.audio.length || event.audio.length > 44000) throw new Error('passport-invalid-audio')
       const pcm = Buffer.from(event.audio, 'base64')
       if (pcm.toString('base64') !== event.audio || !pcm.length || pcm.length % 2) throw new Error('passport-invalid-audio')
       if (Date.now() - this.inputWindow >= 1000) { this.inputWindow = Date.now(); this.inputBytes = 0 }
       this.inputBytes += pcm.length
-      if (this.inputBytes > 64000) throw new Error('passport-input-overflow')
-      const wave = this.capture.append(pcm)
+      // Allow the bounded device pre-roll to arrive in a burst without resetting
+      // the rate window on each start (which would allow unbounded input).
+      if (this.inputBytes > (this.manualCapture ? 96000 : 64000)) throw new Error('passport-input-overflow')
+      const wave = this.capture.append(pcm, this.manualCapture)
       if (wave) this.recognize(wave)
     } else if (event.type === 'input_audio_buffer.commit') {
       const wave = this.capture.commit()
@@ -301,6 +329,7 @@ class PassportConnection {
       || !capabilities.includes('input.audio') || !capabilities.includes('playback.receipts')) throw new Error('passport-protocol-mismatch')
     this.deviceId = client.instance_id
     this.feedback = capabilities.includes('voice.feedback')
+    this.pushToTalk = capabilities.includes('input.push_to_talk')
     if (this.bridge.options.deviceId && this.deviceId !== this.bridge.options.deviceId) { this.close(4003, 'device-rejected'); return }
     if (!this.bridge.claim(this)) { this.send('voice.ownership', { state: 'busy' }); this.close(4002, 'occupied'); return }
     this.bridge.checkRecognition()
@@ -310,7 +339,7 @@ class PassportConnection {
     this.available = true
     clearTimeout(this.handshake)
     this.send('session.ready', { protocol_version: '7.0.0', session_id: agent.id,
-      request_event_id: event.event_id, capabilities: ['input.audio', 'playback.receipts', ...(this.feedback ? ['voice.feedback'] : [])] })
+      request_event_id: event.event_id, capabilities: ['input.audio', 'playback.receipts', ...(this.feedback ? ['voice.feedback'] : []), ...(this.pushToTalk ? ['input.push_to_talk'] : [])] })
     this.send('voice.ready', { inputSampleRate: 16000, outputSampleRate: 24000 })
     this.send('voice.state', { state: 'listening' })
   }
@@ -386,6 +415,8 @@ class PassportConnection {
         if (first) { this.mark('first-audio'); first = false }
         this.send('audio.delta', { responseId: id, sampleRate: 24000, audio: chunk.toString('base64') })
       }, signal, this.bridge.options.maxReplySeconds)
+      signal.throwIfAborted()
+      if (this.playback?.id !== id) throw new Error('passport-playback-cancelled')
       this.playback.doneSent = true
       this.send('audio.done', { responseId: id })
       await receipt.promise
@@ -422,7 +453,7 @@ class PassportConnection {
     clearTimeout(this.timeout)
     this.input?.cancel(); this.input = undefined
     this.turnId = ''
-    this.busy = false; this.submitted = false; this.turn = undefined; this.hasReply = false
+    this.busy = false; this.submitted = false; this.turn = undefined; this.hasReply = false; this.manualCapture = false; this.manualId = ''
     this.capture.reset()
     if (this.available && !this.disposed && this.ws.readyState === WebSocket.OPEN) this.send('voice.state', { state: 'listening' })
   }
@@ -430,6 +461,9 @@ class PassportConnection {
   private interrupt(notify = true): void {
     if (notify && this.turnId) this.result('cancelled')
     this.cycle.abort()
+    // A late cancellation receipt for an interrupted response must never cancel
+    // the next manual capture while its old sendStream promise is unwinding.
+    this.playback = undefined
     const agent = this.bridge.session.agent
     if (agent) this.speech.release(agent)
     if (this.submitted) this.bridge.session.cancel()

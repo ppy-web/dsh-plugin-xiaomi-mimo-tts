@@ -32,6 +32,17 @@ test('Passport form defaults match the Host configuration contract', () => {
   for (const [field, value] of Object.entries(DEFAULT_PASSPORT_SETTINGS)) assert.deepEqual(host[field].get(), value, field)
 })
 
+test('both Doubao recognition modes can be selected and persisted', async () => {
+  for (const source of ['doubao', 'doubao-nostream']) {
+    const base = configured(), value = { ...base, asrProvider: source }, writes = []
+    assert.equal(Config({ asrProvider: source }).asrProvider.get(), source)
+    assert.equal(validatePassportDraft(value), null)
+    const scope = { getSnapshot: () => ({ status: 'ready', writable: true, revision: 1 }), async mutate(ops) { writes.push(...ops); return true } }
+    await savePassportDraft(scope, base, value, 1)
+    assert.deepEqual(writes, [{ op: 'set', path: ['asrProvider'], value: source }])
+  }
+})
+
 test('Passport validation rejects unusable credentials, device identities and numeric limits', () => {
   assert.equal(validatePassportDraft(configured()), null)
   assert.equal(validatePassportDraft({ ...configured(), accessToken: '0042' }), null)
