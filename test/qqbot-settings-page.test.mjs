@@ -43,11 +43,13 @@ test('saving persona fields submits one atomic revision-fenced edit and preserve
   const base = defaults(), draft = defaults(), writes = []
   draft.persona.name = '小鲸'
   draft.memory.enabled = false
+  draft.memes.enabled = false
   const scope = { getSnapshot: () => ({ status: 'ready', writable: true, revision: 4 }), async mutate(ops, revision) { writes.push({ ops, revision }); return true } }
   await saveWhaleDraft(scope, base, draft, 4)
   assert.deepEqual(writes, [{ revision: 4, ops: [
     { op: 'set', path: ['persona', 'name'], value: '小鲸' },
     { op: 'set', path: ['memory', 'enabled'], value: false },
+    { op: 'set', path: ['memes', 'enabled'], value: false },
   ] }])
   await saveWhaleDraft(scope, base, base, 4)
   assert.equal(writes.length, 1, 'unchanged fields must not overwrite the Host')
@@ -118,4 +120,7 @@ test('rendered QQ controls read QQ persona values and preserve separate write pe
   }))
   assert.ok(desktopHtml.includes('value="DSH configured name"'))
   assert.ok(!desktopHtml.includes('QQ configured name'))
+  assert.ok(desktopHtml.includes('aria-label="whale.memoryEnabled"'))
+  assert.ok(desktopHtml.includes('aria-label="whale.memesEnabled"'))
+  assert.ok(!personaForm.includes('aria-label="whale.memesEnabled"'))
 })

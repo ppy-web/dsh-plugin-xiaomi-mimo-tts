@@ -9,5 +9,5 @@ const require = createRequire(import.meta.url)
 /** Render the selected independent character skill with its own saved configuration. */
 export function buildWhalePersona(channel: 'dsh' | 'qq', settings: WhaleSettings = DEFAULT_WHALE_SETTINGS, root = whalePackageRoot()): string {
   const build = require(join(root, 'skills', 'whale-girl', 'persona.cjs')) as (root: string, options: object) => string
-  return build(root, { channel, persona: settings.persona, memoryEnabled: settings.memory.enabled })
+  return build(root, { channel, persona: settings.persona, memoryEnabled: settings.memory.enabled, memesEnabled: settings.memes?.enabled })
 }

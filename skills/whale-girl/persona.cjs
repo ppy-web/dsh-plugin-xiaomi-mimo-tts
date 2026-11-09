@@ -10,10 +10,16 @@ module.exports = function buildWhalePersona(root, options = {}) {
   const core = readFileSync(join(skillDirectory, 'SKILL.md'), 'utf8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
   const fields = { character_identity: `你是${persona.name}，${persona.relationship}。`, character_address: `自称以${JSON.stringify(persona.selfReference)}为主；默认称对方${JSON.stringify(persona.userAddress)}，随当前会话明确保存的称呼偏好调整。` }
   const base = core.replace(/\{\{(character_identity|character_address)\}\}/g, (_, key) => fields[key])
-  const text = options.memoryEnabled === false
-    ? base.split(/## (?:DSH 工作区记忆|QQ 本地记忆)/u)[0] + '\n记忆已由本机配置暂停，不读取、保存或恢复旧记忆；QQ 中仍可按要求查看、删除或清空记录。'
-    : base
-  const skill = `${text}\n\n## 本机人设配置\n\n${JSON.stringify(persona)}`
+  const local = `## 本机人设配置\n\n${JSON.stringify(persona)}`
+  let text = `${local}\n\n${base}`
+  if (channel === 'dsh') {
+    if (options.memoryEnabled !== false) text += `\n\n${readFileSync(join(directory, 'memory-instructions.md'), 'utf8')}`
+    if (options.memesEnabled !== false) text += `\n\n${readFileSync(join(directory, 'meme-instructions.md'), 'utf8')}`
+  } else if (options.memoryEnabled === false) {
+    text = text.split(/## QQ 本地记忆/u)[0] + '\n记忆已由本机配置暂停，不读取、保存或恢复旧记忆；QQ 中仍可按要求查看、删除或清空记录。'
+  }
+  const skill = text
+  if (channel === 'dsh' && options.memesEnabled === false) return skill
   try {
     const catalog = JSON.parse(readFileSync(join(directory, 'memes.json'), 'utf8'))
     if (!Array.isArray(catalog.memes)) return skill

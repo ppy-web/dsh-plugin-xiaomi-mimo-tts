@@ -29,12 +29,18 @@ export function whaleConfigFields(component: 'whale-girl' | 'qqbot') {
     memory: Memory.default({ enabled: true }).volatile(),
   }
 }
-export const WHALE_CONFIG_FIELDS = whaleConfigFields('whale-girl')
+export const WHALE_CONFIG_FIELDS = {
+  ...whaleConfigFields('whale-girl'),
+  memes: z.object({ enabled: z.boolean().default(true) })
+    .i18n({ zh: messages('whale-girl', 'zh').memes, en: messages('whale-girl', 'en').memes })
+    .default({ enabled: true }).volatile(),
+}
 export const WhaleConfig: z<WhaleConfig> = z.object(WHALE_CONFIG_FIELDS).i18n({ zh: messages('whale-girl', 'zh'), en: messages('whale-girl', 'en') })
 export interface WhaleConfig {
   persona: Volatile<WhaleSettings['persona']>
   memory: Volatile<WhaleSettings['memory']>
+  memes?: Volatile<NonNullable<WhaleSettings['memes']>>
 }
 export function readWhaleConfig(config: WhaleConfig): WhaleSettings {
-  return { persona: config.persona.get(), memory: config.memory.get() }
+  return { persona: config.persona.get(), memory: config.memory.get(), ...(config.memes ? { memes: config.memes.get() } : {}) }
 }

@@ -18,6 +18,10 @@
     "memory": {
       "$description": "DSH 工作区记忆",
       "enabled": "允许使用当前工作区记忆，不读取 QQ 记忆。"
+    },
+    "memes": {
+      "$description": "本地表情包",
+      "enabled": "允许使用本地表情包。"
     }
   }
 }

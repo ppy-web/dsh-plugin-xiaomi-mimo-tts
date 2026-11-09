@@ -62,6 +62,9 @@ test('installation paths with spaces work and damaged optional resources keep th
     const skillDir = join(directory, 'skills', 'whale-girl')
     await mkdir(join(skillDir, 'meme'), { recursive: true })
     await writeFile(join(skillDir, 'SKILL.md'), skill)
+    for (const file of ['memory-instructions.md', 'meme-instructions.md']) {
+      await writeFile(join(skillDir, file), await readFile(join(root, 'skills', 'whale-girl', file)))
+    }
     const base = buildPersona(directory)
     assert.ok(base.includes('鲸鱼娘'))
     await writeFile(join(skillDir, 'memes.json'), '{broken')
@@ -96,4 +99,20 @@ test('independent DSH and QQ skills apply custom fields and expose only their ow
   assert.ok(dsh.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
   assert.ok(!qq.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
   assert.ok(qq.includes(file.slice(0, -5)))
+})
+
+
+test('DSH persona independently includes enabled capabilities and puts local persona first', () => {
+  const persona = { name: '自定义小鲸', selfReference: '我', userAddress: '朋友', relationship: '助手', personality: '认真', replyStyle: '简短', likes: '绘画', boundaries: '不嘲笑' }
+  const image = catalog.memes.find(entry => entry.automatic).file
+  for (const memoryEnabled of [false, true]) {
+    for (const memesEnabled of [false, true]) {
+      const prompt = buildPersona(root, { channel: 'dsh', persona, memoryEnabled, memesEnabled })
+      assert.ok(prompt.indexOf(JSON.stringify(persona)) < prompt.indexOf('## 身份与性格'))
+      assert.equal(prompt.includes('whale-girl-memory'), memoryEnabled)
+      assert.equal(prompt.includes(image), memesEnabled)
+      assert.equal(prompt.includes('## 本地表情包'), memesEnabled)
+      assert.ok(prompt.includes('不假冒 DeepSeek'))
+    }
+  }
 })

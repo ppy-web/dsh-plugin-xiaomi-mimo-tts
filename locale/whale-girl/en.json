@@ -18,6 +18,10 @@
     "memory": {
       "$description": "DSH workspace memory",
       "enabled": "Allow workspace memory without reading QQ memory."
+    },
+    "memes": {
+      "$description": "Local memes",
+      "enabled": "Allow local memes."
     }
   }
 }

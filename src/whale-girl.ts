@@ -33,7 +33,7 @@ export default class WhaleGirl {
     })
     const current = () => readWhaleConfig(config)
     ctx.provide('whaleSettings', { current })
-    const { persona: _persona, memory: _memory, ...preset } = config
+    const { persona: _persona, memory: _memory, memes: _memes, ...preset } = config
     ctx.plugin(AgentPreset, preset)
   }
 }

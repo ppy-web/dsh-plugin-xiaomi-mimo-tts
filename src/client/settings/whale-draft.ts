@@ -18,10 +18,11 @@ export async function saveWhaleDraft(scope: ConfigForm<WhaleSettings>, base: Wha
   const snapshot = scope.getSnapshot()
   if (!snapshot.writable || snapshot.status !== 'ready' || snapshot.revision !== revision) throw new Error('whale-settings-conflict')
   const ops: Parameters<typeof scope.mutate>[0][number][] = []
-  for (const group of ['persona', 'memory'] as const) {
+  for (const group of ['persona', 'memory', 'memes'] as const) {
+    if (!draft[group]) continue
     for (const field of Object.keys(draft[group])) {
       const next = (draft[group] as unknown as Record<string, unknown>)[field]
-      const before = (base[group] as unknown as Record<string, unknown>)[field]
+      const before = (base[group] as unknown as Record<string, unknown> | undefined)?.[field]
       if (JSON.stringify(next) !== JSON.stringify(before)) ops.push({ op: 'set', path: [group, field], value: JSON.parse(JSON.stringify(next)) })
     }
   }

@@ -9,8 +9,10 @@ export type WhalePersona = typeof DEFAULT_WHALE_PERSONA
 export interface WhaleSettings {
   persona: WhalePersona
   memory: { enabled: boolean }
+  memes?: { enabled: boolean }
 }
 export const DEFAULT_WHALE_SETTINGS: WhaleSettings = {
   persona: DEFAULT_WHALE_PERSONA,
   memory: { enabled: true },
+  memes: { enabled: true },
 }
