@@ -2,7 +2,7 @@ import { useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, ReactElement } from 'react'
 import type { PluginActivationOwnerProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import { Button, IconCloseOutlineRegular, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import { LuAudioLines, LuCheck, LuStar } from 'react-icons/lu'
+import { LuAudioLines, LuStar } from 'react-icons/lu'
 import { TTS_UPDATE_CELEBRATION_ASSET_ROUTE, TTS_VERSION } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
@@ -57,7 +57,7 @@ export function ActivationGuide({ t, onOpenWorkbench, onDismiss, changes = IDLE_
       <div className="xmimo-tts-activation-features" role="region" aria-label={t('onboarding.details')} tabIndex={0}>
         <ul>
           {HIGHLIGHTS.map(key => <li key={key}>
-            <LuCheck size={14} aria-hidden="true" /><span>{t(key)}</span>
+            <span aria-hidden="true">🎉</span><span>{t(key)}</span>
           </li>)}
         </ul>
       </div>
