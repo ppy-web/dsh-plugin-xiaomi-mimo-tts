@@ -16,6 +16,7 @@ const HIGHLIGHTS = [
   'onboarding.featureExternalSpeech',
   'onboarding.featureExternalVoices',
   'onboarding.featureExternalSwitch',
+  'onboarding.featureGuideControl',
 ] as const
 
 const CONFETTI = [-116, -90, -60, -28, 28, 60, 90, 116].map((x, index) => ({
