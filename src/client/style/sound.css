@@ -12,14 +12,24 @@
 
 .xmimo-tts-sound-body {
   box-sizing: border-box;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(280px, calc(50% - 6px))), 1fr));
+  align-items: start;
   min-height: 0;
   overflow: hidden;
-  flex-direction: column;
   gap: 12px;
   padding: 0 16px 16px
 }
 
+.xmimo-tts-sound-body > * {
+  min-width: 0;
+}
+
+.xmimo-tts-sound-body > small {
+  grid-column: 1 / -1;
+}
+
+.xmimo-tts-sound-scope-section,
 .xmimo-tts-sound-pack {
   display: flex;
   min-width: 0;
@@ -27,6 +37,23 @@
   gap: 5px;
   color: var(--dsw-alias-label-primary, #1f2328);
   font-size: 13px;
+}
+
+.xmimo-tts-sound-scope-section > span:first-child,
+.xmimo-tts-sound-volume > span:first-child,
+.xmimo-tts-sound-pack > span:first-child,
+.xmimo-tts-sound-preview-section > span:first-child {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  line-height: 20px;
+}
+
+.xmimo-tts-sound-scope,
+.xmimo-tts-sound-volume > .xmimo-tts-energy {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 32px;
 }
 
 .xmimo-tts-sound-pack-grid {
@@ -167,7 +194,7 @@
   gap: 5px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding: 2px 1px 4px
+  padding: 0 1px 4px
 }
 
 .xmimo-tts-sound-previews button {

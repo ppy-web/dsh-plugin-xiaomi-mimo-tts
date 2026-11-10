@@ -6,6 +6,8 @@ import { passportEn } from '../settings/passport-copy.js'
 export const ja: Record<LocaleKey, string> = {
   'settings.externalManage': 'プロバイダーを管理',
   'settings.externalProviderAdapter': 'プロバイダーアダプター',
+  'settings.showFeatureGuide': '新機能ガイド',
+  'settings.showFeatureGuideHint': 'プラグインの有効化時に新機能を表示します。',
   'settings.acceptExternalProviders': '外部プロバイダーを受け入れる',
   'settings.acceptExternalProvidersHint': '外部プラグインの音声を使用します。オフにして保存すると内蔵プロバイダーに戻ります。',
   'settings.externalSwitchFailed': 'プロバイダーを切り替えられませんでした。もう一度お試しください。',
@@ -101,7 +103,8 @@ export const ja: Record<LocaleKey, string> = {
   'onboarding.configure': '音色工坊を開く',
   'onboarding.github': 'Starで応援する',
   'onboarding.preview': 'ブラウザー音声を試聴',
-  'onboarding.dismiss': 'あとで',
+  'onboarding.dismiss': '閉じる',
+  'onboarding.never': '今後表示しない',
   'onboarding.sample': 'こんにちは、クジラメイドです。声の準備ができました。一緒に新しい世界を探しましょう。',
   'settings.announcementsApprovals': '承認リマインダー',
   'settings.announcementsApprovalsHint': 'この会話の承認待ち操作を通知します。承認または取り消しで停止します',

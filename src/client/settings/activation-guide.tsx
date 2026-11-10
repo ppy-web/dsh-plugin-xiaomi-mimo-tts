@@ -1,9 +1,12 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, ReactElement } from 'react'
 import type { PluginActivationOwnerProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import { Button, IconCloseOutlineRegular, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { LuAudioLines, LuStar } from 'react-icons/lu'
 import { TTS_UPDATE_CELEBRATION_ASSET_ROUTE, TTS_VERSION } from '../../shared.js'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
+import { resolveTtsSettings, type TtsSettings } from '../../shared.js'
+import { useSettingsSnapshot } from './scope.js'
 import type { Translate } from '../localization.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import { hostRoute } from '../host-route.js'
@@ -23,16 +26,36 @@ const CONFETTI = [-116, -90, -60, -28, 28, 60, 90, 116].map((x, index) => ({
 
 interface ActivationGuideProps extends PluginActivationOwnerProps {
   t: Translate
+  scope: ConfigForm<TtsSettings>
+  preview?: boolean
   onOpenWorkbench: () => void
   changes?: SnapshotSource<boolean> | undefined
 }
 
 /** Displayed by the host only for an explicit activation, with host-owned dismissal. */
-export function ActivationGuide({ t, onOpenWorkbench, onDismiss, changes = IDLE_PLUGIN_CHANGES }: ActivationGuideProps): ReactElement {
+export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, onDismiss, changes = IDLE_PLUGIN_CHANGES }: ActivationGuideProps): ReactElement | null {
+  const dismissed = useRef(false)
+  const dismiss = (): void => { if (!dismissed.current) { dismissed.current = true; onDismiss() } }
   const [artReady, setArtReady] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const enabled = resolveTtsSettings(useSettingsSnapshot(scope).value).showFeatureGuide
+  useEffect(() => { if (!preview && !enabled) dismiss() }, [preview, enabled, onDismiss])
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
   const openWorkbench = (): void => { onDismiss(); onOpenWorkbench() }
-  const dismiss = (): void => { onDismiss() }
+  const neverRemind = async (): Promise<void> => {
+    setSaving(true)
+    setFailed(false)
+    try {
+      if (!await scope.mutate([{ op: 'set', path: ['showFeatureGuide'], value: false }])) throw new Error('host-rejected')
+      dismiss()
+    } catch {
+      setFailed(true)
+    } finally {
+      setSaving(false)
+    }
+  }
+  if (!preview && !enabled) return null
   return <Modal
     open
     title={t('onboarding.title')}
@@ -65,7 +88,8 @@ export function ActivationGuide({ t, onOpenWorkbench, onDismiss, changes = IDLE_
         <div className="xmimo-tts-activation-actions">
           <Button type="button" variant="primary" onClick={() => window.open(SOURCE_URL, '_blank', 'noopener,noreferrer')}><LuStar size={16} aria-hidden="true" />{t('onboarding.github')}</Button>
           <Button type="button" variant="outline" className="xmimo-tts-activation-workbench" onClick={openWorkbench} disabled={changing}><LuAudioLines size={16} aria-hidden="true" />{t('onboarding.configure')}</Button>
-          <Button type="button" variant="ghost" onClick={dismiss}>{t('onboarding.dismiss')}</Button>
+          <Button type="button" variant="ghost" disabled={saving} onClick={() => void neverRemind()}>{t('onboarding.never')}</Button>
+          {failed ? <p role="alert">{t('settings.failed')}</p> : null}
         </div>
         {changing ? <div className="xmimo-tts-activation-feedback">
           <p role="status">{t('plugin.changing')}</p>

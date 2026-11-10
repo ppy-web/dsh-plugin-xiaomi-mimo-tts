@@ -5,8 +5,7 @@
 .xmimo-tts-sound-volume {
   display: flex;
   flex-direction: column;
-  padding-top: 8px;
-  gap: 9px;
+  gap: 5px;
   color: var(--dsw-alias-label-primary, #1f2328);
   font-size: 13px
 }

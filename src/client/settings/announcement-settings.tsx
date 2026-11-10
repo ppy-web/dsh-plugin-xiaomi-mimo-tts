@@ -17,6 +17,10 @@ export interface AnnouncementSettingsProps {
   voiceInputCompatibilityOverridden: boolean
   onVoiceInputCompatibilityReset: () => void
   showInHostSettings: boolean
+  showFeatureGuide: boolean
+  onShowFeatureGuideChange: (enabled: boolean) => void
+  showFeatureGuideOverridden: boolean
+  onShowFeatureGuideReset: () => void
   acceptExternalProviders: boolean
   onAcceptExternalProvidersChange: (enabled: boolean) => void
   acceptExternalProvidersOverridden: boolean
@@ -57,11 +61,12 @@ const SOURCE_GROUPS = [
   { label: 'settings.announcementsPlugins', hint: 'settings.announcementsPluginsHint', options: PLUGIN_SOURCE_OPTIONS },
 ] as const
 
-export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, voiceInputCompatibility, onVoiceInputCompatibilityChange, voiceInputCompatibilityOverridden, onVoiceInputCompatibilityReset, showInHostSettings, onShowInHostSettingsChange, showInHostSettingsOverridden, onShowInHostSettingsReset, acceptExternalProviders, onAcceptExternalProvidersChange, acceptExternalProvidersOverridden, onAcceptExternalProvidersReset, inputAvoidance, onInputAvoidanceChange, inputAvoidanceOverridden, onInputAvoidanceReset, importantAnnouncementsFirst, onImportantAnnouncementsFirstChange, importantAnnouncementsFirstOverridden, onImportantAnnouncementsFirstReset, writable, overridden, onChange, onReset, parentOpen = true }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
+export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, voiceInputCompatibility, onVoiceInputCompatibilityChange, voiceInputCompatibilityOverridden, onVoiceInputCompatibilityReset, showInHostSettings, onShowInHostSettingsChange, showInHostSettingsOverridden, onShowInHostSettingsReset, showFeatureGuide, onShowFeatureGuideChange, showFeatureGuideOverridden, onShowFeatureGuideReset, acceptExternalProviders, onAcceptExternalProvidersChange, acceptExternalProvidersOverridden, onAcceptExternalProvidersReset, inputAvoidance, onInputAvoidanceChange, inputAvoidanceOverridden, onInputAvoidanceReset, importantAnnouncementsFirst, onImportantAnnouncementsFirstChange, importantAnnouncementsFirstOverridden, onImportantAnnouncementsFirstReset, writable, overridden, onChange, onReset, parentOpen = true }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
   const moreSettings = useNestedDisclosure(parentOpen)
   const hostOptions = [
     { label: 'settings.voiceInputCompatibility', hint: 'settings.voiceInputCompatibilityHint', checked: voiceInputCompatibility, overridden: voiceInputCompatibilityOverridden, onChange: onVoiceInputCompatibilityChange, onReset: onVoiceInputCompatibilityReset },
     { label: 'settings.showInHostSettings', hint: 'settings.showInHostSettingsHint', checked: showInHostSettings, overridden: showInHostSettingsOverridden, onChange: onShowInHostSettingsChange, onReset: onShowInHostSettingsReset },
+    { label: 'settings.showFeatureGuide', hint: 'settings.showFeatureGuideHint', checked: showFeatureGuide, overridden: showFeatureGuideOverridden, onChange: onShowFeatureGuideChange, onReset: onShowFeatureGuideReset },
     { label: 'settings.acceptExternalProviders', hint: 'settings.acceptExternalProvidersHint', checked: acceptExternalProviders, overridden: acceptExternalProvidersOverridden, onChange: onAcceptExternalProvidersChange, onReset: onAcceptExternalProvidersReset },
     { label: 'settings.inputAvoidance', hint: 'settings.inputAvoidanceHint', checked: inputAvoidance, overridden: inputAvoidanceOverridden, onChange: onInputAvoidanceChange, onReset: onInputAvoidanceReset },
     { label: 'settings.importantAnnouncementsFirst', hint: 'settings.importantAnnouncementsFirstHint', checked: importantAnnouncementsFirst, overridden: importantAnnouncementsFirstOverridden, onChange: onImportantAnnouncementsFirstChange, onReset: onImportantAnnouncementsFirstReset },

@@ -39,3 +39,6 @@ export function Switch({ checked, disabled, label, onChange }: { checked: boolea
   return createElement('input', { type: 'checkbox', role: 'switch', checked, disabled, 'aria-label': label,
     onChange: (event: ChangeEvent<HTMLInputElement>) => onChange(event.currentTarget.checked) })
 }
+
+/** Render modal contents without the host portal in component tests. */
+export function Modal({ children }: { children: ReactNode }) { return createElement('div', { role: 'dialog' }, children) }

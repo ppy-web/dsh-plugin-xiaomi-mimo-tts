@@ -6,6 +6,8 @@ import { passportEn } from '../settings/passport-copy.js'
 export const fr: Record<LocaleKey, string> = {
   'settings.externalManage': 'Gérer les fournisseurs',
   'settings.externalProviderAdapter': 'Adaptateur de fournisseurs',
+  'settings.showFeatureGuide': 'Guide des nouveautés',
+  'settings.showFeatureGuideHint': 'Afficher les nouveautés à l’activation du plugin.',
   'settings.acceptExternalProviders': 'Accepter les fournisseurs externes',
   'settings.acceptExternalProvidersHint': 'Autoriser les plugins externes à fournir la voix. Désactivez puis enregistrez pour revenir au fournisseur intégré.',
   'settings.externalSwitchFailed': 'Impossible de changer de fournisseur. Veuillez réessayer.',
@@ -101,7 +103,8 @@ export const fr: Record<LocaleKey, string> = {
   'onboarding.configure': 'Ouvrir l’atelier vocal',
   'onboarding.github': 'Nous soutenir avec une étoile',
   'onboarding.preview': 'Essayer la voix du navigateur',
-  'onboarding.dismiss': 'Plus tard',
+  'onboarding.dismiss': 'Fermer',
+  'onboarding.never': 'Ne plus me le rappeler',
   'onboarding.sample': 'Bonjour, je suis votre assistante baleine. La voix est prête. Explorons le monde ensemble.',
   'settings.announcementsApprovals': 'Rappels de validation',
   'settings.announcementsApprovalsHint': 'Annonce les opérations en attente de validation dans cette conversation ; arrêt après traitement ou retrait',

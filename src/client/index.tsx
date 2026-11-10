@@ -317,7 +317,7 @@ export function apply(ctx: Context): void {
     name: 'plugins.bundle.activation',
     key: 'dsh-xiaomi-tts',
     locale: NS,
-    inject: () => ({ t, changes, onOpenWorkbench: () => openVoiceWorkbench(ctx, scope) }),
+    inject: () => ({ t, scope, changes, onOpenWorkbench: () => openVoiceWorkbench(ctx, scope) }),
   }, ActivationGuide))
 
   registerSlotContribution(ctx, 'sidebar.panellist', () => registerVoiceSettingsSidebar(ctx, settingsPageProps))

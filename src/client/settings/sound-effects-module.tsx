@@ -104,15 +104,18 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     onToggle={onToggle}
   >
     <div className="xmimo-tts-sound-body xmimo-ui-module-body">
-      <SegmentedControl
-        id="xmimo-tts-sound-scope"
-        value={scope}
-        options={SOUND_EFFECTS_SCOPES.map(value => ({ value, label: t(value === 'all' ? 'settings.soundEffectsOn' : value === 'click' ? 'settings.soundEffectsClickOnly' : 'settings.soundEffectsTaskOnly') }))}
-        label={t('settings.soundEffectsScope')}
-        disabled={!writable}
-        onChange={onScopeChange}
-        className="xmimo-tts-settings-segmented xmimo-tts-sound-scope"
-      />
+      <div className="xmimo-tts-sound-scope-section">
+        <span>{t('settings.soundEffectsScope')}</span>
+        <SegmentedControl
+          id="xmimo-tts-sound-scope"
+          value={scope}
+          options={SOUND_EFFECTS_SCOPES.map(value => ({ value, label: t(value === 'all' ? 'settings.soundEffectsOn' : value === 'click' ? 'settings.soundEffectsClickOnly' : 'settings.soundEffectsTaskOnly') }))}
+          label={t('settings.soundEffectsScope')}
+          disabled={!writable}
+          onChange={onScopeChange}
+          className="xmimo-tts-settings-segmented xmimo-tts-sound-scope"
+        />
+      </div>
       <label className="xmimo-tts-sound-volume">
         <span>{t('settings.soundEffectsVolume')} {Math.round(volume * 100)}%</span>
         <EnergyVolumeSlider
@@ -125,7 +128,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
         />
       </label>
       <div className="xmimo-tts-sound-pack">
-        <span id="xmimo-tts-sound-pack-label" className={minimal ? 'xmimo-tts-visually-hidden' : undefined}>{t('settings.soundEffectsPack')}</span>
+        <span id="xmimo-tts-sound-pack-label">{t('settings.soundEffectsPack')}</span>
         <div className="xmimo-tts-sound-pack-grid" role="radiogroup" aria-labelledby="xmimo-tts-sound-pack-label">
           {SOUND_PACKS.map((option, index) => <button
             key={option}
@@ -150,7 +153,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
         </div>
       </div>
       <div className="xmimo-tts-sound-preview-section">
-        <span id="xmimo-tts-sound-preview-label" className={minimal ? 'xmimo-tts-visually-hidden' : undefined}>{t('settings.soundEffectsPreviewLabel')}</span>
+        <span id="xmimo-tts-sound-preview-label">{t('settings.soundEffectsPreviewLabel')}</span>
         <div className="xmimo-tts-sound-previews" role="group" aria-labelledby="xmimo-tts-sound-preview-label">
           {PREVIEW_CUES.map(cue => <button
             key={cue}

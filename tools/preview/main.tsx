@@ -182,7 +182,7 @@ function PreviewApp() {
     {mobile && navigationOpen ? <Modal open headless title={copy.navigation} onClose={() => setNavigationOpen(false)} className="preview-mobile-sidebar">
       <div id="preview-mobile-navigation"><PreviewSidebar {...sidebarProps} onClose={() => setNavigationOpen(false)} /></div>
     </Modal> : null}
-    {activationOpen ? <ActivationGuide packageName="dsh-xiaomi-tts" t={t}
+    {activationOpen ? <ActivationGuide packageName="dsh-xiaomi-tts" t={t} scope={scope} preview
       onOpenWorkbench={() => { window.location.hash = scope.getSnapshot().value?.showInSidebar ? 'workbench' : 'settings' }}
       onOpenDetails={() => { setActivationOpen(false); window.location.hash = 'settings' }} onDismiss={() => setActivationOpen(false)} /> : null}
     <style>{CLIENT_STYLES}</style>

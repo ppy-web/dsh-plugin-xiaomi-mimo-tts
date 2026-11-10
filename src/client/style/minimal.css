@@ -176,12 +176,6 @@
   flex-direction: row;
   gap: 6px;
 }
-.xmimo-tts-card-minimal .xmimo-tts-sound-volume {
-  width: 50%;
-  align-items: center;
-  flex-direction: row;
-  gap: 6px;
-}
 
 
 .xmimo-tts-card-minimal .xmimo-tts-api-key-input > input {
@@ -218,7 +212,7 @@
 
 .xmimo-tts-card-minimal
   .xmimo-tts-details-body
-  > :not(.xmimo-tts-volume):not(.xmimo-tts-doubao-voice):not(.xmimo-tts-speech-instruction)
+  > :not(.xmimo-tts-volume):not(.xmimo-tts-external-catalog):not(.xmimo-tts-doubao-voice):not(.xmimo-tts-speech-instruction)
   > .xmimo-tts-field-heading {
   position: absolute;
   width: 1px;
@@ -233,7 +227,7 @@
 
 
 
-.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-menu,
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-menu:not(.xmimo-tts-external-catalog *),
 .xmimo-tts-card-minimal .xmimo-tts-voice-picker-menu {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   background: none;
@@ -242,32 +236,32 @@
   padding: 6px;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-option {
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-option:not(.xmimo-tts-external-catalog *) {
   min-width: 0;
   min-height: 42px;
   padding: 6px;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-copy,
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-copy:not(.xmimo-tts-external-catalog *),
 .xmimo-tts-card-minimal .xmimo-tts-voice-option-copy {
   align-items: baseline;
   flex-direction: row;
   gap: 6px;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-copy > strong,
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-copy:not(.xmimo-tts-external-catalog *) > strong,
 .xmimo-tts-card-minimal .xmimo-tts-voice-option-copy > strong {
   min-width: 0;
   flex: 0 1 auto;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-copy > small,
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-copy:not(.xmimo-tts-external-catalog *) > small,
 .xmimo-tts-card-minimal .xmimo-tts-voice-option-copy > small {
   min-width: 0;
   flex: 1 1 0;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-option-custom {
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-option-custom:not(.xmimo-tts-external-catalog *) {
   grid-column: auto;
 }
 
@@ -327,15 +321,19 @@
   padding: 6px 10px 10px;
 }
 
+.xmimo-tts-card-minimal .xmimo-tts-sound-volume .xmimo-tts-energy-minimal input[type="range"] {
+  top: 0;
+}
+
 .xmimo-tts-card-minimal .xmimo-tts-sound-pack-grid {
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 112px), 1fr));
+  gap: 5px;
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-sound-pack-option {
-  min-height: 34px;
+  min-height: 44px;
   border-radius: 9px;
-  padding: 5px 20px 5px 7px;
+  padding: 7px 24px 7px 9px;
   font-size: 11px;
   line-height: 16px;
   transition:
@@ -365,9 +363,9 @@
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-sound-pack-icon {
-  width: 16px;
-  height: 16px;
-  margin-right: 5px;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-sound-previews button {
