@@ -38,12 +38,47 @@
 .xmimo-passport-heading > div { flex: 1 1 280px; }
 .xmimo-passport-heading > button { flex-shrink: 0; max-width: 100%; }
 .xmimo-passport-heading .xmimo-qq-hint { margin-bottom: 0; }
+.xmimo-passport-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 24px; padding-top: 20px; border-top: 1px solid var(--xmimo-ui-border-soft); }
+.xmimo-qq-settings .xmimo-passport-options > section + section { padding-top: 0; border-top: 0; }
+.xmimo-passport-section-hint { margin-bottom: 14px; }
+.xmimo-passport-option-feedback { display: block; color: var(--xmimo-ui-text-muted); font-size: 12px; }
 .xmimo-passport-settings .xmimo-qq-field > label { font-weight: 550; }
+.xmimo-passport-option-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 6px; }
+.xmimo-passport-prompt-action { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.xmimo-passport-prompt-action > span { color: var(--xmimo-ui-text-muted); font-size: 12px; }
 .xmimo-passport-control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .xmimo-passport-control-row > select { flex: 1 1 180px; width: auto; min-width: 0; }
 .xmimo-passport-control-row > button { flex: 0 0 auto; max-width: 100%; }
 .xmimo-passport-settings button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .xmimo-passport-settings button svg { width: 16px; height: 16px; flex-shrink: 0; }
+.xmimo-passport-overview { display: grid; grid-template-columns: minmax(310px, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; margin-block: 24px; }
+.xmimo-passport-device { position: relative; margin: 0; min-height: 360px; display: flex; justify-content: center; align-items: start; }
+.xmimo-passport-device-art { position: relative; width: 235px; max-width: 68%; }
+.xmimo-passport-device-art > img:first-child { display: block; width: 100%; height: auto; }
+.xmimo-passport-device-screen { position: absolute; left: 20.7%; top: 15.4%; width: 48.8%; height: 41.7%; border-radius: 7%; }
+.xmimo-passport-device-reply { box-sizing: border-box; position: absolute; left: 11%; top: 68.5%; width: 64%; height: 20%; padding: 6px 8px; overflow: auto; border-radius: 4px; background: rgba(23, 28, 30, .94); color: #fff; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.xmimo-passport-device-reply span { color: #b8c6c5; font-size: 10px; }
+.xmimo-passport-device-reply p { margin: 4px 0 0; white-space: pre-wrap; }
+.xmimo-passport-callout { position: absolute; display: flex; flex-direction: column; max-width: 74px; font-size: 11px; line-height: 1.4; color: var(--xmimo-ui-text-muted); }
+.xmimo-passport-callout strong { color: var(--xmimo-ui-text); font-size: 12px; }
+.xmimo-passport-callout-power, .xmimo-passport-callout-indicator, .xmimo-passport-callout-usb { right: calc(50% + 120px); text-align: right; }
+.xmimo-passport-callout-power { top: 13%; }
+.xmimo-passport-callout-indicator { top: 38%; }
+.xmimo-passport-callout-usb { top: 50%; }
+.xmimo-passport-callout-up, .xmimo-passport-callout-down, .xmimo-passport-callout-ok { left: calc(50% + 120px); transform: translateY(15px); }
+.xmimo-passport-callout-up { top: 10%; }
+.xmimo-passport-callout-down { top: 27%; }
+.xmimo-passport-callout-ok { top: 43%; }
+.xmimo-passport-live { min-width: 0; }
+.xmimo-passport-live .xmimo-passport-status { margin-block: 10px 16px; }
+.xmimo-passport-facts { display: grid; gap: 0; margin: 0; }
+.xmimo-passport-facts > div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--xmimo-ui-border-soft); }
+.xmimo-passport-facts dt { color: var(--xmimo-ui-text-muted); }
+.xmimo-passport-facts dd { margin: 0; text-align: right; font-weight: 600; }
+.xmimo-passport-live-text { margin-top: 15px; }
+.xmimo-passport-live-text h5 { margin: 0 0 5px; font-size: 12px; color: var(--xmimo-ui-text-muted); font-weight: 600; }
+.xmimo-passport-live-text p { margin: 0; max-height: 8em; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; }
+.xmimo-passport-live-hint { font-size: 12px; }
 .xmimo-passport-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-block: 20px 24px; padding: 14px 16px; background: var(--xmimo-ui-surface-subtle, var(--xmimo-ui-control-surface)); border-radius: var(--xmimo-ui-control-radius); }
 .xmimo-passport-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--xmimo-ui-text-muted); flex-shrink: 0; }
 .xmimo-passport-status[data-tone="connected"] { background: color-mix(in srgb, #23865b 10%, var(--xmimo-ui-surface)); }
@@ -66,8 +101,6 @@
 .xmimo-passport-digits > span:not(.xmimo-passport-sr-only) { display: grid; place-items: center; width: 48px; height: 60px; border: 1px solid var(--xmimo-ui-border); border-radius: var(--xmimo-ui-control-radius); background: var(--xmimo-ui-control-surface); font-size: 32px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .xmimo-passport-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .xmimo-passport-copy-feedback { display: block; margin-top: 8px; font-size: 12px; }
-.xmimo-passport-device-help { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--xmimo-ui-border-soft); }
-.xmimo-passport-device-help p { margin-block: 8px 0; line-height: 1.8; }
 .xmimo-passport-advanced { border-top: 1px solid var(--xmimo-ui-border-soft); }
 .xmimo-passport-advanced summary { cursor: pointer; padding-block: 12px; font-weight: 550; }
 .xmimo-passport-advanced section { padding-block: 8px; }
@@ -84,7 +117,6 @@
   caret-color: var(--xmimo-ui-brand);
   font: inherit;
   font-variant-numeric: tabular-nums;
-  color-scheme: light dark;
 }
 .xmimo-qq-field textarea { resize: vertical; min-height: 64px; }
 .xmimo-qq-field :is(input, textarea)::placeholder { color: var(--xmimo-ui-text-muted); }
@@ -101,7 +133,13 @@
 .xmimo-qq-footer .xmimo-tts-card-action-buttons { grid-column: 2; }
 .xmimo-qq-footer [role="status"] { text-align: start; }
 
+@container (max-width: 600px) {
+  .xmimo-passport-options { grid-template-columns: minmax(0, 1fr); }
+  .xmimo-qq-settings .xmimo-passport-options > section + section { padding-top: 20px; border-top: 1px solid var(--xmimo-ui-border-soft); }
+}
+
 @container (max-width: 480px) {
+  .xmimo-passport-overview { grid-template-columns: minmax(0, 1fr); }
   .xmimo-passport-transfer { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .xmimo-qq-grid { grid-template-columns: minmax(0, 1fr); }
   .xmimo-qq-memory-row { grid-template-columns: auto minmax(0, 1fr); }

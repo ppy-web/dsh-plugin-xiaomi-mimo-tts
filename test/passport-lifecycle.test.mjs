@@ -65,6 +65,59 @@ async function host(t, config = {}) {
   return { ctx, view, registered, services, status, webBaseURL: `http://127.0.0.1:${web.address().port}`, entry: ctx.loader.resolve(id) }
 }
 
+test('live status rejects cross-origin reads and device artwork is available', async t => {
+  const run = await host(t)
+  const url = `${run.webBaseURL}/plugins/xiaomi-mimo-tts/passport-status`
+  for (const headers of [{ origin: 'https://foreign.example' }, { 'sec-fetch-site': 'cross-site' }, { origin: 'null' }]) {
+    assert.equal((await fetch(url, { headers })).status, 403)
+  }
+  const response = await fetch(url)
+  assert.equal(response.status, 200)
+  assert.match(response.headers.get('cache-control'), /no-store/u)
+  for (const name of ['passport-device.webp', 'passport-screen.webp']) {
+    const asset = await fetch(`${run.webBaseURL}/plugins/xiaomi-mimo-tts/${name}`)
+    assert.equal(asset.status, 200)
+    assert.equal(asset.headers.get('content-type'), 'image/webp')
+    assert.ok((await asset.arrayBuffer()).byteLength > 0)
+  }
+})
+
+test('recognition test probes the selected provider and rejects untrusted requests', async t => {
+  const run = await host(t)
+  const calls = []
+  let result = ''
+  run.ctx.provide('passportRecognition', {
+    recognizer(source) {
+      calls.push(source)
+      return { check() {}, create() { return {
+        append(pcm) { assert.equal(pcm.length, 32000); assert.ok(pcm.every(byte => byte === 0)) },
+        async finish() { if (result instanceof Error) throw result; if (result) throw new Error(result); return '' },
+        cancel() {},
+      } } }
+    },
+  })
+  const url = `${run.webBaseURL}/plugins/xiaomi-mimo-tts/passport-asr-test`
+  const post = (source, headers = {}) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ source }) })
+  assert.equal((await post('xiaomi', { origin: 'https://foreign.example' })).status, 403)
+  assert.equal((await post('xiaomi')).status, 403)
+  assert.equal((await post('bad', { 'x-dsh-speech-adapter': '1' })).status, 400)
+  assert.equal(calls.length, 0)
+  assert.equal((await post('doubao', { 'x-dsh-speech-adapter': '1' })).status, 200)
+  assert.deepEqual(calls, ['doubao'])
+  result = 'passport-no-speech'
+  assert.equal((await post('xiaomi', { origin: run.webBaseURL })).status, 200)
+  result = 'passport-asr-auth-failed'
+  const failed = await post('xiaomi', { origin: run.webBaseURL })
+  assert.equal(failed.status, 502)
+  assert.deepEqual(await failed.json(), { error: 'passport-asr-auth-failed' })
+  result = Object.assign(new Error('passport-asr-permission-denied'), { upstreamStatus: 403, upstreamCode: 45000123 })
+  const details = await post('doubao', { origin: run.webBaseURL })
+  assert.deepEqual(await details.json(), { error: 'passport-asr-permission-denied', upstreamStatus: 403, upstreamCode: 45000123 })
+  result = 'passport-asr-secret-key'
+  const unsafe = await post('xiaomi', { origin: run.webBaseURL })
+  assert.deepEqual(await unsafe.json(), { error: 'passport-recognition-failed' })
+})
+
 test('cloud ASR listens without Host speechToText and exposes only credential availability', async t => {
   const run = await host(t, { port: await freePort(), accessToken: token, asrProvider: 'xiaomi' })
   await run.ctx.plugin({ name: 'cloud-services', apply(child) {

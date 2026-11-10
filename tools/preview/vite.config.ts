@@ -20,6 +20,8 @@ const assetDirectories = new Map([
 ])
 
 const assetFiles = new Map([
+  ['passport-screen.webp', path.join(repositoryRoot, 'assets', 'ui', 'passport-screen.webp')],
+  ['passport-device.webp', path.join(repositoryRoot, 'assets', 'ui', 'passport-device.webp')],
   ['update-celebration-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'update-celebration-whale.webp')],
   ['mimo.svg', path.join(repositoryRoot, 'assets', 'mimo.svg')],
   ['provider-moss-logo.svg', path.join(repositoryRoot, 'assets', 'ui', 'provider-moss-logo.svg')],

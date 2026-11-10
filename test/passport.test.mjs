@@ -111,6 +111,38 @@ async function harness(t, overrides = {}) {
     get cancelled() { return cancelled } }
 }
 
+test('live status follows microphone, recording, recognition and playback without retaining disconnected text', async t => {
+  const run = await harness(t)
+  const device = await run.connect('live-status', { capabilities: ['input.audio', 'playback.receipts', 'voice.feedback', 'input.push_to_talk'], connection: { input_enabled: false } })
+  assert.equal(run.bridge.status.activity.microphone, 'muted')
+  device.send({ type: 'input_audio_buffer.start', captureId: '1' })
+  await device.wait('voice.ptt.started')
+  assert.equal(run.bridge.status.activity.phase, 'capturing')
+  device.audio(tone())
+  device.send({ type: 'input_audio_buffer.commit', captureId: '1' })
+  await device.wait('voice.progress', event => event.phase === 'thinking')
+  assert.equal(run.bridge.status.activity.transcript, '你好')
+  run.reply('现在开始朗读')
+  const done = await device.wait('audio.done')
+  assert.equal(run.bridge.status.activity.reply, '现在开始朗读')
+  device.send({ type: 'playback.started', responseId: done.responseId })
+  await device.wait('voice.progress', event => event.phase === 'playing')
+  assert.equal(run.bridge.status.activity.phase, 'playing')
+  device.send({ type: 'playback.ended', responseId: done.responseId })
+  await device.wait('voice.result', event => event.status === 'completed')
+  assert.equal(run.bridge.status.activity.phase, 'idle')
+  device.send({ type: 'input.unmute' })
+  device.send({ type: 'session.ping', event_id: 'status-fence' })
+  await device.wait('session.pong', event => event.request_event_id === 'status-fence')
+  assert.equal(run.bridge.status.activity.microphone, 'open')
+  device.ws.terminate()
+  await device.closed
+  const deadline = Date.now() + 3000
+  while (run.bridge.status.connected && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+  assert.equal(run.bridge.status.connected, false)
+  assert.equal(run.bridge.status.activity, undefined)
+})
+
 test('feedback reports an empty transcript once and keeps the same microphone connection for the next turn', async t => {
   let attempts = 0
   const run = await harness(t, { recognition: { transcribe: async () => ({ text: ++attempts === 1 ? ' ' : '再试' }) } })

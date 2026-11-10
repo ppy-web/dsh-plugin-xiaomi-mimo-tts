@@ -1,10 +1,10 @@
-import { useEffect, useId, useState, useSyncExternalStore } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactElement } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { FiLink, FiCopy, FiCheck, FiRefreshCw } from 'react-icons/fi'
+import { FiLink, FiCopy, FiCheck, FiRefreshCw, FiKey, FiWifi } from 'react-icons/fi'
 import type { PluginConfigViewProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, PASSPORT_STATUS_ROUTE, PASSPORT_PRESETS_ROUTE } from '../../types/passport.js'
+import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, PASSPORT_STATUS_ROUTE, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from '../../types/passport.js'
 import type { PassportNumberField, PassportSettings } from '../../types/passport.js'
 import type { PassportConnectionStatus, PassportPreset } from '../../types/passport.js'
 import { IDLE_PLUGIN_CHANGES } from '../plugin-activity.js'
@@ -13,6 +13,10 @@ import type { LocaleKey, Translate } from '../localization.js'
 import { savePassportDraft, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } from './passport-draft.js'
 import { useSettingsSnapshot } from './scope.js'
 import { hostRoute } from '../host-route.js'
+import { PASSPORT_PRESET_PROMPT } from './passport-prompt.js'
+import { copyText } from './copy-text.js'
+import { passportAsrTestError, requestPassportAsrTest } from './passport-asr-test.js'
+import type { PassportAsrTestFailure } from './passport-asr-test.js'
 
 interface Props extends PluginConfigViewProps {
   scope: ConfigForm<PassportSettings>
@@ -48,6 +52,11 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
   const [liveToken, setLiveToken] = useState<{ scope: ConfigForm<PassportSettings> | null; configured: boolean }>({ scope: null, configured: false })
   const [connection, setConnection] = useState<PassportConnectionStatus | undefined>(undefined)
   const [copied, setCopied] = useState('')
+  const testRequest = useRef<AbortController | null>(null)
+  const [asrTest, setAsrTest] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle')
+  const [asrTestError, setAsrTestError] = useState<PassportAsrTestFailure | null>(null)
+  useEffect(() => () => { testRequest.current?.abort() }, [])
+  const [promptCopy, setPromptCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [pairingCode, setPairingCode] = useState('')
   const [roster, setRoster] = useState<PassportPreset[] | undefined>(presets)
   const [rosterFailed, setRosterFailed] = useState(false)
@@ -80,8 +89,8 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
           setLiveToken({ scope, configured: value.configured })
           setConnection(value)
         }
-      } catch {}
-      if (!request.signal.aborted) timer = setTimeout(() => { void refresh() }, 2500)
+      } catch { if (!request.signal.aborted) setConnection(undefined) }
+      if (!request.signal.aborted) timer = setTimeout(() => { void refresh() }, 1000)
     }
     void refresh()
     return () => { request.abort(); clearTimeout(timer) }
@@ -100,6 +109,19 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
     const revision = snapshot.revision
     setDraft(previous => ({ base: previous?.base ?? accepted, revision: previous?.revision ?? revision, value: { ...(previous?.value ?? accepted), [field]: next } }))
     setState('idle')
+    if (field === 'asrProvider') { testRequest.current?.abort(); testRequest.current = null; setAsrTest('idle'); setAsrTestError(null) }
+  }
+  const testAsr = async (): Promise<void> => {
+    if (testRequest.current) return
+    const request = new AbortController()
+    testRequest.current = request
+    setAsrTest('testing')
+    setAsrTestError(null)
+    try {
+      const error = await requestPassportAsrTest(value.asrProvider, request.signal)
+      if (!request.signal.aborted) { setAsrTestError(error); setAsrTest(error ? 'failed' : 'success') }
+    } catch { if (!request.signal.aborted) { setAsrTestError({ code: 'passport-asr-network-failed' }); setAsrTest('failed') } }
+    finally { if (testRequest.current === request) testRequest.current = null }
   }
   const save = async (): Promise<void> => {
     if (!draft || disabled || !dirty || conflict || invalid) return
@@ -166,10 +188,37 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
           {t(state === 'saving' ? 'settings.saving' : 'passport.quickEnable')}
         </Button>
       </div>
-      <div className="xmimo-passport-status" data-tone={statusTone} role="status">
-        <span className="xmimo-passport-status-dot" aria-hidden="true" />
-        <span>{t(statusKey)}</span>
-        {status?.listening ? <span className="xmimo-passport-port">{t('passport.port')} <strong>{status.port}</strong></span> : null}
+      <div className="xmimo-passport-overview">
+        <figure className="xmimo-passport-device">
+          <div className="xmimo-passport-device-art">
+            <img src={hostRoute(PASSPORT_DEVICE_ASSET_ROUTE)} alt={t('passport.deviceDiagram')} />
+            <img className="xmimo-passport-device-screen" src={hostRoute(PASSPORT_SCREEN_ASSET_ROUTE)} alt="" aria-hidden="true" />
+            <div className="xmimo-passport-device-reply" aria-label={t('passport.replyText')}>
+              <span>{t('passport.replyText')}</span>
+              <p>{status?.connected && status.activity?.reply || t('passport.noReply')}</p>
+            </div>
+          </div>
+          <div className="xmimo-passport-callout xmimo-passport-callout-power"><strong>{t('passport.powerButton')}</strong><span>{t('passport.powerHelp')}</span></div>
+          <div className="xmimo-passport-callout xmimo-passport-callout-indicator"><strong>{t('passport.indicator')}</strong></div>
+          <div className="xmimo-passport-callout xmimo-passport-callout-usb"><strong>{t('passport.usbPort')}</strong></div>
+          <div className="xmimo-passport-callout xmimo-passport-callout-up"><strong>{t('passport.upButton')}</strong><span>{t('passport.upHelp')}</span></div>
+          <div className="xmimo-passport-callout xmimo-passport-callout-down"><strong>{t('passport.downButton')}</strong><span>{t('passport.downHelp')}</span></div>
+          <div className="xmimo-passport-callout xmimo-passport-callout-ok"><strong>{t('passport.okButton')}</strong><span>{t('passport.okHelp')}</span></div>
+        </figure>
+        <div className="xmimo-passport-live">
+          <h4>{t('passport.liveStatus')}</h4>
+          <div className="xmimo-passport-status" data-tone={statusTone} role="status">
+            <span className="xmimo-passport-status-dot" aria-hidden="true" />
+            <span>{t(statusKey)}</span>
+          </div>
+          <dl className="xmimo-passport-facts">
+            <div><dt>{t('passport.microphone')}</dt><dd>{status?.connected && status.activity ? t(status.activity.microphone === 'open' ? 'passport.micOpen' : 'passport.micMuted') : t('passport.unknown')}</dd></div>
+            <div><dt>{t('passport.activity')}</dt><dd>{status?.connected && status.activity ? t(`passport.phase.${status.activity.phase}`) : t('passport.unknown')}</dd></div>
+            <div><dt>{t('passport.port')}</dt><dd>{status?.listening ? status.port : '—'}</dd></div>
+          </dl>
+          <div className="xmimo-passport-live-text"><h5>{t('passport.transcript')}</h5><p>{status?.connected && status.activity?.transcript || t('passport.noTranscript')}</p></div>
+          <p className="xmimo-qq-hint xmimo-passport-live-hint">{t('passport.textHint')}</p>
+        </div>
       </div>
       <div className="xmimo-passport-transfer">
       <div className="xmimo-passport-ip-field">
@@ -196,18 +245,11 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
         <p className="xmimo-qq-hint">{t('passport.devScope')}</p>
       </div>
       </div>
-      <aside className="xmimo-passport-device-help">
-        <h4>{t('passport.deviceSetup')}</h4>
-        <p>{t('passport.deviceSetupHint')}</p>
-        <p className="xmimo-qq-hint">{t('passport.stepTalk')}</p>
-      </aside>
     </section>
+    <div className="xmimo-passport-options">
     <section aria-labelledby={`${id}-preset`}>
-      <div className="xmimo-passport-heading">
-        <div><h4 id={`${id}-preset`}>{t('passport.session')}</h4><p className="xmimo-qq-hint">{t('passport.sessionHint')}</p></div>
-        <Button type="button" variant="outline" size="sm" disabled={disabled || conflict || !!invalid || !roster || !knownPreset}
-          onClick={() => { void renewSession() }}><FiRefreshCw aria-hidden="true" />{t(state === 'saving' ? 'settings.saving' : 'passport.newSession')}</Button>
-      </div>
+      <h4 id={`${id}-preset`}>{t('passport.session')}</h4>
+      <p className="xmimo-qq-hint xmimo-passport-section-hint">{t('passport.sessionHint')}</p>
       <div className="xmimo-qq-field">
         <label htmlFor={`${id}-agentPreset`}>{t('passport.agentPreset')}</label>
         <div className="xmimo-passport-control-row">
@@ -222,25 +264,42 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
         </div>
         <small id={`${id}-preset-hint`}>{t('passport.agentPresetHint')}</small>
       </div>
+      <div className="xmimo-passport-option-actions">
+        <div className="xmimo-passport-prompt-action">
+          <Button type="button" variant="outline" size="sm" onClick={() => {
+            void copyText(PASSPORT_PRESET_PROMPT).then(success => setPromptCopy(success ? 'copied' : 'failed'))
+          }}><FiCopy aria-hidden="true" />{t('passport.copyPrompt')}</Button>
+          <span>{t('passport.promptAfter')}</span>
+        </div>
+        <Button type="button" variant="outline" size="sm" disabled={disabled || conflict || !!invalid || !roster || !knownPreset}
+          onClick={() => { void renewSession() }}><FiRefreshCw aria-hidden="true" />{t(state === 'saving' ? 'settings.saving' : 'passport.newSession')}</Button>
+      </div>
+      <span className="xmimo-passport-option-feedback" role="status">{promptCopy === 'idle' ? '' : t(promptCopy === 'copied' ? 'passport.copied' : 'passport.promptCopyFailed')}</span>
       <p role="status" className="xmimo-qq-hint">{rosterFailed ? t('passport.presetsFailed') : !roster ? t('passport.presetsLoading')
         : !knownPreset ? t('passport.presetUnavailable') : state === 'renewed' ? t('passport.sessionRenewed') : ''}</p>
     </section>
     <section aria-labelledby={`${id}-recognition`}>
-      <h4 id={`${id}-recognition`}><label htmlFor={`${id}-asr`}>{t('passport.asrProvider')}</label></h4>
+      <h4 id={`${id}-recognition`}>{t('passport.asrProvider')}</h4>
+      <p className="xmimo-qq-hint xmimo-passport-section-hint">{t('passport.asrSectionHint')}</p>
       <div className="xmimo-qq-field">
-        <div className="xmimo-passport-control-row">
-          <select id={`${id}-asr`} name="asrProvider" value={value.asrProvider} disabled={disabled}
-            aria-describedby={`${id}-asr-hint`} onChange={event => edit('asrProvider', event.currentTarget.value)}>
-            {(['host', 'xiaomi', 'doubao', 'doubao-nostream'] as const).map(source => <option key={source} value={source}
-              disabled={source !== 'host' && !status?.recognitionChoices?.some(choice => choice.id === source && choice.configured)}>
-              {t(`passport.asr.${source}`)}{source !== 'host' ? ` · ${t(status?.recognitionChoices?.some(choice => choice.id === source && choice.configured) ? 'passport.keyConfigured' : 'passport.keyMissing')}` : ''}
-            </option>)}
-          </select>
-          {openTtsSettings ? <Button type="button" variant="outline" size="sm" onClick={openTtsSettings}>{t('passport.configureKeys')}</Button> : null}
-        </div>
+        <label htmlFor={`${id}-asr`}>{t('passport.asrService')}</label>
+        <select id={`${id}-asr`} name="asrProvider" value={value.asrProvider} disabled={disabled}
+          aria-describedby={`${id}-asr-hint`} onChange={event => edit('asrProvider', event.currentTarget.value)}>
+          {(['host', 'xiaomi', 'doubao', 'doubao-nostream'] as const).map(source => <option key={source} value={source}
+            disabled={source !== 'host' && !status?.recognitionChoices?.some(choice => choice.id === source && choice.configured)}>
+            {t(`passport.asr.${source}`)}{source !== 'host' ? ` · ${t(status?.recognitionChoices?.some(choice => choice.id === source && choice.configured) ? 'passport.keyConfigured' : 'passport.keyMissing')}` : ''}
+          </option>)}
+        </select>
         <small id={`${id}-asr-hint`}>{t(value.asrProvider === 'host' ? 'passport.asrHostHint' : 'passport.asrCloudHint')}</small>
+        <div className="xmimo-passport-option-actions">
+          {openTtsSettings ? <Button type="button" variant="outline" size="sm" onClick={openTtsSettings}><FiKey aria-hidden="true" />{t('passport.configureKeys')}</Button> : null}
+          <Button type="button" variant="outline" size="sm" disabled={changing || asrTest === 'testing'} onClick={() => { void testAsr() }}><FiWifi aria-hidden="true" />{t(asrTest === 'testing' ? 'passport.asrTesting' : 'passport.asrTest')}</Button>
+        </div>
+        <small>{t('passport.asrTestHint')}</small>
+        <small role="status">{asrTest === 'success' ? t('passport.asrTestSuccess') : asrTest === 'failed' && asrTestError ? passportAsrTestError(asrTestError, t) : ''}</small>
       </div>
     </section>
+    </div>
     <details className="xmimo-passport-advanced"><summary>{t('passport.advanced')}</summary>
     {GROUPS.map(group => <section key={group.id} aria-labelledby={`${id}-${group.id}`}>
       <h4 id={`${id}-${group.id}`}>{t(`passport.${group.id}`)}</h4>

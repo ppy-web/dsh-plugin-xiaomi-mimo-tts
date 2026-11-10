@@ -35,6 +35,9 @@ export const PASSPORT_NUMBER_FIELDS = {
 
 export type PassportNumberField = keyof typeof PASSPORT_NUMBER_FIELDS
 export const PASSPORT_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/passport-status'
+export const PASSPORT_ASR_TEST_ROUTE = '/plugins/xiaomi-mimo-tts/passport-asr-test'
+export const PASSPORT_DEVICE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/passport-device.webp'
+export const PASSPORT_SCREEN_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/passport-screen.webp'
 export const PASSPORT_PRESETS_ROUTE = '/plugins/xiaomi-mimo-tts/passport-presets'
 export interface PassportPreset { id: string; name?: string; unavailable?: boolean }
 
@@ -44,6 +47,7 @@ export interface PassportConnectionStatus {
   configured: boolean
   listening: boolean
   connected: boolean
+  activity?: { microphone: 'open' | 'muted'; phase: 'idle' | 'capturing' | 'recognizing' | 'thinking' | 'tool' | 'synthesizing' | 'playing'; transcript: string; reply: string }
   servicesReady: boolean
   recognitionReady: boolean
   host: string

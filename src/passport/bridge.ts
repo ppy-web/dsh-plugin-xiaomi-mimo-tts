@@ -16,6 +16,7 @@ import type { PassportRecognizer, RecognitionInput } from './recognition.js'
 import { performance } from 'node:perf_hooks'
 import type { CaptureOptions } from './audio.js'
 import { isPassportAccessToken, isPassportLanAddress } from '../types/passport.js'
+import type { PassportConnectionStatus } from '../types/passport.js'
 
 export interface PassportOptions extends CaptureOptions {
   host: string
@@ -155,7 +156,7 @@ export class PassportBridge {
   }
 
   get address() { return this.server?.address() }
-  get status() { return { listening: !!this.server?.listening, connected: !!this.current?.available } }
+  get status() { return { listening: !!this.server?.listening, connected: !!this.current?.available, activity: this.current?.available ? this.current.activity : undefined } }
 
   dispose(): Promise<void> { return this.closing ??= this.shutdown() }
 
@@ -189,6 +190,12 @@ class PassportConnection {
   private disposed = false
   private hello = false
   private muted = true
+  private phase: NonNullable<PassportConnectionStatus['activity']>['phase'] = 'idle'
+  private transcript = ''
+  private replyText = ''
+  get activity(): NonNullable<PassportConnectionStatus['activity']> {
+    return { microphone: this.muted ? 'muted' : 'open', phase: this.phase, transcript: this.transcript, reply: this.replyText }
+  }
   private readonly capture: PcmUtterances
   private readonly speech: SessionSpeech
   private cycle = new AbortController()
@@ -208,6 +215,7 @@ class PassportConnection {
     this.capture = new PcmUtterances(bridge.options, (pcm, first) => {
       if (first) {
         this.cycle = new AbortController()
+        this.transcript = ''; this.replyText = ''
         this.turnId = randomUUID(); this.outcomeSent = false; this.started = performance.now()
         this.input = bridge.recognition.create(this.cycle.signal, bridge.options.maxRecordingSeconds * 32000)
         this.progress('capturing')
@@ -280,6 +288,7 @@ class PassportConnection {
       this.lastManualSequence = sequence
       this.interrupt()
       this.manualCapture = true
+      this.transcript = ''; this.replyText = ''; this.phase = 'capturing'
       this.manualId = event.captureId
       this.send('voice.ptt.started', { captureId: this.manualId })
       return
@@ -291,7 +300,7 @@ class PassportConnection {
       this.manualId = ''
       const wave = this.capture.commit()
       if (wave) this.recognize(wave)
-      else if (this.available && !this.disposed) this.send('voice.ptt.empty', { captureId })
+      else if (this.available && !this.disposed) { this.phase = 'idle'; this.send('voice.ptt.empty', { captureId }) }
       return
     }
     if (event.type === 'input_audio_buffer.commit' && this.pushToTalk && event.captureId !== undefined) return
@@ -359,6 +368,7 @@ class PassportConnection {
       signal.throwIfAborted()
       this.mark('recognition-ended')
       if (!text.trim()) { this.fail('passport-no-speech'); this.finish(); return }
+      this.transcript = text.trim().slice(0, 4000)
       this.submitted = true
       this.progress('thinking')
       this.bridge.session.submit(text.trim())
@@ -379,8 +389,9 @@ class PassportConnection {
     if (event.type === 'tool/result' && event.data.turn === this.turn) this.progress('thinking')
     if (event.type === 'assistant/message' && event.data.turn === this.turn) {
       const blocks = event.data.message.content
-      this.hasReply = !event.data.interrupted && !blocks.some(block => block.type === 'tool-call')
-        && !!prepareTtsText(blocks.filter(block => block.type === 'text').map(block => block.text).join('\n'))
+      const reply = prepareTtsText(blocks.filter(block => block.type === 'text').map(block => block.text).join('\n'))
+      this.hasReply = !event.data.interrupted && !blocks.some(block => block.type === 'tool-call') && !!reply
+      this.replyText = this.hasReply ? reply.slice(0, 4000) : ''
     }
     if (event.type === 'turn/end' && event.data.turn === this.turn && this.hasReply && event.data.reason.kind === 'completed') {
       this.mark('model-ended'); this.progress('synthesizing')
@@ -453,6 +464,7 @@ class PassportConnection {
     clearTimeout(this.timeout)
     this.input?.cancel(); this.input = undefined
     this.turnId = ''
+    this.phase = 'idle'
     this.busy = false; this.submitted = false; this.turn = undefined; this.hasReply = false; this.manualCapture = false; this.manualId = ''
     this.capture.reset()
     if (this.available && !this.disposed && this.ws.readyState === WebSocket.OPEN) this.send('voice.state', { state: 'listening' })
@@ -474,7 +486,8 @@ class PassportConnection {
   private mark(stage: string): void {
     if (this.turnId) this.bridge.metric(this.turnId, stage, Math.round(performance.now() - this.started))
   }
-  private progress(phase: string): void {
+  private progress(phase: NonNullable<PassportConnectionStatus['activity']>['phase']): void {
+    this.phase = phase
     if (this.feedback) this.send('voice.progress', { turnId: this.turnId, phase })
   }
   private result(status: string, code?: string): void {

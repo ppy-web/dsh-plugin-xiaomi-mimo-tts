@@ -45,10 +45,6 @@
   font: inherit
 }
 
-.xmimo-tts-grid select {
-  color-scheme: light dark
-}
-
 .xmimo-tts-grid select option {
   color: var(--xmimo-ui-text);
   background: var(--xmimo-ui-surface)

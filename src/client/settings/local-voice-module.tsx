@@ -7,6 +7,7 @@ import type { Translate } from '../localization.js'
 import type { LocaleKey } from '../localization.js'
 import { MossRequestError, probeMossService } from '../moss-service.js'
 import type { MossProbeSuccess } from '../moss-service.js'
+import { copyText } from './copy-text.js'
 import { MOSS_DEPLOY_PROMPT } from './moss-deploy-prompt.js'
 import { LocalVoicePicker } from './controls/local-voice-picker.js'
 import { VoicePresetPicker } from './controls/built-in-voice-picker.js'
@@ -57,32 +58,6 @@ function voicePresets(voices: readonly MossVoice[], t: Translate): VoicePickerPr
   }))
 }
 
-/** Clipboard API first, then the legacy selection fallback for restricted frames. */
-async function copyText(text: string): Promise<boolean> {
-  try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard !== undefined) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-  } catch {
-    // Fall through to the selection path.
-  }
-  if (typeof document === 'undefined') return false
-  try {
-    const area = document.createElement('textarea')
-    area.value = text
-    area.setAttribute('readonly', '')
-    area.style.position = 'fixed'
-    area.style.opacity = '0'
-    document.body.append(area)
-    area.select()
-    const copied = document.execCommand('copy')
-    area.remove()
-    return copied
-  } catch {
-    return false
-  }
-}
 
 export function LocalVoiceModule({
   t, minimal, writable, localSpeechMode, engine: selectedEngine, mossEnabled, browserVoiceURI,

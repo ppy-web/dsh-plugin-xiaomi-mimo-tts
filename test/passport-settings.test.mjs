@@ -11,8 +11,40 @@ import { loadClientModule } from './helpers/client-modules.mjs'
 const { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, isPassportLanAddress } = await loadClientModule('src/types/passport.ts')
 const { savePassportDraft, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } = await loadClientModule('src/client/settings/passport-draft.ts')
 const { PassportSettingsPage } = await loadClientModule('src/client/settings/passport-settings.tsx')
+const { copyText } = await loadClientModule('src/client/settings/copy-text.ts')
+const { PASSPORT_PRESET_PROMPT } = await loadClientModule('src/client/settings/passport-prompt.ts')
+const { requestPassportAsrTest, passportAsrTestError } = await loadClientModule('src/client/settings/passport-asr-test.ts')
 const { registerPassportSettings } = await loadClientModule('src/client/settings/passport-registration.ts')
 const configured = () => ({ ...DEFAULT_PASSPORT_SETTINGS, accessToken: 'test-passport-private-token-123456789' })
+
+test('recognition test presents specific safe failures and never exposes provider secrets', async t => {
+  const controller = new AbortController()
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ error: 'passport-asr-auth-failed', upstreamStatus: 401, upstreamCode: 45000123 }, { status: 502 }))
+  let error = await requestPassportAsrTest('doubao', controller.signal)
+  assert.deepEqual(error, { code: 'passport-asr-auth-failed', upstreamStatus: 401, upstreamCode: 45000123 })
+  assert.match(passportAsrTestError(error, key => key), /passport\.asrErrorAuth.*passport-asr-auth-failed.*HTTP 401.*45000123/u)
+  globalThis.fetch = async () => Response.json({ error: 'secret-key' }, { status: 502 })
+  error = await requestPassportAsrTest('doubao', controller.signal)
+  assert.deepEqual(error, { code: 'http-502' })
+  assert.ok(!passportAsrTestError(error, key => key).includes('secret-key'))
+  globalThis.fetch = async () => { throw new TypeError('secret-key') }
+  assert.deepEqual(await requestPassportAsrTest('doubao', controller.signal), { code: 'passport-asr-network-failed' })
+  globalThis.fetch = async () => new Response('<html>login</html>', { status: 200 })
+  assert.deepEqual(await requestPassportAsrTest('doubao', controller.signal), { code: 'passport-asr-invalid-response' })
+  globalThis.fetch = async () => Response.json({ ok: true })
+  assert.equal(await requestPassportAsrTest('doubao', controller.signal), null)
+})
+
+test('copying the preset prompt sends its complete contents to the clipboard and reports failure', async t => {
+  const prompt = PASSPORT_PRESET_PROMPT
+  let copied
+  t.mock.getter(globalThis, 'navigator', () => ({ clipboard: { writeText: async text => { copied = text } } }))
+  assert.equal(await copyText(prompt), true)
+  assert.equal(copied, prompt)
+  t.mock.reset()
+  t.mock.getter(globalThis, 'navigator', () => ({ clipboard: { writeText: async () => { throw new Error('denied') } } }))
+  assert.equal(await copyText(prompt), false)
+})
 
 test('pairing codes preserve leading zeros and reject the biased tail of the random range', t => {
   const samples = [0, 42, 59999, 60000, 65535, 1234]
@@ -143,6 +175,23 @@ test('Passport fields expose labelled controls, mask the token and respect permi
       if (field === 'accessToken') assert.ok(input.includes('type="password"'))
     }
   }
+})
+
+test('live device panel renders connected activity and hides old text when disconnected', () => {
+  const snapshot = { status: 'ready', value: configured(), writable: true, revision: 1 }
+  const status = { configured: true, listening: true, connected: true, servicesReady: true, recognitionReady: true,
+    host: '0.0.0.0', port: 3101, addresses: [], activity: { microphone: 'open', phase: 'playing', transcript: '识别内容', reply: '播放内容' } }
+  const render = connectionStatus => renderToStaticMarkup(createElement(PassportSettingsPage, {
+    view: 'page', scope: { getSnapshot: () => snapshot, subscribe: () => () => {} }, t: key => key, connectionStatus,
+  }))
+  const connected = render(status)
+  assert.ok(connected.includes('识别内容'))
+  assert.ok(connected.includes('播放内容'))
+  assert.ok(connected.includes('passport.micOpen'))
+  assert.ok(connected.includes('passport.phase.playing'))
+  const disconnected = render({ ...status, connected: false })
+  assert.ok(!disconnected.includes('识别内容'))
+  assert.ok(!disconnected.includes('播放内容'))
 })
 
 test('a redacted saved Passport token remains write-only without blocking other configuration fields', () => {

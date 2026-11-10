@@ -31,7 +31,7 @@ export class DoubaoRecognition implements RecognitionInput {
   }
   private connect(plan: boolean, retry: boolean): void {
     const url = `wss://openspeech.bytedance.com/api/v3/${plan ? 'plan/' : ''}sauc/bigmodel_${this.mode}`
-    const headers = { 'X-Api-Key': this.key, 'X-Api-Resource-Id': 'volc.seedasr.sauc.duration', 'X-Api-Request-Id': randomUUID(), 'X-Api-Sequence': '-1' }
+    const headers = { 'X-Api-Key': this.key, 'X-Api-Resource-Id': 'volc.seedasr.sauc.duration', 'X-Api-Request-Id': randomUUID() }
     const ws = this.socket = this.connector?.(url, headers) ?? new WebSocket(url, {
       headers,
       handshakeTimeout: 10000, maxPayload: 256 * 1024, followRedirects: false,
@@ -64,6 +64,8 @@ export class DoubaoRecognition implements RecognitionInput {
         if (frame.length < 8 || frame[0]! >> 4 !== 1) throw new Error('passport-asr-invalid-response')
         const kind = frame[1]! >> 4, flags = frame[1]! & 15
         let offset = (frame[0]! & 15) * 4
+        if (flags & 1) offset += 4
+        if (flags & 4) offset += 4
         if (kind === 15) {
           if (frame.length < offset + 8) throw new Error('passport-asr-invalid-response')
           const code = frame.readUInt32BE(offset)
@@ -73,7 +75,6 @@ export class DoubaoRecognition implements RecognitionInput {
           throw doubaoRecognitionError(code, data.toString())
         }
         if (kind !== 9) throw new Error('passport-asr-invalid-response')
-        if (flags & 1) offset += 4
         if (frame.length < offset + 4) throw new Error('passport-asr-invalid-response')
         const size = frame.readUInt32BE(offset); offset += 4
         if (size !== frame.length - offset) throw new Error('passport-asr-invalid-response')
@@ -81,8 +82,9 @@ export class DoubaoRecognition implements RecognitionInput {
         const value = JSON.parse(payload.toString()) as { code?: number; message?: string; result?: { text?: unknown } }
         if (value.code && value.code !== 1000 && value.code !== 20000000) throw doubaoRecognitionError(value.code, value.message)
         if (flags & 2) {
-          if (!this.ending || this.bytes || typeof value.result?.text !== 'string') throw new Error('passport-asr-invalid-response')
-          this.settled = true; this.cleanup(); this.result.resolve(value.result.text.trim()); ws.close()
+          if (!this.ending || this.bytes || (value.result !== undefined && typeof value.result.text !== 'string')) throw new Error('passport-asr-invalid-response')
+          const text = value.result?.text
+          this.settled = true; this.cleanup(); this.result.resolve(typeof text === 'string' ? text.trim() : ''); ws.close()
         }
       } catch (error) { this.fail(error instanceof Error ? error : new Error('passport-asr-invalid-response')) }
     })
@@ -109,12 +111,17 @@ export class DoubaoRecognition implements RecognitionInput {
   private flush(): void {
     if (!this.opened || this.settled) return
     try {
-      while (this.bytes >= 6400 || this.ending && this.bytes) {
-        const all = Buffer.concat(this.chunks), length = Math.min(6400, all.length)
+      // Keep the last 20 ms so the terminal frame always contains real audio.
+      while (this.bytes >= 7040 || this.ending && this.bytes > 6400) {
+        const all = Buffer.concat(this.chunks), length = Math.min(6400, all.length - 640)
         this.send(2, all.subarray(0, length))
         this.chunks = all.length > length ? [all.subarray(length)] : []; this.bytes -= length
       }
-      if (this.ending) this.send(2, Buffer.alloc(0), true)
+      if (this.ending) {
+        if (!this.bytes) throw new Error('passport-no-speech')
+        this.send(2, Buffer.concat(this.chunks), true)
+        this.chunks = []; this.bytes = 0
+      }
     } catch (error) { this.fail(error instanceof Error ? error : new Error('passport-asr-network-failed')) }
   }
   finish(): Promise<string> {

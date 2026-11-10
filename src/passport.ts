@@ -6,9 +6,10 @@ import z from '@deepseek-ai/schemastery'
 import { readFileSync } from 'node:fs'
 import { PassportBridge } from './passport/bridge.js'
 import { PassportSession } from './passport/session.js'
-import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_PRESETS_ROUTE } from './types/passport.js'
+import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_ASR_TEST_ROUTE, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from './types/passport.js'
 import type { PassportSettings } from './types/passport.js'
-import { json } from './host/http.js'
+import { json, readJsonBody } from './host/http.js'
+import { TTS_DESKTOP_WRITE_HEADER } from './constants.js'
 import { passportAddresses } from './passport/network.js'
 import { hostRecognizer } from './passport/recognition.js'
 
@@ -19,6 +20,9 @@ export { pcmWave, playbackPcm, PcmUtterances } from './passport/audio.js'
 export { PassportRecognition, hostRecognizer } from './passport/recognition.js'
 
 export const name = 'speech-delivery-passport'
+const ASR_TEST_ERRORS = new Set(['passport-asr-unavailable', 'passport-asr-key-required', 'passport-asr-auth-failed',
+  'passport-asr-permission-denied', 'passport-asr-quota-exceeded', 'passport-asr-rate-limited', 'passport-asr-timeout',
+  'passport-asr-network-failed', 'passport-asr-invalid-response', 'passport-asr-input-overflow', 'passport-recognition-failed'])
 // Keep the configuration owner alive before ASR or the conversation services are ready.
 export const inject: string[] = []
 const messages = (language: string) => JSON.parse(readFileSync(new URL(`./locale/passport/${language}.json`, import.meta.resolve('dsh-xiaomi-tts/package.json')), 'utf8')).config
@@ -49,6 +53,51 @@ export function apply(ctx: Context, config: Config): void {
   let lastError: string | undefined
   let sessionError: string | undefined
   ctx.inject(['webServer'], child => {
+    child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_ASR_TEST_ROUTE, async handler(req, res) {
+      if (req.method !== 'POST') { res.setHeader('allow', 'POST'); json(res, 405, { error: 'method-not-allowed' }); return }
+      const origin = req.headers.origin
+      let allowed = origin === undefined && req.headers['sec-fetch-site'] === undefined && req.headers[TTS_DESKTOP_WRITE_HEADER] === '1'
+      if (origin !== undefined) {
+        try { const url = new URL(origin); allowed = ['http:', 'https:'].includes(url.protocol) && url.host === req.headers.host } catch { allowed = false }
+      }
+      if (!allowed || ['cross-site', 'same-site'].includes(String(req.headers['sec-fetch-site']))) { json(res, 403, { error: 'cross-origin-denied' }); return }
+      if (!String(req.headers['content-type']).startsWith('application/json')) { json(res, 415, { error: 'invalid-content-type' }); return }
+      let source: PassportSettings['asrProvider']
+      try {
+        const body = await readJsonBody(req, 1024) as Record<string, unknown>
+        if (!body || typeof body.source !== 'string' || Object.keys(body).length !== 1 || !['host', 'xiaomi', 'doubao', 'doubao-nostream'].includes(body.source)) throw new Error('invalid')
+        source = body.source as PassportSettings['asrProvider']
+      } catch { json(res, 400, { error: 'passport-asr-test-invalid' }); return }
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 15000)
+      const close = () => { if (!res.writableEnded) controller.abort() }
+      res.once('close', close)
+      let input: ReturnType<ReturnType<typeof hostRecognizer>['create']> | undefined
+      try {
+        const service = child.get('passportRecognition')
+        if (source !== 'host' && !service) throw new Error('passport-asr-unavailable')
+        const recognizer = service?.recognizer(source, child.get('speechToText')) ?? hostRecognizer(child.get('speechToText'))
+        recognizer.check()
+        input = recognizer.create(controller.signal, 32000)
+        input.append(Buffer.alloc(32000))
+        await Promise.race([
+          input.finish(),
+          new Promise<never>((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('passport-asr-timeout')), { once: true })),
+        ])
+        controller.signal.throwIfAborted()
+        json(res, 200, { ok: true })
+      } catch (error) {
+        if (res.destroyed) return
+        const code = error instanceof Error ? error.message : ''
+        if (code === 'passport-no-speech' && !controller.signal.aborted) json(res, 200, { ok: true })
+        else {
+          const details = error instanceof Error ? error as Error & { upstreamStatus?: unknown; upstreamCode?: unknown } : undefined
+          json(res, 502, { error: controller.signal.aborted ? 'passport-asr-timeout' : ASR_TEST_ERRORS.has(code) ? code : error instanceof TypeError ? 'passport-asr-network-failed' : 'passport-recognition-failed',
+            ...(typeof details?.upstreamStatus === 'number' && Number.isInteger(details.upstreamStatus) && details.upstreamStatus >= 100 && details.upstreamStatus <= 599 ? { upstreamStatus: details.upstreamStatus } : {}),
+            ...(typeof details?.upstreamCode === 'number' && Number.isSafeInteger(details.upstreamCode) && details.upstreamCode >= 0 && details.upstreamCode <= 0xffffffff ? { upstreamCode: details.upstreamCode } : {}) })
+        }
+      } finally { clearTimeout(timer); res.off('close', close); input?.cancel() }
+    } }))
     child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_PRESETS_ROUTE, async handler(req, res) {
       if (req.method !== 'GET') { res.setHeader('allow', 'GET'); json(res, 405, { error: 'method-not-allowed' }); return }
       try {
@@ -58,8 +107,20 @@ export function apply(ctx: Context, config: Config): void {
         json(res, 200, { presets })
       } catch { json(res, 503, { error: 'passport-preset-unavailable' }) }
     } }))
+    for (const [path, filename] of [[PASSPORT_DEVICE_ASSET_ROUTE, 'passport-device.webp'], [PASSPORT_SCREEN_ASSET_ROUTE, 'passport-screen.webp']] as const) child.effect(() => child.webServer.register({ kind: 'exact', path, handler(req, res) {
+      if (req.method !== 'GET') { res.writeHead(405); res.end(); return }
+      res.setHeader('content-type', 'image/webp')
+      res.end(readFileSync(new URL(`../assets/ui/${filename}`, import.meta.url)))
+    } }))
     child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_STATUS_ROUTE, handler(req, res) {
       if (req.method !== 'GET') { res.setHeader('allow', 'GET'); json(res, 405, { error: 'method-not-allowed' }); return }
+      const origin = req.headers.origin
+      let allowed = origin === undefined
+      if (origin !== undefined) {
+        try { const url = new URL(origin); allowed = ['http:', 'https:'].includes(url.protocol) && url.host === req.headers.host } catch { allowed = false }
+      }
+      if (!allowed || ['cross-site', 'same-site'].includes(String(req.headers['sec-fetch-site']))) { json(res, 403, { error: 'cross-origin-denied' }); return }
+      res.setHeader('cache-control', 'no-store')
       const asrProvider = config.asrProvider.get()
       const servicesReady = ['speechSynthesis', 'agents', 'agentPresets', 'agentDefaultModel', ...(asrProvider === 'host' ? ['speechToText'] : ['passportRecognition'])].every(name => !!ctx.get(name))
       let recognitionReady = false
@@ -69,7 +130,7 @@ export function apply(ctx: Context, config: Config): void {
         recognizer.check(); recognitionReady = true
       } catch {}
       json(res, 200, { configured: isPassportAccessToken(config.accessToken.get()),
-        listening: connection?.status.listening ?? false, connected: connection?.status.connected ?? false,
+        listening: connection?.status.listening ?? false, connected: connection?.status.connected ?? false, activity: connection?.status.activity,
         servicesReady, recognitionReady, asrProvider,
         recognitionChoices: ctx.get('passportRecognition')?.choices().map(choice => choice.id === 'host' ? { ...choice, configured: !!ctx.get('speechToText') } : choice),
         host: config.host.get(), port: config.port.get(), addresses: passportAddresses(), error: lastError,

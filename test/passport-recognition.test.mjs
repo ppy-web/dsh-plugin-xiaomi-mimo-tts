@@ -56,7 +56,7 @@ test('cloud failures expose stable codes and cancellation rejects a late transcr
 })
 
 function response(text, last = false) {
-  const body = gzipSync(Buffer.from(JSON.stringify({ result: { text } })))
+  const body = gzipSync(Buffer.from(JSON.stringify(text === undefined ? {} : { result: { text } })))
   const header = Buffer.alloc(12)
   header[0] = 0x11; header[1] = last ? 0x93 : 0x91; header[2] = 0x11
   header.writeInt32BE(last ? -1 : 1, 4); header.writeUInt32BE(body.length, 8)
@@ -72,12 +72,12 @@ for (const [source, endpoint] of [['doubao', 'bigmodel_async'], ['doubao-nostrea
   })
   server.listen(0, '127.0.0.1'); await once(server, 'listening')
   t.after(async () => { for (const ws of wss.clients) ws.terminate(); wss.close(); await new Promise(resolve => server.close(resolve)) })
-  const paths = [], uploaded = Promise.withResolvers(), frames = []
+  const paths = [], uploaded = Promise.withResolvers(), frames = [], finalFrames = []
   wss.on('connection', ws => ws.on('message', raw => {
     const frame = Buffer.from(raw), kind = frame[1] >> 4, flags = frame[1] & 15
     if (kind === 1) return
     const pcm = gunzipSync(frame.subarray(12)); frames.push(pcm)
-    if (flags & 2) ws.send(response('最终整句', true))
+    if (flags & 2) { finalFrames.push(pcm); ws.send(response('最终整句', true)) }
     else { ws.send(response('临时结果')); uploaded.resolve() }
   }))
   const service = new PassportRecognition(() => resolveTtsSettings({ provider: 'xiaomi', doubaoApiKey: 'doubao-key' }), (url, headers) => {
@@ -85,15 +85,36 @@ for (const [source, endpoint] of [['doubao', 'bigmodel_async'], ['doubao-nostrea
     return new WebSocket(`ws://127.0.0.1:${server.address().port}${new URL(url).pathname}`, { headers })
   })
   const input = service.recognizer(source).create(new AbortController().signal, 32000)
-  input.append(Buffer.alloc(6400, 1)); await uploaded.promise
+  input.append(Buffer.alloc(7040, 1)); await uploaded.promise
   assert.equal(Buffer.concat(frames).length, 6400)
   input.append(Buffer.alloc(640, 2)); assert.equal(await input.finish(), '最终整句')
-  assert.deepEqual(Buffer.concat(frames), Buffer.concat([Buffer.alloc(6400, 1), Buffer.alloc(640, 2)]))
+  assert.deepEqual(Buffer.concat(frames), Buffer.concat([Buffer.alloc(7040, 1), Buffer.alloc(640, 2)]))
+  assert.ok(finalFrames[0].length > 0, 'the final frame carries audio')
   const next = service.recognizer(source).create(new AbortController().signal, 32000)
   next.append(Buffer.alloc(640)); assert.equal(await next.finish(), '最终整句')
   assert.deepEqual(paths, plan
     ? [`/api/v3/sauc/${endpoint}`, `/api/v3/plan/sauc/${endpoint}`, `/api/v3/plan/sauc/${endpoint}`]
     : [`/api/v3/sauc/${endpoint}`, `/api/v3/sauc/${endpoint}`])
+})
+
+test('Doubao accepts a valid final response without text for silent audio', async t => {
+  const server = createServer(), wss = new WebSocketServer({ noServer: true })
+  server.on('upgrade', (req, socket, head) => wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws)))
+  server.listen(0, '127.0.0.1'); await once(server, 'listening')
+  t.after(async () => { for (const ws of wss.clients) ws.terminate(); wss.close(); await new Promise(resolve => server.close(resolve)) })
+  let lastBytes = 0
+  wss.on('connection', ws => ws.on('message', raw => {
+    const frame = Buffer.from(raw)
+    if (frame[1] >> 4 === 2 && frame[1] & 2) {
+      lastBytes = gunzipSync(frame.subarray(12)).length
+      ws.send(response(undefined, true))
+    }
+  }))
+  const service = new PassportRecognition(() => resolveTtsSettings({ doubaoApiKey: 'key' }), (_url, headers) => new WebSocket(`ws://127.0.0.1:${server.address().port}`, { headers }))
+  const input = service.recognizer('doubao').create(new AbortController().signal, 32000)
+  input.append(Buffer.alloc(32000))
+  assert.equal(await input.finish(), '')
+  assert.ok(lastBytes > 0)
 })
 
 test('both Doubao choices reflect the saved key without exposing it', () => {
@@ -132,4 +153,5 @@ test('ASR protocol errors distinguish invalid audio from permissions and never r
   assert.equal(doubaoRecognitionError(45000002).message, 'passport-no-speech')
   assert.equal(doubaoRecognitionError(55001010).message, 'passport-asr-timeout')
   assert.equal(doubaoRecognitionError(55000000, 'quota exceeded secret-key').message, 'passport-asr-quota-exceeded')
+  assert.equal(doubaoRecognitionError(55000000, 'quota exceeded secret-key').upstreamCode, 55000000)
 })
