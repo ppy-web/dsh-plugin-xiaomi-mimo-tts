@@ -24,12 +24,15 @@ export function DocumentPage({ copy }: { copy: ManualCopy }): ReactElement {
   const title = (value: string): string => value.replace(/^\d+\s*·\s*/, '')
 
   useLayoutEffect(() => {
+    const manual = manualRef.current
+    if (!manual) return
+    const scroller = manual.closest<HTMLElement>('#preview-main')
     const navigate = (): void => {
       const sectionId = previewDocumentSectionId(window.location.hash)
       const section = copy.sections.find(section => section.id === sectionId)
       setActiveSection(section?.id ?? copy.sections[0]?.id ?? '')
-      if (section) manualRef.current?.querySelector<HTMLElement>(`#${section.id}`)?.scrollIntoView()
-      else window.scrollTo({ top: 0 })
+      if (section) manual.querySelector<HTMLElement>(`#${section.id}`)?.scrollIntoView({ block: 'start' })
+      else scroller?.scrollTo({ top: 0, left: 0 })
     }
     navigate()
     window.addEventListener('hashchange', navigate)
@@ -37,14 +40,20 @@ export function DocumentPage({ copy }: { copy: ManualCopy }): ReactElement {
   }, [copy.sections])
 
   useEffect(() => {
-    const root = manualRef.current
-    if (root === null || typeof IntersectionObserver === 'undefined') return
+    const manual = manualRef.current
+    const scroller = manual?.closest<HTMLElement>('#preview-main')
+    if (!manual || !scroller || typeof IntersectionObserver === 'undefined') return
+    const sections = Array.from(manual.querySelectorAll<HTMLElement>('.preview-manual-section'))
+    const visible = new Set<Element>()
     const observer = new IntersectionObserver(entries => {
-      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-      const section = visible[0]?.target
-      if (section instanceof HTMLElement) setActiveSection(section.id)
-    }, { rootMargin: '-100px 0px -55% 0px', threshold: 0 })
-    root.querySelectorAll('.preview-manual-section').forEach(section => observer.observe(section))
+      for (const entry of entries) {
+        if (entry.isIntersecting) visible.add(entry.target)
+        else visible.delete(entry.target)
+      }
+      const section = sections.find(item => visible.has(item))
+      if (section) setActiveSection(section.id)
+    }, { root: scroller, rootMargin: '-32px 0px 0px 0px' })
+    sections.forEach(section => observer.observe(section))
     return () => observer.disconnect()
   }, [copy.sections])
 

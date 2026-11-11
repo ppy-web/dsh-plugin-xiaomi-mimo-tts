@@ -1,4 +1,6 @@
 export type PreviewLocale = 'zh' | 'en' | 'ja' | 'fr'
+export const PREVIEW_PALETTES = ['vintage-paper', 'notebook', 'kodama-grove', 'ocean-breeze', 'amethyst-haze', 'original'] as const
+export type PreviewPalette = typeof PREVIEW_PALETTES[number]
 export type PreviewView = 'settings' | 'workbench' | 'live2d' | 'voice' | 'conversation' | 'detail' | 'components' | 'filter' | 'manual' | 'qqbot' | 'xiaomi' | 'doubao' | 'breeze' | 'passport'
 
 export interface PreviewCopy {
@@ -12,8 +14,11 @@ export interface PreviewCopy {
   help: string
   source: string
   language: string
+  palette: string
+  palettes: Record<PreviewPalette, string>
   lightTheme: string
   darkTheme: string
+  dayMode: string
   activation: string
   notice: string
   pages: Record<PreviewView, { title: string; description: string }>
@@ -25,7 +30,11 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     workspace: '交互预览', navigation: '功能导航', closeNavigation: '关闭导航', toggleNavigation: '切换侧栏',
     speech: '语音体验', plugin: '插件管理', help: '工具与帮助',
     source: '查看源码', language: '语言',
-    lightTheme: '切换浅色主题', darkTheme: '切换深色主题', activation: '版本新功能',
+    palette: '配色', palettes: {
+      'vintage-paper': '复古纸张', notebook: '素描笔记', 'kodama-grove': '苔绿林间',
+      'ocean-breeze': '海风薄荷', 'amethyst-haze': '紫晶薄雾', original: '原始配色',
+    },
+    lightTheme: '切换浅色主题', darkTheme: '切换深色主题', dayMode: '浅色主题', activation: '版本新功能',
     notice: '仅用于预览，不会修改 DSH 设置。',
     pages: {
       live2d: { title: 'Live2D 设置', description: '选择角色，调整大小和位置。' },
@@ -49,7 +58,11 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     workspace: 'Interactive preview', navigation: 'Navigation', closeNavigation: 'Close navigation', toggleNavigation: 'Toggle sidebar',
     speech: 'Speech', plugin: 'Plugin', help: 'Tools & help',
     source: 'View source', language: 'Language',
-    lightTheme: 'Switch to light theme', darkTheme: 'Switch to dark theme', activation: 'What’s new',
+    lightTheme: 'Switch to light theme', darkTheme: 'Switch to dark theme', dayMode: 'Light theme', activation: 'What’s new',
+    palette: 'Color palette', palettes: {
+      'vintage-paper': 'Vintage Paper', notebook: 'Notebook', 'kodama-grove': 'Kodama Grove',
+      'ocean-breeze': 'Ocean Breeze', 'amethyst-haze': 'Amethyst Haze', original: 'Original',
+    },
     notice: 'Preview only. Your DSH settings stay unchanged.',
     pages: {
       live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
@@ -73,7 +86,11 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     workspace: '操作プレビュー', navigation: '機能ナビゲーション', closeNavigation: 'ナビゲーションを閉じる', toggleNavigation: 'サイドバーを切り替え',
     speech: '音声体験', plugin: 'プラグイン管理', help: 'ツールとヘルプ',
     source: 'ソースを見る', language: '言語',
-    lightTheme: 'ライトテーマに切り替え', darkTheme: 'ダークテーマに切り替え', activation: '新機能のご紹介',
+    lightTheme: 'ライトテーマに切り替え', darkTheme: 'ダークテーマに切り替え', dayMode: 'ライトテーマ', activation: '新機能のご紹介',
+    palette: '配色', palettes: {
+      'vintage-paper': 'ヴィンテージペーパー', notebook: 'ノートブック', 'kodama-grove': 'こだまの森',
+      'ocean-breeze': '海のそよ風', 'amethyst-haze': 'アメジストの霞', original: 'オリジナル',
+    },
     notice: 'プレビュー専用です。DSH の設定は変更しません。',
     pages: {
       live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
@@ -97,7 +114,11 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
     workspace: 'Aperçu interactif', navigation: 'Navigation', closeNavigation: 'Fermer la navigation', toggleNavigation: 'Afficher ou masquer le menu',
     speech: 'Lecture vocale', plugin: 'Plugin', help: 'Outils et aide',
     source: 'Voir le code', language: 'Langue',
-    lightTheme: 'Passer au thème clair', darkTheme: 'Passer au thème sombre', activation: 'Les nouveautés',
+    lightTheme: 'Passer au thème clair', darkTheme: 'Passer au thème sombre', dayMode: 'Thème clair', activation: 'Les nouveautés',
+    palette: 'Palette de couleurs', palettes: {
+      'vintage-paper': 'Papier vintage', notebook: 'Carnet', 'kodama-grove': 'Bosquet de Kodama',
+      'ocean-breeze': 'Brise marine', 'amethyst-haze': 'Brume améthyste', original: 'Palette d’origine',
+    },
     notice: 'Aperçu uniquement. Les réglages de DSH restent inchangés.',
     pages: {
       live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },

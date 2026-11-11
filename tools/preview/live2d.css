@@ -1,0 +1,118 @@
+.preview-live2d-widget {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 10;
+  display: flex;
+  pointer-events: none;
+}
+.preview-live2d-widget > div { pointer-events: auto; }
+.xmimo-live2d-canvas { display: block; width: 100%; aspect-ratio: 3 / 4; cursor: pointer; }
+.xmimo-live2d-canvas[aria-hidden='true'] { visibility: hidden; }
+.xmimo-live2d-canvas:focus-visible { outline: 2px solid var(--preview-ring); outline-offset: -2px; }
+
+.xmimo-live2d-settings {
+  --xmimo-live2d-divider: color-mix(in srgb, var(--preview-rule) 65%, var(--preview-background));
+  display: grid;
+  gap: 24px;
+  container: xmimo-live2d / inline-size;
+  color: var(--preview-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+:root[data-theme='dark'] .xmimo-live2d-settings { color-scheme: dark; }
+.xmimo-live2d-settings h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.xmimo-live2d-display { display: grid; gap: 12px; }
+.xmimo-live2d-display-heading,
+.xmimo-live2d-size-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.xmimo-live2d-visibility { display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; }
+.xmimo-live2d-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr); gap: 12px 16px; }
+.xmimo-live2d-field { display: grid; grid-template-rows: auto 40px; gap: 6px; min-width: 0; font-weight: 500; }
+.xmimo-live2d-size-heading > span { color: var(--preview-muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.xmimo-live2d-size input { width: 100%; min-width: 0; margin: 0; accent-color: var(--preview-link); cursor: pointer; }
+.xmimo-live2d-size input:focus-visible { outline: 2px solid var(--preview-ring); outline-offset: 3px; }
+.xmimo-live2d-field select,
+.xmimo-live2d-actions button {
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--preview-rule);
+  border-radius: 6px;
+  color: var(--preview-foreground);
+  background: var(--preview-background);
+  cursor: pointer;
+}
+.xmimo-live2d-field select { width: 100%; font-weight: 400; }
+.xmimo-live2d-field select:hover,
+.xmimo-live2d-actions button:not(:disabled):hover { background: var(--preview-hover); }
+
+.xmimo-live2d-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  align-items: start;
+  gap: 28px;
+  padding-block-start: 24px;
+  border-block-start: 1px solid var(--xmimo-live2d-divider);
+}
+.xmimo-live2d-preview { display: grid; gap: 12px; container-type: inline-size; }
+.xmimo-live2d-stage {
+  --xmimo-live2d-max-canvas: min(300px, 76cqi);
+  position: relative;
+  display: flex;
+  align-items: end;
+  min-height: calc(var(--xmimo-live2d-max-canvas) * 4 / 3 + 14px);
+  padding: 12px 12px 0;
+  border: 1px solid var(--xmimo-live2d-divider);
+  border-radius: 12px;
+  background: var(--preview-palette-layer, var(--preview-frame));
+}
+.xmimo-live2d-stage-character { width: calc(var(--xmimo-live2d-max-canvas) * var(--xmimo-live2d-size-scale)); }
+.xmimo-live2d-stage-status {
+  position: absolute;
+  inset: 12px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--preview-muted);
+  text-align: center;
+  pointer-events: none;
+}
+.xmimo-live2d-note { margin: 0; color: var(--preview-muted); font-size: 13px; }
+
+.xmimo-live2d-tools { display: grid; gap: 20px; }
+.xmimo-live2d-tools section { display: grid; gap: 12px; }
+.xmimo-live2d-tools fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.xmimo-live2d-tools legend { margin-block-end: 6px; padding: 0; color: var(--preview-muted); font-size: 13px; }
+.xmimo-live2d-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.xmimo-live2d-actions button { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding-block: 6px; overflow-wrap: anywhere; }
+.xmimo-live2d-actions button:disabled { color: var(--preview-muted); cursor: default; }
+.xmimo-live2d-actions button[aria-pressed='true'] { border-color: var(--preview-link); color: var(--preview-link); }
+.xmimo-live2d-device-indicator { flex: none; width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 50%; }
+.xmimo-live2d-actions button[aria-pressed='true'] .xmimo-live2d-device-indicator { background: currentColor; }
+.xmimo-live2d-devices { padding-block-start: 20px; border-block-start: 1px solid var(--xmimo-live2d-divider); }
+.xmimo-live2d-device-status:not(:empty) { margin-block-start: 8px; }
+
+.xmimo-live2d-credits {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--xmimo-live2d-divider);
+  color: var(--preview-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.xmimo-live2d-credits p { margin: 0; }
+.xmimo-live2d-credits a { color: var(--preview-link); text-underline-offset: 3px; }
+.xmimo-live2d-credits a:hover { text-decoration-thickness: 2px; }
+
+@container xmimo-live2d (max-width: 680px) {
+  .xmimo-live2d-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .xmimo-live2d-size { grid-column: 1 / -1; }
+  .xmimo-live2d-workspace { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .xmimo-live2d-stage { --xmimo-live2d-max-canvas: min(232px, 76cqi); }
+  .xmimo-live2d-tools { padding-block-start: 20px; border-block-start: 1px solid var(--xmimo-live2d-divider); }
+}
+@media (pointer: coarse) {
+  .xmimo-live2d-visibility, .xmimo-live2d-actions button { min-height: 44px; }
+  .xmimo-live2d-field { grid-template-rows: auto 44px; }
+}

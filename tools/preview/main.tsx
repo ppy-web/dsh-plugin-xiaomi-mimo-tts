@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Live2dSettingsPage, Live2dWidget } from './live2d.js'
-import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import { LuPanelLeft, LuSun, LuMoon, LuChevronRight } from 'react-icons/lu'
+import { Menu, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { LuPanelLeft, LuChevronRight, LuPalette } from 'react-icons/lu'
 import { BundleSettingsCard } from '../../src/client/settings/bundle-settings.js'
 import { VoiceSettingsPage } from '../../src/client/settings/voice-settings-page.js'
 import { PluginDetailActions } from '../../src/client/settings/plugin-detail.js'
@@ -30,13 +30,15 @@ import { ConversationPreview } from './conversation-preview.js'
 import { VoiceReadingPreview } from './voice-reading-preview.js'
 import { bindApiKeyStatus } from '../../src/client/settings/api-key-status-store.js'
 import { PluginDetailPreview, previewPluginChanges, PREVIEW_PLUGIN_SUBJECT } from './plugin-detail-preview.js'
-import { PREVIEW_COPY, previewDocumentSectionId, previewViewFromHash } from './preview-copy.js'
-import type { PreviewLocale, PreviewView } from './preview-copy.js'
+import { PREVIEW_COPY, PREVIEW_PALETTES, previewDocumentSectionId, previewViewFromHash } from './preview-copy.js'
+import type { PreviewLocale, PreviewPalette, PreviewView } from './preview-copy.js'
 import { PreviewSidebar } from './preview-sidebar.js'
+import { PreviewThemeToggle } from './preview-theme-toggle.js'
 import { VoiceReadingSelect } from '../../src/client/settings/voice-reading-select.js'
 import { engineStateStore } from '../../src/client/engine-state.js'
 import './preview.css'
 import './preview-shell.css'
+import './preview-palettes.css'
 
 const scope = new PreviewSettingsScope()
 // Development-only takeover fixture; production activation belongs to the external Host plugin.
@@ -70,12 +72,16 @@ function translator(locale: PreviewLocale): Translate {
 function PreviewApp() {
   const [locale, setLocale] = useState<PreviewLocale>('zh')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [palette, setPalette] = useState<PreviewPalette>('vintage-paper')
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const [activeView, setActiveView] = useState<PreviewView>(() => previewViewFromHash(window.location.hash))
   const [collapsed, setCollapsed] = useState(false)
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
   const [navigationOpen, setNavigationOpen] = useState(false)
   const [activationOpen, setActivationOpen] = useState(false)
+  const mainRef = useRef<HTMLElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const paletteButtonRef = useRef<HTMLButtonElement>(null)
   const t = useMemo(() => translator(locale), [locale])
   const copy = PREVIEW_COPY[locale]
   const page = copy.pages[activeView]
@@ -83,8 +89,9 @@ function PreviewApp() {
   useEffect(() => {
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : locale
     document.documentElement.dataset.theme = theme
+    document.documentElement.dataset.previewPalette = palette
     document.title = `${page.title} · ${t('settings.voiceSettingsNav')}`
-  }, [locale, theme, page.title, t])
+  }, [locale, theme, palette, page.title, t])
 
   useEffect(() => {
     const navigate = (): void => {
@@ -99,8 +106,8 @@ function PreviewApp() {
 
   useLayoutEffect(() => {
     if (previewDocumentSectionId(window.location.hash)) return
-    window.scrollTo({ top: 0 })
-    headingRef.current?.focus({ preventScroll: true })
+    const target = headingRef.current ?? mainRef.current
+    target?.focus({ preventScroll: true })
   }, [activeView])
 
   useEffect(() => {
@@ -127,7 +134,11 @@ function PreviewApp() {
   }
 
   return <div className="preview-app" data-collapsed={collapsed && !mobile}>
-    <a className="preview-skip-link" href="#preview-main" onClick={event => { event.preventDefault(); headingRef.current?.focus() }}>{copy.skipContent}</a>
+    <a className="preview-skip-link" href="#preview-main" onClick={event => {
+      event.preventDefault()
+      const target = headingRef.current ?? mainRef.current
+      target?.focus()
+    }}>{copy.skipContent}</a>
     <aside className="preview-sidebar" id="preview-sidebar" hidden={mobile}>
       <PreviewSidebar {...sidebarProps} />
     </aside>
@@ -144,14 +155,25 @@ function PreviewApp() {
         </div>
         <div className="preview-topbar-actions">
           <div className="preview-locale-select">
-            <VoiceReadingSelect label={copy.language} value={locale} options={localeOptions} disabled={false}
+            <VoiceReadingSelect label={copy.language} value={locale} options={localeOptions} disabled={false} buttonVariant="tactile"
               onSelect={id => setLocale(id as PreviewLocale)} />
           </div>
-          <button type="button" className="preview-icon-button" title={theme === 'light' ? copy.darkTheme : copy.lightTheme} aria-label={theme === 'light' ? copy.darkTheme : copy.lightTheme}
-            onClick={() => setTheme(current => current === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <LuMoon aria-hidden="true" /> : <LuSun aria-hidden="true" />}</button>
+          <Menu open={paletteOpen} align="end" portal selectedId={palette}
+            items={PREVIEW_PALETTES.map(id => ({ id, label: copy.palettes[id] }))}
+            anchor={<button ref={paletteButtonRef} type="button" className="preview-icon-button" aria-label={copy.palette}
+              title={`${copy.palette} · ${copy.palettes[palette]}`} aria-haspopup="menu" aria-expanded={paletteOpen}
+              onClick={() => setPaletteOpen(open => !open)}><LuPalette aria-hidden="true" /></button>}
+            onSelect={id => {
+              paletteButtonRef.current?.focus({ preventScroll: true })
+              setPaletteOpen(false)
+              const selected = PREVIEW_PALETTES.find(option => option === id)
+              if (selected) setPalette(selected)
+            }} onClose={() => setPaletteOpen(false)} />
+          <PreviewThemeToggle dark={theme === 'dark'} label={copy.dayMode} title={theme === 'light' ? copy.darkTheme : copy.lightTheme}
+            onChange={dark => setTheme(dark ? 'dark' : 'light')} />
         </div>
       </header>
-      <main className="preview-canvas" id="preview-main">
+      <main key={activeView} ref={mainRef} className="preview-canvas" id="preview-main" tabIndex={-1}>
         <div className="preview-page">
           {activeView !== 'workbench' ? <header className="preview-page-heading">
             <h1 ref={headingRef} tabIndex={-1}>{page.title}</h1><p>{page.description}</p>

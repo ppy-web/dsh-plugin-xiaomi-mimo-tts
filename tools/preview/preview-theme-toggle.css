@@ -1,0 +1,103 @@
+.preview-theme-toggle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 58px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.preview-theme-track {
+  --preview-theme-position: 1;
+  --preview-theme-knob: #fffaf2;
+  --preview-theme-rim: #d29e67;
+  --preview-theme-glow: #ffc35d;
+  --preview-theme-glint: #fff9d1;
+  position: relative;
+  display: block;
+  width: 58px;
+  height: 30px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #0000000d, #ffffff18), #e8e4df;
+  box-shadow: inset 0 2px 4px #5a493c42, inset 0 -1px 1px #fff9, 0 1px 0 #fff9;
+  pointer-events: none;
+}
+
+.preview-theme-toggle[aria-checked='false'] .preview-theme-track {
+  --preview-theme-position: 0;
+  --preview-theme-knob: #43465e;
+  --preview-theme-rim: #686c8b;
+  --preview-theme-glow: #8b82ff;
+  --preview-theme-glint: #f0ebff;
+  background: linear-gradient(180deg, #07070d, #171824);
+  box-shadow: inset 0 2px 4px #0009, inset 0 -1px 1px #b0b3f222, 0 1px 0 #0008;
+}
+
+.preview-theme-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 8px;
+  background: var(--preview-theme-rim);
+  box-shadow: 0 2px 4px #0005;
+  transform: translateX(calc(28px * var(--preview-theme-position)));
+  transition: transform 370ms cubic-bezier(.24, 1.3, .48, 1), background-color 180ms ease-out;
+}
+
+.preview-theme-knob::before,
+.preview-theme-knob::after {
+  position: absolute;
+  content: '';
+}
+
+.preview-theme-knob::before {
+  inset: -6px;
+  background: conic-gradient(from 5deg, var(--preview-theme-glint), var(--preview-theme-glow) 19%, transparent 39% 78%, var(--preview-theme-glow) 94%, var(--preview-theme-glint));
+  transition: transform 580ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.preview-theme-toggle[aria-checked='false'] .preview-theme-knob::before {
+  transform: rotate(-195deg);
+}
+
+.preview-theme-knob::after {
+  inset: 1px;
+  border-radius: 7px;
+  background: linear-gradient(150deg, #ffffff38, transparent 55%, #00000016), var(--preview-theme-knob);
+  box-shadow: inset 0 1px 2px #fff5, inset 0 -2px 4px color-mix(in srgb, var(--preview-theme-glow) 42%, transparent);
+}
+
+.preview-theme-knob canvas {
+  z-index: 1;
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+
+.preview-theme-track[data-dragging] .preview-theme-knob {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-theme-knob,
+  .preview-theme-knob::before {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .preview-theme-track { outline: 1px solid ButtonText; }
+  .preview-theme-knob { border: 1px solid ButtonText; }
+}
