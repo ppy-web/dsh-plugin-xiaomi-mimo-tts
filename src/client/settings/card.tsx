@@ -85,7 +85,7 @@ function hasLayerField(value: unknown, field: string): boolean {
   return isRecord(value) && Object.hasOwn(value, field)
 }
 
-function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement | null> }): ReactElement {
+function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement> }): ReactElement {
   const view = useSyncExternalStore(history.subscribe, history.getSnapshot)
   return <Button ref={buttonRef} type="button" className="xmimo-tts-history-link" variant="toolbar" size="sm" onClick={onOpen}>
     <GoHistory size={14} aria-hidden="true" focusable="false" />

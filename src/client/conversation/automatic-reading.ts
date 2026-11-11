@@ -27,8 +27,7 @@ export class AutomaticReading implements SnapshotSource<FoldedReplies> {
     if (next === this.mode) return
     this.mode = next
     for (const [id, running] of this.running) if (running) this.blocked.add(id)
-    if (this.automatic) stop()
-    this.automatic = false
+    this.stopAutomatic(stop)
     reset()
     for (const listener of this.listeners) listener()
   }
@@ -40,10 +39,13 @@ export class AutomaticReading implements SnapshotSource<FoldedReplies> {
 
   allowed(sessionId: string): boolean { return !this.blocked.has(sessionId) }
   isAutomatic(): boolean { return this.automatic }
-  interruptAutomatic(stop: () => void): void {
-    for (const [id, running] of this.running) if (running) this.blocked.add(id)
+  stopAutomatic(stop: () => void): void {
     if (this.automatic) stop()
     this.automatic = false
+  }
+  interruptAutomatic(stop: () => void): void {
+    for (const [id, running] of this.running) if (running) this.blocked.add(id)
+    this.stopAutomatic(stop)
   }
   markAutomatic(): void { this.automatic = true }
   markManual(): void { this.automatic = false }

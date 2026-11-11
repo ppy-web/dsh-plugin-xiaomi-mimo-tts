@@ -113,7 +113,7 @@ test('Concise chooses the settled host answer for automatic speech and the selec
   const mode = automaticReplyMode('all', settings.readScope)
   const nodes = new Map()
   const chat = {
-    timeline: { turnOrder: [7] },
+    timeline: { turnOrder: [7], turns: new Map([[7, { turn: 7, end: { data: { reason: { kind: 'completed' } } } }]]) },
     nodes,
     locations: { getTurn: () => ['tail'] },
     legacy: { nodes: [

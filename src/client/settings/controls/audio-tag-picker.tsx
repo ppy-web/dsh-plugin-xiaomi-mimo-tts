@@ -1,7 +1,7 @@
 import type { ReactElement, RefObject } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Button, useAnchoredPosition } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { RiArrowDownSLine, RiPushpinFill, RiPushpinLine } from 'react-icons/ri'
 import { BREEZE_AUDIO_TAG_GROUPS, type BreezeAudioTagLanguage } from '../breeze-audio-tags.js'
 import { XIAOMI_AUDIO_TAG_GROUPS } from '../../../text/xiaomi-audio-tags.js'
@@ -13,11 +13,11 @@ export function AudioTagPicker({ provider, disabled, textRef, onInsert, t, tags 
   const [open, setOpen] = useState(false)
   const [continuous, setContinuous] = useState(false)
   const panelId = useId()
+  const anchorName = `--xmimo-audio-tags-${panelId.replaceAll(':', '')}`
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const expanded = open && !disabled
-  const position = useAnchoredPosition({ open: expanded, anchorRef: triggerRef, panelRef, side: 'bottom', align: 'start', gap: 6, margin: 12, layoutKey: `${provider}:${language}` })
   useEffect(() => {
     if (!expanded) return
     const dismissOutside = (event: Event): void => {
@@ -54,6 +54,7 @@ export function AudioTagPicker({ provider, disabled, textRef, onInsert, t, tags 
     <button
       type="button"
       ref={triggerRef}
+      style={{ anchorName }}
       className="xmimo-tts-breeze-audio-tags-toggle"
       aria-expanded={expanded}
       aria-controls={expanded ? panelId : undefined}
@@ -65,7 +66,7 @@ export function AudioTagPicker({ provider, disabled, textRef, onInsert, t, tags 
       <RiArrowDownSLine className="xmimo-tts-chevron" size={14} aria-hidden="true" focusable="false" />
     </button>
     {expanded ? createPortal(<div ref={panelRef} id={panelId} className="xmimo-ui-scope xmimo-tts-breeze-audio-tags-panel"
-      role="dialog" aria-label={t('settings.breezeAudioTags')} style={position ?? { visibility: 'hidden' }}>
+      role="dialog" data-window-drag-exclude aria-label={t('settings.breezeAudioTags')} style={{ positionAnchor: anchorName }}>
       <small>{t(provider === 'external' ? 'settings.externalOptionsHint' : provider === 'xiaomi' ? 'settings.xiaomiAudioTagsHint' : 'settings.breezeAudioTagsHint')}</small>
       <div className="xmimo-tts-settings-segmented-wrap">
         {provider !== 'external' ? <><Button type="button" aria-pressed={language === 'zh'} variant={language === 'zh' ? 'primary' : 'ghost'} size="sm" disabled={disabled} onClick={() => setLanguage('zh')}>{t('settings.breezeAudioTagsChinese')}</Button>

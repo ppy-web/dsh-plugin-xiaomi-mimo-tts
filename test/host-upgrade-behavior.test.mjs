@@ -87,14 +87,14 @@ test('final-only selection follows the host closing reply and waits for a settle
     ['process', { kind: 'assistant-step', data: { finalNode: { messageId: 'process' } } }],
     ['tail', { kind: 'turn-tail', data: { closing: { finalNode: { messageId: 'answer' } } } }],
   ])
-  const chat = { timeline: { turnOrder: [1, 2] }, nodes: rows, locations: { getTurn: turn => turn === 2 ? ['process', 'tail'] : [] } }
+  const chat = { timeline: { turnOrder: [1, 2], turns: new Map([[2, { turn: 2, end: { data: { reason: { kind: 'completed' } } } }]]) }, nodes: rows, locations: { getTurn: turn => turn === 2 ? ['process', 'tail'] : [] } }
   assert.equal(finalAssistantMessageId(chat), 'answer')
   rows.delete('tail')
   assert.equal(finalAssistantMessageId(chat), null)
   rows.set('tail', { kind: 'turn-tail', data: { closing: null } })
   assert.equal(finalAssistantMessageId(chat), null)
-  rows.set('tail', { kind: 'turn-tail', data: { closing: { finalNode: {} } } })
-  assert.equal(finalAssistantMessageId(chat), null, 'interrupted partials must not address a durable message')
+  rows.set('tail', { kind: 'turn-tail', data: { closing: { finalNode: { messageId: 'interrupted', interrupted: true } } } })
+  assert.equal(finalAssistantMessageId(chat), null, 'an interrupted reply must not be selected for automatic reading')
 })
 
 test('activation browser preview never falls back to a cloud request and disposal stops its utterance', async () => {

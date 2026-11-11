@@ -13,13 +13,14 @@ This repository publishes `dsh-xiaomi-tts`, a DSH Web speech plugin.
 
 ## Build, Test, and Development Commands
 
-Use Node.js 22+ and pnpm; CI uses Node.js 24 and pnpm 11.22.0.
+Use Node.js 24.9+ and pnpm 11.28.5; CI uses Node.js 24. The host source baseline is DSH 0.2.2-rc.2, with React 18 and TypeScript 6.
 
 - `pnpm install --frozen-lockfile`: install locked dependencies.
 - `pnpm dev`: launch the standalone settings preview.
 - `pnpm dev:build`: typecheck and build the preview.
 - `pnpm build`: bundle the plugin and emit TypeScript declarations.
 - `pnpm typecheck`: check source types without emitting files.
+- `pnpm typecheck:host`: check against a built sibling `deepseek-harness` checkout; pass its path or set `DSH_SOURCE` to use another checkout.
 - `pnpm test`: build, then run `test/*.test.mjs`.
 - `pnpm profile:check`: verify an installed DSH profile; set `DSH_HOME`, `DSH_PROFILE`, and `DSH_WEB_PORT`.
 - `pnpm pack --dry-run`: inspect publishable package contents.

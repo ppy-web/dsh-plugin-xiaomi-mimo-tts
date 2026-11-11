@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react'
 
 /** Keep the clicked panel anchored while its siblings collapse. */
 export function useAccordionViewport(open: boolean, onToggle: () => void) {
-  const panel = useRef<HTMLDivElement>(null)
+  const panel = useRef<HTMLDivElement | null>(null)
   const anchor = useRef<number | null>(null)
 
   useLayoutEffect(() => {

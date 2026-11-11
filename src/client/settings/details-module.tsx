@@ -1,6 +1,6 @@
 import type { ExternalSpeechSelection } from '../../host-api.js'
 import { ExternalSpeechFields } from './external-speech-fields.js'
-import type { ReactElement } from 'react'
+import type { CSSProperties, ReactElement } from 'react'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
 import { useCallback, useEffect, useState } from 'react'
@@ -147,7 +147,7 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
   const summaryInstruction = supportsInstruction ? speechInstructionLabel(provider, instruction, t) : null
   const readScopeControl = <div className="xmimo-tts-format">
     <SettingFieldHeading label={t('settings.readScope')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('readScope')} resettable disabled={!writable} onReset={() => { resetField('readScope') }} />
-    <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
+    <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true" style={{ '--xmimo-experimental-label': JSON.stringify(t('settings.experimental')) } as CSSProperties}>
       <SegmentedControl
         id="xmimo-tts-read-scope"
         value={readScope}

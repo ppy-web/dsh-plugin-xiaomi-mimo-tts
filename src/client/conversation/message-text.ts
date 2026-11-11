@@ -1,16 +1,20 @@
 import type { ChatSnapshot, AssistantBlock, TurnTailChatData } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { LiveMessageIdentity } from '../playback/types.js'
 import type { FoldedReplies } from './automatic-reading.js'
+import { latestTurn } from './turn-state.js'
 
 type ChatLegacy = ChatSnapshot['legacy']
 
 /** Use the host's settled closing reply rather than guessing from step order or visible DOM. */
 export function finalAssistantMessageId(chat: ChatSnapshot): string | null {
-  const turn = chat.timeline.turnOrder.at(-1)
-  if (turn === undefined) return null
-  for (const key of chat.locations.getTurn(turn)) {
+  const turn = latestTurn(chat)
+  if (turn?.end?.data.reason.kind !== 'completed') return null
+  for (const key of chat.locations.getTurn(turn.turn)) {
     const node = chat.nodes.get(key)
-    if (node?.kind === 'turn-tail') return (node.data as TurnTailChatData).closing?.finalNode.messageId ?? null
+    if (node?.kind === 'turn-tail') {
+      const final = (node.data as TurnTailChatData).closing?.finalNode
+      return final?.interrupted ? null : final?.messageId ?? null
+    }
   }
   return null
 }
@@ -40,7 +44,14 @@ export function latestAssistantMessageId(legacy: ChatLegacy): string | null {
 }
 
 export function automaticAssistantMessageId(chat: ChatSnapshot, mode: FoldedReplies): string | null {
-  return mode === 'final' ? finalAssistantMessageId(chat) : latestAssistantMessageId(chat.legacy)
+  const turn = latestTurn(chat)
+  if (turn?.end?.data.reason.kind !== 'completed') return null
+  if (mode === 'final') return finalAssistantMessageId(chat)
+  for (let index = chat.legacy.nodes.length - 1; index >= 0; index--) {
+    const node = chat.legacy.nodes[index]
+    if (node?.kind === 'assistant' && node.turn === turn.turn && !node.interrupted) return node.messageId ?? null
+  }
+  return null
 }
 
 export function assistantText(blocks: readonly AssistantBlock[]): string {

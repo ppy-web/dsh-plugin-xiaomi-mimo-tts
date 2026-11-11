@@ -102,6 +102,28 @@ test('shortcut cleans up on unavailable settings, re-enables and disposes withou
   assert.equal(h.listeners.size, 0)
 })
 
+test('native More navigation keeps the destination and stable entry identity across ordinary settings saves', () => {
+  const h = host({ showInSidebar: true })
+  const dispose = registerVoiceSettingsSidebar(h.ctx, h.page)
+  try {
+    const entry = [...h.entries.values()].find(row => row.options.name === 'sidebar.panellist')
+    const destination = [...h.entries.values()].find(row => row.options.name === 'main')
+    // Both native pinned launchers and More entries address the same registered panel id.
+    h.ctx.layout.selectPanel(entry.options.id)
+    openVoiceWorkbench(h.ctx, h.scope)
+    assert.deepEqual(h.selected, [destination.options.key, destination.options.key])
+    h.update({ showInSidebar: true, announcementSources: ['subagent-results'] })
+    assert.equal([...h.entries.values()].find(row => row.options.name === 'sidebar.panellist'), entry,
+      'saving other settings must not replace the native launcher or reset its pin choice')
+    h.update({ showInSidebar: false })
+    assert.ok(![...h.entries.values()].some(row => row.options.name === 'sidebar.panellist'))
+    assert.equal([...h.entries.values()].find(row => row.options.name === 'main'), destination)
+    h.update({ showInSidebar: true })
+    const restored = [...h.entries.values()].find(row => row.options.name === 'sidebar.panellist')
+    assert.equal(restored.options.id, destination.options.key)
+  } finally { dispose() }
+})
+
 test('the independent settings page opens its mixer by default', () => {
   const h = host({ enabled: true })
   const dispose = registerVoiceSettingsSidebar(h.ctx, h.page)

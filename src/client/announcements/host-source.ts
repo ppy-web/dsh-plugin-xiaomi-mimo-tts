@@ -10,7 +10,7 @@ export function hostCollector(ctx: Context, id: AnnouncementCollector['id'], ser
   observe: (child: Context, options: CollectorOptions) => () => void): AnnouncementCollector {
   return { id, async start(options) {
     if (options.signal.aborted) return
-    const fiber = ctx.inject(['sessions', service], child => {
+    const fiber = ctx.inject([...new Set(['sessions', service])], child => {
       child.effect(() => {
         if (options.signal.aborted) return () => {}
         const controller = new AbortController()

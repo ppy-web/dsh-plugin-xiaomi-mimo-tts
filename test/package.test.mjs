@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { fromMarkdown } from 'mdast-util-from-markdown'
 
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const readmeZh = await readFile(new URL('../README.md', import.meta.url), 'utf8')
@@ -44,6 +45,18 @@ function assertWebp(data, label) {
   assert.equal(data.toString('ascii', 8, 12), 'WEBP', `${label} should be a WEBP file`)
 }
 
+function documentedPnpmCommands(markdown) {
+  const commands = []
+  const visit = node => {
+    if (node.type === 'code' || node.type === 'inlineCode') {
+      for (const [, command] of node.value.matchAll(/\bpnpm\s+(?:run\s+)?([a-zA-Z][\w:-]*)/g)) commands.push(command)
+    }
+    for (const child of node.children ?? []) visit(child)
+  }
+  visit(fromMarkdown(markdown))
+  return commands
+}
+
 test('package metadata exposes the DSH bundle and supported Web client entries', () => {
   assert.equal(packageJson.name, 'dsh-xiaomi-tts')
   assert.equal(TTS_VERSION, packageJson.version)
@@ -69,10 +82,16 @@ test('documentation links resolve and documented pnpm commands exist', async () 
   for (const name of ['README.md', 'handbook.md', 'intro.md', 'open-api.md']) {
     const source = name === 'README.md' ? readmeZh : await readFile(new URL(`../${name}`, import.meta.url), 'utf8')
     await assertLocalDocumentTargets(source, name)
-    for (const [, command] of source.matchAll(/\bpnpm\s+(?:run\s+)?([\w:-]+)/g)) {
+    for (const command of documentedPnpmCommands(source)) {
       assert.ok(Object.hasOwn(packageJson.scripts, command) || ['install', 'pack'].includes(command), `${name}: unknown pnpm command ${command}`)
     }
   }
+})
+
+test('documented command discovery distinguishes package-manager versions and prose from executable examples', () => {
+  const markdown = 'Use pnpm 11.28.5. The phrase pnpm troubleshooting is prose.\n\n'
+    + '`pnpm typecheck:host` and `pnpm 11.28.5`.\n\n```sh\npnpm install --frozen-lockfile\npnpm run dev:build\npnpm missing-script\n```'
+  assert.deepEqual(documentedPnpmCommands(markdown), ['typecheck:host', 'install', 'dev:build', 'missing-script'])
 })
 
 test('Voice Design presets provide usable descriptions without changing custom settings', () => {

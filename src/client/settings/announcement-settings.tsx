@@ -47,6 +47,7 @@ const HOST_SOURCE_OPTIONS = [
   { id: 'question-titles', label: 'settings.announcementsQuestions', hint: 'settings.announcementsQuestionsHint', href: null },
   { id: 'approvals', label: 'settings.announcementsApprovals', hint: 'settings.announcementsApprovalsHint', href: null },
   { id: 'job-results', label: 'settings.announcementsJobs', hint: 'settings.announcementsJobsHint', href: null },
+  { id: 'subagent-results', label: 'settings.announcementsSubagents', hint: 'settings.announcementsSubagentsHint', href: null },
 ] as const
 
 const PLUGIN_SOURCE_OPTIONS = [

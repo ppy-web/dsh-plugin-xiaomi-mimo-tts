@@ -5,7 +5,7 @@ const CARD_SELECTOR = '.xmimo-tts-character-toggle'
 const HOLO_PROPERTIES = ['--xmimo-holo-x', '--xmimo-holo-y', '--xmimo-holo-bg-x', '--xmimo-holo-bg-y', '--xmimo-holo-rx', '--xmimo-holo-ry']
 
 /** Track the stable hit areas, leaving the card faces free to tilt. */
-export function useHoloHover(enabled: boolean): RefObject<HTMLDivElement | null> {
+export function useHoloHover(enabled: boolean): RefObject<HTMLDivElement> {
   const rowRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

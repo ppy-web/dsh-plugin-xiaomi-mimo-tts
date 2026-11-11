@@ -47,6 +47,7 @@ import { QuestionTitlePlayback } from './announcements/question-playback.js'
 import { hostCollector } from './announcements/host-source.js'
 import { observeApprovals } from './announcements/approvals.js'
 import { observeJobs, type AnnouncementJobs } from './announcements/jobs.js'
+import { observeSubagents } from './announcements/subagents.js'
 
 /** Client services required by this plugin. */
 export const inject = [
@@ -58,6 +59,7 @@ export const inject = [
   'layout',
   'pluginChanges',
   'sessions',
+  'uiConversation',
 ]
 
 function formatStartupError(error: unknown): string {
@@ -164,6 +166,8 @@ export function apply(ctx: Context): void {
       (child as unknown as { sessions: ISessions }).sessions, child.uiSession, t, options)),
     hostCollector(ctx, 'job-results', 'jobs', (child, options) => observeJobs((child as unknown as { sessions: ISessions }).sessions,
       (child as unknown as { jobs: AnnouncementJobs }).jobs, t, options)),
+    hostCollector(ctx, 'subagent-results', 'sessions', (child, options) => observeSubagents(
+      (child as unknown as { sessions: ISessions }).sessions, t, options)),
   ], announcements.play, announcements.stop)
   ctx.effect(() => {
     const update = () => {

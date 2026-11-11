@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactElement } from 'react'
 import { useMemo, useState, useSyncExternalStore } from 'react'
-import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Switch, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import { resolveTtsSettings, TTS_HISTORY_EMPTY_ASSET_ROUTE, TTS_READ_SCOPES } from '../../shared.js'
 import type { TtsReadScope, TtsSettings } from '../../shared.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -121,7 +121,13 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
       icon: <VoiceAvatar compact voice={{ provider: voiceProvider, id: choice.avatarId ?? choice.value }} label={choice.label} />,
     })),
   ]
-  const readScopeOptions = TTS_READ_SCOPES.map((option) => ({ id: option, label: t(readScopeLabelKey(option)) }))
+  const readScopeOptions = TTS_READ_SCOPES.map((option) => ({
+    id: option,
+    label: option === 'concise' ? <span className="xmimo-tts-read-scope-label">
+      {t(readScopeLabelKey(option))}
+      <Tag tone="info" className="xmimo-tts-experimental-tag">{t('settings.experimental')}</Tag>
+    </span> : t(readScopeLabelKey(option)),
+  }))
 
   return <div className="xmimo-voice-reading" style={minimalMode ? undefined : {
     '--xmimo-voice-reading-background': `url(${hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)})`,

@@ -9,6 +9,7 @@ import { RealtimeSpeechSession } from '../playback/realtime-speech-session.js'
 import { useSettingsSnapshot } from '../settings/scope.js'
 import { assistantText, automaticAssistantMessageId, finalLiveMessage } from './message-text.js'
 import { automaticReplyMode } from './automatic-reading.js'
+import { latestTurn } from './turn-state.js'
 import type { AutomaticReading } from './automatic-reading.js'
 import { useApiKeySupported } from './api-key-status.js'
 import { useEngineState } from '../use-engine-state.js'
@@ -60,6 +61,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   const wasRunning = useRef(runningSnapshot)
   const runArmed = useRef(true)
   const latestMessageId = useChat(chat => automaticAssistantMessageId(chat, replyMode))
+  const turn = useChat(chat => latestTurn(chat))
   const partial = legacy.partial
   const partialText = replyMode === 'final' || partial === null ? '' : assistantText(partial.blocks)
   const attachedMidRun = useRef(runningSnapshot)
@@ -112,6 +114,12 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
     if (!automaticReading.allowed(sessionId)) runArmed.current = false
     const realtimeSpeechEnabled = engineCanRequest() && engineSupportsRealtime(resolvedSettings)
     playback.observeSession(sessionId, ownsAudio && automaticAudioFocus.canPlay() && runningSnapshot && runArmed.current, latestMessageId, attachedMidRun.current)
+    if (!runningSnapshot && turn?.end && turn.end.data.reason.kind !== 'completed') {
+      automaticReading.stopAutomatic(() => speech.cancel())
+      active.current = null
+      runArmed.current = false
+      return
+    }
     if (!ownsAudio || !automaticAudioFocus.canPlay() || !resolvedSettings.enabled || !resolvedSettings.autoPlay || (!concise && !realtimeSpeechEnabled)) {
       if (!audioFocus.canPlay() || !resolvedSettings.enabled || automaticReading.isAutomatic()) speech.cancel()
       active.current = null
@@ -155,7 +163,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       }
       // Keep the cursor across a gap between the partial and durable message snapshots.
     }
-  }, [automaticReading, replyMode, concise, audioFocus, automaticAudioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
+  }, [automaticReading, replyMode, concise, audioFocus, automaticAudioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech, turn])
 
   return null
 }

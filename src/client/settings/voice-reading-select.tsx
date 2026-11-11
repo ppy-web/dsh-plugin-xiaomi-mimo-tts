@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { useRef, useState } from 'react'
 import { Button, IconChevronDownOutlineRegular, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ButtonVariant } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -11,7 +11,7 @@ interface VoiceReadingSelectProps {
   value: string
   /** Shown when the value matches no option (a stored custom id). */
   fallbackLabel?: string
-  options: readonly { id: string; label: string; icon?: ReactElement }[]
+  options: readonly { id: string; label: ReactNode; icon?: ReactElement }[]
   disabled: boolean
   /** Override the settings-row capsule with a Host button variant or a raised trigger. */
   buttonVariant?: ButtonVariant | 'tactile'
