@@ -91,7 +91,7 @@ export const Config = z.object({
   presetStylePrompt: z.string().default(DEFAULT_TTS_SETTINGS.presetStylePrompt).volatile(),
   format: z.union(TTS_FORMATS).default(DEFAULT_TTS_SETTINGS.format).volatile(),
   voiceDesignPlaybackMode: z.union(TTS_VOICE_DESIGN_PLAYBACK_MODES).default(DEFAULT_TTS_SETTINGS.voiceDesignPlaybackMode).volatile(),
-  readScope: z.union(TTS_READ_SCOPES).default(DEFAULT_TTS_SETTINGS.readScope).volatile(),
+  readScope: z.union([...TTS_READ_SCOPES, 'first-segment'] as const).default(DEFAULT_TTS_SETTINGS.readScope).volatile(),
   autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay).volatile(),
   voiceInputCompatibility: z.boolean().default(DEFAULT_TTS_SETTINGS.voiceInputCompatibility).volatile(),
   inputAvoidance: z.boolean().default(DEFAULT_TTS_SETTINGS.inputAvoidance).volatile(),
@@ -120,6 +120,7 @@ export function readConfig(config: Config): ResolvedTtsSettings {
   const values = Object.fromEntries(fields.map(key => [key, config[key].get()])) as ConfigValues
   return {
     ...values,
+    readScope: values.readScope === 'first-segment' ? 'concise' : values.readScope,
     announcementSources: [...config.announcementSources.get()],
   }
 }

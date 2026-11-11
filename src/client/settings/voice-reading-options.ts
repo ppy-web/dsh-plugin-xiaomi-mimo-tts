@@ -129,13 +129,13 @@ export function autoPlayWriteOps(next: boolean, current: ResolvedTtsSettings): V
 const READ_SCOPE_LABELS: Record<TtsReadScope, LocaleKey> = {
   smart: 'settings.readScopeSmart',
   full: 'settings.readScopeFull',
-  'first-segment': 'settings.readScopeFirstSegment',
+  concise: 'settings.readScopeConcise',
 }
 
 const READ_SCOPE_HINTS: Record<TtsReadScope, LocaleKey> = {
   smart: 'settings.readScopeSmartHint',
   full: 'settings.readScopeFullHint',
-  'first-segment': 'settings.readScopeFirstSegmentHint',
+  concise: 'settings.readScopeConciseHint',
 }
 
 /** Localized label for one read-aloud range option. */

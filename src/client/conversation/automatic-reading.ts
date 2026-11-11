@@ -1,8 +1,14 @@
 import type { SnapshotSource } from '../plugin-activity.js'
+import type { TtsReadScope } from '../../shared.js'
 
 export type FoldedReplies = 'all' | 'final'
 
-/** Keep the host's reply selection independent from the plugin's per-reply length limit. */
+/** Concise needs the complete reply before it can select which sentences to read. */
+export function automaticReplyMode(foldedReplies: FoldedReplies, readScope: TtsReadScope): FoldedReplies {
+  return readScope === 'concise' ? 'final' : foldedReplies
+}
+
+/** Track the host's automatic reply preference and changes during a turn. */
 export class AutomaticReading implements SnapshotSource<FoldedReplies> {
   private mode: FoldedReplies = 'all'
   private readonly listeners = new Set<() => void>()

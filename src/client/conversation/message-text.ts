@@ -1,5 +1,6 @@
 import type { ChatSnapshot, AssistantBlock, TurnTailChatData } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { LiveMessageIdentity } from '../playback/types.js'
+import type { FoldedReplies } from './automatic-reading.js'
 
 type ChatLegacy = ChatSnapshot['legacy']
 
@@ -36,6 +37,10 @@ export function latestAssistantMessageId(legacy: ChatLegacy): string | null {
     if (node?.kind === 'assistant' && node.messageId !== undefined) return node.messageId
   }
   return null
+}
+
+export function automaticAssistantMessageId(chat: ChatSnapshot, mode: FoldedReplies): string | null {
+  return mode === 'final' ? finalAssistantMessageId(chat) : latestAssistantMessageId(chat.legacy)
 }
 
 export function assistantText(blocks: readonly AssistantBlock[]): string {

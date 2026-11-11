@@ -52,7 +52,7 @@ export interface TtsSettings {
   format?: TtsFormat
   /** @deprecated Retained for settings migration; use readScope for user-facing playback range. */
   voiceDesignPlaybackMode?: TtsVoiceDesignPlaybackMode
-  readScope?: TtsReadScope
+  readScope?: TtsReadScope | 'first-segment'
   autoPlay?: boolean
   voiceInputCompatibility?: boolean
   inputAvoidance?: boolean

@@ -31,7 +31,7 @@ Setext 一级标题
 Setext 二级标题
 ---------------
 
-海风吹过码头，*斜体*、_下划线写法的斜体_、**粗体**、__下划线写法的粗体__和***粗斜体***都在同一段。**注意：**紧跟中文时也能正确结束粗体。
+海风吹过码头，*斜体*、_下划线写法的斜体_、**粗体**、__下划线写法的粗体__、***粗斜体***，都在同一段。**注意：**紧跟中文时也能正确结束粗体。
 
 原定~~下午出发~~，现改为早上出发。范围 10~20 和 ~单个波浪号~ 保持原样。
 
@@ -115,7 +115,7 @@ Setext 二级标题
 - [冒号行号](./src/client/playback/speech-text.ts:4)、[行列](./src/client/playback/speech-text.ts:4:1)、[冒号行范围](./src/client/playback/speech-text.ts:4-8)
 - [POSIX 绝对路径](/workspace/mock/preview.md:3)、[Windows 绝对路径与空格](<C:\Mock Workspace\.notes\preview.md#L3>)、[百分号编码路径](./mock-assets/My%20Notes.md#L2)
 
-行内路径 `src/client/playback/speech-text.ts` 在宿主已识别为本地文件提及时也能打开文件。
+行内路径 `src/client/playback/speech-text.ts` 在宿主能匹配到对应文件时也可以点击。
 
 [manual]: https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/blob/main/handbook.md "项目用户手册"
 [项目主页]: https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts

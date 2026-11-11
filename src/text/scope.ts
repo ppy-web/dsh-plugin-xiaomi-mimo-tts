@@ -1,15 +1,18 @@
 import type { TtsEffectiveReadScope, TtsReadScope } from '../types/index.js'
 import { countTtsSpeechCharacters } from './segment.js'
-import { firstTtsSegment, firstTtsSegments, splitBreezeTtsSentences, splitTtsSegments, TtsFirstSegmentLimiter } from './segment.js'
+import { firstTtsSegment, splitBreezeTtsSentences, splitTtsSegments, TtsFirstSegmentLimiter } from './segment.js'
 import { prepareBreezeTtsText, prepareTtsText } from './normalize.js'
+import { prepareConciseTtsText } from './concise.js'
 
 /** Resolve Smart into a concrete range for this playback invocation. */
 export function resolveTtsReadScope(scope: TtsReadScope, automatic: boolean): TtsEffectiveReadScope {
-  return scope === 'first-segment' || (scope === 'smart' && automatic) ? 'first-segment' : 'full'
+  if (scope === 'concise') return scope
+  return scope === 'smart' && automatic ? 'first-segment' : 'full'
 }
 
-/** Apply a concrete read range to already-filtered speech text. */
-export function applyTtsReadScope(value: string, scope: TtsEffectiveReadScope): string {
+/** Concise takes raw Markdown. The other ranges use their normal text preparation. */
+export function applyTtsReadScope(value: string, scope: TtsEffectiveReadScope, voiceRate = 1): string {
+  if (scope === 'concise') return prepareConciseTtsText(value, voiceRate)
   return scope === 'first-segment' ? firstTtsSegment(value) : value
 }
 
@@ -39,15 +42,14 @@ export function appendTtsSmartTruncationOutro(fullText: string, spokenText: stri
 
 /** Apply the configured playback range to a completed reply. */
 export function applyTtsPlaybackScope(value: string, scope: TtsReadScope, automatic: boolean, random: () => number = Math.random, prepare = prepareTtsText): string {
+  if (scope === 'concise') return applyTtsReadScope(value, scope)
   if (prepare !== prepareTtsText) {
     const text = prepare(value)
     if (resolveTtsReadScope(scope, automatic) === 'full') return text
-    const scoped = splitTtsSegments(text, undefined, undefined, prepare).slice(0, scope === 'smart' && automatic ? 2 : 1).join('')
+    const scoped = splitTtsSegments(text, undefined, undefined, prepare)[0] ?? ''
     return scope === 'smart' && automatic ? appendTtsSmartTruncationOutro(text, scoped, random) : scoped
   }
-  const scoped = scope === 'smart' && automatic
-    ? firstTtsSegments(value, 2)
-    : applyTtsReadScope(value, resolveTtsReadScope(scope, automatic))
+  const scoped = applyTtsReadScope(value, resolveTtsReadScope(scope, automatic))
   return scope === 'smart' && automatic
     ? appendTtsSmartTruncationOutro(value, scoped, random)
     : scoped
@@ -59,11 +61,11 @@ export function applyTtsPlaybackScope(value: string, scope: TtsReadScope, automa
  * regular scope helpers (which normalize punctuation away) cannot be used.
  */
 export function applyBreezeTtsPlaybackScope(value: string, scope: TtsReadScope, automatic: boolean, random: () => number = Math.random): string {
+  if (scope === 'concise') return applyTtsReadScope(value, scope)
   const prepared = prepareBreezeTtsText(value)
   if (prepared.length === 0) return ''
   if (scope === 'full' || (scope === 'smart' && !automatic)) return prepared
-  const segments = scope === 'smart' ? 2 : 1
-  const scoped = splitBreezeTtsSentences(prepared).slice(0, segments).join('')
+  const scoped = splitBreezeTtsSentences(prepared)[0] ?? ''
   return scope === 'smart' && automatic ? appendTtsSmartTruncationOutro(prepared, scoped, random) : scoped
 }
 
@@ -76,6 +78,7 @@ export function applyTtsLivePlaybackScope(
   random: () => number = Math.random,
   prepare = prepareTtsText,
 ): string {
+  if (scope === 'concise') return ''
   if (resolveTtsReadScope(scope, true) === 'full') return value
   const text = prepare(value)
   const scoped = limiter.limit(text, final)

@@ -7,7 +7,8 @@ import type { TtsSettings } from '../../shared.js'
 import type { LiveSpeechController, LocalSpeechController, PlaybackController } from '../playback/index.js'
 import { RealtimeSpeechSession } from '../playback/realtime-speech-session.js'
 import { useSettingsSnapshot } from '../settings/scope.js'
-import { assistantText, finalAssistantMessageId, finalLiveMessage, latestAssistantMessageId } from './message-text.js'
+import { assistantText, automaticAssistantMessageId, finalLiveMessage } from './message-text.js'
+import { automaticReplyMode } from './automatic-reading.js'
 import type { AutomaticReading } from './automatic-reading.js'
 import { useApiKeySupported } from './api-key-status.js'
 import { useEngineState } from '../use-engine-state.js'
@@ -49,17 +50,18 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   const legacy = useChat(chat => chat.legacy)
   const runningSnapshot = sessionSnapshot.running
   const foldedReplies = useSyncExternalStore(automaticReading.subscribe, automaticReading.getSnapshot, automaticReading.getSnapshot)
+  const replyMode = automaticReplyMode(foldedReplies, resolvedSettings.readScope)
+  const concise = resolvedSettings.readScope === 'concise'
 
   const [speech] = useState(() => new RealtimeSpeechSession(live, local))
-  const selectionKey = JSON.stringify([ttsSelection(resolvedSettings), engineView])
+  const selectionKey = JSON.stringify([ttsSelection(resolvedSettings), engineView, concise])
   const previousSelection = useRef(selectionKey)
   const active = useRef<{ turn: number; step: number } | null>(null)
   const wasRunning = useRef(runningSnapshot)
   const runArmed = useRef(true)
-  const finalMessageId = useChat(finalAssistantMessageId)
-  const latestMessageId = foldedReplies === 'final' ? finalMessageId : latestAssistantMessageId(legacy)
+  const latestMessageId = useChat(chat => automaticAssistantMessageId(chat, replyMode))
   const partial = legacy.partial
-  const partialText = partial === null ? '' : assistantText(partial.blocks)
+  const partialText = replyMode === 'final' || partial === null ? '' : assistantText(partial.blocks)
   const attachedMidRun = useRef(runningSnapshot)
   const resumeCheckpoint = useRef(runningSnapshot ? partial : null)
   const awaitingOpen = useRef(runningSnapshot && sessionSnapshot.openState !== 'open')
@@ -108,16 +110,15 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
 
     automaticReading.observe(sessionId, runningSnapshot)
     if (!automaticReading.allowed(sessionId)) runArmed.current = false
-    const localModel = engineCanRequest() && engineSupportsRealtime(resolvedSettings)
-    const realtimeSpeechEnabled = localModel
+    const realtimeSpeechEnabled = engineCanRequest() && engineSupportsRealtime(resolvedSettings)
     playback.observeSession(sessionId, ownsAudio && automaticAudioFocus.canPlay() && runningSnapshot && runArmed.current, latestMessageId, attachedMidRun.current)
-    if (!ownsAudio || !automaticAudioFocus.canPlay() || !resolvedSettings.enabled || !resolvedSettings.autoPlay || !realtimeSpeechEnabled) {
+    if (!ownsAudio || !automaticAudioFocus.canPlay() || !resolvedSettings.enabled || !resolvedSettings.autoPlay || (!concise && !realtimeSpeechEnabled)) {
       if (!audioFocus.canPlay() || !resolvedSettings.enabled || automaticReading.isAutomatic()) speech.cancel()
       active.current = null
       if (runningSnapshot) runArmed.current = false
       return
     }
-    if (foldedReplies === 'final') {
+    if (replyMode === 'final') {
       if (active.current !== null) speech.cancel()
       active.current = null
       return
@@ -154,7 +155,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       }
       // Keep the cursor across a gap between the partial and durable message snapshots.
     }
-  }, [automaticReading, foldedReplies, audioFocus, automaticAudioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
+  }, [automaticReading, replyMode, concise, audioFocus, automaticAudioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech])
 
   return null
 }

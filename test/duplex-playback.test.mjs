@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveTtsSettings, prepareTtsText } from '../lib/shared.js'
+import { DEFAULT_TTS_SEGMENT_CHARACTERS, resolveTtsSettings, prepareTtsText, TTS_SMART_TRUNCATION_OUTROS } from '../lib/shared.js'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { withBrowserPlayback } from './helpers/browser-playback.mjs'
 import { withDuplexBrowser } from './helpers/duplex-browser.mjs'
@@ -226,22 +226,38 @@ test('settings preview sends an unsaved instruction and an explicit empty overri
   }), { endPcm: true })
 })
 
-test('bounded duplex read scopes finish input while generation is still running', async () => {
+test('Smart duplex reads only the opening segment before generation ends', async () => {
   await withLive(async ({ live, sockets }) => {
     const local = new LocalSpeechController()
     const speech = new RealtimeSpeechSession(live, local)
-    speech.configure({ localSpeechMode: 'disabled', apiKeySupported: true, readScope: 'first-segment' })
+    speech.configure({ localSpeechMode: 'disabled', apiKeySupported: true, readScope: 'smart' })
     speech.activate('session')
-    const text = '甲'.repeat(160) + '。' + '后面内容。'.repeat(60)
-    speech.observe('session', 1, 0, text)
-    await settle()
-    assert.equal(sockets[0].sent.filter(command => command.type === 'finish').length, 1)
-    speech.finish('session', final(text + '最后还有文字。'))
-    await settle()
-    assert.equal(sockets.length, 1)
-    assert.equal(sockets[0].sent.filter(command => command.type === 'finish').length, 1)
-    speech.deactivate('session')
-    local.dispose()
+    const first = '甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS) + '。'
+    const text = first + '后面内容。'.repeat(60)
+    try {
+      speech.observe('session', 1, 0, first)
+      await settle()
+      const commands = sockets[0].sent
+      const spoken = () => commands.filter(command => command.type === 'text').map(command => command.text).join('')
+      assert.equal(spoken(), prepareTtsText(first))
+      assert.equal(commands.some(command => command.type === 'finish'), false)
+
+      speech.observe('session', 1, 0, text)
+      await settle()
+      const expected = TTS_SMART_TRUNCATION_OUTROS.map(cue => prepareTtsText(first + cue))
+      const beforeFinish = spoken()
+      assert.ok(expected.includes(beforeFinish), 'only the first segment and the Smart cue may be sent')
+      assert.equal(commands.filter(command => command.type === 'finish').length, 1)
+
+      speech.finish('session', final(text + '最后还有文字。'))
+      await settle()
+      assert.equal(sockets.length, 1)
+      assert.equal(spoken(), beforeFinish)
+      assert.equal(commands.filter(command => command.type === 'finish').length, 1)
+    } finally {
+      speech.deactivate('session')
+      local.dispose()
+    }
   })
 })
 

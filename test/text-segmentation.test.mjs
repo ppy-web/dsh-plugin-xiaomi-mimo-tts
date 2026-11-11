@@ -55,11 +55,8 @@ test('reads Breeze scopes by semantic sentence and keeps audio tags attached', (
   const text = sentences.join('')
   const preparedSentences = sentences.map(prepareBreezeTtsText)
   assert.deepEqual(splitBreezeTtsSentences(text), preparedSentences)
-  const firstSegment = applyBreezeTtsPlaybackScope(text, 'first-segment', true)
-  assert.equal(firstSegment, preparedSentences[0])
-  assert.ok(firstSegment.startsWith('[轻笑]'))
   const smart = applyBreezeTtsPlaybackScope(text, 'smart', true, () => 0)
-  assert.equal(smart, `${preparedSentences[0]}${preparedSentences[1]}`)
+  assert.equal(smart, `${preparedSentences[0]}${TTS_SMART_TRUNCATION_OUTROS[0]}`)
   assert.equal(applyBreezeTtsPlaybackScope(text, 'smart', false), prepareBreezeTtsText(text))
 })
 
@@ -80,14 +77,13 @@ test('keeps long sentences whole across synthesis chunks and opening playback', 
   const text = sentences.join('')
   assert.deepEqual(splitTtsSegments(text), sentences)
   assert.equal(firstTtsSegment(text), sentences[0])
-  assert.equal(applyTtsPlaybackScope(text, 'first-segment', true), sentences[0])
 })
 
-test('Smart playback includes two opening segments before adding a closing cue', () => {
+test('Smart playback finishes a long opening sentence before adding a closing cue', () => {
   const first = `${'甲'.repeat(MAX_TTS_SEGMENT_CHARACTERS + 60)}。`
   const text = prepareTtsText(first + `${'乙'.repeat(600)}。`)
   const result = applyTtsPlaybackScope(text, 'smart', true, () => 0)
-  assert.equal(result, firstTtsSegments(text, 2))
+  assert.equal(result, `${prepareTtsText(first)}${TTS_SMART_TRUNCATION_OUTROS[0]}`)
 })
 
 test('adds the Smart closing cue when resumed live playback reaches completion', () => {

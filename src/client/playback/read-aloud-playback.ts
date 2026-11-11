@@ -1,4 +1,4 @@
-import { prepareProviderTtsText, stripXiaomiAudioTags, applyBreezeTtsPlaybackScope, applyTtsPlaybackScope, splitTtsSegments, stripBreezeAudioTags } from '../../shared.js'
+import { prepareProviderTtsText, stripXiaomiAudioTags, applyBreezeTtsPlaybackScope, applyTtsPlaybackScope, applyTtsReadScope, splitTtsSegments, stripBreezeAudioTags } from '../../shared.js'
 import type { ResolvedTtsSettings } from '../../shared.js'
 import type { LiveSpeechController } from './live-speech-controller.js'
 import type { LocalSpeechController } from './local-speech-controller.js'
@@ -19,6 +19,7 @@ export interface ReadAloudRequest {
 }
 
 function readAloudText(text: string, settings: ResolvedTtsSettings, automatic: boolean): string {
+  if (settings.readScope === 'concise') return applyTtsReadScope(text, 'concise', settings.voiceRate)
   return externalEngine() ? applyTtsPlaybackScope(text, settings.readScope, automatic, undefined, externalText) : settings.provider === 'breeze'
     ? applyBreezeTtsPlaybackScope(text, settings.readScope, automatic)
     : applyTtsPlaybackScope(text, settings.readScope, automatic, undefined, value => prepareProviderTtsText(value, settings))
@@ -26,15 +27,20 @@ function readAloudText(text: string, settings: ResolvedTtsSettings, automatic: b
 
 /** Browser speech cannot synthesize provider audio tags, so strip them instead of reading tag words aloud. */
 function fallbackText(text: string, settings: ResolvedTtsSettings): string {
+  if (settings.readScope === 'concise') return text
   return externalEngine() ? externalFallbackText(text) : settings.provider === 'breeze' ? stripBreezeAudioTags(text) : settings.provider === 'xiaomi' ? stripXiaomiAudioTags(text) : text
 }
 
 /** Start a completed reply with one directed fallback, using the selected playback range. */
-export function playCompletedReply(request: ReadAloudRequest, automatic: boolean): void {
+export function playCompletedReply(request: ReadAloudRequest, automatic: boolean): boolean {
   const { sessionId, messageId, text, settings, apiKeySupported, playback, live, local } = request
+  const scopedText = readAloudText(text, settings, automatic)
+  if (settings.readScope === 'concise' && scopedText === '') {
+    if (!automatic) void playback.toggle(sessionId, messageId, '', false)
+    return false
+  }
   live.configure(settings)
   playback.configure(settings)
-  const scopedText = readAloudText(text, settings, automatic)
   const localText = fallbackText(scopedText, settings)
   const localFallback = settings.localSpeechMode === 'auto' ? () => local.playCompleted(sessionId, messageId, localText) : undefined
   const playRemote = (): void => {
@@ -56,6 +62,7 @@ export function playCompletedReply(request: ReadAloudRequest, automatic: boolean
     playback.cancelPlayback(sessionId)
     local.playCompleted(sessionId, messageId, localText, settings.localSpeechMode === 'local-first' ? playRemote : undefined)
   } else playRemote()
+  return true
 }
 
 /** Keep button state transitions independent from React rendering. */
@@ -76,7 +83,8 @@ export function handleReadAloudClick(request: ReadAloudRequest, view: PlaybackVi
     if (view.status === 'paused') { void controller.resume(sessionId); return }
   }
   if (mine && view.source === 'complete') {
-    void playback.toggle(sessionId, messageId, text, false)
+    if (view.status === 'error' && settings.readScope === 'concise') playCompletedReply(request, false)
+    else void playback.toggle(sessionId, messageId, settings.readScope === 'concise' ? readAloudText(text, settings, false) : text, false)
     return
   }
   if (mine && view.source === 'segmented') {

@@ -12,10 +12,11 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     ? Math.max(0, Math.min(1, resolved.voiceVolume))
     : DEFAULT_TTS_SETTINGS.voiceVolume
   const voiceRate = normalizeVoiceRate(resolved.voiceRate)
-  const readScope = value?.readScope !== undefined && TTS_READ_SCOPES.includes(value.readScope)
-    ? value.readScope
+  const savedReadScope = value?.readScope === 'first-segment' ? 'concise' : value?.readScope
+  const readScope = savedReadScope !== undefined && TTS_READ_SCOPES.includes(savedReadScope)
+    ? savedReadScope
     : value?.voiceDesignPlaybackMode === 'first-segment'
-      ? 'first-segment'
+      ? 'concise'
       : DEFAULT_TTS_SETTINGS.readScope
   const model = resolved.model === 'browser-local-fallback' ? 'mimo-v2.5-tts' : resolved.model
   const voiceDesignCustomPrompt = typeof value?.voiceDesignCustomPrompt === 'string'

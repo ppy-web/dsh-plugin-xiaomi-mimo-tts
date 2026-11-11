@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from 'undici'
-import { prepareXiaomiTtsText, prepareProviderTtsText, stripXiaomiAudioTags, resolveTtsSettings, splitTtsSegments, applyTtsPlaybackScope, TtsFirstSegmentLimiter, DEFAULT_TTS_SEGMENT_CHARACTERS } from '../lib/shared.js'
+import { prepareXiaomiTtsText, prepareProviderTtsText, stripXiaomiAudioTags, resolveTtsSettings, splitTtsSegments, applyTtsPlaybackScope, TtsFirstSegmentLimiter, DEFAULT_TTS_SEGMENT_CHARACTERS, TTS_SMART_TRUNCATION_OUTROS } from '../lib/shared.js'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { pcmEvent, withBrowserPlayback } from './helpers/browser-playback.mjs'
 
@@ -31,7 +31,7 @@ test('MiMo scope and semantic segments retain complete controls including punctu
   const segments = splitTtsSegments(text, undefined, undefined, prepare)
   assert.equal(segments.join(''), prepareXiaomiTtsText(text))
   assert.ok(segments[0].includes('(soft; tired)'))
-  assert.equal(applyTtsPlaybackScope(text, 'first-segment', false, undefined, prepare), prepareXiaomiTtsText(opening))
+  assert.equal(applyTtsPlaybackScope(text, 'smart', true, () => 0, prepare), `${prepareXiaomiTtsText(opening)}${TTS_SMART_TRUNCATION_OUTROS[0]}`)
   const growing = '甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS) + '（深呼吸）'
   assert.equal(new TtsFirstSegmentLimiter(1, prepare).limit(growing), growing)
   assert.equal(stripXiaomiAudioTags('(温柔)[轻笑]（深呼吸）你好'), '   你好')

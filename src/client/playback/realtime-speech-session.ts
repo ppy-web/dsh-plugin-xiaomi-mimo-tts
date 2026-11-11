@@ -70,14 +70,14 @@ export class RealtimeSpeechSession {
   }
 
   observe(sessionId: string, turn: number, step: number, markdown: string, prime = false): void {
-    if (this.sessionId !== sessionId) return
+    if (this.sessionId !== sessionId || this.options.readScope === 'concise') return
     if (this.turn === null || this.turn.turn !== turn) this.beginTurn(turn)
     const current = this.turn!
     let message = current.steps.get(step)
     if (message === undefined) {
       message = {
         cursor: { sessionId, turn, step },
-        limiter: new TtsFirstSegmentLimiter(current.scope === 'smart' ? 2 : 1, value => this.live.prepareText(value)),
+        limiter: new TtsFirstSegmentLimiter(1, value => this.live.prepareText(value)),
         text: '', checkpoint: null, final: null, inputFinished: false,
       }
       current.steps.set(step, message)
@@ -93,7 +93,7 @@ export class RealtimeSpeechSession {
     if (current.backend === 'live' && this.live.isDuplex() && message.limiter.complete && current.scope !== 'full') {
       const prepared = prepareSpeechText(markdown)
       const spoken = countTtsSpeechCharacters(message.text)
-      if (current.scope === 'first-segment' || countTtsSpeechCharacters(prepared) >= spoken * 2) {
+      if (countTtsSpeechCharacters(prepared) >= spoken * 2) {
         message.text = this.scopeText(markdown, message, true)
         controller.observe(sessionId, turn, step, this.backendText(current.backend, message.text))
         message.inputFinished = true

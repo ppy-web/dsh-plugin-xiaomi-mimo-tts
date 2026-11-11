@@ -91,8 +91,12 @@
 .preview-filter-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
 .preview-filter-heading h2 { margin: 0 0 5px; font-size: clamp(22px, 3vw, 30px); }
 .preview-filter-heading p { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 13px; }
-.preview-filter-heading label { display: grid; gap: 5px; min-width: 210px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
-.preview-filter-heading select { min-height: 36px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; padding: 0 10px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); }
+.preview-filter-lab label { display: grid; gap: 5px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.preview-filter-lab select { min-height: 36px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; padding: 0 10px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); }
+.preview-filter-heading label { min-width: 210px; }
+.preview-filter-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 12px; }
+.preview-filter-controls label { flex: 0 1 148px; min-width: 0; }
+.preview-filter-controls p { flex-basis: 100%; margin: 0; color: var(--dsw-alias-label-secondary); font-size: 12px; }
 .preview-filter-summary { border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; padding: 12px 16px; color: var(--dsw-alias-label-secondary); background: var(--dsw-alias-bg-layer-1); font-size: 13px; }
 .preview-filter-custom, .preview-filter-fixture { min-width: 0; overflow: hidden; border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); }
 .preview-filter-section-title { display: flex; align-items: center; gap: 12px; min-height: 42px; border-bottom: 1px solid var(--dsw-alias-border-l2); padding: 8px 14px; background: var(--dsw-alias-bg-layer-2); font-size: 13px; }
@@ -108,6 +112,7 @@
 @media (max-width: 700px) {
   .preview-filter-heading { align-items: stretch; flex-direction: column; }
   .preview-filter-heading label { min-width: 0; }
+  .preview-filter-controls label { flex-grow: 1; }
   .preview-filter-columns { grid-template-columns: 1fr; }
   .preview-filter-columns > :first-child { border-right: 0; border-bottom: 1px solid var(--dsw-alias-border-l2); }
 }

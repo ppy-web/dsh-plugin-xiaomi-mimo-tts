@@ -13,7 +13,6 @@ const {
   countTtsSpeechCharacters,
   DEFAULT_TTS_SEGMENT_CHARACTERS,
   firstTtsSegment,
-  firstTtsSegments,
   MAX_TTS_SEGMENT_CHARACTERS,
   MIN_TTS_STREAM_CHARACTERS,
   prepareTtsText,
@@ -188,13 +187,13 @@ test('resolves read scope and migrates the legacy first-segment setting', () => 
   assert.equal(resolveTtsSettings({}).voiceDesignPlaybackMode, 'complete')
   assert.equal(resolveTtsSettings({}).readScope, 'smart')
   assert.equal(resolveTtsSettings({ readScope: 'full' }).readScope, 'full')
-  assert.equal(resolveTtsSettings({ voiceDesignPlaybackMode: 'first-segment' }).readScope, 'first-segment')
+  assert.equal(resolveTtsSettings({ readScope: 'first-segment' }).readScope, 'concise')
+  assert.equal(resolveTtsSettings({ voiceDesignPlaybackMode: 'first-segment' }).readScope, 'concise')
+  assert.equal(resolveTtsSettings({ readScope: 'full', voiceDesignPlaybackMode: 'first-segment' }).readScope, 'full')
   assert.equal(resolveTtsReadScope('smart', true), 'first-segment')
   assert.equal(resolveTtsReadScope('smart', false), 'full')
-  assert.equal(resolveTtsReadScope('first-segment', false), 'first-segment')
+  assert.equal(resolveTtsReadScope('concise', false), 'concise')
   assert.ok(countTtsSpeechCharacters(applyTtsReadScope('你好。' + '很长的内容。'.repeat(50), 'first-segment')) <= MAX_TTS_SEGMENT_CHARACTERS)
-  const smartText = '第一段内容足够长。第二段内容也足够长。后续内容不应进入自动播报。'
-  assert.equal(applyTtsPlaybackScope(smartText, 'smart', true), firstTtsSegments(smartText, 2))
 })
 
 test('keeps Smart closing cues nonempty and unique', () => {
@@ -218,14 +217,13 @@ test('adds a Smart closing cue only when unread speech is at least as long as th
   )
 })
 
-test('limits randomized closing cues to Smart automatic playback', () => {
+test('reads one segment and a conditional closing cue in Smart automatic playback', () => {
   const text = prepareTtsText(`${'甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS)}。${'乙'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS)}。${'丙'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS)}。${'丁'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS)}。`)
-  const first = firstTtsSegment(text)
-  assert.equal(applyTtsPlaybackScope(text, 'smart', true, () => 0), `${firstTtsSegments(text, 2)}${TTS_SMART_TRUNCATION_OUTROS[0]}`)
+  const first = prepareTtsText(`${'甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS)}。`)
+  assert.equal(applyTtsPlaybackScope(text, 'smart', true, () => 0), `${first}${TTS_SMART_TRUNCATION_OUTROS[0]}`)
+  assert.equal(applyTtsPlaybackScope(`${first}${'乙'.repeat(120)}.`, 'smart', true, () => 0), first)
   assert.equal(applyTtsPlaybackScope(text, 'smart', false, () => 0), text)
   assert.equal(applyTtsPlaybackScope(text, 'full', true, () => 0), text)
-  assert.equal(applyTtsPlaybackScope(text, 'first-segment', true, () => 0), first)
-  assert.equal(applyTtsPlaybackScope(text, 'first-segment', false, () => 0), first)
   assert.equal(applyTtsPlaybackScope('简短回复。', 'smart', true, () => 0), prepareTtsText('简短回复。'))
 })
 

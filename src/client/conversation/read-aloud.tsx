@@ -14,7 +14,8 @@ import type { Translate } from '../localization.js'
 import type { LiveSpeechController, LocalSpeechController, PlaybackController } from '../playback/index.js'
 import { useSettingsSnapshot } from '../settings/scope.js'
 import { AnimatedAudioLines } from './animated-audio-lines.js'
-import { finalAssistantMessageId, messageText, messageTime, latestAssistantMessageId, messageLiveIdentity } from './message-text.js'
+import { automaticAssistantMessageId, messageText, messageTime, messageLiveIdentity } from './message-text.js'
+import { automaticReplyMode } from './automatic-reading.js'
 import { useApiKeySupported } from './api-key-status.js'
 import { useEngineState } from '../use-engine-state.js'
 import { engineCanRequest } from '../engine-state.js'
@@ -73,17 +74,17 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   const sessionSnapshot = useSession(snapshot => snapshot)
   const legacy = useChat(chat => chat.legacy)
   const foldedReplies = useSyncExternalStore(automaticReading.subscribe, automaticReading.getSnapshot, automaticReading.getSnapshot)
-  const finalMessageId = useChat(finalAssistantMessageId)
+  const settingsSnapshot = useSettingsSnapshot(settings)
+  const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
+  const replyMode = automaticReplyMode(foldedReplies, resolvedSettings.readScope)
+  const latestMessageId = useChat(chat => automaticAssistantMessageId(chat, replyMode))
   const running = sessionSnapshot.running
   const message = {
     text: messageText(legacy, messageId),
     time: messageTime(legacy, messageId),
-    latestMessageId: foldedReplies === 'final' ? finalMessageId : latestAssistantMessageId(legacy),
     identity: messageLiveIdentity(legacy, messageId),
   }
   const text = message.text
-  const settingsSnapshot = useSettingsSnapshot(settings)
-  const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
   const engineView = useEngineState()
   const apiKeySupported = useApiKeySupported(ownsAudio && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider)
   local.setVoiceURI(resolvedSettings.localVoiceURI)
@@ -98,12 +99,13 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   }
 
   useEffect(() => {
-    if (!engineCanRequest() || !automaticReading.allowed(sessionId) || (foldedReplies === 'final' && finalMessageId !== messageId) || !ownsAudio || !automaticAudioFocus.canPlay() || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || message.latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (!engineCanRequest() || !automaticReading.allowed(sessionId) || !ownsAudio || !automaticAudioFocus.canPlay() || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
-      if (automaticAudioFocus.canPlay() && !live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity) && automaticReading.allowed(sessionId) && playback.claimAutomaticPlayback(sessionId, messageId)) { automaticReading.markAutomatic(); playCompletedReply(request, true) }
+      if (!automaticAudioFocus.canPlay() || live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity) || !automaticReading.allowed(sessionId) || !playback.claimAutomaticPlayback(sessionId, messageId)) return
+      if (playCompletedReply(request, true)) automaticReading.markAutomatic()
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [engineView, automaticReading, foldedReplies, finalMessageId, automaticAudioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.latestMessageId, message.time, messageId, playback, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.breezeVoice, resolvedSettings.breezeInstruction, resolvedSettings.readScope, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [engineView, automaticReading, latestMessageId, automaticAudioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.time, messageId, playback, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.breezeVoice, resolvedSettings.breezeInstruction, resolvedSettings.readScope, resolvedSettings.voiceRate, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
 
   if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
 

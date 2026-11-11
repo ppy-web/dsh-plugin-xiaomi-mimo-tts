@@ -113,8 +113,8 @@ export const TTS_VOICE_DESIGN_PLAYBACK_MODES = ['complete', 'segmented', 'first-
 export type TtsVoiceDesignPlaybackMode = typeof TTS_VOICE_DESIGN_PLAYBACK_MODES[number]
 
 /** User-facing read range, independent from the audio transport selected by the client. */
-export const TTS_READ_SCOPES = ['smart', 'full', 'first-segment'] as const
+export const TTS_READ_SCOPES = ['smart', 'full', 'concise'] as const
 
 export type TtsReadScope = typeof TTS_READ_SCOPES[number]
 
-export type TtsEffectiveReadScope = 'full' | 'first-segment'
+export type TtsEffectiveReadScope = 'full' | 'first-segment' | 'concise'

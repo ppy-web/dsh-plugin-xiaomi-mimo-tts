@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
-import { prepareTtsText } from '../../src/shared.js'
+import { en, zh as zhCopy } from '../../src/client/localization.js'
+import { readScopeHintKey, readScopeLabelKey } from '../../src/client/settings/voice-reading-options.js'
+import { applyTtsPlaybackScope, DEFAULT_TTS_SETTINGS, prepareTtsText, TTS_READ_SCOPES } from '../../src/shared.js'
+import type { TtsReadScope } from '../../src/shared.js'
 
 type PreviewLocale = 'zh' | 'en'
 
@@ -27,23 +30,31 @@ function parseSections(raw: string): FixtureSection[] {
   return sections
 }
 
+function previewSpeechText(content: string, readScope: TtsReadScope, automatic: boolean): string {
+  // Use the same closing cue on every pass so comparisons stay consistent.
+  return applyTtsPlaybackScope(readScope === 'concise' ? content : prepareTtsText(content), readScope, automatic, () => 0)
+}
+
 export function FilterLab({ locale }: { locale: PreviewLocale }) {
   const [fixturePath, setFixturePath] = useState(fixturePaths[0] ?? '')
   const [draft, setDraft] = useState('')
+  const [readScope, setReadScope] = useState<TtsReadScope>(DEFAULT_TTS_SETTINGS.readScope)
+  const [automatic, setAutomatic] = useState(true)
   const fixture = fixtureModules[fixturePath] ?? ''
   const sections = useMemo(() => parseSections(fixture), [fixture])
-  const results = useMemo(() => sections.map((section) => prepareTtsText(section.content)), [sections])
-  const draftResult = useMemo(() => prepareTtsText(draft), [draft])
+  const results = useMemo(() => sections.map((section) => previewSpeechText(section.content, readScope, automatic)), [sections, readScope, automatic])
+  const draftResult = useMemo(() => previewSpeechText(draft, readScope, automatic), [draft, readScope, automatic])
   const inputLength = sections.reduce((total, section) => total + section.content.length, 0)
   const outputLength = results.reduce((total, result) => total + result.length, 0)
   const reduction = inputLength > 0 ? ((1 - outputLength / inputLength) * 100).toFixed(1) : '0.0'
   const zh = locale === 'zh'
+  const labels = zh ? zhCopy : en
 
   return <section className="preview-filter-lab" aria-label={zh ? '文本过滤测试' : 'Text filter lab'}>
     <header className="preview-filter-heading">
       <div>
         <h2>{zh ? '文本过滤测试' : 'Text filter lab'}</h2>
-        <p>{zh ? '直接运行当前源码的 prepareTtsText；修改源码或 Markdown fixture 后自动更新。' : 'Runs prepareTtsText from the current source. Source and Markdown fixture edits update automatically.'}</p>
+        <p>{zh ? '对照同一段回复在不同朗读范围下的输出。' : 'Compare the spoken text for the same reply across read-aloud ranges.'}</p>
       </div>
       <label>
         <span>{zh ? '测试文件' : 'Fixture'}</span>
@@ -52,6 +63,23 @@ export function FilterLab({ locale }: { locale: PreviewLocale }) {
         </select>
       </label>
     </header>
+
+    <div className="preview-filter-controls">
+      <label>
+        <span>{labels['settings.readScope']}</span>
+        <select value={readScope} aria-describedby="preview-filter-range-hint" onChange={(event) => setReadScope(event.currentTarget.value as TtsReadScope)}>
+          {TTS_READ_SCOPES.map((scope) => <option value={scope} key={scope}>{labels[readScopeLabelKey(scope)]}</option>)}
+        </select>
+      </label>
+      <label>
+        <span>{zh ? '触发方式' : 'Playback trigger'}</span>
+        <select value={automatic ? 'automatic' : 'manual'} onChange={(event) => setAutomatic(event.currentTarget.value === 'automatic')}>
+          <option value="automatic">{labels['settings.autoPlay']}</option>
+          <option value="manual">{zh ? '手动朗读' : 'Manual playback'}</option>
+        </select>
+      </label>
+      <p id="preview-filter-range-hint">{labels[readScopeHintKey(readScope)]}</p>
+    </div>
 
     <div className="preview-filter-summary" role="status">
       {zh

@@ -33,6 +33,7 @@ import {
 import { CollapsibleModule } from './collapsible-module.js'
 import { useNestedDisclosure } from './use-nested-disclosure.js'
 import { SettingFieldHeading } from './field-heading.js'
+import { readScopeHintKey, readScopeLabelKey } from './voice-reading-options.js'
 import type { EditableSettingField, SettingField } from './types.js'
 
 interface ModelPickerProps {
@@ -48,22 +49,6 @@ const MODEL_PICKER_OPTIONS = [
   { value: TTS_MODELS[0], labelKey: 'preset' as const },
   { value: TTS_MODELS[1], labelKey: 'voiceDesign' as const },
 ]
-
-function readScopeLabel(scope: TtsReadScope): Parameters<Translate>[0] {
-  return scope === 'smart'
-    ? 'settings.readScopeSmart'
-    : scope === 'full'
-      ? 'settings.readScopeFull'
-      : 'settings.readScopeFirstSegment'
-}
-
-function readScopeHint(scope: TtsReadScope): Parameters<Translate>[0] {
-  return scope === 'smart'
-    ? 'settings.readScopeSmartHint'
-    : scope === 'full'
-      ? 'settings.readScopeFullHint'
-      : 'settings.readScopeFirstSegmentHint'
-}
 
 function ModelPicker({ value, disabled, label, presetLabel, voiceDesignLabel, onChange }: ModelPickerProps): ReactElement {
   const options = MODEL_PICKER_OPTIONS.map((option) => ({
@@ -152,7 +137,7 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
   const summaryVoice = provider === 'doubao' ? (doubaoModel === 'seed-icl-2.0' ? doubaoClonedVoice || t('settings.doubaoVoiceId') : DOUBAO_VOICE_PRESETS.find(voice => voice.value === doubaoVoice)?.name ?? doubaoVoice) : provider === 'breeze' ? breezeVoiceLabel(breezeVoice) : model === 'mimo-v2.5-tts-voicedesign'
     ? voiceDesignPreset?.label ?? t('settings.customVoiceOption')
     : voice
-  const summaryReadScope = t(readScopeLabel(readScope))
+  const summaryReadScope = t(readScopeLabelKey(readScope))
   const summaryStrategy = t(localSpeechMode === 'auto' ? 'settings.localSpeechAutoSummary' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirst' : 'settings.localSpeechDisabled')
   const summaryVoiceVolume = `${Math.round(voiceVolume * 100)}%`
   const summaryVoiceRate = `${voiceRate.toFixed(1)}×`
@@ -166,14 +151,14 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
       <SegmentedControl
         id="xmimo-tts-read-scope"
         value={readScope}
-        options={TTS_READ_SCOPES.map((item) => ({ value: item, label: t(readScopeLabel(item)) }))}
+        options={TTS_READ_SCOPES.map((item) => ({ value: item, label: t(readScopeLabelKey(item)) }))}
         label={t('settings.readScope')}
         disabled={!writable}
         onChange={onReadScopeChange}
         className="xmimo-tts-settings-segmented"
       />
     </div>
-    {minimal ? null : <small>{t(readScopeHint(readScope))}</small>}
+    {minimal ? null : <small>{t(readScopeHintKey(readScope))}</small>}
   </div>
   return <CollapsibleModule
     className="xmimo-tts-settings-module xmimo-tts-details xmimo-ui-module"

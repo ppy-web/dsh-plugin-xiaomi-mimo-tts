@@ -87,7 +87,7 @@ test('Breeze cancellation aborts the cloud stream without starting browser speec
   }, { fetch: request => new Promise((resolve, reject) => request.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })) })
 })
 
-test('Breeze first-segment streaming retains tags while excluding later reply content', async () => {
+test('Breeze Smart streaming retains tags while excluding later reply content', async () => {
   await withBreeze(async state => {
     const opening = '[轻笑]' + '甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS) + '。'
     const text = opening + '不应播报的后续内容。'
@@ -96,7 +96,7 @@ test('Breeze first-segment streaming retains tags while excluding later reply co
     state.speech.finish('session', final(text))
     for (let i = 0; i < 8; i += 1) await settle()
     assert.equal(state.requests.map(request => request.text).join(''), prepareBreezeTtsText(opening))
-  }, { endPcm: true }, { readScope: 'first-segment' })
+  }, { endPcm: true }, { readScope: 'smart' })
 })
 
 test('Breeze buffers an incomplete audio tag across assistant updates', async () => {
