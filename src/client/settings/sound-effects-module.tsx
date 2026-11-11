@@ -5,7 +5,7 @@ import { RiDiscLine } from 'react-icons/ri'
 import { resolveSoundEffectsMode, resolveSoundEffectsScope, SOUND_PACKS, SOUND_EFFECTS_SCOPES } from '../../shared.js'
 import type { SoundEffectsMode, SoundEffectsScope, SoundPack } from '../../shared.js'
 import type { Translate } from '../localization.js'
-import { EnergyVolumeSlider } from './controls/energy-volume-slider.js'
+import { LensSlider } from './controls/lens-slider.js'
 import type { SoundEffectsController, SoundCue } from '../sound-effects/types.js'
 import { CollapsibleModule } from './collapsible-module.js'
 import { SoundEffectIcon } from '../sound-effects/sound-effect-icon.js'
@@ -118,7 +118,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
       </div>
       <label className="xmimo-tts-sound-volume">
         <span>{t('settings.soundEffectsVolume')} {Math.round(volume * 100)}%</span>
-        <EnergyVolumeSlider
+        <LensSlider
           value={volume}
           label={t('settings.soundEffectsVolume')}
           minimal={minimal}

@@ -17,7 +17,7 @@ import {
 import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { BuiltInVoicePicker } from './controls/built-in-voice-picker.js'
-import { EnergyVolumeSlider } from './controls/energy-volume-slider.js'
+import { LensSlider } from './controls/lens-slider.js'
 import { FieldInfo } from './controls/field-info.js'
 import { LocalVoiceModule } from './local-voice-module.js'
 import { DoubaoVoicePicker } from './controls/doubao-voice-picker.js'
@@ -261,11 +261,11 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
           <div className="xmimo-tts-playback-controls">
             <div className="xmimo-tts-volume">
               <SettingFieldHeading label={`${t('settings.voiceVolume')} ${summaryVoiceVolume}`} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceVolume')} resettable disabled={!writable} onReset={() => { resetField('voiceVolume') }} />
-              <EnergyVolumeSlider value={voiceVolume} label={t('settings.voiceVolume')} minimal={minimal} disabled={!writable} onChange={onVoiceVolumeChange} onInteractionEnd={onVoiceVolumeInteractionEnd} />
+              <LensSlider value={voiceVolume} label={t('settings.voiceVolume')} minimal={minimal} disabled={!writable} onChange={onVoiceVolumeChange} onInteractionEnd={onVoiceVolumeInteractionEnd} />
             </div>
             <div className="xmimo-tts-volume">
               <SettingFieldHeading label={`${t('settings.voiceRate')} ${voiceRate.toFixed(1)}×`} suffix={<FieldInfo label={t('settings.voiceRateInfo')} text={t('settings.voiceRateHint')} />} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceRate')} resettable disabled={!writable} onReset={() => { resetField('voiceRate') }} />
-              <EnergyVolumeSlider value={voiceRate} min={0.5} max={2} step={0.1} formatValue={(value) => `${value.toFixed(1)}×`} label={t('settings.voiceRate')} minimal={minimal} disabled={!writable} onChange={onVoiceRateChange} onInteractionEnd={onVoiceRateInteractionEnd} />
+              <LensSlider value={voiceRate} min={0.5} max={2} step={0.1} formatValue={(value) => `${value.toFixed(1)}×`} label={t('settings.voiceRate')} minimal={minimal} disabled={!writable} onChange={onVoiceRateChange} onInteractionEnd={onVoiceRateInteractionEnd} />
             </div>
           </div>
           {!minimal ? <LocalVoiceModule

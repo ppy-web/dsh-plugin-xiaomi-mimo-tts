@@ -37,6 +37,7 @@ import history from './history.css?raw'
 import pluginSurfaces from './plugin-surfaces.css?raw'
 import voiceStudioTitle from './voice-studio-title.css?raw'
 import qqbotSettings from './qqbot-settings.css?raw'
+import tactileControl from './tactile-control.css?raw'
 
 export const CLIENT_STYLES = [
   action,
@@ -48,6 +49,7 @@ export const CLIENT_STYLES = [
   cardActions,
   character,
   details,
+  tactileControl,
   preview,
   sections,
   sound,

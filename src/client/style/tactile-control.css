@@ -1,0 +1,62 @@
+/*! Inspired by Tactile Push Button by 少荃. */
+.xmimo-tactile-control {
+  --xmimo-tactile-surface: var(--dsw-alias-bg-module-platform, #eef0f3);
+  --xmimo-tactile-depth: 3px;
+  appearance: none;
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr);
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 0 0 var(--xmimo-tactile-depth);
+  border: 0;
+  border-radius: var(--xmimo-tactile-radius, 999px);
+  background: color-mix(in srgb, var(--xmimo-tactile-surface), black 30%);
+  box-shadow: 0 1px 2px #0003;
+  color: var(--dsw-alias-label-primary, #1f2328);
+  font: inherit;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.xmimo-tactile-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--xmimo-tactile-gap, 4px);
+  min-width: 0;
+  padding: var(--xmimo-tactile-padding, 5px 12px);
+  border-radius: inherit;
+  background: linear-gradient(160deg, #fff2, #0002), var(--xmimo-tactile-surface);
+  box-shadow: inset 0 1px 1px #fff5, inset 0 0 0 1px #0002;
+  transition: transform 140ms ease-out;
+}
+
+@media (hover: hover) {
+  .xmimo-tactile-control:enabled:hover > .xmimo-tactile-face {
+    transform: translateY(calc(var(--xmimo-tactile-depth) / 2));
+  }
+}
+
+.xmimo-tactile-control:enabled:is(:active, [aria-expanded="true"]) > .xmimo-tactile-face {
+  transform: translateY(var(--xmimo-tactile-depth));
+}
+
+.xmimo-tactile-control:focus-visible {
+  outline: var(--xmimo-ui-focus, 2px solid var(--dsw-focus-ring-color, #4f6ef7));
+  outline-offset: 2px;
+}
+
+.xmimo-tactile-control:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tactile-face { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .xmimo-tactile-face { outline: 1px solid ButtonText; outline-offset: -1px; }
+  .xmimo-tactile-control:disabled { opacity: 1; }
+  .xmimo-tactile-control:disabled > .xmimo-tactile-face { outline-color: GrayText; }
+}

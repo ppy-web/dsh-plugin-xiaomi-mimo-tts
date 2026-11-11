@@ -34,10 +34,10 @@
  * 16px glyph share one optical row.
  */
 .xmimo-voice-reading-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 2px 12px;
 }
 
 .xmimo-voice-reading-title {
@@ -46,6 +46,14 @@
   font-size: 18px;
   line-height: 26px;
   font-weight: 600;
+}
+
+.xmimo-voice-reading-description {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary, #5f6875);
 }
 
 .xmimo-voice-reading-actions {

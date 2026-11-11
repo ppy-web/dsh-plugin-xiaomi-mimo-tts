@@ -7,6 +7,7 @@ import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS } from './announcemen
 import type { AnnouncementSettingsProps } from './announcement-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { AudioTagPicker } from './controls/audio-tag-picker.js'
+import { TactileButton } from './controls/tactile-button.js'
 import { ProviderSettings } from './provider-settings.js'
 import type { ProviderSettingsProps } from './provider-settings.js'
 import type { ExternalSpeechSelection } from '../../host-api.js'
@@ -91,8 +92,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
     ariaLabel={t('settings.previewTitle')}
     open={open} onToggle={onToggleOpen} interactiveSummary
     summary={<><span className="xmimo-ui-summary">
-      <button
-        type="button"
+      <TactileButton
         className="xmimo-tts-preview-tag"
         title={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
         aria-label={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
@@ -102,7 +102,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
       >
         <PlaybackIcon state={busy ? 'stop' : 'play'} />
         <span>{t(busy ? 'settings.previewStopShort' : 'settings.previewListen')}</span>
-      </button>
+      </TactileButton>
       {ANNOUNCEMENT_SOURCE_OPTIONS.filter(option => settings.sources.includes(option.id)).map(option => <span key={option.id}>{t(option.label)}</span>)}
       {settings.qqbotEnabled ? <span>{t('settings.qqbotIntegration')}</span> : null}
       {settings.sources.length === 0 && !settings.qqbotEnabled ? <span>{t('settings.announcementsNone')}</span> : null}
@@ -130,16 +130,13 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
             <div className="xmimo-tts-preview-actions">
               {external ? externalTags?.length ? <AudioTagPicker provider="external" tags={externalTags} disabled={!enabled} textRef={textRef} onInsert={insertTag} t={t} /> : null : audioTagProvider ? <AudioTagPicker key={audioTagProvider} provider={audioTagProvider} disabled={!enabled || external !== null} textRef={textRef} onInsert={insertTag} t={t} /> : null}
               <div className="xmimo-tts-preview-playback-actions">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
+                <TactileButton
                   className="xmimo-tts-preview-toggle"
                   title={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
                   aria-label={t(busy ? 'settings.previewStop' : 'settings.previewPlay')}
                   disabled={!enabled || (!busy && text.trim().length === 0)}
                   onClick={() => { setDownloadFailed(false); onToggle() }}
-                ><PlaybackIcon state={busy ? 'stop' : 'play'} /><span>{t(busy ? 'settings.previewStopShort' : 'settings.previewListen')}</span></Button>
+                ><PlaybackIcon state={busy ? 'stop' : 'play'} /><span>{t(busy ? 'settings.previewStopShort' : 'settings.previewListen')}</span></TactileButton>
                 <Button type="button" variant="ghost" size="sm" className="xmimo-tts-preview-download"
                   aria-label={t('settings.previewDownload')}
                   title={t(recording !== null ? 'settings.previewDownload' : source === 'local' ? 'settings.previewDownloadLocal' : 'settings.previewDownloadUnavailable')}

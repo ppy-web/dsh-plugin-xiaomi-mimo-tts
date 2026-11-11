@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { useRef, useState } from 'react'
 import { Button, IconChevronDownOutlineRegular, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ButtonVariant } from '@deepseek-ai/dsh-client-ui-primitives'
+import { TactileButton } from './controls/tactile-button.js'
 
 interface VoiceReadingSelectProps {
   /** Accessible name of the control (the row title). */
@@ -12,8 +13,8 @@ interface VoiceReadingSelectProps {
   fallbackLabel?: string
   options: readonly { id: string; label: string }[]
   disabled: boolean
-  /** Use a standard Host button instead of the settings-row capsule. */
-  buttonVariant?: ButtonVariant
+  /** Override the settings-row capsule with a Host button variant or a raised trigger. */
+  buttonVariant?: ButtonVariant | 'tactile'
   onSelect: (id: string) => void
 }
 
@@ -37,12 +38,14 @@ export function VoiceReadingSelect({ label, value, fallbackLabel, options, disab
     onSelect(id)
   }
   const selectedLabel = options.find((option) => option.id === value)?.label ?? fallbackLabel ?? value
-  const Trigger = buttonVariant ? Button : 'button'
+  const tactile = buttonVariant === 'tactile'
+  const hostVariant = tactile ? undefined : buttonVariant
+  const Trigger = tactile ? TactileButton : hostVariant ? Button : 'button'
   const selector = <Trigger
     ref={selectorRef}
     type="button"
-    {...(buttonVariant ? { variant: buttonVariant, size: 'sm' as const } : {})}
-    className={buttonVariant ? 'xmimo-voice-reading-button-selector' : 'xmimo-voice-reading-selector'}
+    {...(hostVariant ? { variant: hostVariant, size: 'sm' as const } : {})}
+    className={tactile ? undefined : hostVariant ? 'xmimo-voice-reading-button-selector' : 'xmimo-voice-reading-selector'}
     aria-label={label}
     aria-haspopup="menu"
     aria-expanded={open}

@@ -42,11 +42,3 @@
     animation: none !important
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .xmimo-tts-energy input::-webkit-slider-thumb,
-  .xmimo-tts-energy input::-moz-range-thumb,
-  .xmimo-tts-energy-pulse i {
-    animation: none !important
-  }
-}

@@ -343,6 +343,7 @@ export const ja: Record<LocaleKey, string> = {
   'settings.autoPlayHint': 'ブラウザーが自動再生をブロックすることがあります',
   'settings.voiceReadingNav': '音声読み上げ',
   'settings.voiceReadingTitle': '音声読み上げ',
+  'settings.voiceReadingDescription': '返信を読み上げる音声と範囲、自動読み上げの有無を設定します。',
   'settings.voiceReadingSource': 'GitHub のソース',
   'settings.voiceReadingQq': 'QQ グループ',
   'settings.voiceReadingQqCodeAlt': 'QQ グループの QR コード',

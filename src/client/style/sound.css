@@ -49,8 +49,7 @@
   line-height: 20px;
 }
 
-.xmimo-tts-sound-scope,
-.xmimo-tts-sound-volume > .xmimo-tts-energy {
+.xmimo-tts-sound-scope {
   width: 100%;
   box-sizing: border-box;
   min-height: 32px;

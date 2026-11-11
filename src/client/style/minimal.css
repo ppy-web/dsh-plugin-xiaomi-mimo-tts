@@ -30,81 +30,6 @@
   gap: 6px;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal {
-  height: 24px;
-  flex: 1 1 auto;
-  overflow: visible;
-  border-radius: 0;
-  background: transparent;
-  --energy-color: var(--xmimo-ui-text);
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal::before,
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal::after {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  display: block;
-  height: 4px;
-  border-radius: 999px;
-  content: "";
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal::before {
-  right: 0;
-  background: var(--xmimo-ui-border);
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal::after {
-  width: var(--volume);
-  background: var(--xmimo-ui-text);
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal .xmimo-tts-energy-fill,
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal .xmimo-tts-energy-dots {
-  display: none;
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input[type="range"] {
-  z-index: 1;
-  height: 32px;
-  top: -4px;
-  padding: 0;
-}
-
-.xmimo-tts-card-minimal
-  .xmimo-tts-energy-minimal
-  input::-webkit-slider-runnable-track,
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input::-moz-range-track {
-  height: 24px;
-  background: transparent;
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input::-webkit-slider-thumb {
-  width: 12px;
-  height: 12px;
-  border: 0;
-  background: transparent;
-  animation: none;
-  box-shadow: none;
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border: 0;
-  background: transparent;
-  animation: none;
-  box-shadow: none;
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-energy-minimal input:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--xmimo-ui-brand) 55%, transparent);
-  outline-offset: 2px;
-}
-
 .xmimo-tts-switch-module-minimal .xmimo-tts-minimal-control {
   box-sizing: border-box;
   display: flex;
@@ -319,10 +244,6 @@
 .xmimo-tts-card-minimal .xmimo-tts-sound-body {
   gap: 8px;
   padding: 6px 10px 10px;
-}
-
-.xmimo-tts-card-minimal .xmimo-tts-sound-volume .xmimo-tts-energy-minimal input[type="range"] {
-  top: 0;
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-sound-pack-grid {

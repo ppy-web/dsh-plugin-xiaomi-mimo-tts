@@ -120,6 +120,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
     <div className="xmimo-voice-reading-header">
       <h2 className="xmimo-voice-reading-title">{t('settings.voiceReadingTitle')}</h2>
       <VoiceReadingHeaderActions t={t} openPluginSettings={openPluginSettings} />
+      <p className="xmimo-voice-reading-description">{t('settings.voiceReadingDescription')}</p>
     </div>
     {changing ? <p role="status">{t('plugin.changing')}</p> : null}
     <VoiceReadingProvider value={settings.provider} doubaoEnabled={settings.doubaoEnabled} breezeEnabled={settings.breezeEnabled} disabled={disabled} t={t} onChange={provider => {

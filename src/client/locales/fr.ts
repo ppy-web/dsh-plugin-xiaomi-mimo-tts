@@ -343,6 +343,7 @@ export const fr: Record<LocaleKey, string> = {
   'settings.autoPlayHint': 'Le navigateur peut bloquer la lecture automatique',
   'settings.voiceReadingNav': 'Lecture vocale',
   'settings.voiceReadingTitle': 'Lecture vocale',
+  'settings.voiceReadingDescription': 'Choisissez la voix, la partie des réponses à lire et si la lecture se lance automatiquement.',
   'settings.voiceReadingSource': 'Code source sur GitHub',
   'settings.voiceReadingQq': 'Groupe QQ',
   'settings.voiceReadingQqCodeAlt': 'Code QR du groupe QQ',
