@@ -43,12 +43,6 @@ export const TTS_QQ_MEMORY_ROUTE = '/plugins/xiaomi-mimo-tts/qq-memory'
 /** Same-origin route used by the Web client to load the MiMo brand logo. */
 export const TTS_MIMO_LOGO_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/mimo.svg'
 
-/** Same-origin prefix used by the Web client to load voice-design preset icons. */
-export const TTS_VOICE_DESIGN_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-presets'
-
-/** Same-origin prefix used by the Web client to load official built-in voice avatars. */
-export const TTS_VOICE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/voice-avatars'
-
 /** Same-origin route used by the Web client to load the four-state character toggle sheet. */
 export const TTS_TOGGLE_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/toggle-characters.webp'
 

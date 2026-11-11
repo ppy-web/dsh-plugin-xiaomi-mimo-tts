@@ -4,6 +4,7 @@ import { DOUBAO_VOICE_PRESETS } from '../../../doubao-voices.js'
 import type { Translate } from '../../localization.js'
 import { VoicePresetPicker } from './built-in-voice-picker.js'
 import type { VoicePickerPreset } from './built-in-voice-picker.js'
+import { VoiceAvatar } from './voice-avatar.js'
 import { VoiceIdInput } from './voice-id-input.js'
 
 const CUSTOM_VOICE = '__custom__'
@@ -18,19 +19,20 @@ export function DoubaoVoicePicker({ value, disabled, minimal = false, onChange, 
   const [custom, setCustom] = useState(!DOUBAO_VOICE_PRESETS.some(voice => voice.value === value))
   const voices = minimal ? DOUBAO_VOICE_PRESETS.filter(voice => MINIMAL_VOICE_IDS.has(voice.value)) : DOUBAO_VOICE_PRESETS
   const known = voices.some(voice => voice.value === value)
+  const customLabel = t('settings.doubaoCustomVoice')
   const presets: VoicePickerPreset[] = [{
     id: CUSTOM_VOICE,
     value: CUSTOM_VOICE,
-    label: t('settings.doubaoCustomVoice'),
+    label: customLabel,
     summary: t('settings.doubaoCustomVoiceHint'),
     fullWidth: true,
-    avatar: <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-doubao-voice-avatar" aria-hidden="true">＋</span>,
+    avatar: <VoiceAvatar voice={known ? undefined : { provider: 'doubao', id: value }} label={customLabel} fallback="+" />,
   }, ...voices.map(voice => ({
     id: voice.value,
     value: voice.value,
     label: voice.name,
     summary: `${t(voice.scene === '角色' ? 'settings.doubaoVoiceSceneRole' : voice.scene === '配音' ? 'settings.doubaoVoiceSceneDubbing' : voice.scene === '阅读' ? 'settings.doubaoVoiceSceneReading' : 'settings.doubaoVoiceSceneGeneral')} · ${t('settings.doubaoVoiceChinese')}`,
-    avatar: <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-doubao-voice-avatar" aria-hidden="true">{voice.name.slice(0, 1)}</span>,
+    avatar: <VoiceAvatar voice={{ provider: 'doubao', id: voice.value }} label={voice.name} />,
   }))]
   return <div className="xmimo-tts-doubao-voice-picker">
     <VoicePresetPicker presets={presets} label={t('settings.voice')} value={custom || !known ? CUSTOM_VOICE : value} disabled={disabled} minimal={minimal} onChange={next => {

@@ -1,8 +1,8 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
-import { TTS_VOICE_ASSET_ROUTE, TTS_VOICE_PRESETS } from '../../../shared.js'
-import { hostRoute } from '../../host-route.js'
+import { TTS_VOICE_PRESETS } from '../../../shared.js'
+import { VoiceAvatar } from './voice-avatar.js'
 
 export interface VoicePickerPreset {
   id: string
@@ -13,23 +13,10 @@ export interface VoicePickerPreset {
   fullWidth?: boolean
 }
 
-function VoiceAvatar({ preset, minimal }: { preset: VoicePickerPreset, minimal: boolean }): ReactElement | null {
-  if (minimal) return null
-  return preset.avatar
-}
-
 const BUILT_IN_PRESETS: VoicePickerPreset[] = TTS_VOICE_PRESETS.map(preset => ({
   ...preset,
   label: preset.value,
-  avatar: <img
-    className="xmimo-tts-builtin-voice-avatar"
-    src={hostRoute(`${TTS_VOICE_ASSET_ROUTE}/${preset.id}.webp`)}
-    alt=""
-    width={36}
-    height={36}
-    loading="lazy"
-    aria-hidden="true"
-  />,
+  avatar: <VoiceAvatar voice={{ provider: 'xiaomi', id: preset.value }} label={preset.value} />,
 }))
 
 function SelectedCheck(): ReactElement {
@@ -136,7 +123,7 @@ export function VoicePresetPicker({ value, disabled, label, minimal = false, onC
       onClick={() => { setOpen((current) => !current) }}
       onKeyDown={handleTriggerKeyDown}
     >
-      <VoiceAvatar preset={selected} minimal={minimal} />
+      {selected.avatar}
       <span className="xmimo-tts-builtin-voice-copy"><strong>{selected.label}</strong><small>{selected.summary}</small></span>
       {minimal
         ? <span className="xmimo-tts-voice-picker-text-caret" aria-hidden="true">⌄</span>
@@ -155,7 +142,7 @@ export function VoicePresetPicker({ value, disabled, label, minimal = false, onC
         onKeyDown={(event) => { handleOptionKeyDown(event, index) }}
       >
         {!minimal && preset.value === value ? <SelectedCheck /> : null}
-        <VoiceAvatar preset={preset} minimal={minimal} />
+        {minimal ? null : preset.avatar}
         <span className="xmimo-tts-builtin-voice-copy"><strong>{preset.label}</strong><small>{preset.summary}</small></span>
       </button>)}
     </div> : null}

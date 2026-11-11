@@ -13,8 +13,6 @@ const pagesBase = process.env.GITHUB_ACTIONS === 'true' && repositoryName !== un
   : '/'
 
 const assetDirectories = new Map([
-  ['voice-avatars', path.join(repositoryRoot, 'assets', 'voice-avatars')],
-  ['voice-presets', path.join(repositoryRoot, 'assets', 'voice-presets')],
   ['audio', path.join(repositoryRoot, 'assets', 'audio')],
   ['preview-audio', path.join(previewRoot, 'assets', 'audio')],
 ])

@@ -7,8 +7,6 @@ import {
   TTS_SETTINGS_NAMESPACE,
   TTS_API_KEY_STATUS_ROUTE,
   TTS_MIMO_LOGO_ASSET_ROUTE,
-  TTS_VOICE_DESIGN_ASSET_ROUTE,
-  TTS_VOICE_ASSET_ROUTE,
   TTS_TOGGLE_CHARACTER_ASSET_ROUTE,
   TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE,
   TTS_PROVIDER_CHARACTER_ASSET_ROUTES,
@@ -31,8 +29,6 @@ import {
   TTS_FORMATS,
   TTS_VOICE_DESIGN_PLAYBACK_MODES,
   TTS_READ_SCOPES,
-  TTS_VOICE_PRESETS,
-  TTS_VOICE_DESIGN_PRESETS,
   SOUND_PACKS,
   DEFAULT_TTS_SETTINGS,
   ANNOUNCEMENT_SOURCES,
@@ -134,17 +130,6 @@ export function apply(ctx: Context, config: Config): void {
   ctx.inject(['webServer'], host => { host.plugin(SpeechHost, { current, updates: (listener: () => void) => ctx.on('loader/volatile-update', listener) }) })
   ctx.inject(['speechSynthesis'], host => { registerOpenApiRoutes(host, () => config.openApiToken.get()); registerEngineRoutes(host) })
 
-  // Load all assets
-  const voicePresetAssets = new Map(TTS_VOICE_DESIGN_PRESETS.map((preset) => {
-    const path = `${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`
-    const data = readFileSync(new URL(`../assets/voice-presets/${preset.id}.webp`, import.meta.url))
-    return [path, data] as const
-  }))
-  const voiceAssets = new Map(TTS_VOICE_PRESETS.map((preset) => {
-    const path = `${TTS_VOICE_ASSET_ROUTE}/${preset.id}.webp`
-    const data = readFileSync(new URL(`../assets/voice-avatars/${preset.id}.webp`, import.meta.url))
-    return [path, data] as const
-  }))
   const toggleSoundAssets = new Map([...new Set([...Object.values(TTS_TOGGLE_SOUND_FILES).flat(), ...TTS_VOLUME_PREVIEW_FILES])].map((file) => {
     const path = `${TTS_TOGGLE_AUDIO_ASSET_ROUTE}/${file}`
     const data = readFileSync(new URL(`../assets/audio/${file}`, import.meta.url))
@@ -256,20 +241,6 @@ export function apply(ctx: Context, config: Config): void {
     assets: toggleSoundAssets,
     contentType: 'audio/mpeg',
     description: 'toggle sound assets',
-  })
-
-  registerStaticAssetMap(ctx, {
-    pathPrefix: TTS_VOICE_DESIGN_ASSET_ROUTE,
-    assets: voicePresetAssets,
-    contentType: 'image/webp',
-    description: 'voice preset assets',
-  })
-
-  registerStaticAssetMap(ctx, {
-    pathPrefix: TTS_VOICE_ASSET_ROUTE,
-    assets: voiceAssets,
-    contentType: 'image/webp',
-    description: 'built-in voice assets',
   })
 
   ctx.effect(() => ctx.webServer.register({

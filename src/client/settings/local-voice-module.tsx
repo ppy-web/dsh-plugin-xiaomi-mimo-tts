@@ -12,6 +12,7 @@ import { MOSS_DEPLOY_PROMPT } from './moss-deploy-prompt.js'
 import { LocalVoicePicker } from './controls/local-voice-picker.js'
 import { VoicePresetPicker } from './controls/built-in-voice-picker.js'
 import type { VoicePickerPreset } from './controls/built-in-voice-picker.js'
+import { VoiceAvatar } from './controls/voice-avatar.js'
 import { SettingFieldHeading } from './field-heading.js'
 import type { EditableSettingField, SettingField } from './types.js'
 
@@ -54,7 +55,7 @@ function voicePresets(voices: readonly MossVoice[], t: Translate): VoicePickerPr
     value: voice.id,
     label: voice.name,
     summary: `${voice.id} · ${t('settings.mossBuiltInVoice')}`,
-    avatar: <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-local-voice-avatar xmimo-tts-moss-voice-avatar" aria-hidden="true">M</span>,
+    avatar: <VoiceAvatar voice={{ provider: 'moss', id: voice.id }} label={voice.name} />,
   }))
 }
 

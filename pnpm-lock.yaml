@@ -117,6 +117,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.19.0
         version: 3.19.0
+      '@dicebear/core':
+        specifier: 10.7.0
+        version: 10.7.0
       '@livliv-dev/player':
         specifier: ^0.3.0
         version: 0.3.0(@mediapipe/tasks-vision@1.1.1)
@@ -851,6 +854,10 @@ packages:
 
   '@deepseek-ai/schemastery@3.19.0':
     resolution: {integrity: sha512-bDXoYQa7ghAhmdYD5VPlzKxEzJV/aKkz5l4V5h1u06z8GAPN1ROewSjvR9WiXhpa52E9fng8lpH5QdCRIQgnyQ==}
+
+  '@dicebear/core@10.7.0':
+    resolution: {integrity: sha512-JUOzKOd8RUByJJo8ZL+C7YE/pvEsWewfpbWUmR8OIQZWv/PvUQHnohdevySC3icyyxe6EIU/8B/rQgA42us1QA==}
+    engines: {node: '>=22.0.0'}
 
   '@emnapi/core@1.11.3':
     resolution: {integrity: sha512-zLpS5asjEb7lq8jYLq37N6XKaE41DIexlY1rF/z4/tIl3wo13Sqm28fRyfIsKZD+NZ8mM5RoKkpW/rBcuoSZSg==}
@@ -2814,6 +2821,8 @@ snapshots:
     dependencies:
       '@deepseek-ai/cosmokit': 1.9.0
       '@standard-schema/spec': 1.1.0
+
+  '@dicebear/core@10.7.0': {}
 
   '@emnapi/core@1.11.3':
     dependencies:

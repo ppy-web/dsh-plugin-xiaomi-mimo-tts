@@ -1,6 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
+import { VoiceAvatar } from './voice-avatar.js'
 
 export interface LocalVoicePickerProps {
   value: string
@@ -110,7 +111,7 @@ export function LocalVoicePicker({ value, disabled = false, label, minimal = fal
   return (
     <div className="xmimo-tts-builtin-voice-picker" ref={rootRef}>
       <button ref={triggerRef} type="button" className="xmimo-tts-builtin-voice-trigger" disabled={disabled || voices.length === 0} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listboxId : undefined} aria-label={label} onClick={() => setOpen((current) => !current)} onKeyDown={handleTriggerKeyDown}>
-        {minimal ? null : <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-local-voice-avatar" aria-hidden="true">🔊</span>}
+        {minimal ? null : <VoiceAvatar voice={selected && { provider: 'browser', id: selected.voiceURI }} label={triggerText} fallback={selected ? undefined : '🔊'} />}
         <span className="xmimo-tts-builtin-voice-copy">
           <strong>{triggerText}</strong>
           <small>{selected === undefined ? (!voicesReady ? loadingLabel : unavailableLabel) : voiceSummary(selected)}</small>
@@ -122,7 +123,7 @@ export function LocalVoicePicker({ value, disabled = false, label, minimal = fal
       {open ? <div id={listboxId} className="xmimo-tts-builtin-voice-menu" role="listbox" aria-label={label}>
         {voices.map((voice, index) => <button ref={(node) => { optionRefs.current[index] = node }} type="button" role="option" aria-selected={voice.voiceURI === selectedValue} key={voice.voiceURI} className={voice.voiceURI === selectedValue ? 'xmimo-tts-builtin-voice-option xmimo-tts-builtin-voice-option-selected' : 'xmimo-tts-builtin-voice-option'} onClick={() => choose(voice)} onKeyDown={(event) => handleOptionKeyDown(event, index)}>
           {!minimal && voice.voiceURI === selectedValue ? <svg className="xmimo-tts-builtin-voice-check" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" /><path d="m4.8 8.1 2 2 4.4-4.5" /></svg> : null}
-          {minimal ? null : <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-local-voice-avatar" aria-hidden="true">🔊</span>}
+          {minimal ? null : <VoiceAvatar voice={{ provider: 'browser', id: voice.voiceURI }} label={voice.name} />}
           <span className="xmimo-tts-voice-option-copy"><strong>{voice.name}</strong><small>{voiceSummary(voice)}</small></span>
         </button>)}
       </div> : null}

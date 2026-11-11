@@ -92,8 +92,6 @@ test('shared route and settings contracts are internally consistent', () => {
     sharedModule.TTS_ROUTE,
     sharedModule.TTS_STREAM_ROUTE,
     sharedModule.TTS_API_KEY_STATUS_ROUTE,
-    sharedModule.TTS_VOICE_DESIGN_ASSET_ROUTE,
-    sharedModule.TTS_VOICE_ASSET_ROUTE,
     sharedModule.TTS_TOGGLE_CHARACTER_ASSET_ROUTE,
     sharedModule.TTS_API_KEY_WHALE_ASSET_ROUTE,
     sharedModule.TTS_TOGGLE_AUDIO_ASSET_ROUTE,
@@ -142,16 +140,6 @@ test('accepts only canonical padded Base64 and calculates its decoded size', () 
   assert.equal(sharedModule.strictBase64DecodedLength('YQ=='), 1)
   assert.equal(sharedModule.strictBase64DecodedLength('YWI='), 2)
   for (const value of ['', 'abc', 'ab=c', 'YW Jj', 'YWJj\n']) assert.equal(sharedModule.strictBase64DecodedLength(value), null)
-})
-
-test('ships one valid WebP icon for every Voice Design preset', async () => {
-  const iconFiles = sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => `${item.id}.webp`)
-  for (const file of iconFiles) assertWebp(await readFile(new URL(`../assets/voice-presets/${file}`, import.meta.url)), file)
-})
-
-test('ships one valid WebP avatar for every built-in voice', async () => {
-  const avatarFiles = sharedModule.TTS_VOICE_PRESETS.map((item) => `${item.id}.webp`)
-  for (const file of avatarFiles) assertWebp(await readFile(new URL(`../assets/voice-avatars/${file}`, import.meta.url)), file)
 })
 
 test('ships the UI image and audio assets referenced by shared contracts', async () => {

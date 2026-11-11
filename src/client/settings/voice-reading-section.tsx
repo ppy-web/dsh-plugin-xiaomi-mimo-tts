@@ -8,6 +8,7 @@ import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
+import { VoiceAvatar } from './controls/voice-avatar.js'
 import { readVoiceIdHistory, readVoiceIdNames, subscribeVoiceIds, voiceIdRevision } from './voice-id-history.js'
 import { VoiceReadingHeaderActions } from './voice-reading-links.js'
 import {
@@ -105,11 +106,19 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
   const ready = snapshot.status === 'ready'
   const disabled = changing || !ready || !snapshot.writable || busy
   const hasStoredChoice = source.choices.some((choice) => choice.value === source.value)
+  const voiceDesign = source.field === 'voiceDesignPrompt'
+  const voiceProvider = voiceDesign ? 'xiaomi-design' : settings.provider
+  const customVoiceLabel = t('settings.voiceReadingCustomVoice')
   const voiceOptions = [
-    ...(hasStoredChoice ? [] : [{ id: source.value, label: t('settings.voiceReadingCustomVoice') }]),
+    ...(hasStoredChoice ? [] : [{
+      id: source.value,
+      label: customVoiceLabel,
+      icon: <VoiceAvatar compact voice={voiceDesign ? undefined : { provider: voiceProvider, id: source.value }} label={customVoiceLabel} fallback="+" />,
+    }]),
     ...source.choices.map((choice) => ({
       id: choice.value,
       label: choice.detail ? `${choice.label} · ${choice.detail}` : choice.label,
+      icon: <VoiceAvatar compact voice={{ provider: voiceProvider, id: choice.avatarId ?? choice.value }} label={choice.label} />,
     })),
   ]
   const readScopeOptions = TTS_READ_SCOPES.map((option) => ({ id: option, label: t(readScopeLabelKey(option)) }))
@@ -146,7 +155,11 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
         <VoiceReadingSelect
           label={t('settings.voiceReadingVoice')}
           value={external ? externalDraft.value?.voice ?? external.voiceName ?? '' : source.value}
-          options={external ? (externalModel?.voices ?? []).map(voice => ({ id: voice.id, label: voice.name })) : voiceOptions}
+          options={external ? (externalModel?.voices ?? []).map(voice => ({
+            id: voice.id,
+            label: voice.name,
+            icon: <VoiceAvatar compact voice={{ provider: external.provider, model: externalModel?.id, id: voice.id }} label={voice.name} />,
+          })) : voiceOptions}
           disabled={disabled || (external !== null && !external.configurable)}
           onSelect={(id) => {
             if (external && externalDraft.value) externalDraft.change({ ...externalDraft.value, voice: id })

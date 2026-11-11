@@ -28,6 +28,8 @@ export interface VoiceReadingChoice {
   value: string
   label: string
   detail?: string
+  /** Stable preset ID when the selection value is a description. */
+  avatarId?: string
 }
 
 export type VoiceReadingWriteOp =
@@ -89,7 +91,7 @@ export function buildVoiceReadingVoiceSource(
     return {
       field: 'voiceDesignPrompt',
       value: settings.voiceDesignPrompt,
-      choices: TTS_VOICE_DESIGN_PRESETS.map((preset) => ({ value: preset.prompt, label: preset.label, detail: preset.summary })),
+      choices: TTS_VOICE_DESIGN_PRESETS.map((preset) => ({ value: preset.prompt, label: preset.label, detail: preset.summary, avatarId: preset.id })),
       hintKey: 'settings.voiceReadingHintVoiceDesign',
     }
   }

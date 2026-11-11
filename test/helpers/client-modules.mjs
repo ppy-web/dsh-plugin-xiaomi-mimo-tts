@@ -27,7 +27,8 @@ async function compile(source) {
     if (specifier === '@deepseek-ai/dsh-client-ui-primitives') target = plainText
     else if (specifier.startsWith('.')) {
       const relative = new URL(specifier, source)
-      if (relative.href === new URL('src/shared.js', root).href) target = new URL('lib/shared.js', root).href
+      if (relative.pathname.endsWith('.json')) target = relative.href
+      else if (relative.href === new URL('src/shared.js', root).href) target = new URL('lib/shared.js', root).href
       else {
         const candidates = ['.ts', '.tsx', '.js'].map(extension => new URL(relative.href.replace(/\.js$/, extension)))
         target = await clientModuleUrl(candidates.find(candidate => existsSync(candidate)).href)

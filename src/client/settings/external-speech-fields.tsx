@@ -3,13 +3,20 @@ import type { ExternalSpeechSelection, SpeechEngineState } from '../../host-api.
 import type { Translate } from '../localization.js'
 import { VoicePresetPicker } from './controls/built-in-voice-picker.js'
 import { SpeechInstructionPicker } from './controls/speech-instruction-picker.js'
+import { VoiceAvatar } from './controls/voice-avatar.js'
 import { SettingFieldHeading } from './field-heading.js'
 
-function CatalogPicker({ items, value, label, disabled, onChange }: {
+function CatalogPicker({ items, value, label, disabled, onChange, voiceScope }: {
   items: { id: string; name: string }[]; value: string; label: string; disabled: boolean; onChange: (value: string) => void
+  voiceScope?: { provider: string; model: string }
 }): ReactElement {
-  return <VoicePresetPicker value={value} label={label} disabled={disabled} onChange={onChange} presets={items.map(item => ({ id: item.id, value: item.id, label: item.name, summary: item.name === item.id ? '' : item.id,
-    avatar: <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-doubao-voice-avatar" aria-hidden="true">{item.name.slice(0, 1)}</span> }))} />
+  return <VoicePresetPicker value={value} label={label} disabled={disabled} onChange={onChange} presets={items.map(item => ({
+    id: item.id,
+    value: item.id,
+    label: item.name,
+    summary: item.name === item.id ? '' : item.id,
+    avatar: <VoiceAvatar voice={voiceScope && { ...voiceScope, id: item.id }} label={item.name} />,
+  }))} />
 }
 
 export function ExternalSpeechFields({ engine, selection = engine.selection, writable, minimal, t, onChange }: {
@@ -28,7 +35,8 @@ export function ExternalSpeechFields({ engine, selection = engine.selection, wri
     </div>
     <div className="xmimo-tts-voice xmimo-tts-external-catalog">
       <SettingFieldHeading label={t('settings.voiceReadingVoice')} resettable={false} disabled={disabled} />
-      {model?.voices.length ? <CatalogPicker value={selection?.voice ?? ''} items={model.voices} label={t('settings.voiceReadingVoice')} disabled={disabled} onChange={voice => onChange({ ...selection!, voice })} />
+      {model?.voices.length ? <CatalogPicker value={selection?.voice ?? ''} items={model.voices} label={t('settings.voiceReadingVoice')} disabled={disabled}
+        voiceScope={{ provider: engine.provider, model: model.id }} onChange={voice => onChange({ ...selection!, voice })} />
         : <input aria-label={t('settings.voiceReadingVoice')} value={engine.voiceName ?? ''} disabled />}
     </div>
     <div className="xmimo-tts-voice xmimo-tts-speech-instruction">

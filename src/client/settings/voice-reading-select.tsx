@@ -11,7 +11,7 @@ interface VoiceReadingSelectProps {
   value: string
   /** Shown when the value matches no option (a stored custom id). */
   fallbackLabel?: string
-  options: readonly { id: string; label: string }[]
+  options: readonly { id: string; label: string; icon?: ReactElement }[]
   disabled: boolean
   /** Override the settings-row capsule with a Host button variant or a raised trigger. */
   buttonVariant?: ButtonVariant | 'tactile'
@@ -37,7 +37,8 @@ export function VoiceReadingSelect({ label, value, fallbackLabel, options, disab
     closeMenu()
     onSelect(id)
   }
-  const selectedLabel = options.find((option) => option.id === value)?.label ?? fallbackLabel ?? value
+  const selected = options.find((option) => option.id === value)
+  const selectedLabel = selected?.label ?? fallbackLabel ?? value
   const tactile = buttonVariant === 'tactile'
   const hostVariant = tactile ? undefined : buttonVariant
   const Trigger = tactile ? TactileButton : hostVariant ? Button : 'button'
@@ -54,6 +55,7 @@ export function VoiceReadingSelect({ label, value, fallbackLabel, options, disab
       setOpen((current) => !current)
     }}
   >
+    {selected?.icon}
     <span className="xmimo-voice-reading-selector-label">{selectedLabel}</span>
     <IconChevronDownOutlineRegular className="xmimo-voice-reading-chevron" />
   </Trigger>

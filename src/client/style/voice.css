@@ -44,31 +44,6 @@
   opacity: .55
 }
 
-.xmimo-tts-custom-voice-avatar {
-  display: grid;
-  place-items: center;
-  color: var(--dsw-alias-brand-primary, #4f6ef7);
-  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, var(--dsw-alias-bg-layer-1, #fff))
-}
-
-.xmimo-tts-custom-voice-avatar svg {
-  width: 30px;
-  height: 30px;
-  overflow: visible
-}
-
-.xmimo-tts-custom-voice-avatar circle {
-  fill: currentColor
-}
-
-.xmimo-tts-custom-voice-avatar path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round
-}
-
 .xmimo-tts-voice-option-copy,
 .xmimo-tts-builtin-voice-copy {
   display: flex;
@@ -144,7 +119,7 @@
   opacity: .55
 }
 
-.xmimo-tts-builtin-voice-avatar {
+.xmimo-tts-voice-avatar {
   box-sizing: border-box;
   display: block;
   width: 36px;
@@ -152,7 +127,22 @@
   flex: none;
   border-radius: 50%;
   object-fit: cover;
-  background: #f4f2ed
+  background: #fff;
+}
+
+.xmimo-tts-voice-avatar-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--dsw-alias-brand-primary, #4f6ef7);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, var(--dsw-alias-bg-layer-1, #fff));
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.xmimo-tts-voice-avatar-compact {
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
 }
 
 .xmimo-tts-builtin-voice-copy strong {
@@ -215,13 +205,6 @@
   stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round
-}
-
-.xmimo-tts-local-voice-avatar {
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, var(--dsw-alias-bg-layer-1, #fff))
 }
 
 .xmimo-tts-builtin-voice-option-custom {
@@ -396,13 +379,6 @@
   50% { opacity: .35 }
 }
 
-.xmimo-tts-moss-voice-avatar {
-  color: var(--dsw-alias-brand-primary, #4f6ef7);
-  font-size: 15px;
-  font-weight: 700;
-  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 14%, var(--dsw-alias-bg-layer-1, #fff))
-}
-
 .xmimo-tts-moss-voice-placeholder {
   justify-content: center;
   color: var(--dsw-alias-label-tertiary, #8b93a1);
@@ -412,15 +388,6 @@
 
 .xmimo-tts-doubao-voice-picker { display: grid; gap: var(--xmimo-ui-space-2, 8px); min-width: 0; }
 .xmimo-tts-doubao-voice-picker small, .xmimo-tts-details-summary > span { overflow-wrap: anywhere; }
-.xmimo-tts-doubao-voice-avatar {
-  display: grid;
-  place-items: center;
-  color: var(--xmimo-ui-brand);
-  background: color-mix(in srgb, var(--xmimo-ui-brand) 10%, var(--xmimo-ui-surface));
-  font-size: 16px;
-  font-weight: 600
-}
-
 .xmimo-tts-card-minimal .xmimo-tts-doubao-voice-picker .xmimo-tts-builtin-voice-menu {
   grid-template-columns: repeat(2, minmax(0, 1fr))
 }

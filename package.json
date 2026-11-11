@@ -272,6 +272,7 @@
     "@deepseek-ai/dsh-util-code-language": "0.2.2-rc.1",
     "@deepseek-ai/dsh-util-workspace-path": "0.2.2-rc.1",
     "@deepseek-ai/schemastery": "3.19.0",
+    "@dicebear/core": "10.7.0",
     "@livliv-dev/player": "^0.3.0",
     "@mediapipe/tasks-vision": "1.1.1",
     "@shikijs/langs": "^4.3.1",

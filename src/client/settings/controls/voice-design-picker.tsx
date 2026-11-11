@@ -1,8 +1,8 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
-import { TTS_VOICE_DESIGN_ASSET_ROUTE, TTS_VOICE_DESIGN_PRESETS } from '../../../shared.js'
-import { hostRoute } from '../../host-route.js'
+import { TTS_VOICE_DESIGN_PRESETS } from '../../../shared.js'
+import { VoiceAvatar } from './voice-avatar.js'
 
 export const CUSTOM_VOICE_DESIGN_OPTION = '__custom__'
 
@@ -10,31 +10,7 @@ export function isPresetVoiceDesignPrompt(value: string): boolean {
   return TTS_VOICE_DESIGN_PRESETS.some((item) => item.prompt === value)
 }
 
-type VoiceDesignPreset = typeof TTS_VOICE_DESIGN_PRESETS[number]
 const MINIMAL_VOICE_DESIGN_PRESET_IDS = new Set(['energetic-girl', 'liang-wenfeng', 'young-man', 'gentle-girlfriend'])
-
-function VoicePresetAvatar({ preset, minimal }: { preset: VoiceDesignPreset, minimal: boolean }): ReactElement | null {
-  if (minimal) return null
-  return <img
-    className="xmimo-tts-builtin-voice-avatar"
-    src={hostRoute(`${TTS_VOICE_DESIGN_ASSET_ROUTE}/${preset.id}.webp`)}
-    alt=""
-    width={40}
-    height={40}
-    loading="lazy"
-    aria-hidden="true"
-  />
-}
-
-function CustomVoiceAvatar(): ReactElement {
-  return <span className="xmimo-tts-builtin-voice-avatar xmimo-tts-custom-voice-avatar" aria-hidden="true">
-    <svg viewBox="0 0 40 40" focusable="false">
-      <circle cx="20" cy="14" r="6" />
-      <path d="M9.5 31.5c1.7-6.2 5.2-9.3 10.5-9.3s8.8 3.1 10.5 9.3" />
-      <path d="M31 8v8M27 12h8" />
-    </svg>
-  </span>
-}
 
 function VoicePresetCheck(): ReactElement { return <svg className="xmimo-tts-builtin-voice-check" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" /><path d="m3.5 7 2.1 2.1 4.9-4.7" /></svg> }
 
@@ -61,6 +37,7 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
   const selectedPreset = selectedPresetIndex < 0 ? undefined : visiblePresets[selectedPresetIndex]
   const selectedOptionIndex = selectedPresetIndex + (minimal ? 0 : 1)
   const optionCount = visiblePresets.length + (minimal ? 0 : 1)
+  const customAvatar = <VoiceAvatar label={customLabel} fallback="+" />
 
   useEffect(() => {
     if (minimal || !open) return
@@ -143,7 +120,7 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
       onClick={() => { setOpen((current) => !current) }}
       onKeyDown={handleTriggerKeyDown}
     >
-      {minimal ? null : selectedPreset === undefined ? <CustomVoiceAvatar /> : <VoicePresetAvatar preset={selectedPreset} minimal={minimal} />}
+      {selectedPreset === undefined ? customAvatar : <VoiceAvatar voice={{ provider: 'xiaomi-design', id: selectedPreset.id }} label={selectedPreset.label} />}
       <span className="xmimo-tts-voice-option-copy">
         <strong>{selectedPreset?.label ?? customLabel}</strong>
         <small>{selectedPreset?.summary ?? customSummary}</small>
@@ -163,7 +140,7 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
         onClick={() => { choose(CUSTOM_VOICE_DESIGN_OPTION) }}
         onKeyDown={(event) => { handleOptionKeyDown(event, 0) }}
       >
-        <CustomVoiceAvatar />
+        {customAvatar}
         <span className="xmimo-tts-voice-option-copy"><strong>{customLabel}</strong><small>{customSummary}</small></span>
         {selectedPreset === undefined ? <VoicePresetCheck /> : null}
       </button> : null}
@@ -178,7 +155,7 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
         onClick={() => { choose(preset.prompt) }}
         onKeyDown={(event) => { handleOptionKeyDown(event, index + (minimal ? 0 : 1)) }}
       >
-        <VoicePresetAvatar preset={preset} minimal={minimal} />
+        {minimal ? null : <VoiceAvatar voice={{ provider: 'xiaomi-design', id: preset.id }} label={preset.label} />}
         <span className="xmimo-tts-voice-option-copy"><strong>{preset.label}</strong><small>{preset.summary}</small></span>
         {selectedPreset?.id === preset.id ? <VoicePresetCheck /> : null}
       </button>)}
