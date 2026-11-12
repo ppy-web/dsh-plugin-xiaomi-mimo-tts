@@ -6,6 +6,7 @@ import { TTS_PROVIDERS, TTS_PROVIDER_LOGO_ASSET_ROUTES } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { VoiceReadingProvider } = await loadClientModule('src/client/settings/voice-reading-provider.tsx')
+const { engineStateStore } = await loadClientModule('src/client/engine-state.ts')
 
 for (const provider of TTS_PROVIDERS) test(`provider selector reflects ${provider} as the single selected provider`, () => {
   const html = renderToStaticMarkup(createElement(VoiceReadingProvider, {
@@ -50,4 +51,24 @@ test('provider choices are disabled together when settings are not writable', ()
     value: 'xiaomi', disabled: true, t: key => key, onChange: () => {},
   }))
   assert.match(html, /<fieldset\b[^>]*disabled=""/)
+})
+
+test('external takeover disables the built-in provider choices', () => {
+  engineStateStore.accept({ provider: 'external:test', revision: 1, name: 'External', ready: true,
+    formats: ['wav'], maxTextLength: 1000, streaming: false })
+  try {
+    const html = renderToStaticMarkup(createElement(VoiceReadingProvider, {
+      value: 'xiaomi', doubaoEnabled: true, breezeEnabled: true, disabled: false,
+      t: key => key === 'settings.externalTakeover' ? 'External takeover active' : key, onChange: () => {},
+    }))
+    assert.match(html, /<fieldset\b[^>]*disabled=""/)
+    assert.equal([...html.matchAll(/<input\b[^>]*type="radio"/g)].length, 3)
+    const descriptionId = /aria-describedby="([^"]+)"/.exec(html)?.[1]
+    assert.ok(descriptionId)
+    assert.ok(html.includes(`id="${descriptionId}"`))
+    assert.ok(html.includes('External takeover active'))
+  } finally {
+    engineStateStore.accept({ provider: 'xiaomi', revision: 2, name: 'Xiaomi', ready: true,
+      formats: ['wav'], maxTextLength: 1000, streaming: false })
+  }
 })

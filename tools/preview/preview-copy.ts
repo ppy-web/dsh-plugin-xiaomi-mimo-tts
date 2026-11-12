@@ -21,6 +21,7 @@ export interface PreviewCopy {
   dayMode: string
   activation: string
   notice: string
+  externalTakeover: string
   pages: Record<PreviewView, { title: string; description: string }>
 }
 
@@ -35,7 +36,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       'ocean-breeze': '海风薄荷', 'amethyst-haze': '紫晶薄雾', original: '原始配色',
     },
     lightTheme: '切换浅色主题', darkTheme: '切换深色主题', dayMode: '浅色主题', activation: '版本新功能',
-    notice: '仅用于预览，不会修改 DSH 设置。',
+    notice: '仅用于预览，不会修改 DSH 设置。', externalTakeover: '模拟外部接管',
     pages: {
       live2d: { title: 'Live2D 设置', description: '选择角色，调整大小和位置。' },
       settings: { title: '插件设置', description: '配置语音服务商、音色与音效，体验完整的设置面板。' },
@@ -63,7 +64,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       'vintage-paper': 'Vintage Paper', notebook: 'Notebook', 'kodama-grove': 'Kodama Grove',
       'ocean-breeze': 'Ocean Breeze', 'amethyst-haze': 'Amethyst Haze', original: 'Original',
     },
-    notice: 'Preview only. Your DSH settings stay unchanged.',
+    notice: 'Preview only. Your DSH settings stay unchanged.', externalTakeover: 'Simulate external takeover',
     pages: {
       live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
       settings: { title: 'Plugin settings', description: 'Explore providers, voices, and sound effects in the full settings panel.' },
@@ -91,7 +92,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       'vintage-paper': 'ヴィンテージペーパー', notebook: 'ノートブック', 'kodama-grove': 'こだまの森',
       'ocean-breeze': '海のそよ風', 'amethyst-haze': 'アメジストの霞', original: 'オリジナル',
     },
-    notice: 'プレビュー専用です。DSH の設定は変更しません。',
+    notice: 'プレビュー専用です。DSH の設定は変更しません。', externalTakeover: '外部サービスの引き継ぎを再現',
     pages: {
       live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
       settings: { title: 'プラグイン設定', description: 'サービス、音声、効果音を設定できる実際のパネルです。' },
@@ -119,7 +120,7 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       'vintage-paper': 'Papier vintage', notebook: 'Carnet', 'kodama-grove': 'Bosquet de Kodama',
       'ocean-breeze': 'Brise marine', 'amethyst-haze': 'Brume améthyste', original: 'Palette d’origine',
     },
-    notice: 'Aperçu uniquement. Les réglages de DSH restent inchangés.',
+    notice: 'Aperçu uniquement. Les réglages de DSH restent inchangés.', externalTakeover: 'Simuler un fournisseur externe',
     pages: {
       live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
       settings: { title: 'Réglages du plugin', description: 'Découvrez les services, les voix et les effets sonores du panneau complet.' },

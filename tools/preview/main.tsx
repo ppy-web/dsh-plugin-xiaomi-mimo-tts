@@ -35,23 +35,14 @@ import type { PreviewLocale, PreviewPalette, PreviewView } from './preview-copy.
 import { PreviewSidebar } from './preview-sidebar.js'
 import { PreviewThemeToggle } from './preview-theme-toggle.js'
 import { VoiceReadingSelect } from '../../src/client/settings/voice-reading-select.js'
-import { engineStateStore } from '../../src/client/engine-state.js'
+import { PreviewExternalTakeover } from './mock-engine.js'
 import './preview.css'
 import './preview-shell.css'
 import './preview-palettes.css'
 
 const scope = new PreviewSettingsScope()
 // Development-only takeover fixture; production activation belongs to the external Host plugin.
-const externalDemo = new URL(window.location.href).searchParams.get('external')
-const adapterDemo = externalDemo === 'adapter'
-engineStateStore.accept({ provider: externalDemo ? 'external:demo-tone' : 'xiaomi', revision: 1,
-  name: adapterDemo ? 'SenseAudio · 预览演示' : externalDemo ? '外部测试音（非语音）' : 'xiaomi', ready: externalDemo !== 'unready',
-  formats: externalDemo ? ['wav'] : ['mp3', 'wav'], maxTextLength: externalDemo ? 1000 : 12000, streaming: externalDemo === 'pcm',
-  ...(adapterDemo ? { configurable: true, configurationId: 'senseaudio', configurationSwitchable: true,
-    configurations: [{ id: 'senseaudio', name: 'SenseAudio · 预览演示' }, { id: 'backup', name: '备用供应商 · 预览演示' }],
-    selection: { model: 'sensenova-tts-2.0', voice: 'female_0033_b', speechInstruction: '' },
-    models: ['sensenova-tts-2.0', 'senseaudio-tts-1.5-260319'].map(id => ({ id, name: id, streaming: false, speechInstruction: false,
-      voices: [{ id: 'female_0033_b', name: '女声 · 预览演示' }, { id: 'male_0004_a', name: '男声 · 预览演示' }], audioTags: [{ value: '<break time=500>', name: 'Pause' }] })) } : {}) })
+const externalTakeover = new PreviewExternalTakeover(scope, new URL(window.location.href).searchParams.get('external'))
 const restorePreviewFetch = installPreviewFetch(scope)
 const restorePreviewHostIcons = installPreviewHostIcons()
 const unbindApiKeyStatus = bindApiKeyStatus(scope, previewPluginChanges)
@@ -62,7 +53,7 @@ const localeOptions = [
   { id: 'ja', label: '日本語' }, { id: 'fr', label: 'Français' },
 ] as const
 
-if (import.meta.hot) import.meta.hot.dispose(() => { unbindApiKeyStatus(); restorePreviewFetch(); restorePreviewHostIcons(); void soundEffects.dispose(); void history.dispose() })
+if (import.meta.hot) import.meta.hot.dispose(() => { externalTakeover.dispose(); unbindApiKeyStatus(); restorePreviewFetch(); restorePreviewHostIcons(); void soundEffects.dispose(); void history.dispose() })
 
 function translator(locale: PreviewLocale): Translate {
   const dictionary: Record<LocaleKey, string> = { zh, en, ja, fr }[locale]
@@ -187,7 +178,8 @@ function PreviewApp() {
               : activeView === 'workbench' ? <VoiceSettingsPage {...settingsPageProps} onOpenPluginSettings={() => { window.location.hash = 'detail' }} />
               : activeView === 'voice' ? <div className="preview-voice-surface"><VoiceReadingPreview scope={scope} t={t} onOpenPluginSettings={() => { window.location.hash = 'settings' }} /></div>
               : activeView === 'conversation' ? <ConversationPreview scope={scope} />
-              : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} settingsProps={settingsPageProps} onOpenWorkbench={openWorkbench} />
+              : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} settingsProps={settingsPageProps} onOpenWorkbench={openWorkbench}
+                externalTakeover={externalTakeover} externalTakeoverLabel={copy.externalTakeover} />
               : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'qqbot' ? <DocumentPage key="qqbot" copy={QQBOT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />

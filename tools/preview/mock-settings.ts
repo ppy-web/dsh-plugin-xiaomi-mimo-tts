@@ -149,19 +149,6 @@ function previewAudioResponse(stream: boolean): Response {
 export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
   const originalFetch = globalThis.fetch.bind(globalThis)
   const restoreSockets = installPreviewSockets()
-  let external = engineStateStore.getSnapshot().engine
-  if (!external?.provider.startsWith('external:')) external = null
-  const offSettings = scope.subscribe(() => {
-    if (!external) return
-    const current = engineStateStore.getSnapshot().engine!
-    if (current.provider.startsWith('external:')) external = current
-    const settings = resolveTtsSettings(scope.getSnapshot().value)
-    if (settings.acceptExternalProviders && !current.provider.startsWith('external:')) engineStateStore.accept({ ...external, revision: current.revision + 1 })
-    else if (!settings.acceptExternalProviders && current.provider.startsWith('external:')) engineStateStore.accept({
-      provider: settings.provider, name: settings.provider, revision: current.revision + 1,
-      ready: true, formats: ['mp3', 'wav'], maxTextLength: settings.maxTextLength, streaming: true,
-    })
-  })
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const rawUrl = input instanceof Request ? input.url : String(input)
     const url = new URL(rawUrl, window.location.href)
@@ -188,7 +175,8 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
       return jsonResponse(scope.apiKeyStatus(url.searchParams.get('provider') === 'doubao' ? 'doubao' : 'xiaomi'))
     }
     if (pathname === TTS_ROUTE || pathname === TTS_STREAM_ROUTE) {
-      if (new URL(window.location.href).searchParams.get('external') === 'unready') return jsonResponse({ error: 'external-provider-not-ready' }, 409)
+      const engine = engineStateStore.getSnapshot().engine
+      if (engine?.provider.startsWith('external:') && !engine.ready) return jsonResponse({ error: 'external-provider-not-ready' }, 409)
       return previewAudioResponse(pathname === TTS_STREAM_ROUTE)
     }
     if (pathname === TTS_MOSS_PROBE_ROUTE) {
@@ -209,7 +197,7 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
     }
     return originalFetch(input, init)
   }
-  return () => { offSettings(); globalThis.fetch = originalFetch; restoreSockets() }
+  return () => { globalThis.fetch = originalFetch; restoreSockets() }
 }
 
 /** Standalone previews exercise the real duplex consumer using a local synthetic tone. */

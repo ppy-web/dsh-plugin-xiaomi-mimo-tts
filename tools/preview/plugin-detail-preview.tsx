@@ -7,6 +7,7 @@ import type { ApiKeyStatus } from '../../src/client/settings/api-key-state.js'
 import type { LocaleKey, Translate } from '../../src/client/localization.js'
 import { useSettingsSnapshot } from '../../src/client/settings/scope.js'
 import type { PreviewSettingsScope } from './mock-settings.js'
+import type { PreviewExternalTakeover } from './mock-engine.js'
 
 const listeners = new Set<() => void>()
 let changing = false
@@ -26,8 +27,12 @@ const statusKeys: Record<ApiKeyStatus, LocaleKey> = {
 }
 
 /** A host-shaped harness for the real detail contributions, with no cloud credentials. */
-export function PluginDetailPreview({ scope, t, settingsProps, onOpenWorkbench }: { scope: PreviewSettingsScope; t: Translate; settingsProps: Omit<SettingsCardProps, 'view'>; onOpenWorkbench: () => void }) {
+export function PluginDetailPreview({ scope, t, settingsProps, onOpenWorkbench, externalTakeover, externalTakeoverLabel }: {
+  scope: PreviewSettingsScope; t: Translate; settingsProps: Omit<SettingsCardProps, 'view'>; onOpenWorkbench: () => void
+  externalTakeover: PreviewExternalTakeover; externalTakeoverLabel: string
+}) {
   const activity = useSyncExternalStore(previewPluginChanges.subscribe, previewPluginChanges.getSnapshot)
+  const takeover = useSyncExternalStore(externalTakeover.subscribe, externalTakeover.getSnapshot)
   const snapshot = useSettingsSnapshot(scope)
   useEffect(() => {
     scope.setKeyStatusPreview('missing')
@@ -46,6 +51,7 @@ export function PluginDetailPreview({ scope, t, settingsProps, onOpenWorkbench }
         {Object.entries(statusKeys).map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
       </select></label>
       <label className="preview-detail-checkbox"><input type="checkbox" checked={activity} onChange={event => previewPluginChanges.set(event.target.checked)} />{t('detail.previewChanging')}</label>
+      <label className="preview-detail-checkbox"><input type="checkbox" checked={takeover} onChange={event => externalTakeover.set(event.target.checked)} />{externalTakeoverLabel}</label>
     </div>
     <header className="preview-detail-header">
       <div><h2>{t('settings.voiceSettingsNav')}</h2>

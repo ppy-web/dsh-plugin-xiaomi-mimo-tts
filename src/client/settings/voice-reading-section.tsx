@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactElement } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { resolveTtsSettings, TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -33,7 +33,7 @@ import { VoiceReadingSelect } from './voice-reading-select.js'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
 import { readMinimalMode, subscribeMinimalMode } from './minimal-mode.js'
-import { useExternalSelection } from './external-selection.js'
+import { saveExternalReadingModel, saveExternalReadingVoice } from './external-selection.js'
 
 export interface VoiceReadingSectionInjected {
   scope: ConfigForm<TtsSettings>
@@ -170,8 +170,7 @@ function VoiceReadingRanges({ t, volume, rate, disabled, blocked, minimal, canWr
 function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_CHANGES }: VoiceReadingPageProps): ReactElement | null {
   useEngineState()
   const external = externalEngine()
-  const externalDraft = useExternalSelection(external)
-  const externalModel = external?.models?.find(model => model.id === externalDraft.value?.model)
+  const externalModel = external?.models?.find(model => model.id === external.selection?.model)
   const minimalMode = useSyncExternalStore(subscribeMinimalMode, readMinimalMode, () => false)
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
@@ -194,6 +193,20 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
     setFailed(false)
     try {
       if (!await scope.mutate(ops as Parameters<ConfigForm<TtsSettings>['mutate']>[0])) setFailed(true)
+    } catch {
+      setFailed(true)
+    } finally {
+      writeInFlight.current = false
+      setBusy(false)
+    }
+  }
+  const writeExternal = async (save: () => Promise<void>): Promise<void> => {
+    if (!canWrite()) return
+    writeInFlight.current = true
+    setBusy(true)
+    setFailed(false)
+    try {
+      await save()
     } catch {
       setFailed(true)
     } finally {
@@ -245,11 +258,10 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
     <div className="xmimo-voice-reading-card">
       {external ? <div className="xmimo-voice-reading-row">
         <div className="xmimo-voice-reading-copy"><div className="xmimo-voice-reading-row-title">{t('settings.model')}</div></div>
-        <VoiceReadingSelect label={t('settings.model')} value={externalDraft.value?.model ?? external.modelName ?? ''}
+        <VoiceReadingSelect label={t('settings.model')} value={external.selection?.model ?? external.modelName ?? ''}
           options={(external.models ?? []).map(model => ({ id: model.id, label: model.name }))} disabled={disabled || !external.configurable}
           onSelect={model => {
-            const next = external.models!.find(item => item.id === model)!
-            externalDraft.change({ model, voice: next.voices.some(item => item.id === externalDraft.value?.voice) ? externalDraft.value!.voice : next.voices[0]?.id ?? '', speechInstruction: '' })
+            void writeExternal(() => saveExternalReadingModel(external, model))
           }} />
       </div> : null}
       <div className="xmimo-voice-reading-row">
@@ -259,15 +271,15 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
         </div>
         <VoiceReadingSelect
           label={t('settings.voiceReadingVoice')}
-          value={external ? externalDraft.value?.voice ?? external.voiceName ?? '' : source.value}
+          value={external ? external.selection?.voice ?? external.voiceName ?? '' : source.value}
           options={external ? (externalModel?.voices ?? []).map(voice => ({
             id: voice.id,
             label: voice.name,
             icon: <VoiceAvatar compact voice={{ provider: external.provider, model: externalModel?.id, id: voice.id }} label={voice.name} />,
           })) : voiceOptions}
-          disabled={disabled || (external !== null && !external.configurable)}
+          disabled={disabled || (external !== null && (!external.configurable || !external.selection))}
           onSelect={(id) => {
-            if (external && externalDraft.value) externalDraft.change({ ...externalDraft.value, voice: id })
+            if (external) void writeExternal(() => saveExternalReadingVoice(external, id))
             else void write(voiceChoiceWriteOps(source, id))
           }}
         />
@@ -308,18 +320,6 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
         />
       </div>
     </div>
-    {external?.configurable ? <div className="xmimo-voice-reading-row">
-      <Button type="button" variant="outline" size="sm" disabled={disabled || !externalDraft.dirty} onClick={externalDraft.discard}>{t('settings.discard')}</Button>
-      <Button type="button" variant="primary" size="sm" disabled={disabled || !externalDraft.dirty} onClick={() => {
-        if (!canWrite()) return
-        writeInFlight.current = true
-        setBusy(true); setFailed(false)
-        void externalDraft.save().catch(() => setFailed(true)).finally(() => {
-          writeInFlight.current = false
-          setBusy(false)
-        })
-      }}>{t(busy ? 'settings.saving' : 'settings.save')}</Button>
-    </div> : null}
     {failed && <p className="xmimo-voice-reading-failure" role="status">{t('settings.voiceReadingSaveFailed')}</p>}
   </div>
 }

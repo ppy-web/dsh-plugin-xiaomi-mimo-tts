@@ -4,8 +4,15 @@ import { useEffect, useRef } from 'react'
 const CARD_SELECTOR = '.xmimo-tts-character-toggle'
 const HOLO_PROPERTIES = ['--xmimo-holo-x', '--xmimo-holo-y', '--xmimo-holo-bg-x', '--xmimo-holo-bg-y', '--xmimo-holo-rx', '--xmimo-holo-ry']
 
+interface HoloHoverOptions {
+  selector?: string
+  allowDisabled?: boolean
+  mouseOnly?: boolean
+  tilt?: number
+}
+
 /** Track the stable hit areas, leaving the card faces free to tilt. */
-export function useHoloHover(enabled: boolean): RefObject<HTMLDivElement> {
+export function useHoloHover(enabled: boolean, { selector = CARD_SELECTOR, allowDisabled = false, mouseOnly = false, tilt = 12 }: HoloHoverOptions = {}): RefObject<HTMLDivElement> {
   const rowRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,7 +38,7 @@ export function useHoloHover(enabled: boolean): RefObject<HTMLDivElement> {
 
     const draw = (): void => {
       frame = undefined
-      if (!active || !media.matches || document.hidden || !writable(active)) return reset()
+      if (!active || !media.matches || document.hidden || (!allowDisabled && !writable(active))) return reset()
       const rect = active.getBoundingClientRect()
       if (!rect.width || !rect.height) return reset()
       const x = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
@@ -40,15 +47,15 @@ export function useHoloHover(enabled: boolean): RefObject<HTMLDivElement> {
       active.style.setProperty('--xmimo-holo-y', `${y * 100}%`)
       active.style.setProperty('--xmimo-holo-bg-x', `${(1 - x) * 100}%`)
       active.style.setProperty('--xmimo-holo-bg-y', `${(1 - y) * 100}%`)
-      active.style.setProperty('--xmimo-holo-rx', `${(0.5 - y) * 12}deg`)
-      active.style.setProperty('--xmimo-holo-ry', `${(x - 0.5) * 12}deg`)
+      active.style.setProperty('--xmimo-holo-rx', `${(0.5 - y) * tilt}deg`)
+      active.style.setProperty('--xmimo-holo-ry', `${(x - 0.5) * tilt}deg`)
       active.setAttribute('data-xmimo-holo-active', '')
     }
 
     const track = (event: PointerEvent): void => {
-      if (!media.matches || document.hidden || event.pointerType === 'touch') return reset()
-      const card = event.target instanceof Element ? event.target.closest<HTMLElement>(CARD_SELECTOR) : null
-      if (!card || !row.contains(card) || !writable(card)) return reset()
+      if (!media.matches || document.hidden || (mouseOnly ? event.pointerType !== 'mouse' : event.pointerType === 'touch')) return reset()
+      const card = event.target instanceof Element ? event.target.closest<HTMLElement>(selector) : null
+      if (!card || !row.contains(card) || (!allowDisabled && !writable(card))) return reset()
       if (card !== active) {
         reset()
         active = card
@@ -86,7 +93,7 @@ export function useHoloHover(enabled: boolean): RefObject<HTMLDivElement> {
       window.removeEventListener('resize', reset)
       window.removeEventListener('scroll', reset, true)
     }
-  }, [enabled])
+  }, [enabled, selector, allowDisabled, mouseOnly, tilt])
 
   return rowRef
 }

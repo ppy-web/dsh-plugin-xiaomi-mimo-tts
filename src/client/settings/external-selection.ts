@@ -17,6 +17,22 @@ async function configureExternal(engine: SpeechEngineState, change: ExternalSpee
 export const saveExternalSelection = (engine: SpeechEngineState, selection: ExternalSpeechSelection, revision = engine.revision): Promise<void> => configureExternal(engine, { selection }, revision)
 export const switchExternalConfiguration = (engine: SpeechEngineState, configurationId: string): Promise<void> => configureExternal(engine, { configurationId })
 
+/** The Voice reading page saves each selection immediately. */
+export function saveExternalReadingModel(engine: SpeechEngineState, modelId: string): Promise<void> {
+  const model = engine.models?.find(item => item.id === modelId)
+  const previous = engine.selection
+  if (!engine.configurable || !model?.voices.length || modelId === previous?.model) return Promise.resolve()
+  const voice = model.voices.find(item => item.id === previous?.voice)?.id ?? model.voices[0]!.id
+  return saveExternalSelection(engine, { model: modelId, voice, speechInstruction: '' })
+}
+
+export function saveExternalReadingVoice(engine: SpeechEngineState, voiceId: string): Promise<void> {
+  const previous = engine.selection
+  const model = engine.models?.find(item => item.id === previous?.model)
+  if (!engine.configurable || !previous || voiceId === previous.voice || !model?.voices.some(item => item.id === voiceId)) return Promise.resolve()
+  return saveExternalSelection(engine, { ...previous, voice: voiceId })
+}
+
 export function nextExternalConfiguration(engine: SpeechEngineState) {
   const configurations = engine.configurations ?? []
   if (!engine.configurationSwitchable || configurations.length < 2) return

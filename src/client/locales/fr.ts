@@ -23,6 +23,7 @@ export const fr: Record<LocaleKey, string> = {
   'settings.externalSwitchFailed': 'Impossible de changer de fournisseur. Veuillez réessayer.',
   'settings.externalOptionsHint': 'Les options disponibles sont définies par le plugin externe.',
   'settings.externalManaged': 'Géré par un plugin externe. Configurez la voix dans ce plugin.',
+  'settings.externalTakeover': 'Fournisseur externe actif...',
   'settings.externalNotReady': 'Le service vocal externe n’est pas prêt. Vérifiez sa configuration.',
   'settings.externalDisconnected': 'Connexion au service vocal interrompue. La synthèse reprendra après reconnexion.',
   'settings.externalLoading': 'Génération audio avec le service vocal externe',

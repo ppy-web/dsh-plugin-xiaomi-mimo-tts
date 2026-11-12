@@ -23,6 +23,7 @@ export const ja: Record<LocaleKey, string> = {
   'settings.externalSwitchFailed': 'プロバイダーを切り替えられませんでした。もう一度お試しください。',
   'settings.externalOptionsHint': '利用できる機能は外部プラグインが指定します。',
   'settings.externalManaged': '外部プラグインで管理されています。音声はそのプラグインで設定してください。',
+  'settings.externalTakeover': '外部サービスが管理中...',
   'settings.externalNotReady': '外部音声サービスの準備ができていません。プラグインの設定を確認してください。',
   'settings.externalDisconnected': '音声サービスの接続が切れました。再接続するまで新しい合成を停止します。',
   'settings.externalLoading': '外部音声サービスで音声を生成しています',
