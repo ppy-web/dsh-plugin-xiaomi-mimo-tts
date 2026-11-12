@@ -36,6 +36,7 @@ async function compile(source) {
     } else target = import.meta.resolve(specifier)
     code = code.replaceAll(`'${specifier}'`, `'${target}'`).replaceAll(`"${specifier}"`, `"${target}"`)
   }
+  code += `\n//# sourceURL=${source.href}\n`
   return `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
 }
 
