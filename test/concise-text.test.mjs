@@ -82,6 +82,55 @@ test('Concise keeps an adjacent qualification with its conclusion', () => {
   assert.match(text, /可以重新导出.*不能覆盖原文件.*核对目标目录/u)
 })
 
+test('Concise collects key results across the reply instead of anchoring on its final paragraph', () => {
+  const text = concise([
+    '已修复导出时的文件名冲突。',
+    '这是供查阅的背景信息。'.repeat(25),
+    '原因是两个任务同时使用了相同的临时目录。',
+    '下一步请重新导出，并核对文件是否完整。',
+    '如果要接着做，我也可以帮你整理后续计划。',
+  ].join('\n\n'))
+  assert.match(text, /文件名冲突.*相同的临时目录.*重新导出/u)
+  assert.doesNotMatch(text, /背景信息|后续计划/u)
+  assert.ok([...text].length <= 120)
+})
+
+test('Concise uses the available character budget for useful context outside a short conclusion', () => {
+  const details = [
+    '导出文件默认保存在当前项目的输出目录。',
+    '每个任务都有独立的临时目录来保存中间文件。',
+    '失败任务的临时文件会在重试之前自动清理。',
+    '两个任务并行运行时也可以使用相同的文件名。',
+    '任务日志会记录完整路径，方便之后查找文件。',
+    '页面上的下载按钮仍然可以获取最终文件。',
+    '已经存在的旧文件会继续保留，不会被覆盖。',
+  ]
+  const conclusion = '建议先导出一份小文件，确认结果后再批量处理。'
+  const text = concise([...details, conclusion].join('\n\n'))
+  assert.ok(text.includes('确认结果后再批量处理'), text)
+  assert.ok(details.filter(detail => text.includes(detail.split(/[，。]/u)[0])).length >= 3, text)
+  assert.ok([...text].length > 90 && [...text].length <= 120, text)
+})
+
+test('Concise keeps a complete sentence within 120 characters regardless of playback speed', () => {
+  const sentence = '内容'.repeat(55) + '。'
+  for (const rate of [0.5, 1, 2]) {
+    const text = applyTtsReadScope(sentence, 'concise', rate)
+    assert.equal([...text].length, 111)
+    assert.ok(text.startsWith('内容'.repeat(55)))
+  }
+})
+
+test('Concise never extracts a continuation when its antecedent cannot fit', () => {
+  const text = concise([
+    '当前的输出目录'.repeat(25) + '。',
+    '因此需要先迁移这些文件，再清理原目录。',
+    '下一步请核对备份文件。',
+  ].join('\n\n'))
+  assert.ok(text.includes('核对备份文件'), text)
+  assert.doesNotMatch(text, /迁移|清理原目录/u)
+})
+
 test('Concise skips code-only replies and sentences that would have to be cut', () => {
   assert.equal(concise('```sh\nnpm test'), '')
   assert.equal(concise('`pwd`'), '')

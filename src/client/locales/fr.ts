@@ -385,7 +385,7 @@ export const fr: Record<LocaleKey, string> = {
   'settings.readScopeConcise': 'Concis',
   'settings.readScopeSmartHint': 'Auto : premier passage, avec une phrase de clôture si nécessaire. Manuel : réponse entière',
   'settings.readScopeFullHint': 'Lit toute la réponse, automatiquement ou manuellement',
-  'settings.readScopeConciseHint': 'En automatique, lit les points clés de la réponse finale. En manuel, ceux du message sélectionné',
+  'settings.readScopeConciseHint': 'Extrait automatiquement les points clés à lire une fois la réponse terminée',
   'settings.summaryPresetModel': 'Modèle prédéfini',
   'settings.summaryVoiceDesignModel': 'Création vocale personnalisée',
   'settings.localSpeechAutoSummary': 'Cloud en priorité',

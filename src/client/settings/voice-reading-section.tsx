@@ -1,14 +1,15 @@
 import type { CSSProperties, ReactElement } from 'react'
 import { useMemo, useState, useSyncExternalStore } from 'react'
-import { Button, Switch, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { resolveTtsSettings, TTS_HISTORY_EMPTY_ASSET_ROUTE, TTS_READ_SCOPES } from '../../shared.js'
-import type { TtsReadScope, TtsSettings } from '../../shared.js'
+import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
+import { resolveTtsSettings, TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../../shared.js'
+import type { TtsSettings } from '../../shared.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
 import { VoiceAvatar } from './controls/voice-avatar.js'
+import { ReadScopeCards } from './controls/read-scope-cards.js'
 import { readVoiceIdHistory, readVoiceIdNames, subscribeVoiceIds, voiceIdRevision } from './voice-id-history.js'
 import { VoiceReadingHeaderActions } from './voice-reading-links.js'
 import {
@@ -17,8 +18,6 @@ import {
   formatVoiceRate,
   formatVoiceVolume,
   rateWriteOps,
-  readScopeHintKey,
-  readScopeLabelKey,
   readScopeWriteOps,
   soundWriteOps,
   voiceChoiceWriteOps,
@@ -121,14 +120,6 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
       icon: <VoiceAvatar compact voice={{ provider: voiceProvider, id: choice.avatarId ?? choice.value }} label={choice.label} />,
     })),
   ]
-  const readScopeOptions = TTS_READ_SCOPES.map((option) => ({
-    id: option,
-    label: option === 'concise' ? <span className="xmimo-tts-read-scope-label">
-      {t(readScopeLabelKey(option))}
-      <Tag tone="info" className="xmimo-tts-experimental-tag">{t('settings.experimental')}</Tag>
-    </span> : t(readScopeLabelKey(option)),
-  }))
-
   return <div className="xmimo-voice-reading" style={minimalMode ? undefined : {
     '--xmimo-voice-reading-background': `url(${hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)})`,
   } as CSSProperties}>
@@ -203,20 +194,11 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
           }}
         />
       </div>
-      <div className="xmimo-voice-reading-row">
+      <div className="xmimo-voice-reading-row xmimo-voice-reading-scope-row">
         <div className="xmimo-voice-reading-copy">
           <div className="xmimo-voice-reading-row-title">{t('settings.readScope')}</div>
-          <div className="xmimo-voice-reading-row-hint">{t(readScopeHintKey(settings.readScope))}</div>
         </div>
-        <VoiceReadingSelect
-          label={t('settings.readScope')}
-          value={settings.readScope}
-          options={readScopeOptions}
-          disabled={disabled}
-          onSelect={(id) => {
-            write(readScopeWriteOps(id as TtsReadScope))
-          }}
-        />
+        <ReadScopeCards value={settings.readScope} disabled={disabled} t={t} onChange={next => { write(readScopeWriteOps(next)) }} />
       </div>
       <div className="xmimo-voice-reading-row">
         <div className="xmimo-voice-reading-copy">

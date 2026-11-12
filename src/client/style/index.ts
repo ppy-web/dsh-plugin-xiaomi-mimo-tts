@@ -29,6 +29,7 @@ import sections from './sections.css?raw'
 import sound from './sound.css?raw'
 import volume from './volume.css?raw'
 import voiceReading from './voice-reading.css?raw'
+import readScope from './read-scope.css?raw'
 import responsive from './responsive.css?raw'
 import motion from './motion.css?raw'
 import global from './global.css?raw'
@@ -55,6 +56,7 @@ export const CLIENT_STYLES = [
   sound,
   volume,
   voiceReading,
+  readScope,
   history,
   pluginSurfaces,
   voiceStudioTitle,

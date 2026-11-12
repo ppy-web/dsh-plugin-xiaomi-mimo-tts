@@ -131,15 +131,8 @@
   line-height: 1;
 }
 
-.xmimo-tts-read-scope-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
 /* Component rows have no badge slot; scope the host title adaptation to this bundle. */
 #xmimo-tts-local-voice-engine-moss::after,
-#xmimo-tts-read-scope-concise::after,
 [data-plugin-detail="dsh-xiaomi-tts"] :is([data-plugin-row="speech-delivery-qqbot"], [data-plugin-row="speech-delivery-passport"]) button[aria-label] > span:first-child::after,
 [data-xmimo-experimental-title]::after {
   content: var(--xmimo-experimental-label);
@@ -158,7 +151,6 @@
 }
 
 [data-plugin-detail="dsh-xiaomi-tts"] :is([data-plugin-row="speech-delivery-qqbot"], [data-plugin-row="speech-delivery-passport"]) button[aria-label] > span:first-child::after,
-#xmimo-tts-read-scope-concise::after,
 [data-xmimo-experimental-title]::after {
   margin-inline-start: 6px;
 }

@@ -1,6 +1,6 @@
 import type { ExternalSpeechSelection } from '../../host-api.js'
 import { ExternalSpeechFields } from './external-speech-fields.js'
-import type { CSSProperties, ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
 import { useCallback, useEffect, useState } from 'react'
@@ -11,7 +11,6 @@ import {
   DOUBAO_VOICE_PRESETS,
   breezeVoiceLabel,
   TTS_MODELS,
-  TTS_READ_SCOPES,
   TTS_VOICE_DESIGN_PRESETS,
 } from '../../shared.js'
 import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope } from '../../shared.js'
@@ -33,7 +32,8 @@ import {
 import { CollapsibleModule } from './collapsible-module.js'
 import { useNestedDisclosure } from './use-nested-disclosure.js'
 import { SettingFieldHeading } from './field-heading.js'
-import { readScopeHintKey, readScopeLabelKey } from './voice-reading-options.js'
+import { readScopeLabelKey } from './voice-reading-options.js'
+import { ReadScopeCards } from './controls/read-scope-cards.js'
 import type { EditableSettingField, SettingField } from './types.js'
 
 interface ModelPickerProps {
@@ -147,18 +147,7 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
   const summaryInstruction = supportsInstruction ? speechInstructionLabel(provider, instruction, t) : null
   const readScopeControl = <div className="xmimo-tts-format">
     <SettingFieldHeading label={t('settings.readScope')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('readScope')} resettable disabled={!writable} onReset={() => { resetField('readScope') }} />
-    <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true" style={{ '--xmimo-experimental-label': JSON.stringify(t('settings.experimental')) } as CSSProperties}>
-      <SegmentedControl
-        id="xmimo-tts-read-scope"
-        value={readScope}
-        options={TTS_READ_SCOPES.map((item) => ({ value: item, label: t(readScopeLabelKey(item)) }))}
-        label={t('settings.readScope')}
-        disabled={!writable}
-        onChange={onReadScopeChange}
-        className="xmimo-tts-settings-segmented"
-      />
-    </div>
-    {minimal ? null : <small>{t(readScopeHintKey(readScope))}</small>}
+    <ReadScopeCards value={readScope} disabled={!writable} t={t} onChange={onReadScopeChange} />
   </div>
   return <CollapsibleModule
     className="xmimo-tts-settings-module xmimo-tts-details xmimo-ui-module"

@@ -385,7 +385,7 @@ export const ja: Record<LocaleKey, string> = {
   'settings.readScopeConcise': '簡潔',
   'settings.readScopeSmartHint': '自動：最初の区切りまで読み上げ、必要に応じて締めの言葉を添えます。手動：全文',
   'settings.readScopeFullHint': '自動・手動ともに返答の全文を読み上げます',
-  'settings.readScopeConciseHint': '自動では最終回答の要点を、手動では選んだメッセージの要点を読み上げます',
+  'settings.readScopeConciseHint': '回答の完了後、読み上げ用の要点を自動で抽出します',
   'settings.summaryPresetModel': 'プリセットモデル',
   'settings.summaryVoiceDesignModel': 'カスタム音声デザイン',
   'settings.localSpeechAutoSummary': 'クラウド優先',

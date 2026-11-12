@@ -11,8 +11,8 @@ export function resolveTtsReadScope(scope: TtsReadScope, automatic: boolean): Tt
 }
 
 /** Concise takes raw Markdown. The other ranges use their normal text preparation. */
-export function applyTtsReadScope(value: string, scope: TtsEffectiveReadScope, voiceRate = 1): string {
-  if (scope === 'concise') return prepareConciseTtsText(value, voiceRate)
+export function applyTtsReadScope(value: string, scope: TtsEffectiveReadScope, _voiceRate = 1): string {
+  if (scope === 'concise') return prepareConciseTtsText(value)
   return scope === 'first-segment' ? firstTtsSegment(value) : value
 }
 

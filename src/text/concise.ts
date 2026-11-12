@@ -3,14 +3,12 @@ import { gfmFromMarkdown } from 'mdast-util-gfm'
 import { mathFromMarkdown } from 'mdast-util-math'
 import { gfm } from 'micromark-extension-gfm'
 import { math } from 'micromark-extension-math'
-import { normalizeVoiceRate } from '../utils/encoding.js'
 import { prepareTtsText } from './normalize.js'
 
 type MarkdownBlock = ReturnType<typeof fromMarkdown>['children'][number]
 type MarkdownPhrase = Extract<MarkdownBlock, { type: 'paragraph' }>['children'][number]
 
 const MAX_CHARACTERS = 120
-const MAX_ESTIMATED_SECONDS = 26
 const SENTENCE_SEGMENTER = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh', { granularity: 'sentence' }) : null
 const MARKDOWN_OPTIONS = {
   extensions: [gfm({ singleTilde: false }), math()],
@@ -98,6 +96,7 @@ interface Sentence {
   text: string
   key: boolean
   dependsOnPrevious: boolean
+  previous: Sentence | undefined
   followUp: boolean
 }
 
@@ -138,7 +137,8 @@ function readMarkdown(markdown: string): { blocks: Sentence[][]; table: string }
       const dependsOnPrevious = CONTINUATION.test(text)
         || (/^(?:需要|得)在.+之间选/u.test(text) && /^如果/u.test(previous?.text ?? ''))
       previous = {
-        text, key: keyHeading || KEY_SENTENCE.test(text), dependsOnPrevious, followUp: FOLLOW_UP.test(text),
+        text, key: keyHeading || KEY_SENTENCE.test(text), dependsOnPrevious,
+        previous: dependsOnPrevious ? previous : undefined, followUp: FOLLOW_UP.test(text),
       }
       block.push(previous)
     }
@@ -188,60 +188,70 @@ function readMarkdown(markdown: string): { blocks: Sentence[][]; table: string }
   return { blocks, table }
 }
 
-function estimatedSeconds(text: string): number {
-  let seconds = 0
-  for (const match of text.matchAll(/\p{Script=Latin}+|\p{L}|\p{N}|[.,!?;:，。！？；：、%]/gu)) {
-    const token = match[0]
-    if (/^\p{Script=Latin}/u.test(token)) seconds += /^[A-Z]{2,}$/u.test(token) ? token.length * 0.25 : 0.45
-    else if (/\p{L}/u.test(token)) seconds += 0.25
-    else if (/[\p{N}%]/u.test(token)) seconds += 0.3
-    else if (token === '.' && /\d/u.test(text[match.index - 1] ?? '') && /\d/u.test(text[match.index + 1] ?? '')) continue
-    else seconds += TERMINAL_PUNCTUATION.test(token) ? 0.35 : 0.2
-  }
-  return seconds
-}
-
 /** Select complete, speakable excerpts from raw assistant Markdown before synthesis. */
-export function prepareConciseTtsText(markdown: string, voiceRate = 1): string {
+export function prepareConciseTtsText(markdown: string): string {
   const { blocks, table } = readMarkdown(markdown)
-  const seconds = MAX_ESTIMATED_SECONDS * normalizeVoiceRate(voiceRate)
   const fits = (text: string): boolean => text.length <= MAX_CHARACTERS * 2
-    && [...text].length <= MAX_CHARACTERS && estimatedSeconds(text) <= seconds
+    && [...text].length <= MAX_CHARACTERS
   if (blocks.length === 0) return fits(table) ? table : ''
 
   const full = joinSpeech(blocks.flatMap(block => block.map(sentence => sentence.text)))
   if (fits(full)) return full
 
-  for (let index = blocks.length - 1; index >= 0; index -= 1) {
-    const tail = blocks[index]!
-    const candidates = tail.filter(sentence => !sentence.dependsOnPrevious && fits(sentence.text))
-    if (candidates.length === 0) continue
-    const lead = blocks.slice(0, index).flat()
-      .find(sentence => sentence.key && !sentence.dependsOnPrevious && !sentence.followUp && fits(sentence.text))
-    const tailChoices = [...candidates.filter(sentence => sentence.key), ...candidates.filter(sentence => !sentence.key)]
-    const paired = lead === undefined ? undefined : tailChoices
-      .find(sentence => lead.text !== sentence.text && fits(joinSpeech([lead.text, sentence.text])))
-    const anchor = paired ?? tailChoices[0]!
-    if (paired === undefined && anchor.followUp && lead !== undefined) return lead.text
+  const all = blocks.flat()
+  const frequency = new Map<string, number>()
+  for (const sentence of all) frequency.set(sentence.text, (frequency.get(sentence.text) ?? 0) + 1)
 
-    let before = paired === undefined ? '' : lead!.text
-    let after = anchor.text
-    const anchorIndex = tail.indexOf(anchor)
-    const kept = new Set([anchor])
-    const keptText = new Set([before, after])
-    for (const [position, sentence] of tail.entries()) {
-      if (keptText.has(sentence.text)) continue
-      if (sentence.dependsOnPrevious && (position === 0 || !kept.has(tail[position - 1]!))) continue
-      const proposed = position < anchorIndex
-        ? joinSpeech([before, sentence.text, after])
-        : joinSpeech([before, after, sentence.text])
-      if (!fits(proposed)) continue
+  // Include the antecedent of a dependent sentence as one indivisible excerpt.
+  const excerpt = (sentence: Sentence): Sentence[] | null => {
+    const group = [sentence]
+    let current = sentence
+    while (current.dependsOnPrevious) {
+      if (current.previous === undefined) return null
+      current = current.previous
+      group.unshift(current)
+      if (!fits(joinSpeech(group.map(item => item.text)))) return null
+    }
+    return group
+  }
+  const candidates = all.flatMap((sentence, position) => {
+    const group = excerpt(sentence)
+    if (group === null || !fits(joinSpeech(group.map(item => item.text)))) return []
+    // Repeated background and continuation offers should not consume the summary budget.
+    if (!sentence.key && frequency.get(sentence.text)! > 1) return []
+    if (group.some(item => item.followUp)) return []
+    return [{ sentence, position, group }]
+  })
+  const keyPositions = new Set(candidates.filter(item => item.sentence.key).map(item => item.position))
+  const distances = all.map(() => Infinity)
+  let nearest = -Infinity
+  for (let position = 0; position < all.length; position += 1) {
+    if (keyPositions.has(position)) nearest = position
+    distances[position] = position - nearest
+  }
+  nearest = Infinity
+  for (let position = all.length - 1; position >= 0; position -= 1) {
+    if (keyPositions.has(position)) nearest = position
+    distances[position] = Math.min(distances[position]!, nearest - position)
+  }
+  const distance = (position: number): number => keyPositions.size === 0 ? position : distances[position]!
+  candidates.sort((a, b) => Number(b.sentence.key) - Number(a.sentence.key)
+    || distance(a.position) - distance(b.position) || a.position - b.position)
+
+  const kept = new Set<Sentence>()
+  const keptText = new Set<string>()
+  const positions = new Map(all.map((sentence, position) => [sentence, position]))
+  const render = (selection: Set<Sentence>): string => joinSpeech([...selection]
+    .sort((a, b) => positions.get(a)! - positions.get(b)!).map(item => item.text))
+  for (const { group } of candidates) {
+    const addition = group.filter(item => !keptText.has(item.text))
+    if (addition.length === 0) continue
+    const proposed = new Set([...kept, ...addition])
+    if (!fits(render(proposed))) continue
+    for (const sentence of addition) {
       kept.add(sentence)
       keptText.add(sentence.text)
-      if (position < anchorIndex) before = joinSpeech([before, sentence.text])
-      else after = joinSpeech([after, sentence.text])
     }
-    return joinSpeech([before, after])
   }
-  return ''
+  return render(kept)
 }
