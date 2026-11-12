@@ -6,7 +6,7 @@ Breeze 需要可访问海外服务的外网环境，运行 DSH 的机器或容�
 
 ## 开始使用
 
-宿主兼容声明为 `>=0.2.2-0 <0.3.0-0`，客户端与宿主共用 React。建议先执行 `npm install -g @deepseek-ai/dsh` 更新到 npm 已发布的宿主，再执行 `dsh plugin --profile web add dsh-xiaomi-tts` 安装；已有运行中的宿主需重启以加载更新。源码开发基线与验证方式见下方「仓库依赖维护」。
+宿主兼容声明为 `>=0.2.2-0 <0.3.0-0`，客户端与宿主共用 React。建议先执行 `npm install -g @deepseek-ai/dsh@0.2.2-rc.2` 更新到当前开发基线，再执行 `dsh plugin --profile web add dsh-xiaomi-tts` 安装；已有运行中的宿主需重启以加载更新。源码开发基线与验证方式见下方「仓库依赖维护」。
 
 在宿主插件列表显式启用本插件后，会显示居中的启动引导弹窗。按 Esc、点击遮罩或右上角关闭按钮可关闭弹窗；点击「以后不再提醒」会关闭新功能引导。自动播报和 UI 音效默认关闭。
 
@@ -503,9 +503,11 @@ New-NetFirewallRule -DisplayName 'DSH AI Passport hotspot' -Direction Inbound -A
 
 ## 仓库依赖维护
 
-源码开发基线为 DSH `0.2.2-rc.2`，对照官方源码提交 `e8f7b93a344964de3dca1ace9e72b6e4d6de87cb`，工具链采用 Node.js 24.9+、pnpm 11.28.5、TypeScript 6 和 React 18。语音标签浮层沿用宿主的 CSS 锚点定位，按钮使用 React 18 的引用转发。
+开发依赖与源码基线统一为 DSH `0.2.2-rc.2`：所有 DSH npm 开发依赖精确锁定该版本，源码对照官方发布标签 `dsh-v0.2.2-rc.2`（提交 `ddac96760b6edf8fa0fe17cbdcf0b512f4c12b2c`），工具链采用 Node.js 24.9+、pnpm 11.28.5、TypeScript 6 和 React 18。语音标签浮层沿用宿主的 CSS 锚点定位，按钮使用 React 18 的引用转发。
 
-在同级目录拉取 `deepseek-harness` 后，从插件仓库执行 `pnpm --dir ../deepseek-harness install --frozen-lockfile`、`pnpm --dir ../deepseek-harness build:artifacts` 构建宿主，再运行 `pnpm typecheck:host`，直接对照宿主构建产物检查公开接口；其他路径可传给此命令，或通过 `DSH_SOURCE` 指定。此检查不改写依赖锁文件，也不会将本机路径写入发布包。2026 年 11 月 12 日核对时，npm 尚未提供 DSH `0.2.2-rc.2` 包，因此 npm 开发依赖暂保留已发布的 `0.2.2-rc.1`；待包可用后再同步升级这些依赖及锁文件。
+运行 `pnpm install --frozen-lockfile` 安装同版本的 npm 开发依赖，`pnpm typecheck` 和 `pnpm test` 对照这些发布包验证。2026 年 11 月 12 日核对时，npm 已提供 DSH `0.2.2-rc.2`，`next` 标签指向该版本，`latest` 仍为 `0.2.2-rc.1`；安装宿主或升级开发依赖时需显式指定 rc.2，避免仅使用 `latest`。
+
+需要额外核对源码接口时，在同级目录准备检出 `dsh-v0.2.2-rc.2` 标签的 `deepseek-harness`，从插件仓库执行 `pnpm --dir ../deepseek-harness install --frozen-lockfile`、`pnpm --dir ../deepseek-harness build:artifacts` 构建宿主，再运行 `pnpm typecheck:host`；其他路径可传给此命令，或通过 `DSH_SOURCE` 指定。此检查不改写依赖锁文件，也不会将本机路径写入发布包。
 
 仓库通过 [Dependency report 工作流](.github/workflows/dependency-report.yml)在每月 1 日北京时间 03:00 检查 npm 直接依赖（运行、开发及可选依赖）和 GitHub Actions，候选版本需发布满 14 天。npm 稳定版不切换到预发布版；已有预发布依赖跟踪同名渠道及稳定版。Actions 的浮动主版本、次版本标签仅提示超出其范围的更新；当前检查器支持版本标签，新增分支或提交 SHA 引用时需要扩展检查器。
 

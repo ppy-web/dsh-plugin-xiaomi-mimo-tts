@@ -13,7 +13,7 @@ This repository publishes `dsh-xiaomi-tts`, a DSH Web speech plugin.
 
 ## Build, Test, and Development Commands
 
-Use Node.js 24.9+ and pnpm 11.28.5; CI uses Node.js 24. The host source baseline is DSH 0.2.2-rc.2, with React 18 and TypeScript 6.
+Use Node.js 24.9+ and pnpm 11.28.5; CI uses Node.js 24. DSH npm development dependencies and the host source baseline are aligned to 0.2.2-rc.2 (source tag `dsh-v0.2.2-rc.2`), with React 18 and TypeScript 6. Pin DSH development packages to that exact version; npm's `latest` tag may lag behind the release.
 
 - `pnpm install --frozen-lockfile`: install locked dependencies.
 - `pnpm dev`: launch the standalone settings preview.

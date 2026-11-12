@@ -1,6 +1,6 @@
 ---
 title: DSH Web Markdown 兼容样例
-host_version: 0.2.2-rc.1
+host_version: 0.2.2-rc.2
 mock: true
 tags: [markdown, preview]
 coverage:
