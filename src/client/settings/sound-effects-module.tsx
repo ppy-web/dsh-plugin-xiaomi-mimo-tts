@@ -10,6 +10,7 @@ import type { SoundEffectsController, SoundCue } from '../sound-effects/types.js
 import { CollapsibleModule } from './collapsible-module.js'
 import { SoundEffectIcon } from '../sound-effects/sound-effect-icon.js'
 import { SoundPackIcon } from '../sound-effects/sound-pack-icon.js'
+import { useSettingsSearch } from './settings-search-context.js'
 
 interface SoundEffectsPanelProps {
   t: Translate
@@ -47,6 +48,7 @@ const SOUND_PACK_COLORS: Record<SoundPack, string> = {
 
 /** Collapsible sound library, followed by the Broadcast Desk. */
 export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, minimal, open, onToggle, onScopeChange, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
+  const { hide } = useSettingsSearch()
   const packOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const mode: SoundEffectsMode = resolveSoundEffectsMode(enabled, taskSounds, clickSounds)
   const modeLabel = mode === 'all'
@@ -95,6 +97,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     className="xmimo-tts-settings-module xmimo-tts-sound-effects xmimo-ui-module"
     title={<span className="xmimo-ui-module-title"><RiDiscLine size={14} aria-hidden="true" focusable="false" />{t('settings.soundEffectsTitle')}</span>}
     ariaLabel={t('settings.soundEffectsTitle')}
+    searchGroups={['sound']}
     summary={<span className="xmimo-tts-sound-summary xmimo-ui-summary">
       <span>{modeLabel}</span>
       <span>{t('settings.soundEffectsVolume')} {Math.round(volume * 100)}%</span>
@@ -104,7 +107,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     onToggle={onToggle}
   >
     <div className="xmimo-tts-sound-body xmimo-ui-module-body">
-      <div className="xmimo-tts-sound-scope-section">
+      <div className="xmimo-tts-sound-scope-section" hidden={hide('soundScope')}>
         <span>{t('settings.soundEffectsScope')}</span>
         <SegmentedControl
           id="xmimo-tts-sound-scope"
@@ -116,8 +119,8 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
           className="xmimo-tts-settings-segmented xmimo-tts-sound-scope"
         />
       </div>
-      <label className="xmimo-tts-sound-volume">
-        <span>{t('settings.soundEffectsVolume')} {Math.round(volume * 100)}%</span>
+      <label className="xmimo-tts-sound-volume" hidden={hide('soundVolume')}>
+        <span>{t('settings.soundEffectsVolume')}</span>
         <LensSlider
           value={volume}
           label={t('settings.soundEffectsVolume')}
@@ -127,7 +130,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
           onInteractionEnd={() => { controller.previewVolume() }}
         />
       </label>
-      <div className="xmimo-tts-sound-pack">
+      <div className="xmimo-tts-sound-pack" hidden={hide('soundPack')}>
         <span id="xmimo-tts-sound-pack-label">{t('settings.soundEffectsPack')}</span>
         <div className="xmimo-tts-sound-pack-grid" role="radiogroup" aria-labelledby="xmimo-tts-sound-pack-label">
           {SOUND_PACKS.map((option, index) => <button
@@ -152,7 +155,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
           </button>)}
         </div>
       </div>
-      <div className="xmimo-tts-sound-preview-section">
+      <div className="xmimo-tts-sound-preview-section" hidden={hide('soundPreview')}>
         <span id="xmimo-tts-sound-preview-label">{t('settings.soundEffectsPreviewLabel')}</span>
         <div className="xmimo-tts-sound-previews" role="group" aria-labelledby="xmimo-tts-sound-preview-label">
           {PREVIEW_CUES.map(cue => <button

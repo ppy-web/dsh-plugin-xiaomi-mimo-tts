@@ -31,7 +31,7 @@ export function ReadScopeCards({ value, disabled, t, onChange }: ReadScopeCardsP
         {TTS_READ_SCOPES.map(scope => {
           const paragraphs = PREVIEW_PARAGRAPHS[scope]
           return <label className="xmimo-read-scope-option" key={scope}>
-            <input type="radio" name={id} value={scope} checked={scope === value} aria-labelledby={`${id}-${scope}-title`} aria-describedby={`${id}-${scope}-hint`} onChange={() => { onChange(scope) }} />
+            <input type="radio" name={id} value={scope} checked={scope === value} aria-labelledby={`${id}-${scope}-title`} aria-describedby={scope === value ? `${id}-hint` : undefined} onChange={() => { onChange(scope) }} />
             <span className="xmimo-read-scope-card">
               <span className="xmimo-read-scope-heading">
                 <span id={`${id}-${scope}-title`}>{t(readScopeLabelKey(scope))}</span>
@@ -44,10 +44,10 @@ export function ReadScopeCards({ value, disabled, t, onChange }: ReadScopeCardsP
                 </span>)}
               </span>
             </span>
-            <span className="xmimo-read-scope-hint" id={`${id}-${scope}-hint`}>{t(readScopeHintKey(scope))}</span>
           </label>
         })}
       </div>
     </fieldset>
+    <p className="xmimo-read-scope-hint" id={`${id}-hint`} aria-live="polite">{t(readScopeHintKey(value))}</p>
   </div>
 }

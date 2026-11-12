@@ -12,6 +12,7 @@ import { externalEngine } from '../engine-state.js'
 import { TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE } from '../../shared.js'
 import type { SpeechEngineState } from '../../host-api.js'
 import { nextExternalConfiguration, switchExternalConfiguration } from './external-selection.js'
+import { useSettingsSearch } from './settings-search-context.js'
 
 interface CharacterToggleProps {
   kind: 'voice' | 'autoplay' | 'sound'
@@ -24,9 +25,12 @@ interface CharacterToggleProps {
 }
 
 function CharacterToggle({ kind, checked, disabled, label, stateLabel, minimal, onChange }: CharacterToggleProps): ReactElement {
+  const { hide } = useSettingsSearch()
+  const hidden = hide(kind === 'voice' ? 'enabled' : kind === 'autoplay' ? 'autoPlay' : 'soundEnabled')
   const state = checked ? 'on' : 'off'
   if (minimal) return <div
     className="xmimo-tts-minimal-control xmimo-tts-minimal-toggle"
+    hidden={hidden}
     data-xmimo-sound-toggle={kind === 'sound' ? 'true' : undefined}
     onClick={(event) => {
       if ((event.target as HTMLElement).closest('button') !== null || disabled) return
@@ -37,7 +41,7 @@ function CharacterToggle({ kind, checked, disabled, label, stateLabel, minimal, 
     <Switch checked={checked} disabled={disabled} label={`${label}: ${stateLabel}`} onChange={onChange} />
   </div>
 
-  return <label className={`xmimo-tts-character-toggle xmimo-tts-character-toggle-${state}`} data-xmimo-sound-toggle={kind === 'sound' ? 'true' : undefined}>
+  return <label className={`xmimo-tts-character-toggle xmimo-tts-character-toggle-${state}`} hidden={hidden} data-xmimo-sound-toggle={kind === 'sound' ? 'true' : undefined}>
     <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => { onChange(event.target.checked) }} />
     <span className="xmimo-tts-character-control">
       {!minimal ? <span
@@ -65,6 +69,7 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
   onExternalChange: (engine: SpeechEngineState, configurationId: string) => void
 }): ReactElement {
   const view = useEngineState()
+  const { hide } = useSettingsSearch()
   const external = externalEngine()
   const identity = external ? `${external.provider}/${external.configurationId ?? ''}` : provider
   const image = external ? TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE : TTS_PROVIDER_CHARACTER_ASSET_ROUTES[provider]
@@ -99,6 +104,7 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
     variant="outline"
     size="sm"
     className="xmimo-tts-minimal-control xmimo-tts-provider-button"
+    hidden={hide('provider')}
     data-xmimo-sound-toggle="provider"
     aria-label={switchLabel}
     title={switchLabel}
@@ -113,6 +119,7 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
   return <button
     type="button"
     className="xmimo-tts-character-toggle xmimo-tts-character-toggle-on xmimo-tts-provider-toggle"
+    hidden={hide('provider')}
     data-provider={provider}
     data-external={external ? 'true' : undefined}
     data-xmimo-sound-toggle="provider"
@@ -152,6 +159,7 @@ export interface SwitchModuleProps {
 }
 
 export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, enabled, autoPlay, soundEnabled, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
+  const { result } = useSettingsSearch()
   const rowRef = useHoloHover(!minimal && writable)
   const [switching, setSwitching] = useState(false)
   const [switchFailed, setSwitchFailed] = useState(false)
@@ -161,7 +169,7 @@ export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, enable
     void switchExternalConfiguration(engine, configurationId).catch(() => setSwitchFailed(true)).finally(() => setSwitching(false))
   }
 
-  return <section className={minimal ? 'xmimo-tts-switch-module xmimo-tts-switch-module-minimal' : 'xmimo-tts-switch-module'}>
+  return <section hidden={result !== null && !result.groups.has('switches')} className={minimal ? 'xmimo-tts-switch-module xmimo-tts-switch-module-minimal' : 'xmimo-tts-switch-module'}>
     <div ref={rowRef} className="xmimo-tts-switch-row xmimo-ui-grid">
       <CharacterToggle kind="voice" checked={enabled} disabled={!writable} label={t(minimal ? 'settings.enabled' : enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onEnabledChange} />
       <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!writable} label={t(minimal ? 'settings.autoPlay' : enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onAutoPlayChange} />

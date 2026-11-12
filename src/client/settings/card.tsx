@@ -41,10 +41,13 @@ import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
 import type { SpeechActivity } from '../announcements/speech-activity.js'
 import { isSpeechBusy } from '../announcements/speech-activity.js'
 import type { AudioFocus } from '../playback/tab-audio-focus.js'
+import { SettingsSearchContext } from './settings-search-context.js'
+import { searchSettings } from './settings-search.js'
 
 export interface SettingsCardProps {
   view: 'summary' | 'page'
   initialPanel?: 'mixer' | undefined
+  renderHeader?: (search?: { query: string; onQueryChange: (query: string) => void }) => ReactElement
   onSidebarChange?: ((mounted: boolean) => void) | undefined
   onOpenProviderSettings?: ((bundle: string) => void) | undefined
   scope: ConfigForm<TtsSettings>
@@ -98,7 +101,7 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   return <SettingsPage {...props} />
 }
 
-function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, onSidebarChange, onOpenProviderSettings, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, renderHeader, onSidebarChange, onOpenProviderSettings, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   useEngineState()
   const external = externalEngine()
   const externalDraft = useExternalSelection(external)
@@ -157,6 +160,11 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const saveInFlight = useRef(false)
   const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | null>(initialPanel ?? null)
   const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast'): void => setOpenPanel(current => current === panel ? null : panel)
+  const [query, setQuery] = useState('')
+  const search = renderHeader ? searchSettings(query, t, {
+    provider, externalName: external?.name, voiceDesign: model === 'mimo-v2.5-tts-voicedesign',
+    doubaoClone: doubaoModel === 'seed-icl-2.0', soundEnabled, mossEnabled, mossSelected: mossEnabled && localVoiceEngine === 'moss',
+  }) : null
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
   const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView, history))
@@ -278,7 +286,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     historyWasOpen.current = historyOpen
   }, [historyOpen])
 
-  if (snapshot.status === 'unavailable') return null
+  if (snapshot.status === 'unavailable') return renderHeader?.() ?? null
 
   const markChange = (field: SettingField): void => {
     setChanges((current) => ({ ...current, [field]: { kind: 'set' } }))
@@ -494,8 +502,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (next) previewPlayer.stop()
   }
 
-  if (historyOpen && history) return changing
-    ? <p className="xmimo-ui-scope xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p>
+  if (historyOpen && history) return <>{renderHeader?.()}
+    {changing ? <p className="xmimo-ui-scope xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p>
     : <AudioHistoryPage history={history} t={t} volume={voiceVolume} voiceRate={voiceRate} minimalMode={minimalMode} speechActivity={speechActivity}
       beforePlayback={() => {
         if (pluginChanges.getSnapshot()) return false
@@ -505,12 +513,20 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
         toggleSoundPlayer.dispose()
         beforeHistoryPlayback?.()
         return true
-      }} onBack={() => { setHistoryOpen(false) }} />
+      }} onBack={() => { setHistoryOpen(false) }} />}
+  </>
 
-  return (
-    <div className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
+  return <>{renderHeader?.({ query, onQueryChange: setQuery })}
+    <SettingsSearchContext.Provider value={search}>
+    <div data-settings-search={search !== null ? '' : undefined} className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
       {changing ? <p className="xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p> : null}
       <div className="xmimo-tts-card-body xmimo-ui-stack">
+        {renderHeader ? <div role="status" className="xmimo-tts-search-status">
+          {search?.visible.size === 0 ? t('settings.searchEmpty') : null}
+        </div> : null}
+        {search?.unavailable.length ? <ul className="xmimo-tts-search-unavailable">
+          {search.unavailable.map(item => <li key={item.id}><strong>{item.label}</strong><span>{t(item.message)}</span></li>)}
+        </ul> : null}
         <SwitchModule
           doubaoEnabled={doubaoEnabled}
           breezeEnabled={breezeEnabled}
@@ -689,9 +705,9 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
         <div className="xmimo-tts-card-footer">
           <div className="xmimo-tts-card-actions">
             <div className="xmimo-tts-card-action-links">
-              <SidebarSettings t={t} value={accepted.showInSidebar} disabled={!writable || state === 'saving' || validationError !== null}
-                onToggle={() => { void save(!accepted.showInSidebar) }} />
-              {history ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
+              {search === null || search.visible.has('sidebar') ? <SidebarSettings t={t} value={accepted.showInSidebar} disabled={!writable || state === 'saving' || validationError !== null}
+                onToggle={() => { void save(!accepted.showInSidebar) }} /> : null}
+              {history && search === null ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
                 previewPlayer.stop()
                 toggleSoundPlayer.dispose()
                 setHistoryOpen(true)
@@ -701,6 +717,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
                 variant="toolbar"
                 size="sm"
                 className="xmimo-tts-mode-toggle"
+                hidden={search !== null && !search.visible.has('minimalMode')}
                 aria-pressed={minimalMode}
                 aria-label={`${t('settings.minimalMode')}: ${t(minimalMode ? 'settings.minimalModeOn' : 'settings.minimalModeOff')}`}
                 onClick={toggleMinimalMode}
@@ -725,5 +742,6 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
         </div>
       </div>
     </div>
-  )
+    </SettingsSearchContext.Provider>
+  </>
 }

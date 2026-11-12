@@ -15,6 +15,7 @@ import type { VoicePickerPreset } from './controls/built-in-voice-picker.js'
 import { VoiceAvatar } from './controls/voice-avatar.js'
 import { SettingFieldHeading } from './field-heading.js'
 import type { EditableSettingField, SettingField } from './types.js'
+import { useSettingsSearch } from './settings-search-context.js'
 
 type ProbeState =
   | { status: 'idle' }
@@ -66,6 +67,7 @@ export function LocalVoiceModule({
   fieldOverridden, resetField, onEngineChange, onBrowserVoiceChange,
   onMossBaseURLChange, onMossVoiceChange, onBrowserAvailabilityChange,
 }: LocalVoiceModuleProps): ReactElement {
+  const { result: search, hide } = useSettingsSearch()
   const engine = mossEnabled ? selectedEngine : 'browser'
   const [probe, setProbe] = useState<ProbeState>({ status: 'idle' })
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
@@ -130,14 +132,14 @@ export function LocalVoiceModule({
   }, [mossBaseURL, onMossVoiceChange, writable])
 
   useEffect(() => {
-    if (engine !== 'moss') return () => {}
+    if (engine !== 'moss' || minimal) return
     void probeService()
     // Probe once when the MOSS tab becomes active; later attempts are explicit.
     return () => {
       probeAbort.current?.abort()
       probeAbort.current = null
     }
-  }, [engine]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [engine, minimal]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const probeText = probe.status === 'loading'
     ? t('settings.mossProbing')
@@ -150,8 +152,8 @@ export function LocalVoiceModule({
         : t('settings.mossNotProbed')
   const probeState = probe.status === 'ready' ? 'online' : probe.status === 'error' ? 'offline' : probe.status
 
-  return <div className="xmimo-tts-voice xmimo-tts-local-voice">
-    <SettingFieldHeading
+  return <div className="xmimo-tts-voice xmimo-tts-local-voice" hidden={hide('browserVoice', 'localEngine', 'mossBaseURL', 'mossVoice')}>
+    {search === null || !hide('browserVoice', 'mossVoice') ? <SettingFieldHeading
       label={t('settings.localVoice')}
       overriddenLabel={t('settings.overridden')}
       resetLabel={t('settings.reset')}
@@ -163,8 +165,8 @@ export function LocalVoiceModule({
         if (activeReset === 'mossVoice') resetField('mossVoiceName')
       }}
       suffix={<small className="xmimo-tts-hint xmimo-tts-local-voice-engine-note" style={{ fontSize: '11px' }}>{engine === 'moss' ? 'MOSS' : 'Microsoft Edge – Better'}</small>}
-    />
-    {mossEnabled ? <div className="xmimo-tts-settings-segmented-wrap xmimo-tts-local-voice-tabs" data-xmimo-select-option="true" style={{ '--xmimo-experimental-label': JSON.stringify(t('settings.experimental')) } as CSSProperties}>
+    /> : null}
+    {mossEnabled ? <div className="xmimo-tts-settings-segmented-wrap xmimo-tts-local-voice-tabs" hidden={hide('localEngine')} data-xmimo-select-option="true" style={{ '--xmimo-experimental-label': JSON.stringify(t('settings.experimental')) } as CSSProperties}>
       <SegmentedControl
         id="xmimo-tts-local-voice-engine"
         value={engine}
@@ -178,7 +180,7 @@ export function LocalVoiceModule({
         className="xmimo-tts-settings-segmented xmimo-tts-local-voice-segmented"
       />
     </div> : null}
-    {engine === 'browser' ? <LocalVoicePicker
+    {engine === 'browser' ? <div hidden={hide('browserVoice')}><LocalVoicePicker
       value={browserVoiceURI}
       disabled={disabled}
       label={t('settings.localVoice')}
@@ -189,8 +191,8 @@ export function LocalVoiceModule({
       onlineLabel={t('settings.localVoiceOnline')}
       onChange={onBrowserVoiceChange}
       onAvailabilityChange={onBrowserAvailabilityChange}
-    /> : <div className="xmimo-tts-moss-local">
-      <div className="xmimo-tts-moss-field">
+    /></div> : <div className="xmimo-tts-moss-local" hidden={hide('mossBaseURL', 'mossVoice')}>
+      <div className="xmimo-tts-moss-field" hidden={hide('mossBaseURL')}>
         <div className="xmimo-tts-moss-field-heading">
           <span className="xmimo-tts-moss-field-title">{t('settings.mossBaseURL')}</span>
           <button
@@ -232,7 +234,7 @@ export function LocalVoiceModule({
         <span>{probeText}</span>
         {probe.status === 'ready' && probe.result.health.device !== undefined ? <small>{probe.result.health.device}</small> : null}
       </div>
-      {selected === undefined
+      <div hidden={hide('mossVoice')}>{selected === undefined
         ? <button type="button" className="xmimo-tts-builtin-voice-trigger xmimo-tts-moss-voice-placeholder" disabled>{t('settings.mossVoiceProbeFirst')}</button>
         : <VoicePresetPicker
           value={mossVoice}
@@ -244,7 +246,7 @@ export function LocalVoiceModule({
             const voice = choices.find(item => item.id === value)
             if (voice !== undefined) onMossVoiceChange(voice.id, voice.name)
           }}
-        />}
+        />}</div>
       {localSpeechMode !== 'local-first' ? <small className="xmimo-tts-hint">{t(localSpeechMode === 'disabled' ? 'settings.mossLocalDisabledHint' : 'settings.mossLocalFirstHint')}</small> : null}
     </div>}
   </div>

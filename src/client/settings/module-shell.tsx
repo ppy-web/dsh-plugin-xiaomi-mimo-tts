@@ -15,10 +15,11 @@ export interface ModuleShellProps {
   ariaLabel?: string | undefined
   toggleId?: string
   controlsId?: string
+  hidden?: boolean
 }
 
 /** Shared DOM frame for settings cards. Content modules only own their body. */
-export function ModuleShell({ className, title, summary, interactiveSummary = false, action, children, collapsible = false, open = false, onToggle, toggleClassName = '', headingClassName = '', ariaLabel, toggleId, controlsId }: ModuleShellProps): ReactElement {
+export function ModuleShell({ className, title, summary, interactiveSummary = false, action, children, collapsible = false, open = false, onToggle, toggleClassName = '', headingClassName = '', ariaLabel, toggleId, controlsId, hidden }: ModuleShellProps): ReactElement {
   const toggleProps = {
     type: 'button' as const,
     id: toggleId,
@@ -32,7 +33,7 @@ export function ModuleShell({ className, title, summary, interactiveSummary = fa
     {summary}
   </span>
 
-  return <section className={`xmimo-ui-module ${className}`.trim()}>
+  return <section className={`xmimo-ui-module ${className}`.trim()} hidden={hidden}>
     <header className="xmimo-ui-module-header">
       {collapsible && interactiveSummary
         ? <div className={`xmimo-ui-module-toggle ${toggleClassName}`.trim()}>

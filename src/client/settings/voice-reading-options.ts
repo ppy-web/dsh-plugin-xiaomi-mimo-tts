@@ -152,11 +152,7 @@ export function readScopeWriteOps(scope: TtsReadScope): VoiceReadingWriteOp[] {
   return [{ op: 'set', path: ['readScope'], value: scope }]
 }
 
-/** Volume steps offered by the page (0 %–100 % in 20-point steps). */
-export const VOICE_VOLUME_STEPS = [0, 0.2, 0.4, 0.6, 0.8, 1] as const
-
-/** Playback speeds offered by the page. */
-export const VOICE_RATE_STEPS = [0.5, 0.8, 1, 1.2, 1.5, 1.8] as const
+export const VOICE_RATE_RANGE = { min: 0.5, max: 2, step: 0.1, center: 1 } as const
 
 /** `0.8` → `80%`, the same reading the settings card shows. */
 export function formatVoiceVolume(volume: number): string {

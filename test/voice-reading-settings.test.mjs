@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import {
   BREEZE_VOICE_PRESETS,
   DOUBAO_VOICE_PRESETS,
@@ -23,10 +25,12 @@ const {
   rateWriteOps,
   formatVoiceVolume,
   formatVoiceRate,
-  VOICE_VOLUME_STEPS,
-  VOICE_RATE_STEPS,
+  VOICE_RATE_RANGE,
 } = await loadClientModule('src/client/settings/voice-reading-options.ts')
 const { zh, en } = await loadClientModule('src/client/localization.ts')
+const { LensSlider } = await loadClientModule('src/client/settings/controls/lens-slider.tsx')
+const { ReadScopeCards } = await loadClientModule('src/client/settings/controls/read-scope-cards.tsx')
+const { centeredRangeScale } = await loadClientModule('src/client/settings/controls/use-settings-range.ts')
 
 test('credential warnings remain visible with local speech enabled for either provider', () => {
   for (const provider of ['xiaomi', 'doubao']) {
@@ -280,27 +284,60 @@ for (const scope of TTS_READ_SCOPES) test(`selecting the ${scope} read scope wri
   assert.deepEqual(readScopeWriteOps(scope), [{ op: 'set', path: ['readScope'], value: scope }])
 })
 
-test('volume and speed choices stay ordered, unique, and within the supported ranges', () => {
-  for (const [steps, min, max] of [[VOICE_VOLUME_STEPS, 0, 1], [VOICE_RATE_STEPS, 0.5, 2]]) {
-    assert.ok(steps.length > 0)
-    assert.deepEqual([...new Set(steps)].sort((a, b) => a - b), [...steps])
-    assert.ok(steps.every(step => step >= min && step <= max))
+test('only the selected scope has a description, outside the clickable card labels', () => {
+  for (const value of TTS_READ_SCOPES) {
+    const html = renderToStaticMarkup(createElement(ReadScopeCards, { value, t: key => key, onChange() {} }))
+    const labels = [...html.matchAll(/<label\b[^>]*>[\s\S]*?<\/label>/gu)].map(match => match[0])
+    const described = labels.filter(label => label.includes('aria-describedby='))
+    assert.equal(described.length, 1)
+    assert.match(described[0], /\bchecked=""/u)
+    for (const scope of TTS_READ_SCOPES) {
+      const hint = readScopeHintKey(scope)
+      assert.ok(labels.every(label => !label.includes(hint)))
+      assert.equal(html.includes(hint), scope === value)
+    }
   }
+})
+
+test('slider values use volume percentages and playback multipliers', () => {
   assert.equal(formatVoiceVolume(0.55), '55%')
   assert.equal(formatVoiceRate(1.7), '1.7×')
 })
 
-test('volume and speed selections write exactly their own setting', () => {
-  assert.deepEqual(volumeWriteOps(0.6), [{ op: 'set', path: ['voiceVolume'], value: 0.6 }])
-  assert.deepEqual(volumeWriteOps(0), [{ op: 'set', path: ['voiceVolume'], value: 0 }])
-  assert.deepEqual(rateWriteOps(1.2), [{ op: 'set', path: ['voiceRate'], value: 1.2 }])
-  assert.deepEqual(rateWriteOps(0.5), [{ op: 'set', path: ['voiceRate'], value: 0.5 }])
+test('the native sliders expose off-menu values and the full supported ranges to assistive tools', () => {
+  for (const [props, expected] of [
+    [{ value: 0.57, formatValue: formatVoiceVolume }, { min: '0', max: '1', step: '0.01', value: '0.57', 'aria-valuetext': '57%' }],
+    [{ value: 1.9, formatValue: formatVoiceRate, ...VOICE_RATE_RANGE }, { 'aria-valuemin': '0.5', 'aria-valuemax': '2', 'aria-valuenow': '1.9', 'aria-valuetext': '1.9×' }],
+  ]) {
+    const html = renderToStaticMarkup(createElement(LensSlider, { ...props, label: 'Playback', onChange() {} }))
+    const range = html.match(/<input\b[^>]*\btype="range"[^>]*>/u)?.[0]
+    assert.ok(range)
+    const attributes = Object.fromEntries([...range.matchAll(/([\w-]+)="([^"]*)"/gu)].map(([, key, value]) => [key, value]))
+    for (const [key, value] of Object.entries(expected)) assert.equal(attributes[key], value)
+  }
 })
 
-test('both volume and speed defaults are offered in their option lists', () => {
-  const defaults = resolveTtsSettings({})
-  assert.ok(VOICE_VOLUME_STEPS.includes(defaults.voiceVolume), 'default volume missing from the steps')
-  assert.ok(VOICE_RATE_STEPS.includes(defaults.voiceRate), 'default speed missing from the steps')
+test('the speed slider centers normal playback and preserves every supported speed', () => {
+  const { min, max, step, center } = VOICE_RATE_RANGE
+  const scale = centeredRangeScale(min, max, step, center)
+  assert.equal(scale.value(0), 0.5)
+  assert.equal(scale.value(0.5), 1)
+  assert.equal(scale.value(1), 2)
+  assert.equal(scale.position(1), 0.5)
+  assert.equal(scale.value(0.24), 0.7)
+  assert.equal(scale.value(0.76), 1.5)
+  for (let tenths = 5; tenths <= 20; tenths++) {
+    const rate = tenths / 10
+    assert.equal(scale.value(scale.position(rate)), rate)
+  }
+})
+
+test('volume and speed writes preserve arbitrary slider steps and their own fields', () => {
+  assert.deepEqual(volumeWriteOps(0.57), [{ op: 'set', path: ['voiceVolume'], value: 0.57 }])
+  assert.deepEqual(volumeWriteOps(0), [{ op: 'set', path: ['voiceVolume'], value: 0 }])
+  assert.deepEqual(rateWriteOps(1.7), [{ op: 'set', path: ['voiceRate'], value: 1.7 }])
+  assert.deepEqual(rateWriteOps(0.5), [{ op: 'set', path: ['voiceRate'], value: 0.5 }])
+  assert.deepEqual(rateWriteOps(2), [{ op: 'set', path: ['voiceRate'], value: 2 }])
 })
 
 for (const [kind, settings, field] of [

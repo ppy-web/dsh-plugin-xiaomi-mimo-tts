@@ -16,7 +16,7 @@
 .xmimo-read-scope-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(8px, 1.5cqi, 16px);
+  column-gap: clamp(6px, 1.5cqi, 16px);
 }
 
 .xmimo-read-scope-option,
@@ -25,7 +25,6 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 6px;
   cursor: pointer;
 }
 
@@ -44,10 +43,11 @@
 
 .xmimo-read-scope-card {
   display: flex;
+  flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 12px;
-  padding: 10px;
+  gap: clamp(6px, 2cqi, 12px);
+  padding: clamp(5px, 2cqi, 10px);
   border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
   border-radius: 12px;
   background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 65%, transparent);
@@ -66,7 +66,7 @@
   outline-offset: 3px;
 }
 
-.xmimo-read-scope-option > input:disabled ~ :is(.xmimo-read-scope-card, .xmimo-read-scope-hint) {
+.xmimo-read-scope-option > input:disabled + .xmimo-read-scope-card {
   opacity: 0.55;
   cursor: default;
 }
@@ -79,10 +79,14 @@
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
+  overflow-wrap: anywhere;
 }
+
+.xmimo-read-scope-heading .xmimo-tts-experimental-tag { white-space: nowrap; }
 
 .xmimo-read-scope-radio {
   box-sizing: border-box;
+  flex: none;
   width: 14px;
   height: 14px;
   margin-inline-start: auto;
@@ -97,6 +101,7 @@
 .xmimo-read-scope-sample {
   display: grid;
   gap: 9px;
+  margin-block-start: auto;
   padding-block: 2px;
 }
 
@@ -112,7 +117,7 @@
 }
 
 .xmimo-read-scope-skeleton-line:first-child {
-  margin-inline-start: 12px;
+  margin-inline-start: min(12px, 20%);
 }
 
 .xmimo-read-scope-skeleton-line:last-child {
@@ -128,10 +133,12 @@
 }
 
 .xmimo-read-scope-hint {
+  margin: 6px 0 0;
   padding-inline: 2px;
   color: var(--dsw-alias-label-secondary, #5f6875);
   font-size: 11px;
   line-height: 17px;
+  overflow-wrap: anywhere;
 }
 
 .xmimo-voice-reading-row.xmimo-voice-reading-scope-row {
@@ -140,6 +147,15 @@
   gap: 6px;
 }
 
-@container (max-width: 620px) {
-  .xmimo-read-scope-options { grid-template-columns: minmax(0, 1fr); }
+@container (max-width: 560px) {
+  .xmimo-read-scope-heading .xmimo-tts-experimental-tag { display: none; }
+}
+
+@container (max-width: 420px) {
+  .xmimo-read-scope-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px;
+  }
+  .xmimo-read-scope-radio { grid-column: 2; grid-row: 1; }
 }

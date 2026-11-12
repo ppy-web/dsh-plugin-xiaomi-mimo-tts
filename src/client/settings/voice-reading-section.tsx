@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactElement } from 'react'
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { resolveTtsSettings, TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
@@ -10,6 +10,7 @@ import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
 import { VoiceAvatar } from './controls/voice-avatar.js'
 import { ReadScopeCards } from './controls/read-scope-cards.js'
+import { LensSlider } from './controls/lens-slider.js'
 import { readVoiceIdHistory, readVoiceIdNames, subscribeVoiceIds, voiceIdRevision } from './voice-id-history.js'
 import { VoiceReadingHeaderActions } from './voice-reading-links.js'
 import {
@@ -22,8 +23,7 @@ import {
   soundWriteOps,
   voiceChoiceWriteOps,
   volumeWriteOps,
-  VOICE_RATE_STEPS,
-  VOICE_VOLUME_STEPS,
+  VOICE_RATE_RANGE,
 } from './voice-reading-options.js'
 import type { VoiceReadingWriteOp } from './voice-reading-options.js'
 import { useSettingsSnapshot } from './scope.js'
@@ -60,6 +60,112 @@ interface VoiceReadingPageProps {
   openPluginSettings: () => void
 }
 
+type ReadingRange = 'voiceVolume' | 'voiceRate'
+type ReadingRangeValues = Partial<Record<ReadingRange, number | undefined>>
+const RANGE_SAVE_DELAY = 250
+
+interface VoiceReadingRangesProps {
+  t: Translate
+  volume: number
+  rate: number
+  disabled: boolean
+  minimal: boolean
+  blocked: boolean
+  canWrite: () => boolean
+  onCommit: (ops: VoiceReadingWriteOp[]) => Promise<void>
+}
+
+/** Debounce the two sliders together so neither can write while the other is being dragged. */
+function VoiceReadingRanges({ t, volume, rate, disabled, blocked, minimal, canWrite, onCommit }: VoiceReadingRangesProps): ReactElement {
+  const [draft, setDraft] = useState<ReadingRangeValues>({})
+  const [revision, setRevision] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const active = useRef(new Set<ReadingRange>())
+  const queued = useRef(new Map<ReadingRange, number>())
+  const inFlight = useRef<Map<ReadingRange, number> | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const mounted = useRef(true)
+  const current = useRef({ canWrite, onCommit })
+  current.current = { canWrite, onCommit }
+  const wake = (): void => {
+    clearTimeout(timer.current)
+    setRevision(previous => previous + 1)
+  }
+
+  const flush = useCallback(async (): Promise<void> => {
+    if (active.current.size || inFlight.current || !queued.current.size || !current.current.canWrite()) return
+    const batch = queued.current
+    queued.current = new Map()
+    inFlight.current = batch
+    if (mounted.current) setSaving(true)
+    try {
+      await current.current.onCommit([...batch].flatMap(([field, value]) => field === 'voiceVolume' ? volumeWriteOps(value) : rateWriteOps(value)))
+    } finally {
+      inFlight.current = null
+      if (mounted.current) {
+        setDraft(previous => {
+          const next = { ...previous }
+          for (const field of batch.keys()) if (!active.current.has(field) && !queued.current.has(field)) delete next[field]
+          return next
+        })
+        setSaving(false)
+        setRevision(previous => previous + 1)
+      } else {
+        void flush()
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (disabled || blocked || active.current.size || !queued.current.size) return
+    const scheduled = setTimeout(() => { void flush() }, RANGE_SAVE_DELAY)
+    timer.current = scheduled
+    return () => { clearTimeout(scheduled) }
+  }, [blocked, disabled, flush, revision])
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      active.current.clear()
+      void flush()
+    }
+  }, [flush])
+
+  const controls = (field: ReadingRange, saved: number) => ({
+    value: draft[field] ?? saved,
+    disabled: disabled || (blocked && !saving),
+    minimal,
+    onInteractionStart() { active.current.add(field); wake() },
+    onChange(value: number) { setDraft(previous => ({ ...previous, [field]: value })) },
+    onInteractionCancel() {
+      active.current.delete(field)
+      setDraft(previous => ({ ...previous, [field]: queued.current.get(field) ?? inFlight.current?.get(field) }))
+      wake()
+    },
+    onInteractionEnd(value: number) {
+      active.current.delete(field)
+      if (value === (inFlight.current?.get(field) ?? saved)) {
+        queued.current.delete(field)
+        if (!inFlight.current?.has(field)) setDraft(previous => ({ ...previous, [field]: undefined }))
+      } else {
+        queued.current.set(field, value)
+      }
+      wake()
+    },
+  })
+
+  return <>
+    <div className="xmimo-voice-reading-row xmimo-voice-reading-range-row">
+      <span className="xmimo-voice-reading-row-title">{t('settings.voiceReadingVolume')}</span>
+      <LensSlider {...controls('voiceVolume', volume)} label={t('settings.voiceReadingVolume')} formatValue={formatVoiceVolume} />
+    </div>
+    <div className="xmimo-voice-reading-row xmimo-voice-reading-range-row">
+      <span className="xmimo-voice-reading-row-title">{t('settings.voiceReadingRate')}</span>
+      <LensSlider {...controls('voiceRate', rate)} {...VOICE_RATE_RANGE} label={t('settings.voiceReadingRate')} formatValue={formatVoiceRate} />
+    </div>
+  </>
+}
 
 function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_CHANGES }: VoiceReadingPageProps): ReactElement | null {
   useEngineState()
@@ -73,26 +179,27 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
   const library = useMemo(() => Object.fromEntries((['standard', 'cloned', 'breeze'] as const).map(kind => [kind, { history: readVoiceIdHistory(kind), names: readVoiceIdNames(kind) }])), [voiceRevision])
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  const writeInFlight = useRef(false)
   const settings = useMemo(() => resolveTtsSettings(snapshot.value), [snapshot.value])
   const source = useMemo(
     () => buildVoiceReadingVoiceSource(settings, [], library),
     [settings, library],
   )
 
-  const write = (ops: VoiceReadingWriteOp[]): void => {
-    if (changes.getSnapshot() || !snapshot.writable || ops.length === 0) return
+  const canWrite = (): boolean => !writeInFlight.current && !changes.getSnapshot() && scope.getSnapshot().writable
+  const write = async (ops: VoiceReadingWriteOp[]): Promise<void> => {
+    if (!canWrite() || ops.length === 0) return
+    writeInFlight.current = true
     setBusy(true)
     setFailed(false)
-    void scope.mutate(ops as Parameters<ConfigForm<TtsSettings>['mutate']>[0])
-      .then((ok) => {
-        if (!ok) setFailed(true)
-      })
-      .catch(() => {
-        setFailed(true)
-      })
-      .finally(() => {
-        setBusy(false)
-      })
+    try {
+      if (!await scope.mutate(ops as Parameters<ConfigForm<TtsSettings>['mutate']>[0])) setFailed(true)
+    } catch {
+      setFailed(true)
+    } finally {
+      writeInFlight.current = false
+      setBusy(false)
+    }
   }
 
   if (snapshot.status === 'unavailable') {
@@ -103,7 +210,8 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
   // "not ready" so the page never claims the deployment is read-only while the
   // real values are still arriving.
   const ready = snapshot.status === 'ready'
-  const disabled = changing || !ready || !snapshot.writable || busy
+  const unavailable = changing || !ready || !snapshot.writable
+  const disabled = unavailable || busy
   const hasStoredChoice = source.choices.some((choice) => choice.value === source.value)
   const voiceDesign = source.field === 'voiceDesignPrompt'
   const voiceProvider = voiceDesign ? 'xiaomi-design' : settings.provider
@@ -130,7 +238,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
     </div>
     {changing ? <p role="status">{t('plugin.changing')}</p> : null}
     <VoiceReadingProvider value={settings.provider} doubaoEnabled={settings.doubaoEnabled} breezeEnabled={settings.breezeEnabled} disabled={disabled} t={t} onChange={provider => {
-      write([{ op: 'set', path: ['provider'], value: provider }])
+      void write([{ op: 'set', path: ['provider'], value: provider }])
     }} />
     {ready ? <VoiceReadingWarning active={!changing} settings={settings} t={t} openPluginSettings={openPluginSettings} /> : null}
     {ready && !snapshot.writable && <p className="xmimo-voice-reading-notice" role="status">{t('settings.voiceReadingReadOnly')}</p>}
@@ -160,45 +268,17 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
           disabled={disabled || (external !== null && !external.configurable)}
           onSelect={(id) => {
             if (external && externalDraft.value) externalDraft.change({ ...externalDraft.value, voice: id })
-            else write(voiceChoiceWriteOps(source, id))
+            else void write(voiceChoiceWriteOps(source, id))
           }}
         />
       </div>
-      <div className="xmimo-voice-reading-row">
-        <div className="xmimo-voice-reading-copy">
-          <div className="xmimo-voice-reading-row-title">{t('settings.voiceReadingVolume')}</div>
-        </div>
-        <VoiceReadingSelect
-          label={t('settings.voiceReadingVolume')}
-          value={String(settings.voiceVolume)}
-          fallbackLabel={formatVoiceVolume(settings.voiceVolume)}
-          options={VOICE_VOLUME_STEPS.map((step) => ({ id: String(step), label: formatVoiceVolume(step) }))}
-          disabled={disabled}
-          onSelect={(id) => {
-            write(volumeWriteOps(Number(id)))
-          }}
-        />
-      </div>
-      <div className="xmimo-voice-reading-row">
-        <div className="xmimo-voice-reading-copy">
-          <div className="xmimo-voice-reading-row-title">{t('settings.voiceReadingRate')}</div>
-        </div>
-        <VoiceReadingSelect
-          label={t('settings.voiceReadingRate')}
-          value={String(settings.voiceRate)}
-          fallbackLabel={formatVoiceRate(settings.voiceRate)}
-          options={VOICE_RATE_STEPS.map((step) => ({ id: String(step), label: formatVoiceRate(step) }))}
-          disabled={disabled}
-          onSelect={(id) => {
-            write(rateWriteOps(Number(id)))
-          }}
-        />
-      </div>
+      <VoiceReadingRanges t={t} volume={settings.voiceVolume} rate={settings.voiceRate} disabled={unavailable}
+        blocked={busy} minimal={minimalMode} canWrite={canWrite} onCommit={write} />
       <div className="xmimo-voice-reading-row xmimo-voice-reading-scope-row">
         <div className="xmimo-voice-reading-copy">
           <div className="xmimo-voice-reading-row-title">{t('settings.readScope')}</div>
         </div>
-        <ReadScopeCards value={settings.readScope} disabled={disabled} t={t} onChange={next => { write(readScopeWriteOps(next)) }} />
+        <ReadScopeCards value={settings.readScope} disabled={disabled} t={t} onChange={next => { void write(readScopeWriteOps(next)) }} />
       </div>
       <div className="xmimo-voice-reading-row">
         <div className="xmimo-voice-reading-copy">
@@ -209,7 +289,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
           disabled={disabled}
           label={t('settings.voiceReadingAutoPlay')}
           onChange={(next) => {
-            write(autoPlayWriteOps(next, settings))
+            void write(autoPlayWriteOps(next, settings))
           }}
         />
       </div>
@@ -223,7 +303,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
           disabled={disabled}
           label={t('settings.voiceReadingSound')}
           onChange={(next) => {
-            write(soundWriteOps(next, settings))
+            void write(soundWriteOps(next, settings))
           }}
         />
       </div>
@@ -231,8 +311,13 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
     {external?.configurable ? <div className="xmimo-voice-reading-row">
       <Button type="button" variant="outline" size="sm" disabled={disabled || !externalDraft.dirty} onClick={externalDraft.discard}>{t('settings.discard')}</Button>
       <Button type="button" variant="primary" size="sm" disabled={disabled || !externalDraft.dirty} onClick={() => {
+        if (!canWrite()) return
+        writeInFlight.current = true
         setBusy(true); setFailed(false)
-        void externalDraft.save().catch(() => setFailed(true)).finally(() => setBusy(false))
+        void externalDraft.save().catch(() => setFailed(true)).finally(() => {
+          writeInFlight.current = false
+          setBusy(false)
+        })
       }}>{t(busy ? 'settings.saving' : 'settings.save')}</Button>
     </div> : null}
     {failed && <p className="xmimo-voice-reading-failure" role="status">{t('settings.voiceReadingSaveFailed')}</p>}

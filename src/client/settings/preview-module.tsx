@@ -3,6 +3,7 @@ import { RiDownloadLine, RiRadio2Line } from 'react-icons/ri'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PreviewError, PreviewRecording, PreviewSource, PreviewStatus } from '../playback/preview-player.js'
 import { CollapsibleModule } from './collapsible-module.js'
+import { useSettingsSearch } from './settings-search-context.js'
 import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS } from './announcement-settings.js'
 import type { AnnouncementSettingsProps } from './announcement-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
@@ -16,7 +17,7 @@ import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
 import { HistoryDownloads } from '../history/history-list.js'
 
-export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<ProviderSettingsProps, 't' | 'writable'> {
+export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<ProviderSettingsProps, 't' | 'writable' | 'visibleSettings'> {
   enabled: boolean
   status: PreviewStatus
   source: PreviewSource
@@ -32,6 +33,7 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<Prov
 }
 
 export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, externalSelection, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, ...settings }: PreviewModuleProps): ReactElement {
+  const { result: search, hide } = useSettingsSearch()
   useEngineState()
   const external = externalEngine()
   const externalTags = external?.models?.find(model => model.id === (externalSelection?.model ?? external.selection?.model))?.audioTags
@@ -90,6 +92,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
   return <CollapsibleModule className="xmimo-tts-settings-module xmimo-tts-broadcast"
     title={<span className="xmimo-ui-module-title"><RiRadio2Line size={14} aria-hidden="true" focusable="false" />{t('settings.previewTitle')}</span>}
     ariaLabel={t('settings.previewTitle')}
+    searchGroups={['preview', 'providers', 'host', 'sources', 'integrations']}
     open={open} onToggle={onToggleOpen} interactiveSummary
     summary={<><span className="xmimo-ui-summary">
       <TactileButton
@@ -110,7 +113,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
       {!open && status === 'error' ? <small className="xmimo-tts-preview-summary-status xmimo-tts-failed" role="status">{t(messageKey)}</small> : null}
     </>}>
     <div className="xmimo-tts-broadcast-body">
-      <div className="xmimo-tts-format">
+      <div className="xmimo-tts-format" hidden={hide('preview')}>
         <div className="xmimo-tts-preview-input">
           <textarea
             ref={textRef}
@@ -148,7 +151,7 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
         {downloadFailed ? <small className="xmimo-tts-failed" role="alert">{t('settings.previewDownloadFailed')}</small> : null}
       </div>
-      <ProviderSettings t={t} writable={settings.writable} providerLocked={external !== null} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} mossEnabled={mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange} />
+      <ProviderSettings t={t} writable={settings.writable} providerLocked={external !== null} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} mossEnabled={mossEnabled} visibleSettings={search?.visible} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange} />
       <AnnouncementSettings t={t} {...settings} parentOpen={open}>
       </AnnouncementSettings>
     </div>

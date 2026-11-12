@@ -9,6 +9,7 @@ import { SettingFieldHeading } from './field-heading.js'
 import { ModuleShell } from './module-shell.js'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
+import { useSettingsSearch } from './settings-search-context.js'
 
 const API_KEY_IDLE_COPY_KEYS = [
   'settings.apiKeyIdleCopy1',
@@ -46,6 +47,7 @@ export interface ApiKeyModuleProps {
 }
 
 export function ApiKeyModule({ t, provider, value, message, invalid, writable, minimal, onChange, onOpenProviderSettings }: ApiKeyModuleProps): ReactElement {
+  const { hide } = useSettingsSearch()
   const engineView = useEngineState()
   const external = externalEngine()
   if (external) { message = `${external.name} · ${t(engineView.status !== 'ready' ? 'settings.externalDisconnected' : external.ready ? 'settings.externalManaged' : 'settings.externalNotReady')}`; invalid = false; writable = false }
@@ -54,7 +56,7 @@ export function ApiKeyModule({ t, provider, value, message, invalid, writable, m
   const messageId = useId()
   const keyUrl = provider === 'doubao' ? 'https://console.volcengine.com/speech/new/setting/apikeys?projectName=default' : provider === 'breeze' ? 'https://breezeblue.ai/zh?code=JHKLSJ' : 'https://platform.xiaomimimo.com/console/api-keys'
 
-  return <ModuleShell className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-ui-module-padded" title={<SettingFieldHeading
+  return <ModuleShell hidden={hide('apiKey')} className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-ui-module-padded" title={<SettingFieldHeading
       label={<span className="xmimo-ui-module-title">
         <RiKey2Line size={14} aria-hidden="true" focusable="false" />
         {external ? external.name : provider === 'doubao' ? t('settings.providerDoubao') : provider === 'breeze' ? t('settings.providerBreeze') : <span

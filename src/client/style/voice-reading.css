@@ -292,6 +292,7 @@
  * the Host's hairline separators (same as the Host settings sections).
  */
 .xmimo-voice-reading-card {
+  container-type: inline-size;
   border: 0;
   border-radius: 0;
   padding: 0;
@@ -308,6 +309,37 @@
 
 .xmimo-voice-reading-row:last-child {
   border-bottom: 0;
+}
+
+.xmimo-voice-reading-range-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) min(54%, 220px);
+  gap: 12px;
+  padding-block: 8px;
+}
+
+.xmimo-voice-reading-range-row > .xmimo-tts-slider {
+  --slider-thumb-size: 54px;
+  --slider-lens-width: 40px;
+  --slider-rail-height: 20px;
+  height: 34px;
+}
+
+.xmimo-voice-reading-range-row > .xmimo-tts-slider-minimal {
+  --slider-thumb-size: 48px;
+  --slider-lens-width: 36px;
+  --slider-rail-height: 4px;
+  --slider-lens-height: 18px;
+}
+
+@media (pointer: coarse) {
+  .xmimo-voice-reading-range-row > .xmimo-tts-slider { height: 40px; }
+}
+
+@container (max-width: 240px) {
+  .xmimo-voice-reading-range-row {
+    gap: 6px;
+  }
 }
 
 .xmimo-voice-reading-provider {

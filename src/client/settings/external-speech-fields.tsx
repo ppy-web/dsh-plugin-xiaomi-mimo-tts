@@ -5,6 +5,7 @@ import { VoicePresetPicker } from './controls/built-in-voice-picker.js'
 import { SpeechInstructionPicker } from './controls/speech-instruction-picker.js'
 import { VoiceAvatar } from './controls/voice-avatar.js'
 import { SettingFieldHeading } from './field-heading.js'
+import { useSettingsSearch } from './settings-search-context.js'
 
 function CatalogPicker({ items, value, label, disabled, onChange, voiceScope }: {
   items: { id: string; name: string }[]; value: string; label: string; disabled: boolean; onChange: (value: string) => void
@@ -25,21 +26,22 @@ export function ExternalSpeechFields({ engine, selection = engine.selection, wri
 }): ReactElement {
   const model = engine.models?.find(item => item.id === selection?.model)
   const disabled = !writable || !engine.configurable || !selection
+  const { hide } = useSettingsSearch()
   return <>
-    <div className="xmimo-tts-model xmimo-tts-external-catalog">
+    <div className="xmimo-tts-model xmimo-tts-external-catalog" hidden={hide('model')}>
       <SettingFieldHeading label={t('settings.model')} resettable={false} disabled={disabled} />
       {engine.models?.length ? <CatalogPicker value={selection?.model ?? ''} items={engine.models} label={t('settings.model')} disabled={disabled} onChange={id => {
         const next = engine.models!.find(item => item.id === id)!
         onChange({ model: id, voice: next.voices.some(voice => voice.id === selection?.voice) ? selection!.voice : next.voices[0]?.id ?? '', speechInstruction: '' })
       }} /> : <input aria-label={t('settings.model')} value={engine.modelName ?? ''} disabled />}
     </div>
-    <div className="xmimo-tts-voice xmimo-tts-external-catalog">
+    <div className="xmimo-tts-voice xmimo-tts-external-catalog" hidden={hide('externalVoice')}>
       <SettingFieldHeading label={t('settings.voiceReadingVoice')} resettable={false} disabled={disabled} />
       {model?.voices.length ? <CatalogPicker value={selection?.voice ?? ''} items={model.voices} label={t('settings.voiceReadingVoice')} disabled={disabled}
         voiceScope={{ provider: engine.provider, model: model.id }} onChange={voice => onChange({ ...selection!, voice })} />
         : <input aria-label={t('settings.voiceReadingVoice')} value={engine.voiceName ?? ''} disabled />}
     </div>
-    <div className="xmimo-tts-voice xmimo-tts-speech-instruction">
+    <div className="xmimo-tts-voice xmimo-tts-speech-instruction" hidden={hide('instruction')}>
       <SettingFieldHeading label={t('settings.speechInstruction')} resettable={false} disabled={disabled || !model?.speechInstruction} />
       <SpeechInstructionPicker provider="external" value={selection?.speechInstruction ?? ''} disabled={disabled || !model?.speechInstruction} minimal={minimal} t={t}
         options={model?.instructions} onChange={speechInstruction => onChange({ ...selection!, speechInstruction })} />
