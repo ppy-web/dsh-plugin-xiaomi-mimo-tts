@@ -88,10 +88,10 @@ export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, on
       <div className="xmimo-tts-activation-footer">
         <div className="xmimo-tts-activation-actions">
           <Button type="button" variant="primary" onClick={() => window.open(SOURCE_URL, '_blank', 'noopener,noreferrer')}><LuStar size={16} aria-hidden="true" />{t('onboarding.github')}</Button>
-          <Button type="button" variant="outline" className="xmimo-tts-activation-workbench" onClick={openWorkbench} disabled={changing}><LuAudioLines size={16} aria-hidden="true" />{t('onboarding.configure')}</Button>
+          <Button type="button" variant="outline" onClick={openWorkbench} disabled={changing}><LuAudioLines size={16} aria-hidden="true" />{t('onboarding.configure')}</Button>
           <Button type="button" variant="ghost" disabled={saving} onClick={() => void neverRemind()}>{t('onboarding.never')}</Button>
-          {failed ? <p role="alert">{t('settings.failed')}</p> : null}
         </div>
+        {failed ? <div className="xmimo-tts-activation-feedback"><p role="alert">{t('settings.failed')}</p></div> : null}
         {changing ? <div className="xmimo-tts-activation-feedback">
           <p role="status">{t('plugin.changing')}</p>
         </div> : undefined}
