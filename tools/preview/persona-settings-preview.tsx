@@ -18,6 +18,22 @@ function componentScope<T extends object>(initial: T): ConfigForm<T> & { setWrit
   const listeners = new Set<() => void>()
   const base = structuredClone(initial)
   let snapshot: ConfigFormSnapshot<T> = { status: 'ready', value, base, user: {}, writable: true, revision }
+  const mutate = async (ops: readonly ({ op: 'set'; path: string[]; value: unknown } | { op: 'unset'; path: string[] })[], expectedRevision?: number): Promise<boolean> => {
+    if (!snapshot.writable || (expectedRevision !== undefined && expectedRevision !== revision)) return false
+    const next = structuredClone(value) as unknown as Record<string, unknown>
+    for (const op of ops) {
+      const [group, field] = op.path
+      if (!group) continue
+      const target = field ? next[group] as Record<string, unknown> : next
+      const key = field ?? group
+      if (op.op === 'set') target[key] = op.value
+      else target[key] = field ? (base[group as keyof T] as unknown as Record<string, unknown>)[field] : base[group as keyof T]
+    }
+    value = next as unknown as T
+    snapshot = { status: 'ready', value, base, user: value, writable: snapshot.writable, revision: ++revision }
+    for (const listener of listeners) listener()
+    return true
+  }
   const scope: ConfigForm<T> & { setWritable(writable: boolean): void } = {
     getSnapshot: () => snapshot,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
@@ -25,24 +41,9 @@ function componentScope<T extends object>(initial: T): ConfigForm<T> & { setWrit
       snapshot = { ...snapshot, writable }
       for (const listener of listeners) listener()
     },
-    async set(field, next) { return scope.mutate([{ op: 'set', path: [field], value: next }]) },
-    async unset(field) { return scope.mutate([{ op: 'unset', path: [field] }]) },
-    async mutate(ops, expectedRevision) {
-      if (!snapshot.writable || (expectedRevision !== undefined && expectedRevision !== revision)) return false
-      const next = structuredClone(value) as unknown as Record<string, unknown>
-      for (const op of ops) {
-        const [group, field] = op.path
-        if (!group) continue
-        const target = field ? next[group] as Record<string, unknown> : next
-        const key = field ?? group
-        if (op.op === 'set') target[key] = op.value
-        else target[key] = field ? (base[group as keyof T] as unknown as Record<string, unknown>)[field] : base[group as keyof T]
-      }
-      value = next as unknown as T
-      snapshot = { status: 'ready', value, base, user: value, writable: snapshot.writable, revision: ++revision }
-      for (const listener of listeners) listener()
-      return true
-    },
+    async set(field, next) { return mutate([{ op: 'set', path: [field], value: next }]) },
+    async unset(field) { return mutate([{ op: 'unset', path: [field] }]) },
+    mutate,
   }
   return scope
 }

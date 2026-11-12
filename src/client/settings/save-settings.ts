@@ -35,7 +35,7 @@ export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: S
   const acceptedValues = resolveTtsSettings(snapshot.value)
   const overridden = (field: string) => snapshot.user !== null && typeof snapshot.user === 'object' && Object.hasOwn(snapshot.user, field)
   const ops: Parameters<ConfigForm<TtsSettings>['mutate']>[0][number][] = []
-  const write = (field: EditableSettingField, value: unknown): void => {
+  const write = (field: EditableSettingField, value: SettingsValues[EditableSettingField]): void => {
     const change = changes[field]
     if (!change) return
     if (change.kind === 'set' && (Array.isArray(value) ? JSON.stringify(acceptedValues[field]) === JSON.stringify(value) : Object.is(acceptedValues[field], value))) return

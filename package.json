@@ -1,6 +1,6 @@
 {
   "name": "dsh-xiaomi-tts",
-  "version": "5.2.2",
+  "version": "5.3.0",
   "description": "小米MIMO、豆包语音、BreezeBlue、浏览器语音 - 音色随心配，支持连接10＋供应商或本地语音模型，文本过滤、实时流式朗读、音频下载、音效、桌宠联动及 QQ Bot、AI Passport 联动",
   "icon": "./assets/plugin-icons/avatar.webp",
   "license": "MIT",

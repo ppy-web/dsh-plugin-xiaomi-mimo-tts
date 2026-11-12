@@ -1,7 +1,5 @@
+<!-- 此文档用于展示插件封面，由用户手动维护，禁止写入 -->
+
 ![dsh-xiaomi-tts：小米与豆包语音朗读](assets/detail.svg)
 
-## 精简朗读：实验性探索
-
-精简模式使用本地规则过滤 Markdown，并在 150 字以内抽取原句，优先保留尾部有效段落；它不是理解全文后生成摘要。当前算法仍在实验性探索中，可能漏掉重点、误选内容，或遗漏限制条件、风险提示和指代上下文，导致口播不完整甚至产生误解。朗读结果不代表完整答复，也不能替代阅读原文；涉及删除、覆盖、迁移等操作时，请先核对完整回复中的条件与警告。需要完整信息时请选择全文朗读或阅读原文。
-
-详细使用说明见项目的 [用户手册](https://github.com/ppy-web/dsh-plugin-xiaomi-mimo-tts/blob/main/handbook.md)。
+[功能预览 · 使用帮助](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts) - [配套固件 · 鲸语通行证](https://github.com/ppy-web/whaletalk-passport#readme) - [配套插件 · 供应商适配器](https://github.com/ppy-web/dsh-speech-provider-adapter#readme)
