@@ -145,6 +145,8 @@ export const fr: Record<LocaleKey, string> = {
   'settings.importantAnnouncementsFirst': 'Priorité aux alertes importantes',
   'settings.importantAnnouncementsFirstHint': 'Les demandes de validation et les échecs des tâches peuvent interrompre une lecture ordinaire. La saisie vocale et la rédaction restent prioritaires.',
   'settings.hostIntegration': 'Intégration à DSH',
+  'settings.readingCaptions': 'Sous-titres en direct',
+  'settings.readingCaptionsHint': 'Affiche les sous-titres au-dessus du champ pendant la lecture.',
   'settings.showInHostSettings': 'Raccourci des paramètres DSH',
   'settings.showInHostSettingsHint': 'Affiche la lecture vocale dans les paramètres DSH. Enregistrez pour appliquer.',
   'settings.voiceInputCompatibility': 'Priorité à la saisie vocale',

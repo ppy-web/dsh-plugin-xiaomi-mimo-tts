@@ -33,7 +33,7 @@ interface SegmentPlaybackOptions {
   automatic: boolean
   onCreated: (audio: HTMLAudioElement) => void
   onReleased: (audio: HTMLAudioElement) => void
-  onStarted: () => void
+  onStarted: (audio: HTMLAudioElement) => void
 }
 
 /** One segment owns its media, listeners, cancellation settlement, and object URL. */
@@ -73,7 +73,7 @@ export function playSegmentAudio(blob: Blob, options: SegmentPlaybackOptions): P
     options.signal.addEventListener('abort', aborted, { once: true })
     if (options.signal.aborted) { aborted(); return }
     void audio.play().then(() => {
-      if (!settled && !options.signal.aborted) options.onStarted()
+      if (!settled && !options.signal.aborted) options.onStarted(audio)
     }).catch(() => finish(new Error(options.automatic ? 'autoplay-blocked' : 'play-failed')))
   })
 }

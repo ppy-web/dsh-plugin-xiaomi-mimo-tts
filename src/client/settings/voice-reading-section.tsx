@@ -319,6 +319,14 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
           }}
         />
       </div>
+      <div className="xmimo-voice-reading-row">
+        <div className="xmimo-voice-reading-copy">
+          <div className="xmimo-voice-reading-row-title">{t('settings.readingCaptions')}</div>
+          <div className="xmimo-voice-reading-row-hint">{t('settings.readingCaptionsHint')}</div>
+        </div>
+        <Switch checked={settings.showReadingCaptions} disabled={disabled} label={t('settings.readingCaptions')}
+          onChange={next => { void write([{ op: 'set', path: ['showReadingCaptions'], value: next }]) }} />
+      </div>
     </div>
     {failed && <p className="xmimo-voice-reading-failure" role="status">{t('settings.voiceReadingSaveFailed')}</p>}
   </div>

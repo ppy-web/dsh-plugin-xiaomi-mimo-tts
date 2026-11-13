@@ -8,16 +8,19 @@ import { ttsSelection } from '../../types/providers.js'
 import type { TtsSelection } from '../../types/providers.js'
 import type { ResolvedTtsSettings } from '../../types/settings.js'
 import { externalEngine, speechRequestBody, splitExternalText } from '../engine-state.js'
+import { mediaCaptionTiming, readingCaptionText } from './reading-captions.js'
+import type { ReadingCaptions } from './reading-captions.js'
 
 interface SynthesizedAudio {
   url: string
   audio: HTMLAudioElement
+  caption: string
   onEnded: () => void
   onError: () => void
 }
 
 export class PlaybackController {
-  constructor(private readonly history?: AudioHistory) {}
+  constructor(private readonly history?: AudioHistory, private readonly captions?: ReadingCaptions) {}
   autoPlayArmedAt = Date.now()
   private view: PlaybackView = { sessionId: null, messageId: null, source: null, status: 'idle', error: null }
   private readonly listeners = new Set<() => void>()
@@ -66,6 +69,7 @@ export class PlaybackController {
     this.generation += 1
     this.stopCurrent()
     this.segmentedState = null
+    this.captions?.clear(this)
     this.publish(this.emptyView())
   }
 
@@ -74,6 +78,7 @@ export class PlaybackController {
     this.generation += 1
     this.stopCurrent()
     this.segmentedState = null
+    this.captions?.clear(this)
     this.liveSessions.clear()
     this.completedSessions.clear()
     this.completedMessages.clear()
@@ -87,6 +92,7 @@ export class PlaybackController {
     this.segmentedState = null
     this.generation += 1
     this.stopCurrent()
+    this.captions?.clear(this)
     this.publish(this.emptyView())
   }
 
@@ -95,6 +101,7 @@ export class PlaybackController {
     this.generation += 1
     this.stopCurrent()
     this.segmentedState = null
+    this.captions?.clear(this)
     this.liveSessions.clear()
     this.completedSessions.clear()
     this.completedMessages.clear()
@@ -155,6 +162,7 @@ export class PlaybackController {
     if (this.activeSessionId !== sessionId || this.view.source !== 'segmented' || this.view.messageId !== messageId) return
     this.generation += 1
     this.stopCurrent()
+    this.captions?.setPaused(this, true)
     this.publish({ sessionId, messageId, source: 'segmented', status: 'paused', error: null })
   }
 
@@ -164,6 +172,7 @@ export class PlaybackController {
     const previous = this.segmentedState
     const resume = previous !== null && previous.sessionId === sessionId && previous.messageId === messageId
     this.stopCurrent()
+    if (!resume) this.captions?.clear(this)
     const segments = resume ? previous.segments : (externalEngine() ? splitExternalText(text) : this.selection?.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text, undefined, undefined, value => prepareProviderTtsText(value, this.selection ?? {})))
     const startIndex = resume ? previous.index : 0
     const voiceRate = resume ? previous.voiceRate : this.voiceRate
@@ -192,22 +201,26 @@ export class PlaybackController {
           signal: controller.signal, volume: this.volume, voiceRate, automatic,
           onCreated: audio => { this.segmentQueue.add(audio) },
           onReleased: audio => { this.segmentQueue.delete(audio) },
-          onStarted: () => {
+          onStarted: audio => {
             if (generation !== this.generation || this.activeSessionId !== sessionId) return
             audioStarted = true
+            this.captions?.show(this, sessionId, readingCaptionText(segments[index]!, this.selection), mediaCaptionTiming(audio))
             this.publish({ sessionId, messageId, source: 'segmented', status: 'playing', error: null })
           },
         })
         if (generation !== this.generation || this.activeSessionId !== sessionId) return
+        this.captions?.setPaused(this, true)
         state.index = index + 1
       }
       if (generation === this.generation && this.activeSessionId === sessionId) {
         this.segmentedState = null
+        this.captions?.clear(this)
         this.publish(this.emptyView())
       }
     } catch (error) {
       if (!controller.signal.aborted && generation === this.generation && this.activeSessionId === sessionId) {
         controller.abort()
+        this.captions?.clear(this)
         if (!audioStarted && fallback !== undefined) {
           this.segmentedState = null
           this.publish(this.emptyView())
@@ -231,6 +244,7 @@ export class PlaybackController {
         try {
           await audio.play()
           if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+          this.captions?.show(this, sessionId, this.current.caption, mediaCaptionTiming(audio))
           this.publish({ sessionId, messageId, source: 'complete', status: 'playing', error: null })
         } catch {
           if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
@@ -238,6 +252,7 @@ export class PlaybackController {
         }
       } else {
         audio.pause()
+        this.captions?.setPaused(this, true)
         this.publish({ sessionId, messageId, source: 'complete', status: 'paused', error: null })
       }
       return
@@ -249,6 +264,7 @@ export class PlaybackController {
     }
 
     this.stopCurrent()
+    this.captions?.clear(this)
     const selection = this.selection
     const voiceRateApplied = !externalEngine() && (selection?.provider === 'doubao' || selection?.provider === 'breeze')
     const voiceRate = voiceRateApplied ? 1 : this.voiceRate
@@ -289,14 +305,17 @@ export class PlaybackController {
       const current: SynthesizedAudio = {
         url,
         audio,
+        caption: readingCaptionText(text, selection),
         onEnded: () => {
           if (this.activeSessionId !== sessionId || this.current?.audio !== audio) return
           this.releaseCurrentAudio(audio)
+          this.captions?.clear(this)
           this.publish(this.emptyView())
         },
         onError: () => {
           if (this.activeSessionId !== sessionId || this.current?.audio !== audio) return
           this.releaseCurrentAudio(audio)
+          this.captions?.clear(this)
           this.publish({ sessionId, messageId, source: 'complete', status: 'error', error: 'play-failed' })
         },
       }
@@ -308,6 +327,7 @@ export class PlaybackController {
       try {
         await audio.play()
         if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+        this.captions?.show(this, sessionId, current.caption, mediaCaptionTiming(audio))
         this.publish({ sessionId, messageId, source: 'complete', status: 'playing', error: null })
       } catch {
         if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
@@ -315,6 +335,7 @@ export class PlaybackController {
       }
     } catch (error) {
       if (controller.signal.aborted || generation !== this.generation || this.activeSessionId !== sessionId) return
+      this.captions?.clear(this)
       if (!audioCreated && fallback !== undefined) {
         this.request = null
         this.publish(this.emptyView())
@@ -336,6 +357,7 @@ export class PlaybackController {
     this.generation += 1
     this.stopCurrent()
     this.segmentedState = null
+    this.captions?.clear(this)
     this.liveSessions.clear()
     this.completedSessions.clear()
     this.completedMessages.clear()

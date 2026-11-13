@@ -145,6 +145,8 @@ export const ja: Record<LocaleKey, string> = {
   'settings.importantAnnouncementsFirst': '重要な通知を優先',
   'settings.importantAnnouncementsFirstHint': '承認待ちとバックグラウンドタスク失敗の通知は通常の読み上げを中断できます。音声入力と入力中の抑制を優先します。',
   'settings.hostIntegration': 'ホスト連携',
+  'settings.readingCaptions': 'リアルタイム字幕',
+  'settings.readingCaptionsHint': '読み上げに合わせて入力欄の上に字幕を表示します。',
   'settings.showInHostSettings': 'ホスト設定の入口',
   'settings.showInHostSettingsHint': 'DSH 設定に「音声読み上げ」の設定を表示します。保存後に適用されます。',
   'settings.voiceInputCompatibility': '音声入力を優先',

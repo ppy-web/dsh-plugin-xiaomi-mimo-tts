@@ -72,6 +72,8 @@ export const zh = {
   'settings.announcementsNone': '未启用来源',
 
   'settings.hostIntegration': '宿主适配',
+  'settings.readingCaptions': '实时字幕',
+  'settings.readingCaptionsHint': '朗读时在输入框上方显示逐句滚动的字幕',
   'settings.inputAvoidance': '输入时避让',
   'settings.inputAvoidanceHint': '输入框聚焦且有未发送内容时停止自动播报，离开或清空后恢复；',
   'settings.importantAnnouncementsFirst': '重要提醒优先',
@@ -638,6 +640,8 @@ export const en: Record<keyof typeof zh, string> = {
 
   'settings.hostIntegration': 'Host integration',
   'settings.inputAvoidance': 'Yield while composing',
+  'settings.readingCaptions': 'Live captions',
+  'settings.readingCaptionsHint': 'Show captions above the composer as each segment is read.',
   'settings.inputAvoidanceHint': 'Stop automatic speech while the focused composer contains a draft. Leaving or clearing it permits new speech;',
   'settings.importantAnnouncementsFirst': 'Prioritize important alerts',
   'settings.importantAnnouncementsFirstHint': 'Approval requests and failed background jobs may interrupt ordinary speech. Voice input and composing still take precedence.',

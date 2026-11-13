@@ -93,6 +93,7 @@ export const Config = z.object({
   voiceDesignPlaybackMode: z.union(TTS_VOICE_DESIGN_PLAYBACK_MODES).default(DEFAULT_TTS_SETTINGS.voiceDesignPlaybackMode).volatile(),
   readScope: z.union([...TTS_READ_SCOPES, 'first-segment'] as const).default(DEFAULT_TTS_SETTINGS.readScope).volatile(),
   autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay).volatile(),
+  showReadingCaptions: z.boolean().default(DEFAULT_TTS_SETTINGS.showReadingCaptions).volatile(),
   voiceInputCompatibility: z.boolean().default(DEFAULT_TTS_SETTINGS.voiceInputCompatibility).volatile(),
   inputAvoidance: z.boolean().default(DEFAULT_TTS_SETTINGS.inputAvoidance).volatile(),
   importantAnnouncementsFirst: z.boolean().default(DEFAULT_TTS_SETTINGS.importantAnnouncementsFirst).volatile(),

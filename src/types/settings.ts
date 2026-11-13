@@ -54,6 +54,7 @@ export interface TtsSettings {
   voiceDesignPlaybackMode?: TtsVoiceDesignPlaybackMode
   readScope?: TtsReadScope | 'first-segment'
   autoPlay?: boolean
+  showReadingCaptions?: boolean
   voiceInputCompatibility?: boolean
   inputAvoidance?: boolean
   importantAnnouncementsFirst?: boolean
@@ -111,6 +112,7 @@ export interface ResolvedTtsSettings {
   voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
   readScope: TtsReadScope
   autoPlay: boolean
+  showReadingCaptions: boolean
   voiceInputCompatibility: boolean
   inputAvoidance: boolean
   importantAnnouncementsFirst: boolean
@@ -169,6 +171,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   voiceDesignPlaybackMode: 'complete',
   readScope: 'smart',
   autoPlay: false,
+  showReadingCaptions: false,
   voiceInputCompatibility: true,
   inputAvoidance: false,
   importantAnnouncementsFirst: false,

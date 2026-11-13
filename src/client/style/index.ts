@@ -16,6 +16,7 @@
  * new one if needed) and add its import here in cascade order.
  */
 import action from './action.css?raw'
+import readingCaption from './reading-caption.css?raw'
 import base from './base.css?raw'
 import apiKey from './api-key.css?raw'
 import card from './card.css?raw'
@@ -42,6 +43,7 @@ import tactileControl from './tactile-control.css?raw'
 
 export const CLIENT_STYLES = [
   action,
+  readingCaption,
   base,
   apiKey,
   card,

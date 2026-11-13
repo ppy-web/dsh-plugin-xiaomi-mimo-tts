@@ -17,6 +17,10 @@ export interface AnnouncementSettingsProps {
   onVoiceInputCompatibilityChange: (enabled: boolean) => void
   voiceInputCompatibilityOverridden: boolean
   onVoiceInputCompatibilityReset: () => void
+  showReadingCaptions: boolean
+  onShowReadingCaptionsChange: (enabled: boolean) => void
+  showReadingCaptionsOverridden: boolean
+  onShowReadingCaptionsReset: () => void
   showInHostSettings: boolean
   showFeatureGuide: boolean
   onShowFeatureGuideChange: (enabled: boolean) => void
@@ -63,12 +67,13 @@ const SOURCE_GROUPS = [
   { label: 'settings.announcementsPlugins', hint: 'settings.announcementsPluginsHint', options: PLUGIN_SOURCE_OPTIONS },
 ] as const
 
-export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, voiceInputCompatibility, onVoiceInputCompatibilityChange, voiceInputCompatibilityOverridden, onVoiceInputCompatibilityReset, showInHostSettings, onShowInHostSettingsChange, showInHostSettingsOverridden, onShowInHostSettingsReset, showFeatureGuide, onShowFeatureGuideChange, showFeatureGuideOverridden, onShowFeatureGuideReset, acceptExternalProviders, onAcceptExternalProvidersChange, acceptExternalProvidersOverridden, onAcceptExternalProvidersReset, inputAvoidance, onInputAvoidanceChange, inputAvoidanceOverridden, onInputAvoidanceReset, importantAnnouncementsFirst, onImportantAnnouncementsFirstChange, importantAnnouncementsFirstOverridden, onImportantAnnouncementsFirstReset, writable, overridden, onChange, onReset, parentOpen = true }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
+export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, voiceInputCompatibility, onVoiceInputCompatibilityChange, voiceInputCompatibilityOverridden, onVoiceInputCompatibilityReset, showReadingCaptions, onShowReadingCaptionsChange, showReadingCaptionsOverridden, onShowReadingCaptionsReset, showInHostSettings, onShowInHostSettingsChange, showInHostSettingsOverridden, onShowInHostSettingsReset, showFeatureGuide, onShowFeatureGuideChange, showFeatureGuideOverridden, onShowFeatureGuideReset, acceptExternalProviders, onAcceptExternalProvidersChange, acceptExternalProvidersOverridden, onAcceptExternalProvidersReset, inputAvoidance, onInputAvoidanceChange, inputAvoidanceOverridden, onInputAvoidanceReset, importantAnnouncementsFirst, onImportantAnnouncementsFirstChange, importantAnnouncementsFirstOverridden, onImportantAnnouncementsFirstReset, writable, overridden, onChange, onReset, parentOpen = true }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   const showMore = search !== null && (search.groups.has('host') || search.groups.has('sources') || search.groups.has('integrations'))
   const moreSettings = useNestedDisclosure(parentOpen, showMore)
   const hostOptions = [
     { label: 'settings.voiceInputCompatibility', hint: 'settings.voiceInputCompatibilityHint', checked: voiceInputCompatibility, overridden: voiceInputCompatibilityOverridden, onChange: onVoiceInputCompatibilityChange, onReset: onVoiceInputCompatibilityReset },
+    { label: 'settings.readingCaptions', hint: 'settings.readingCaptionsHint', checked: showReadingCaptions, overridden: showReadingCaptionsOverridden, onChange: onShowReadingCaptionsChange, onReset: onShowReadingCaptionsReset },
     { label: 'settings.showInHostSettings', hint: 'settings.showInHostSettingsHint', checked: showInHostSettings, overridden: showInHostSettingsOverridden, onChange: onShowInHostSettingsChange, onReset: onShowInHostSettingsReset },
     { label: 'settings.showFeatureGuide', hint: 'settings.showFeatureGuideHint', checked: showFeatureGuide, overridden: showFeatureGuideOverridden, onChange: onShowFeatureGuideChange, onReset: onShowFeatureGuideReset },
     { label: 'settings.acceptExternalProviders', hint: 'settings.acceptExternalProvidersHint', checked: acceptExternalProviders, overridden: acceptExternalProvidersOverridden, onChange: onAcceptExternalProvidersChange, onReset: onAcceptExternalProvidersReset },

@@ -21,6 +21,8 @@ import { ttsSelection } from '../../types/providers.js'
 import type { TtsSelection } from '../../types/providers.js'
 import type { ResolvedTtsSettings } from '../../types/settings.js'
 import { engineMaxTextLength, externalEngine, externalText, splitExternalText } from '../engine-state.js'
+import { readingCaptionText } from './reading-captions.js'
+import type { ReadingCaptions } from './reading-captions.js'
 
 interface DuplexJob {
   text: string[]
@@ -39,15 +41,20 @@ interface CompletedStreamPlayback {
 
 export class LiveSpeechController {
   isBusy = (): boolean => this.requestBusy || this.audioBusy || ['loading', 'playing', 'paused'].includes(this.status)
-  constructor(private readonly history?: AudioHistory) {}
+  constructor(private readonly history?: AudioHistory, private readonly captions?: ReadingCaptions) {}
   private readonly audio = new PcmAudioQueue({
     onBusyChange: (busy) => {
       this.audioBusy = busy
+      if (!busy) {
+        if (this.requestBusy) this.captions?.setPaused(this, true)
+        else this.captions?.clear(this)
+      }
       this.maybeFinishPlayback()
     },
-    onPlaybackStart: () => this.setStatus('playing'),
+    onPlaybackStart: () => { this.captions?.setPaused(this, false); this.setStatus('playing') },
   })
   private streamGeneration = 0
+  private pauseTransition = 0
   private queue = this.createQueue()
   private active: LiveSpeechCursor | null = null
   private observed = ''
@@ -121,12 +128,17 @@ export class LiveSpeechController {
   async pause(sessionId: string): Promise<boolean> {
     if (this.sessionId !== sessionId || this.status !== 'playing') return false
     const generation = this.streamGeneration
+    const transition = ++this.pauseTransition
     this.setStatus('paused')
+    this.captions?.setPaused(this, true)
     try {
       await this.audio.pause()
-      return this.sessionId === sessionId && generation === this.streamGeneration
+      return this.sessionId === sessionId && generation === this.streamGeneration && transition === this.pauseTransition
     } catch {
-      if (this.sessionId === sessionId && generation === this.streamGeneration) this.setStatus('playing')
+      if (this.sessionId === sessionId && generation === this.streamGeneration && transition === this.pauseTransition) {
+        this.setStatus('playing')
+        this.captions?.setPaused(this, false)
+      }
       return false
     }
   }
@@ -134,13 +146,15 @@ export class LiveSpeechController {
   async resume(sessionId: string): Promise<boolean> {
     if (this.sessionId !== sessionId || this.status !== 'paused') return false
     const generation = this.streamGeneration
+    const transition = ++this.pauseTransition
     try {
       await this.audio.resume()
-      if (this.sessionId !== sessionId || generation !== this.streamGeneration) return false
+      if (this.sessionId !== sessionId || generation !== this.streamGeneration || transition !== this.pauseTransition) return false
       this.setStatus('playing')
+      this.captions?.setPaused(this, false)
       return true
     } catch {
-      if (this.sessionId !== sessionId || generation !== this.streamGeneration) return false
+      if (this.sessionId !== sessionId || generation !== this.streamGeneration || transition !== this.pauseTransition) return false
       this.setStatus('error')
       this.replaceQueue()
       this.audio.stop()
@@ -393,12 +407,27 @@ export class LiveSpeechController {
     const recording = new PcmRecording()
     const sessionId = this.sessionId
     const messageId = this.messageId
+    const caption = readingCaptionText(sentence, this.selection)
+    const playbackRate = this.audio.getPlaybackRate()
+    const captionRate = externalEngine() || this.selection.provider === 'xiaomi' ? playbackRate : this.voiceRate
+    let pcmBytes = 0
+    let complete = false
+    let firstChunk = true
     try {
       await streamPcmAudio(sentence, signal, async (pcm) => {
         if (!this.isCurrentStream(generation, signal)) return
         recording.append(pcm)
-        await this.audio.enqueue(pcm)
+        pcmBytes += Math.floor(pcm.length * 3 / 4) - (pcm.endsWith('==') ? 2 : pcm.endsWith('=') ? 1 : 0)
+        const onStart = firstChunk && this.captions !== undefined ? () => {
+          if (this.isCurrentStream(generation, signal)) this.captions?.show(this, sessionId, caption, {
+            rate: captionRate,
+            duration: () => complete ? pcmBytes / 48000 / playbackRate : Number.NaN,
+          })
+        } : undefined
+        firstChunk = false
+        await this.audio.enqueue(pcm, onStart)
       }, this.selection)
+      complete = true
       if (this.isCurrentStream(generation, signal)) recording.save(this.history, {
         text: sentence, source: 'conversation',
         ...(sessionId === null ? {} : { sessionId }),
@@ -495,6 +524,7 @@ export class LiveSpeechController {
   }
 
   private setStatus(status: PlaybackStatus): void {
+    if (status === 'idle' || status === 'error') this.captions?.clear(this)
     if (status !== 'error') this.playbackError = null
     if (this.status === status) return
     this.status = status

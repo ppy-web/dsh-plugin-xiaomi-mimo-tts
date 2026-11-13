@@ -12,7 +12,7 @@ interface MossAudioOptions {
   volume: number
   rate: number
   timeoutMs?: number
-  onStart?: () => void
+  onStart?: (audio: HTMLAudioElement) => void
 }
 
 /**
@@ -52,7 +52,7 @@ export function playMossAudio(blob: Blob, options: MossAudioOptions): MossAudioH
   const markStarted = (): void => {
     if (started) return
     started = true
-    options.onStart?.()
+    options.onStart?.(audio)
   }
 
   audio.onplaying = markStarted

@@ -49,6 +49,7 @@ const ENTRIES = {
   doubaoEnabled: { group: 'providers', terms: ['settings.providerDoubao'], aliases: 'Doubao Seed' },
   breezeEnabled: { group: 'providers', terms: ['settings.breezeEnabled'] },
   mossEnabled: { group: 'providers', terms: ['settings.mossProvider'] },
+  'settings.readingCaptions': { group: 'host', terms: ['settings.readingCaptions', 'settings.readingCaptionsHint'], aliases: '字幕 captions subtitles' },
   'settings.voiceInputCompatibility': { group: 'host', terms: ['settings.voiceInputCompatibility', 'settings.voiceInputCompatibilityHint'] },
   'settings.showInHostSettings': { group: 'host', terms: ['settings.showInHostSettings', 'settings.showInHostSettingsHint'] },
   'settings.showFeatureGuide': { group: 'host', terms: ['settings.showFeatureGuide', 'settings.showFeatureGuideHint'] },

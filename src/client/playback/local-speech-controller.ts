@@ -6,6 +6,7 @@ import { applySpeechVoiceRate } from './voice-rate.js'
 import { fetchMossAudio, MossRequestError } from '../moss-service.js'
 import { playMossAudio } from './moss-playback.js'
 import type { MossAudioHandle } from './moss-playback.js'
+import { mediaCaptionTiming, type ReadingCaptions } from './reading-captions.js'
 
 function browserVoices(): SpeechSynthesisVoice[] {
   if (typeof window === 'undefined' || window.speechSynthesis === undefined) return []
@@ -23,6 +24,7 @@ function chooseVoice(value: string): SpeechSynthesisVoice | undefined {
 }
 
 export class LocalSpeechController {
+  constructor(private readonly captions?: ReadingCaptions) {}
   isBusy = (): boolean => ['loading', 'playing', 'paused'].includes(this.status)
   private queue = this.createQueue()
   private generation = 0
@@ -340,6 +342,7 @@ export class LocalSpeechController {
       const finish = (error?: Error): void => {
         if (settled) return
         settled = true
+        if (this.current === utterance && generation === this.generation) this.captions?.clear(this)
         cleanup()
         if (error === undefined) resolve()
         else reject(error)
@@ -348,7 +351,7 @@ export class LocalSpeechController {
         if (this.current === utterance) window.speechSynthesis.cancel()
         finish()
       }
-      utterance.onstart = () => { if (generation === this.generation && !signal.aborted) { this.audioStarted = true; this.setStatus('playing') } }
+      utterance.onstart = () => { if (generation === this.generation && !signal.aborted) { this.audioStarted = true; this.captions?.show(this, this.sessionId, text, { rate: this.activeVoiceRate }); this.setStatus('playing') } }
       utterance.onend = () => finish()
       utterance.onerror = (event) => {
         if (signal.aborted || event.error === 'canceled' || event.error === 'interrupted') finish()
@@ -385,9 +388,10 @@ export class LocalSpeechController {
       volume: this.volume,
       rate: this.activeVoiceRate,
       timeoutMs: this.timeoutMs,
-      onStart: () => {
+      onStart: audio => {
         if (generation !== this.generation || signal.aborted) return
         this.audioStarted = true
+        this.captions?.show(this, this.sessionId, text, mediaCaptionTiming(audio))
         this.setStatus('playing')
       },
     })
@@ -398,11 +402,13 @@ export class LocalSpeechController {
       await handle.done
     } finally {
       signal.removeEventListener('abort', abort)
-      if (this.mossHandle === handle) this.mossHandle = null
+      if (this.mossHandle === handle) { this.mossHandle = null; this.captions?.clear(this) }
     }
   }
 
   private setStatus(status: PlaybackStatus, error: string | null = null): void {
+    if (status === 'idle' || status === 'error') this.captions?.clear(this)
+    if (status === 'paused' || status === 'playing') this.captions?.setPaused(this, status === 'paused')
     if (this.status === status && this.error === error) return
     this.status = status
     this.error = status === 'error' ? error : null

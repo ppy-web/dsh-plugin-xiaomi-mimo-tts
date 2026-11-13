@@ -132,6 +132,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [qqbotEnabled, setQqbotEnabled] = useState(initial.qqbotEnabled)
   const [enabled, setEnabled] = useState(initial.enabled)
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
+  const [showReadingCaptions, setShowReadingCaptions] = useState(initial.showReadingCaptions)
   const [voiceInputCompatibility, setVoiceInputCompatibility] = useState(initial.voiceInputCompatibility)
   const [inputAvoidance, setInputAvoidance] = useState(initial.inputAvoidance)
   const [importantAnnouncementsFirst, setImportantAnnouncementsFirst] = useState(initial.importantAnnouncementsFirst)
@@ -184,7 +185,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { showInSidebar, showInHostSettings, showFeatureGuide, acceptExternalProviders, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, voiceInputCompatibility, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { showInSidebar, showInHostSettings, showFeatureGuide, acceptExternalProviders, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, showReadingCaptions, voiceInputCompatibility, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -243,6 +244,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
+    setShowReadingCaptions(next.showReadingCaptions)
     setVoiceInputCompatibility(next.voiceInputCompatibility)
     setInputAvoidance(next.inputAvoidance)
     setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
@@ -314,6 +316,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'qqbotEnabled') setQqbotEnabled(base.qqbotEnabled)
     if (field === 'enabled') setEnabled(base.enabled)
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
+    if (field === 'showReadingCaptions') setShowReadingCaptions(base.showReadingCaptions)
     if (field === 'voiceInputCompatibility') setVoiceInputCompatibility(base.voiceInputCompatibility)
     if (field === 'inputAvoidance') setInputAvoidance(base.inputAvoidance)
     if (field === 'importantAnnouncementsFirst') setImportantAnnouncementsFirst(base.importantAnnouncementsFirst)
@@ -365,6 +368,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
+    setShowReadingCaptions(next.showReadingCaptions)
     setVoiceInputCompatibility(next.voiceInputCompatibility)
     setInputAvoidance(next.inputAvoidance)
     setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
@@ -666,6 +670,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onShowInHostSettingsChange={next => { setShowInHostSettings(next); markChange('showInHostSettings') }}
           showInHostSettingsOverridden={fieldOverridden('showInHostSettings')}
           onShowInHostSettingsReset={() => resetField('showInHostSettings')}
+          showReadingCaptions={showReadingCaptions}
+          onShowReadingCaptionsChange={next => { setShowReadingCaptions(next); markChange('showReadingCaptions') }}
+          showReadingCaptionsOverridden={fieldOverridden('showReadingCaptions')}
+          onShowReadingCaptionsReset={() => resetField('showReadingCaptions')}
           inputAvoidance={inputAvoidance}
           onInputAvoidanceChange={next => { setInputAvoidance(next); markChange('inputAvoidance') }}
           inputAvoidanceOverridden={fieldOverridden('inputAvoidance')}

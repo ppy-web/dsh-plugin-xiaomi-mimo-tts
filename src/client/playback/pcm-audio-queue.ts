@@ -14,7 +14,9 @@ export class PcmAudioQueue {
   private scheduledAt = 0
   private readonly sources = new Set<AudioBufferSourceNode>()
   private readonly sourceBytes = new Map<AudioBufferSourceNode, number>()
+  private readonly markers = new Set<AudioBufferSourceNode>()
   private revision = 0
+  private controlRevision = 0
   private chain: Promise<void> = Promise.resolve()
   private busy = false
   private userPaused = false
@@ -37,17 +39,24 @@ export class PcmAudioQueue {
   }
 
   setPlaybackRate(value: number): void { this.playbackRate = normalizeVoiceRate(value) }
+  getPlaybackRate(): number { return this.playbackRate }
 
   async pause(): Promise<void> {
-    const revision = this.revision
+    const control = ++this.controlRevision
     const context = this.context
     this.userPaused = true
-    if (context !== null && context.state === 'running') await context.suspend()
-    if (revision !== this.revision && context === this.context && context !== null
+    try {
+      if (context !== null && context.state === 'running') await context.suspend()
+    } catch (error) {
+      if (control === this.controlRevision) this.userPaused = false
+      throw error
+    }
+    if (context === this.context && context !== null
       && !this.userPaused && this.sources.size > 0 && context.state !== 'running') await context.resume()
   }
 
   async resume(): Promise<void> {
+    this.controlRevision += 1
     const revision = this.revision
     const context = this.context
     if (context !== null && context.state !== 'running') await context.resume()
@@ -55,19 +64,20 @@ export class PcmAudioQueue {
     else if (context === this.context && context !== null && this.userPaused && context.state === 'running') await context.suspend()
   }
 
-  enqueue(base64: string): Promise<void> {
-    return this.enqueueBytes(Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)))
+  enqueue(base64: string, onStart?: () => void): Promise<void> {
+    return this.enqueueBytes(Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)), onStart)
   }
 
-  enqueueBytes(bytes: Uint8Array): Promise<void> {
+  enqueueBytes(bytes: Uint8Array, onStart?: () => void): Promise<void> {
     const revision = this.revision
-    const run = this.chain.then(() => this.schedule(bytes, revision))
+    const run = this.chain.then(() => this.schedule(bytes, revision, onStart))
     this.chain = run.catch(() => {})
     return run
   }
 
   stop(): void {
     this.revision += 1
+    this.controlRevision += 1
     this.scheduledAt = 0
     this.chain = Promise.resolve()
     this.userPaused = false
@@ -81,6 +91,10 @@ export class PcmAudioQueue {
     }
     this.sources.clear()
     this.sourceBytes.clear()
+    for (const marker of this.markers) {
+      try { marker.stop() } catch { /* A marker may already have ended. */ }
+    }
+    this.markers.clear()
     this.setBusy(false)
   }
 
@@ -93,7 +107,7 @@ export class PcmAudioQueue {
     if (context !== null && context.state !== 'closed') await context.close()
   }
 
-  private async schedule(bytes: Uint8Array, revision: number): Promise<void> {
+  private async schedule(bytes: Uint8Array, revision: number, onStart?: () => void): Promise<void> {
     if (revision !== this.revision) {
       return
     }
@@ -138,8 +152,31 @@ export class PcmAudioQueue {
       this.sourceBytes.delete(source)
       throw error
     }
+    if (onStart !== undefined) this.scheduleMarker(context, startAt, revision, onStart)
     this.setBusy(true)
     if (!this.userPaused && context.state === 'running') this.callbacks.onPlaybackStart()
+  }
+
+  /** A silent one-sample marker fires on the audio clock, including after a pause. */
+  private scheduleMarker(context: AudioContext, startAt: number, revision: number, onStart: () => void): void {
+    let marker: AudioBufferSourceNode | undefined
+    try {
+      marker = context.createBufferSource()
+      const scheduled = marker
+      marker.buffer = context.createBuffer(1, 1, 24000)
+      marker.connect(this.getGain(context))
+      this.markers.add(marker)
+      marker.addEventListener('ended', () => {
+        this.markers.delete(scheduled)
+        try { scheduled.disconnect() } catch { /* The cue is already detached. */ }
+        if (revision === this.revision && this.sources.size > 0) onStart()
+      }, { once: true })
+      // End the silent marker exactly as the first sample begins, including for tiny PCM chunks.
+      marker.start(startAt - marker.buffer.duration)
+    } catch {
+      if (marker !== undefined) { this.markers.delete(marker); try { marker.disconnect() } catch { /* Ignore cue cleanup failures. */ } }
+      // A subtitle cue must never interrupt audio playback.
+    }
   }
 
   private setBusy(busy: boolean): void {
@@ -163,4 +200,5 @@ export class PcmAudioQueue {
     }
     return this.gain
   }
+
 }

@@ -18,10 +18,20 @@ export async function withBrowserPlayback(run, options = {}) {
       const source = new EventTarget()
       source.playbackRate = { value: 1 }
       source.connect = () => {}
-      source.start = () => { if (options.endPcm) queueMicrotask(() => source.dispatchEvent(new Event('ended'))) }
+      source.disconnect = () => {}
+      source.addEventListener('ended', () => { source.finished = true }, { once: true })
+      source.start = time => { source.startTime = time; if (options.endPcm) queueMicrotask(() => source.dispatchEvent(new Event('ended'))) }
       source.stop = () => source.dispatchEvent(new Event('ended'))
       this.sources.push(source)
       return source
+    }
+    advanceTo(time) {
+      if (this.state !== 'running') return
+      this.currentTime = time
+      const due = this.sources.filter(source => !source.finished && source.startTime !== undefined
+        && source.startTime + source.buffer.duration / source.playbackRate.value <= time)
+        .sort((a, b) => (a.startTime + a.buffer.duration / a.playbackRate.value) - (b.startTime + b.buffer.duration / b.playbackRate.value))
+      for (const source of due) if (!source.finished) source.dispatchEvent(new Event('ended'))
     }
     async suspend() { if (this.suspendResult) await this.suspendResult; this.state = 'suspended' }
     async resume() { if (this.resumeResult) await this.resumeResult; this.state = 'running' }

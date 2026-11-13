@@ -12,10 +12,12 @@ import type { TtsSettings } from '../shared.js'
 import { AutomaticReading } from './conversation/automatic-reading.js'
 import { ReadAloudAction } from './conversation/read-aloud.js'
 import { SessionPlaybackObserver } from './conversation/session-playback-observer.js'
+import { ReadingCaptionBar } from './conversation/reading-caption-bar.js'
 import { NS, en, zh, ja, fr } from './localization.js'
 import type { Translate } from './localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback/index.js'
 import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
+import { ReadingCaptions } from './playback/reading-captions.js'
 import { onTtsCredentialsSaved } from './conversation/api-key-status.js'
 import { registerBundleSettings } from './settings/bundle-settings.js'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -130,9 +132,10 @@ export function apply(ctx: Context): void {
   }, 'xiaomi-mimo-tts: sound effects')
   const history = new AudioHistory()
   ctx.effect(() => () => history.dispose(), 'xiaomi-mimo-tts: audio history')
-  const playback = new PlaybackController(history)
-  const live = new LiveSpeechController(history)
-  const local = new LocalSpeechController()
+  const captions = new ReadingCaptions()
+  const playback = new PlaybackController(history, captions)
+  const live = new LiveSpeechController(history, captions)
+  const local = new LocalSpeechController(captions)
   const speechActivity = new SpeechActivity()
   speechActivity.register(() => isSpeechBusy(playback.getSnapshot().status), () => { playback.resetAutomaticPlayback(); playback.interrupt() })
   speechActivity.register(live.isBusy, () => live.interrupt())
@@ -285,6 +288,14 @@ export function apply(ctx: Context): void {
     order: 998,
     inject: (_sessionId: string) => ({ playback, live, local, settings: scope, audioFocus, automaticAudioFocus, questions, automaticReading }),
   }, SessionPlaybackObserver))
+
+  registerSlotContribution(ctx, 'conversation.input.dock', () => ctx.slots.register({
+    name: 'conversation.input.dock',
+    id: 'xiaomi-mimo-tts-reading-captions',
+    order: 997,
+    locale: NS,
+    inject: (_sessionId: string) => ({ captions, settings: scope, t }),
+  }, ReadingCaptionBar))
 
   registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions',

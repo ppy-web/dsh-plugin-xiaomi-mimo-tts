@@ -53,6 +53,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     mossVoice: typeof resolved.mossVoice === 'string' ? resolved.mossVoice : '',
     mossVoiceName: typeof resolved.mossVoiceName === 'string' ? resolved.mossVoiceName : '',
     autoPlay: resolved.enabled ? resolved.autoPlay : false,
+    showReadingCaptions: resolved.showReadingCaptions === true,
     voiceInputCompatibility: resolved.voiceInputCompatibility !== false,
     inputAvoidance: resolved.inputAvoidance === true,
     importantAnnouncementsFirst: resolved.importantAnnouncementsFirst === true,
