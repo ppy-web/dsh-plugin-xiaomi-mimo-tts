@@ -1,6 +1,6 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type { XiaomiMimoTtsService } from '../../client-api.js'
-import { prepareProviderTtsText, resolveTtsSettings } from '../../shared.js'
+import { prepareProviderTtsText, resolveTtsSettings, splitTtsSegments } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import { streamPcmAudio } from '../../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
@@ -13,6 +13,32 @@ import type { SnapshotSource } from '../plugin-activity.js'
 import { engineCanRequest, engineMaxTextLength, engineText, externalEngine, splitExternalText } from '../engine-state.js'
 import { playSegmentAudio, prefetchSegmentAudio } from './segmented-audio.js'
 
+/** VoiceDesign requires complete audio; keep long requests within the configured text limit. */
+function splitVoiceDesignText(text: string, maximum: number): string[] {
+  if (!Number.isSafeInteger(maximum) || maximum < 1) throw new Error('invalid-text-limit')
+  const result: string[] = []
+  const add = (part: string): void => {
+    if (prepareProviderTtsText(part, { provider: 'xiaomi', model: 'mimo-v2.5-tts-voicedesign' })) result.push(part)
+  }
+  for (const segment of splitTtsSegments(text, undefined, undefined, value => value)) {
+    let remaining = segment
+    while (remaining.length > maximum) {
+      // Balance oversized sentences so trailing punctuation stays with speech.
+      const target = Math.floor(remaining.length / Math.ceil(remaining.length / maximum))
+      let length = 0
+      for (const character of remaining) {
+        if (character.length > maximum) throw new Error('text-too-long')
+        if (length > 0 && length + character.length > target) break
+        length += character.length
+      }
+      add(remaining.slice(0, length))
+      remaining = remaining.slice(length)
+    }
+    add(remaining)
+  }
+  return result
+}
+
 export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsService {
   private readonly audio = new PcmAudioQueue({
     onBusyChange: (busy) => { this.audioBusy = busy; this.refreshPriority() },
@@ -23,6 +49,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
   private disposed = false
   private audioBusy = false
   private media: HTMLAudioElement | null = null
+  private volume = 1
   private externalGeneration: number | null = null
   private priorityGeneration: number | null = null
   private priorityBusy = false
@@ -108,7 +135,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       beforePlayback?.()
       if (interruptConversation) this.interruptConversationPlayback()
       this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
-      this.audio.setVolume(settings.voiceVolume)
+      this.setVolume(settings.voiceVolume)
       this.audio.setPlaybackRate(externalEngine() || settings.provider === 'xiaomi' ? settings.voiceRate : 1)
 
       const generation = this.generation
@@ -132,16 +159,19 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
           }
           return
         }
-        if (external && !external.streaming) {
-          const limit = engineMaxTextLength(settings.maxTextLength)
-          for (const segment of splitExternalText(normalized, limit)) {
+        if (external || (settings.provider === 'xiaomi' && settings.model === 'mimo-v2.5-tts-voicedesign')) {
+          const segments = external
+            ? splitExternalText(normalized, engineMaxTextLength(settings.maxTextLength))
+            : splitVoiceDesignText(normalized, settings.maxTextLength)
+          const selection = external ? undefined : ttsSelection(settings)
+          for (const segment of segments) {
             controller.signal.throwIfAborted()
-            const result = await prefetchSegmentAudio(segment, controller.signal)
+            const result = await prefetchSegmentAudio(segment, controller.signal, selection)
             if (!result.ok) throw result.error
             controller.signal.throwIfAborted()
             void this.history?.add({ blob: result.blob, text: segment, format: 'wav', source: 'service', voiceRateApplied: false })
-            await playSegmentAudio(result.blob, { signal: controller.signal, volume: settings.voiceVolume, voiceRate: settings.voiceRate, automatic: false,
-              onCreated: audio => { this.media = audio }, onReleased: () => { this.media = null }, onStarted: () => {} })
+            await playSegmentAudio(result.blob, { signal: controller.signal, volume: this.volume, voiceRate: settings.voiceRate, automatic: false,
+              onCreated: audio => { this.media = audio }, onReleased: audio => { if (this.media === audio) this.media = null }, onStarted: () => {} })
           }
           return
         }
@@ -157,7 +187,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
           }
           recording.append(pcm)
           await this.audio.enqueue(pcm)
-        }, ttsSelection({ ...settings, model: 'mimo-v2.5-tts' }))
+        }, ttsSelection(settings))
       }
       void synthesize().then(() => {
         if (!this.disposed && !controller.signal.aborted && generation === this.generation) {
@@ -189,7 +219,11 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
     }
   }
 
-  setVolume(value: number): void { this.audio.setVolume(value); if (this.media) this.media.volume = value }
+  setVolume(value: number): void {
+    this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
+    this.audio.setVolume(this.volume)
+    if (this.media) this.media.volume = this.volume
+  }
 
   async dispose(): Promise<void> {
     if (this.disposed) return

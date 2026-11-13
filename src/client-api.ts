@@ -1,11 +1,11 @@
 import type {} from '@deepseek-ai/cordis'
 
-/** Optional browser-side PCM playback capability exposed to other DSH plugins. */
+/** Optional browser-side speech playback capability exposed to other DSH plugins. */
 export interface XiaomiMimoTtsService {
-  /** Best-effort PCM playback. Returns immediately and never throws to the caller. */
+  /** Best-effort playback using the selected provider and model. Returns immediately and never throws to the caller. */
   play(text: string): void
 
-  /** Idempotently stop PCM playback started through this service. */
+  /** Idempotently stop playback started through this service. */
   stop(): void
 }
 

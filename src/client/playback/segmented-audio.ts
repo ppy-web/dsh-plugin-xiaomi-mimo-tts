@@ -2,14 +2,15 @@ import { TTS_ROUTE } from '../../shared.js'
 import { hostRoute } from '../host-route.js'
 import { applyMediaVoiceRate } from './voice-rate.js'
 import { externalEngine, speechRequestBody } from '../engine-state.js'
+import type { TtsSelection } from '../../types/providers.js'
 
 type SegmentAudioResult = { ok: true; blob: Blob } | { ok: false; error: unknown }
 
 /** Observe prefetch failures immediately, even while the preceding segment is still playing. */
-export async function prefetchSegmentAudio(text: string, signal: AbortSignal): Promise<SegmentAudioResult> {
+export async function prefetchSegmentAudio(text: string, signal: AbortSignal, selection?: TtsSelection): Promise<SegmentAudioResult> {
   try {
     let lastError: unknown
-    const body = speechRequestBody({ text, format: 'wav' })
+    const body = speechRequestBody({ ...selection, text, format: 'wav' })
     for (let attempt = 0; attempt < (externalEngine() ? 1 : 2); attempt += 1) {
       signal.throwIfAborted()
       try {
