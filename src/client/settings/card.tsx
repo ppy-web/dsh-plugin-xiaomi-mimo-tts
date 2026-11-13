@@ -128,6 +128,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [showInHostSettings, setShowInHostSettings] = useState(initial.showInHostSettings)
   const [showFeatureGuide, setShowFeatureGuide] = useState(initial.showFeatureGuide)
   const [acceptExternalProviders, setAcceptExternalProviders] = useState(initial.acceptExternalProviders)
+  const [voiceRecognitionService, setVoiceRecognitionService] = useState(initial.voiceRecognitionService)
   const [announcementSources, setAnnouncementSources] = useState(initial.announcementSources)
   const [qqbotEnabled, setQqbotEnabled] = useState(initial.qqbotEnabled)
   const [enabled, setEnabled] = useState(initial.enabled)
@@ -185,7 +186,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { showInSidebar, showInHostSettings, showFeatureGuide, acceptExternalProviders, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, showReadingCaptions, voiceInputCompatibility, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { showInSidebar, showInHostSettings, showFeatureGuide, acceptExternalProviders, voiceRecognitionService, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, showReadingCaptions, voiceInputCompatibility, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -240,6 +241,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setShowInHostSettings(next.showInHostSettings)
     setShowFeatureGuide(next.showFeatureGuide)
     setAcceptExternalProviders(next.acceptExternalProviders)
+    setVoiceRecognitionService(next.voiceRecognitionService)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
@@ -312,6 +314,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'showInHostSettings') setShowInHostSettings(base.showInHostSettings)
     if (field === 'showFeatureGuide') setShowFeatureGuide(base.showFeatureGuide)
     if (field === 'acceptExternalProviders') setAcceptExternalProviders(base.acceptExternalProviders)
+    if (field === 'voiceRecognitionService') setVoiceRecognitionService(base.voiceRecognitionService)
     if (field === 'announcementSources') setAnnouncementSources(base.announcementSources)
     if (field === 'qqbotEnabled') setQqbotEnabled(base.qqbotEnabled)
     if (field === 'enabled') setEnabled(base.enabled)
@@ -364,6 +367,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setShowInHostSettings(next.showInHostSettings)
     setShowFeatureGuide(next.showFeatureGuide)
     setAcceptExternalProviders(next.acceptExternalProviders)
+    setVoiceRecognitionService(next.voiceRecognitionService)
     setAnnouncementSources(next.announcementSources)
     setQqbotEnabled(next.qqbotEnabled)
     setEnabled(next.enabled)
@@ -667,6 +671,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onAcceptExternalProvidersChange={next => { setAcceptExternalProviders(next); markChange('acceptExternalProviders') }}
           acceptExternalProvidersOverridden={fieldOverridden('acceptExternalProviders')}
           onAcceptExternalProvidersReset={() => resetField('acceptExternalProviders')}
+          voiceRecognitionService={voiceRecognitionService}
+          onVoiceRecognitionServiceChange={next => { setVoiceRecognitionService(next); markChange('voiceRecognitionService') }}
+          voiceRecognitionServiceOverridden={fieldOverridden('voiceRecognitionService')}
+          onVoiceRecognitionServiceReset={() => resetField('voiceRecognitionService')}
           onShowInHostSettingsChange={next => { setShowInHostSettings(next); markChange('showInHostSettings') }}
           showInHostSettingsOverridden={fieldOverridden('showInHostSettings')}
           onShowInHostSettingsReset={() => resetField('showInHostSettings')}

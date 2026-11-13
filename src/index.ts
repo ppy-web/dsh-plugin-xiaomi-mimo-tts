@@ -37,6 +37,7 @@ import {
 import { registerStaticAsset, registerStaticAssetMap, json } from './host/index.js'
 import { registerSynthesisRoutes } from './host/synthesis-routes.js'
 import { registerMossRoutes } from './host/moss-routes.js'
+import { registerVoiceInputProviders } from './host/voice-input-providers.js'
 import { registerOpenApiRoutes } from './host/open-api-routes.js'
 import { registerEngineRoutes } from './host/engine-routes.js'
 import SpeechHost from './host/speech-service.js'
@@ -59,6 +60,7 @@ export const Config = z.object({
   showInHostSettings: z.boolean().default(DEFAULT_TTS_SETTINGS.showInHostSettings).volatile(),
   showFeatureGuide: z.boolean().default(DEFAULT_TTS_SETTINGS.showFeatureGuide).volatile(),
   acceptExternalProviders: z.boolean().default(DEFAULT_TTS_SETTINGS.acceptExternalProviders).volatile(),
+  voiceRecognitionService: z.boolean().default(DEFAULT_TTS_SETTINGS.voiceRecognitionService).volatile(),
   qqbotEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.qqbotEnabled).volatile(),
   qqbotMaxAutoCharacters: z.number().step(1).min(0).max(12000).default(0).volatile(),
   qqbotMaxDurationSeconds: z.number().step(1).min(0).max(6000).default(0).volatile(),
@@ -131,6 +133,9 @@ export function apply(ctx: Context, config: Config): void {
   const current = () => readConfig(config)
   ctx.inject(['webServer'], host => { host.plugin(SpeechHost, { current, updates: (listener: () => void) => ctx.on('loader/volatile-update', listener) }) })
   ctx.inject(['speechSynthesis'], host => { registerOpenApiRoutes(host, () => config.openApiToken.get()); registerEngineRoutes(host) })
+  ctx.inject(['speechToText', 'passportRecognition'], host => {
+    registerVoiceInputProviders(host, () => config.voiceRecognitionService.get(), listener => ctx.on('loader/volatile-update', listener))
+  })
 
   const toggleSoundAssets = new Map([...new Set([...Object.values(TTS_TOGGLE_SOUND_FILES).flat(), ...TTS_VOLUME_PREVIEW_FILES])].map((file) => {
     const path = `${TTS_TOGGLE_AUDIO_ASSET_ROUTE}/${file}`

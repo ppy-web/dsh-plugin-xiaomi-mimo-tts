@@ -50,6 +50,7 @@ const ENTRIES = {
   breezeEnabled: { group: 'providers', terms: ['settings.breezeEnabled'] },
   mossEnabled: { group: 'providers', terms: ['settings.mossProvider'] },
   'settings.readingCaptions': { group: 'host', terms: ['settings.readingCaptions', 'settings.readingCaptionsHint'], aliases: '字幕 captions subtitles' },
+  'settings.voiceRecognitionService': { group: 'host', terms: ['settings.voiceRecognitionService', 'settings.voiceRecognitionServiceHint'], aliases: '语音识别 听写 asr speech recognition' },
   'settings.voiceInputCompatibility': { group: 'host', terms: ['settings.voiceInputCompatibility', 'settings.voiceInputCompatibilityHint'] },
   'settings.showInHostSettings': { group: 'host', terms: ['settings.showInHostSettings', 'settings.showInHostSettingsHint'] },
   'settings.showFeatureGuide': { group: 'host', terms: ['settings.showFeatureGuide', 'settings.showFeatureGuideHint'] },

@@ -151,6 +151,8 @@ export const ja: Record<LocaleKey, string> = {
   'settings.showInHostSettingsHint': 'DSH 設定に「音声読み上げ」の設定を表示します。保存後に適用されます。',
   'settings.voiceInputCompatibility': '音声入力を優先',
   'settings.voiceInputCompatibilityHint': 'DSH 公式の音声入力中は読み上げと効果音を停止し、録音・文字起こし中も再生しません。中断した音声は再開しません。保存後に適用されます。',
+  'settings.voiceRecognitionService': '音声認識サービス',
+  'settings.voiceRecognitionServiceHint': '小米と Doubao の音声認識をホストに提供します。認識元はホストの音声入力設定で選択します。',
   'settings.announcementsTitle': '通知元',
   'settings.announcementsPlugins': 'プラグイン連携',
   'settings.announcementsPluginsHint': '対応するプラグインのインストールと有効化が必要です',

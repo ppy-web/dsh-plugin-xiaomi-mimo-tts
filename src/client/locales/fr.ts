@@ -151,6 +151,8 @@ export const fr: Record<LocaleKey, string> = {
   'settings.showInHostSettingsHint': 'Affiche la lecture vocale dans les paramètres DSH. Enregistrez pour appliquer.',
   'settings.voiceInputCompatibility': 'Priorité à la saisie vocale',
   'settings.voiceInputCompatibilityHint': 'Arrête la lecture et les effets sonores pendant la saisie vocale officielle DSH, y compris la transcription. Les sons interrompus ne reprennent pas. Enregistrez pour appliquer.',
+  'settings.voiceRecognitionService': 'Service de reconnaissance vocale',
+  'settings.voiceRecognitionServiceHint': 'Propose les services Xiaomi et Doubao à DSH. Choisissez la source dans les paramètres de saisie vocale de l’hôte.',
   'settings.announcementsTitle': 'Sources des annonces',
   'settings.announcementsPlugins': 'Intégrations de plugins',
   'settings.announcementsPluginsHint': 'Le plugin correspondant doit être installé et activé',
