@@ -254,13 +254,13 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
       await events.waterfall('agent/pre-step', { turn, step: 1, messages: [message], signal, modelSelection }, async () => ({ kind: 'enter', messages: [message] }))
       return {
         toolSet,
-        async speak(text) {
-          const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text }, agent, signal, toolSet })
+        async speak(text, options = {}) {
+          const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text, ...options }, agent, signal, toolSet })
           return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
         },
         finish(text, kind = 'completed') {
           toolSet.dispose()
-          agent.session.append('assistant/message', { turn, step: 1, stream: [],
+          if (text) agent.session.append('assistant/message', { turn, step: 1, stream: [],
             message: { id: randomUUID(), role: 'assistant', source: { kind: 'model', ...modelSelection }, content: [{ type: 'text', text }] },
           }, { surfaceOp: 'append' })
           agent.session.append('turn/end', { turn, reason: kind === 'completed' ? { kind } : { kind, cause: { kind: 'user' } } })
@@ -277,8 +277,10 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
     await delivered(1)
     assert.deepEqual(sends, [{ agent: qq, text: '普通预设自动传声' }])
     turn = await start(whale)
-    assert.equal((await turn.speak('桌面预设的 QQ 语音')).value.adapter, 'qqbot')
-    turn.finish('避免同轮重复发送')
+    const mixed = await turn.speak('桌面预设的 QQ 语音', { replyWithText: true })
+    assert.equal(mixed.value.adapter, 'qqbot')
+    assert.equal(mixed.concludesTurn, undefined)
+    turn.finish('桌面预设的 QQ 语音')
     await delivered(2)
     turn = await start(legacy)
     turn.finish('已有 QQ 交付配置')
@@ -290,7 +292,9 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
     assert.deepEqual(sends[3], { agent: builtIn, text: '内置预设也只发送一次' })
 
     turn = await start(whale, { kind: 'user', rpcId: randomUUID() })
-    assert.equal((await turn.speak('从 DSH 打开同一会话')).value.adapter, 'file')
+    const desktopSpeech = await turn.speak('从 DSH 打开同一会话')
+    assert.equal(desktopSpeech.value.adapter, 'file')
+    assert.equal(desktopSpeech.concludesTurn, undefined, 'desktop can still present the local file')
     turn.finish('桌面本地交付')
     await delivered(5)
     for (const agent of [desktop, child]) {
@@ -306,8 +310,10 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
 
     automatic = false
     turn = await start(qq)
-    assert.equal((await turn.speak('按需发送')).value.adapter, 'qqbot')
-    turn.finish('普通文字')
+    const voice = await turn.speak('按需发送')
+    assert.equal(voice.value.adapter, 'qqbot')
+    assert.equal(voice.concludesTurn, true)
+    turn.finish()
     await delivered(6)
     turn = await start(qq)
     duringSynthesis = () => map({ ...peers, 'qqbot:bot:group:room': 'new-session' })

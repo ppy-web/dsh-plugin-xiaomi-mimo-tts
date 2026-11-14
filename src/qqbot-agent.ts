@@ -49,7 +49,7 @@ function registerQqbotFeatures(ctx: Context): void {
           : provider === 'xiaomi' && speech?.supportsAudioTags?.() === true
             ? '当前服务商是小米 MiMo 预置音色：仅在 speak 的 text 中按需使用 Xiaomi MiMo audio tags。句首可用 (温柔 俏皮) 指定整体风格，句内可用 [轻笑]、（紧张，深呼吸）等标签；支持中英文、自定义声音描述及组合，只写可听见的语气、情绪、呼吸或哭笑，不写身体动作，少量不堆叠。唱歌必须在 text 最开头放 (唱歌)、(sing) 或 (singing)。普通聊天回复和自动语音正文不要写标签。'
             : '当前服务商或模型不支持音频标签：speak 的 text 和普通回复都只写可朗读的正文，用 speechInstruction 描述语气；小米 VoiceDesign 也遵守此规则。')
-        + '已取消、发送受限、已发送部分音频或发送结果不明时不要自动重发。speak 成功后本轮直接结束：不要输出任何最终文字，不要解释“没有补正文”“只发了语音”，也不要复述发送状态、工具结果或用括号、省略号占位；用户同时要求语音和文字时才补正文。重试仍失败时使用文字回复。'
+        + '已取消、发送受限、已发送部分音频或发送结果不明时不要自动重发。发语音时直接调用 speak，正文放在 text，不要先发文字铺垫。语音送达后本轮会结束；只有用户同时要求文字时才设 replyWithText: true，接着发所需正文。重试仍失败时使用文字回复。'
     },
   })
   ctx.on('agent/pre-step', async ({ agent }, next) => {

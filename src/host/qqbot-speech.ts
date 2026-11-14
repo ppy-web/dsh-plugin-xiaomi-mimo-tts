@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { SpeechDeliveryResult, SpeechRequest } from '../host-api.js'
-import { observeSpeech, qqSpeechPolicy, registerSpeak, speechOwner, speechRequest } from '../speech-agent.js'
+import { observeSpeech, qqSpeechPolicy, registerSpeak, speechOwner } from '../speech-agent.js'
 import type { QqIdentityReader } from './qqbot-identity.js'
 import { QQBOT_FILE_TOOL } from './qqbot-delivery-signal.js'
 import { TtsProviderError } from './provider-error.js'
@@ -80,7 +80,7 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
     return next()
   })
   // Preset tools shadow the fallback. Host tool restrictions still apply.
-  if (!ctx.tools.get('speak')) registerSpeak(ctx, async (args, exec) => say(speechOwner(exec), speechRequest(args, exec.signal)), true,
+  if (!ctx.tools.get('speak')) registerSpeak(ctx, (request, exec) => say(speechOwner(exec), request), true,
     { when: ({ agent, signal }) => admit(agent, signal) })
   ctx.inject(['systemPrompt'], child => {
     child.systemPrompt.context({
@@ -90,7 +90,7 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
         const automatic = speech.isAutomaticDeliveryEnabled('qqbot')
         const speak = ctx.tools.get('speak', agent, toolSet)
         return (automatic ? 'QQ 会自动朗读本轮的最终回复。普通聊天直接输出正文。' : '')
-          + (speak ? '用户要求语音时调用 speak。自动朗读开启时，用户明确指定语气、情绪或方言也可调用 speak，并传入 speechInstruction。语音成功后，用户同时要求文字时才补正文。' : '')
+          + (speak ? '用户要求语音时直接调用 speak，把完整语音正文放在 text，不要先发文字铺垫。自动朗读开启时，用户明确指定语气、情绪或方言也可调用 speak，并传入 speechInstruction。语音送达后本轮会结束；只有用户同时要求文字时才设 replyWithText: true，接着发所需正文。' : '')
       },
     })
   })

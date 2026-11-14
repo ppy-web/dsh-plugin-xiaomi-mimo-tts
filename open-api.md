@@ -217,7 +217,7 @@ URL 最长有效 24 小时。过期后立即拒绝下载，文件由定期任务
 | `speak` | 在已接入传声筒的 QQ 回合中发送语音，其他会话按预设配置交付。返回 `{ adapter, path?, messageId?, target? }`，默认 `file` 适配器导出 WAV。 |
 | `speech_mode` | `mode` 为 `manual` / `auto` / `status`，控制当前会话的通用自动语音。QQ 自动发送使用宿主的 QQ Bot 来源开关。 |
 
-QQ 的 `speak` 只接受 `text`、可选 `provider` 与 `speechInstruction`；其他会话的工具允许更多模型、音色参数。切换供应商重试需使用另一供应商已保存的凭据，不能借导出接口绕过渠道权限。
+QQ 的 `speak` 接受 `text` 和可选的 `provider`、`speechInstruction`、`replyWithText`。语音发送成功后默认结束本轮；用户同时要求文字时，传 `replyWithText: true` 留出文字回复。其他会话的工具还允许模型、音色等参数。切换供应商重试需使用另一供应商已保存的凭据，不能借导出接口绕过渠道权限。
 
 ## 宿主会话语音能力
 

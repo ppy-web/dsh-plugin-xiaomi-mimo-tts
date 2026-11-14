@@ -46,7 +46,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         summary: '请在 QQ 中实际点击语音消息播放；网页试听成功只验证了合成，没有验证 QQ 交付。',
         steps: [
           { title: '测试自动语音', detail: '来源开启并保存后，在新对话中发送“你好，介绍一下自己”，无需额外要求语音。等本轮成功结束，确认收到文字和可点击播放的语音消息，播放核对内容与已保存音色。文字与语音的到达先后没有严格保证。' },
-          { title: '测试仅按需发送', detail: '关闭 QQ Bot 来源并保存，再发一条普通消息，然后发送“请用语音说一句你好”。工具权限允许时，后一句会收到语音。' },
+          { title: '测试仅按需发送', detail: '关闭 QQ Bot 来源并保存，再发一条普通消息，然后发送“请用语音说一句你好”。成功时直接收到语音，没有额外的发送确认。如果也需要文字，可以明确要求语音和正文。' },
           { title: '恢复你需要的模式', detail: '希望每轮都带语音就重新打开来源并保存；只想偶尔听语音则保持来源关闭。更换云端服务商、模型或音色后也要保存，再用新的 QQ 消息验证。已发出的语音不会随设置改变。' },
         ],
         table: {
@@ -123,7 +123,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         id: 'qqbot-verify', title: 'Test automatic and requested speech', summary: 'Play the actual voice message in QQ. A web preview tests synthesis, not QQ delivery.',
         steps: [
           { title: 'Test automatic voice', detail: 'With the source saved on, ask “Hello, introduce yourself” in the new conversation without requesting voice. After a successful turn, expect text and a playable voice message. Check its content and saved voice. Text and voice arrival order is not guaranteed.' },
-          { title: 'Test voice on request', detail: 'Turn the QQ Bot source off and save. Send an ordinary message, then ask “Please say hello in a voice message.” The second reply uses speech when tool permissions allow it.' },
+          { title: 'Test voice on request', detail: 'Turn the QQ Bot source off and save. Send an ordinary message, then ask “Please say hello in a voice message.” A successful voice reply arrives without a separate confirmation. Ask for voice and text if you want both.' },
           { title: 'Keep your preferred mode', detail: 'Turn the source back on and save for voice on every successful turn, or leave it off for requested voice. Save provider, model, and voice changes and test with a new QQ message; existing recordings do not change.' },
         ],
         table: { caption: 'Delivery switches', headers: ['QQ Bot Megaphone', 'QQ Bot source', 'Result'], rows: [

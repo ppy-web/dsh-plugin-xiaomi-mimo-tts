@@ -3,7 +3,7 @@ import test from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { Context } from '@deepseek-ai/cordis'
 import ToolsService from '@deepseek-ai/dsh-tools'
-import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
+import { executeToolBatch, ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { createScope, scopeTarget } from '@deepseek-ai/dsh-scope'
 import { SessionStore } from '@deepseek-ai/dsh-session'
 import * as speechAgent from '../lib/speech-agent.js'
@@ -88,7 +88,7 @@ for (const delivery of ['custom-channel', 'qqbot']) test(`${delivery} speech too
   }
 })
 
-test('QQ speech exposes provider selection and lets a failed model call retry without automatic duplicate delivery', async () => {
+test('QQ speech ends the turn after delivery, leaving failures and requested text open for follow-up', async () => {
   const ctx = new Context(), attempts = [], deliveries = []
   const agent = { id: randomUUID(), session: { header: {} } }
   ctx.provide('systemPrompt', { tools() {} })
@@ -116,23 +116,35 @@ test('QQ speech exposes provider selection and lets a failed model call retry wi
       for (const provider of ['xiaomi', 'doubao', 'breeze']) assert.ok(schema.parameters.properties.provider.enum.includes(provider), `the model must be able to select the ${provider} retry provider`)
       assert.ok(schema.parameters.properties.speechInstruction, 'the model must be able to describe a requested style')
       assert.ok(schema.description.includes('[轻笑]') && schema.description.includes('(sighs)'), 'the model must receive the Breeze tag list')
-      const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: args, agent, signal, toolSet })
-      return await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+      assert.equal(schema.parameters.properties.replyWithText?.type, 'boolean')
+      const calls = [{ type: 'tool-call', id: randomUUID(), name: 'speak', arguments: JSON.stringify(args) }]
+      return await executeToolBatch({ calls, agent, signal, toolSet }, pipeline, () => 1)
     } finally { toolSet.dispose() }
   }
   const session = { id: agent.id }
   const emit = (type, seq, data) => ctx.emit(scopeTarget(session, agent), 'session/event', session, { type, seq, data })
   try {
     emit('turn/start', 0, { turn: 1 })
-    assert.equal((await call({ text: '重试这段语音。' })).isError, true)
+    const failed = await call({ text: '重试这段语音。' })
+    assert.equal(failed.results[0].result.isError, true)
+    assert.equal(failed.concluded, false, 'a failed delivery must leave the model able to retry or reply in text')
     const retried = await call({ text: '重试这段语音。', provider: 'breeze' })
-    assert.equal(retried.isError, false)
-    assert.equal(retried.value.messageId, 'retried')
-    emit('assistant/message', 1, { turn: 1, message: { content: [{ type: 'text', text: '重试这段语音。' }] } })
-    emit('turn/end', 2, { turn: 1, reason: { kind: 'completed' } })
+    assert.equal(retried.results[0].result.value.messageId, 'retried')
+    assert.equal(retried.concluded, true, 'the successful voice reply needs no subsequent model response')
+    assert.deepEqual(retried.results[0].result.content, [], 'QQ has no tool result text to relay')
+    emit('turn/end', 1, { turn: 1, reason: { kind: 'completed' } })
     await settle()
     assert.deepEqual(attempts.map(request => request.provider), [undefined, 'breeze'])
-    assert.equal(deliveries.length, 1, 'successful fallback must not be repeated by automatic speech')
+
+    emit('turn/start', 2, { turn: 2 })
+    const both = await call({ text: '发语音，也写下来。', provider: 'breeze', replyWithText: true })
+    assert.equal(both.results[0].result.isError, false)
+    assert.equal(both.concluded, false, 'the model can still send the requested text')
+    assert.deepEqual(both.results[0].result.content, [])
+    emit('assistant/message', 3, { turn: 2, message: { content: [{ type: 'text', text: '发语音，也写下来。' }] } })
+    emit('turn/end', 4, { turn: 2, reason: { kind: 'completed' } })
+    await settle()
+    assert.deepEqual(deliveries.map(request => request.text), ['重试这段语音。', '发语音，也写下来。'], 'automatic speech must not repeat explicit delivery')
   } finally { await owner.dispose(); await ctx.fiber.dispose() }
 })
 
