@@ -67,9 +67,9 @@ test('entries wait for ready settings, recover after reconnect, and release subs
   assert.equal(h.listeners.size, 0)
 })
 
-test('Host settings visibility defaults on and persists independently from voice input and sidebar visibility', async () => {
+test('Host settings visibility defaults on and persists independently from autoplay and sidebar visibility', async () => {
   assert.equal(resolveTtsSettings().showInHostSettings, true)
-  const user = { voiceInputCompatibility: false, showInSidebar: true, autoPlay: true }
+  const user = { showInSidebar: true, autoPlay: true }
   const original = { ...user }
   const scope = {
     getSnapshot: () => ({ value: user, user }),

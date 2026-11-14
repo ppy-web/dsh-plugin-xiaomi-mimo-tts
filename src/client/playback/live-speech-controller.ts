@@ -17,7 +17,8 @@ import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
 import type { AudioHistory } from '../history/audio-history.js'
 import { PcmRecording } from '../history/pcm-recording.js'
 import { DuplexPcmStream } from './duplex-pcm.js'
-import { ttsSelection } from '../../types/providers.js'
+import { DEEPSEEK_INPUT_IDLE_MS, exceedsDeepseekLimit, splitDeepseekText } from '../../text/deepseek-limit.js'
+import { supportsDuplexTts, ttsSelection, usesCloudVoiceRate } from '../../types/providers.js'
 import type { TtsSelection } from '../../types/providers.js'
 import type { ResolvedTtsSettings } from '../../types/settings.js'
 import { engineMaxTextLength, externalEngine, externalText, splitExternalText } from '../engine-state.js'
@@ -28,15 +29,26 @@ interface DuplexJob {
   text: string[]
   finished: boolean
   stream: DuplexPcmStream | null
+  batch: DuplexRecording
+  updateCaption?: () => void
+  audioComplete?: boolean
+}
+
+interface DuplexRecording {
+  text: string[]
+  pcm: PcmRecording
   sessionId: string | null
   messageId: string | null
+  pending: number
+  finished: boolean
+  saveReady: boolean
 }
 
 interface CompletedStreamPlayback {
   sessionId: string
   messageId: string
   audioStarted: boolean
-  fallback: () => void
+  fallback?: (() => void) | undefined
 }
 
 export class LiveSpeechController {
@@ -46,12 +58,17 @@ export class LiveSpeechController {
     onBusyChange: (busy) => {
       this.audioBusy = busy
       if (!busy) {
-        if (this.requestBusy) this.captions?.setPaused(this, true)
-        else this.captions?.clear(this)
+        if (!this.requestBusy) this.captions?.clear(this)
+        else if (this.isDuplex()) this.captions?.setBuffering(this, true)
+        else this.captions?.setPaused(this, true)
       }
       this.maybeFinishPlayback()
     },
-    onPlaybackStart: () => { this.captions?.setPaused(this, false); this.setStatus('playing') },
+    onPlaybackStart: () => {
+      this.captions?.setBuffering(this, false)
+      this.captions?.setPaused(this, false)
+      this.setStatus('playing')
+    },
   })
   private streamGeneration = 0
   private pauseTransition = 0
@@ -81,6 +98,8 @@ export class LiveSpeechController {
   private duplexJobs: DuplexJob[] = []
   private duplexStep: DuplexJob | null = null
   private duplexRunning = false
+  private duplexRecording: DuplexRecording | null = null
+  private duplexInputTimer: ReturnType<typeof setTimeout> | undefined
   private timeoutMs = 120000
   private maxPcmBytes = 32 * 1024 * 1024
   private maxTextLength = 12000
@@ -99,13 +118,13 @@ export class LiveSpeechController {
 
   prepareText(value: string): string { if (externalEngine()) return externalText(value); return prepareSpeechText(value, supportsXiaomiAudioTags(this.selection) ? 'xiaomi' : this.selection.provider === 'breeze') }
 
-  isDuplex(): boolean { return !externalEngine() && this.selection.provider === 'doubao' }
+  isDuplex(): boolean { return !externalEngine() && supportsDuplexTts(this.selection.provider) }
 
   /** Close bounded read scopes before generation ends; final identity can arrive later. */
   finishInput(sessionId: string, turn: number, step: number): void {
     if (!this.isDuplex() || this.sessionId !== sessionId || this.active?.turn !== turn || this.active.step !== step) return
     this.drain(true)
-    this.finishDuplexStep()
+    this.finishDuplexStep(false)
   }
 
   setStateChangeListener(listener: (sessionId: string, messageId: string, status: PlaybackStatus, error: string | null) => void): void {
@@ -122,7 +141,7 @@ export class LiveSpeechController {
 
   setVoiceRate(value: number): void {
     this.voiceRate = normalizeVoiceRate(value)
-    if (this.selection.provider !== 'xiaomi') this.selection = { ...this.selection, voiceRate: this.voiceRate }
+    if (this.selection.provider === 'doubao' || this.selection.provider === 'breeze') this.selection = { ...this.selection, voiceRate: this.voiceRate }
   }
 
   async pause(sessionId: string): Promise<boolean> {
@@ -151,6 +170,7 @@ export class LiveSpeechController {
       await this.audio.resume()
       if (this.sessionId !== sessionId || generation !== this.streamGeneration || transition !== this.pauseTransition) return false
       this.setStatus('playing')
+      if (this.audioBusy) this.captions?.setBuffering(this, false)
       this.captions?.setPaused(this, false)
       return true
     } catch {
@@ -202,11 +222,11 @@ export class LiveSpeechController {
   }
 
   /** Stream semantic segments of a completed preset-model reply, falling back only before playback starts. */
-  playCompleted(sessionId: string, messageId: string, text: string, fallback: () => void): void {
+  playCompleted(sessionId: string, messageId: string, text: string, fallback?: () => void): void {
     if (this.sessionId !== sessionId || text.length === 0) return
     this.beforePlayback?.()
     this.resetState()
-    this.audio.setPlaybackRate(externalEngine() || this.selection.provider === 'xiaomi' ? this.voiceRate : 1)
+    this.audio.setPlaybackRate(externalEngine() || !usesCloudVoiceRate(this.selection.provider) ? this.voiceRate : 1)
     this.completed = { sessionId, messageId, audioStarted: false, fallback }
     this.audioStarted = false
     this.messageId = messageId
@@ -235,9 +255,9 @@ export class LiveSpeechController {
     }
     if (final.text.startsWith(this.observed)) this.observed = final.text
     this.messageId = final.messageId
-    if (this.duplexStep !== null) this.duplexStep.messageId = final.messageId
     this.reportStatus()
     this.drain(true)
+    if (this.duplexRecording !== null) this.duplexRecording.messageId = final.messageId
     this.finishDuplexStep()
     this.handled.add(key)
   }
@@ -284,7 +304,7 @@ export class LiveSpeechController {
   private reset(next: LiveSpeechCursor): void {
     this.replaceQueue()
     this.audio.stop()
-    this.audio.setPlaybackRate(externalEngine() || this.selection.provider === 'xiaomi' ? this.voiceRate : 1)
+    this.audio.setPlaybackRate(externalEngine() || !usesCloudVoiceRate(this.selection.provider) ? this.voiceRate : 1)
     this.beginSegment(next, false)
     this.setStatus('idle')
   }
@@ -293,6 +313,7 @@ export class LiveSpeechController {
     this.drain(true)
     this.finishDuplexStep()
     this.duplexStep = null
+    this.duplexRecording = null
     this.beginSegment(next, true)
   }
 
@@ -352,10 +373,19 @@ export class LiveSpeechController {
   }
 
   private stageSentences(sentences: readonly string[], flush: boolean): void {
-    const prepared = sentences.map(sentence => this.prepareText(sentence)).filter(text => countTtsSpeechCharacters(text) > 0)
-    if (this.isDuplex()) {
+    const duplex = this.isDuplex()
+    const prepared = sentences.map(sentence => {
+      const text = this.prepareText(sentence)
+      if (!text || !duplex) return text
+      return (/^\s/u.test(sentence) ? ' ' : '') + text + (/\s$/u.test(sentence) ? ' ' : '')
+    }).filter(text => countTtsSpeechCharacters(text) > 0)
+    if (duplex) {
       if (prepared.length > 0 && this.active !== null) this.handled.add(this.cursorKey(this.active))
-      for (const text of prepared) this.enqueueDuplex(text)
+      const generation = this.streamGeneration
+      for (const text of prepared) {
+        if (generation !== this.streamGeneration) break
+        this.enqueueDuplex(text)
+      }
       return
     }
     const batch = batchTtsStreamSegments(this.pendingText, prepared, flush)
@@ -393,7 +423,9 @@ export class LiveSpeechController {
     this.queue = this.createQueue()
     this.duplexAbort.abort()
     this.duplexAbort = new AbortController()
+    clearTimeout(this.duplexInputTimer)
     this.duplexJobs = []
+    this.duplexRecording = null
     this.duplexStep = null
     this.duplexRunning = false
   }
@@ -409,7 +441,7 @@ export class LiveSpeechController {
     const messageId = this.messageId
     const caption = readingCaptionText(sentence, this.selection)
     const playbackRate = this.audio.getPlaybackRate()
-    const captionRate = externalEngine() || this.selection.provider === 'xiaomi' ? playbackRate : this.voiceRate
+    const captionRate = externalEngine() || !usesCloudVoiceRate(this.selection.provider) ? playbackRate : this.voiceRate
     let pcmBytes = 0
     let complete = false
     let firstChunk = true
@@ -441,7 +473,7 @@ export class LiveSpeechController {
   private handleStreamError(error: unknown): void {
     const autoplayBlocked = typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'NotAllowedError'
     const completed = this.completed
-    if (!autoplayBlocked && completed !== null && !completed.audioStarted) {
+    if (!autoplayBlocked && completed?.fallback && !completed.audioStarted) {
       const fallback = completed.fallback
       this.resetState()
       fallback()
@@ -464,22 +496,63 @@ export class LiveSpeechController {
   }
 
   private enqueueDuplex(text: string): void {
-    if (this.duplexStep?.finished) return
-    if (this.duplexStep === null) {
-      this.duplexStep = { text: [], finished: false, stream: null, sessionId: this.sessionId, messageId: this.messageId }
-      this.duplexJobs.push(this.duplexStep)
+    if (this.duplexRecording?.finished || !text.trim()) return
+    const deepseek = this.selection.provider === 'deepseek'
+    const batch = this.duplexRecording ??= {
+      sessionId: this.sessionId, messageId: this.active === null ? this.messageId : null,
+      text: [], pcm: new PcmRecording(), pending: 0, finished: false, saveReady: false,
     }
-    const job = this.duplexStep
-    job.text.push(text)
-    try { job.stream?.append(text) } catch (error) { this.handleStreamError(error); return }
-    if (!this.duplexRunning) void this.runDuplexJobs()
+    try {
+      const parts = deepseek ? splitDeepseekText(text, this.maxTextLength) : [text]
+      for (const part of parts) {
+        if (deepseek && this.duplexStep && exceedsDeepseekLimit(this.duplexStep.text.join('') + part, this.maxTextLength)) this.finishDuplexInput()
+        if (this.duplexStep === null) {
+          this.duplexStep = { text: [], finished: false, stream: null, batch }
+          batch.pending += 1
+          this.duplexJobs.push(this.duplexStep)
+        }
+        this.duplexStep.text.push(part)
+        batch.text.push(part)
+        this.duplexStep.stream?.append(part)
+        this.duplexStep.updateCaption?.()
+      }
+    } catch (error) { this.handleStreamError(error); return }
+    if (deepseek && this.duplexStep) {
+      clearTimeout(this.duplexInputTimer)
+      const job = this.duplexStep
+      this.duplexInputTimer = setTimeout(() => {
+        if (this.duplexStep === job) this.finishDuplexInput()
+      }, Math.min(DEEPSEEK_INPUT_IDLE_MS, this.timeoutMs - Math.min(1000, this.timeoutMs / 10)))
+    }
+    if (!this.duplexRunning && this.duplexJobs.length) void this.runDuplexJobs()
   }
 
-  private finishDuplexStep(): void {
+  private finishDuplexInput(): void {
+    clearTimeout(this.duplexInputTimer)
     const job = this.duplexStep
-    if (job === null || job.finished) return
+    this.duplexStep = null
+    if (!job || job.finished) return
     job.finished = true
     void job.stream?.finish().catch(() => {})
+  }
+
+  private finishDuplexStep(saveReady = true): void {
+    this.finishDuplexInput()
+    const batch = this.duplexRecording
+    if (!batch) return
+    batch.finished = true
+    batch.saveReady ||= saveReady
+    this.saveDuplexRecording(batch)
+  }
+
+  private saveDuplexRecording(batch: DuplexRecording): void {
+    if (!batch.saveReady || batch.pending) return
+    batch.saveReady = false
+    batch.pcm.save(this.history, {
+      text: batch.text.join(''), source: 'conversation', voiceRateApplied: this.selection.provider === 'doubao',
+      ...(batch.sessionId === null ? {} : { sessionId: batch.sessionId }),
+      ...(batch.messageId === null ? {} : { messageId: batch.messageId }),
+    })
   }
 
   private async runDuplexJobs(): Promise<void> {
@@ -491,21 +564,46 @@ export class LiveSpeechController {
     try {
       while (this.duplexJobs.length && this.isCurrentStream(generation, signal)) {
         const job = this.duplexJobs[0]!
-        const recording = new PcmRecording()
+        const captionSource = {}
+        const rate = this.selection.provider === 'doubao' ? this.selection.voiceRate ?? 1 : this.audio.getPlaybackRate()
+        const elapsedParts: { elapsed: () => number; duration: number }[] = []
+        let elapsedBefore = 0
+        let totalDuration = 0
+        let firstChunk = true
+        let captionStarted = false
+        const caption = () => readingCaptionText(job.text.join(''), this.selection)
+        const elapsed = (): number => {
+          while (elapsedParts.length) {
+            const part = elapsedParts[0]!
+            const time = part.elapsed()
+            if (time < part.duration) return elapsedBefore + time
+            elapsedBefore += part.duration
+            elapsedParts.shift()
+          }
+          return elapsedBefore
+        }
+        job.updateCaption = () => { if (captionStarted) this.captions?.update(this, captionSource, caption()) }
         job.stream = new DuplexPcmStream(this.selection, signal, async bytes => {
           if (!this.isCurrentStream(generation, signal)) return
-          recording.appendBytes(bytes)
-          await this.audio.enqueueBytes(bytes)
+          job.batch.pcm.appendBytes(bytes)
+          const onStart = firstChunk && this.captions ? () => {
+            if (!this.isCurrentStream(generation, signal)) return
+            captionStarted = true
+            this.captions?.show(this, job.batch.sessionId, caption(), { source: captionSource, rate, elapsed, duration: () => job.audioComplete ? totalDuration : Number.NaN })
+          } : undefined
+          firstChunk = false
+          await this.audio.enqueueBytes(bytes, onStart, this.captions ? (elapsed, duration) => {
+            elapsedParts.push({ elapsed, duration })
+            totalDuration += duration
+          } : undefined)
         }, this.maxPcmBytes, this.timeoutMs, this.maxTextLength)
         for (const text of job.text) job.stream.append(text)
         if (job.finished) void job.stream.finish().catch(() => {})
         await job.stream.done
         if (!this.isCurrentStream(generation, signal)) return
-        recording.save(this.history, {
-          text: job.text.join(''), source: 'conversation', voiceRateApplied: true,
-          ...(job.sessionId === null ? {} : { sessionId: job.sessionId }),
-          ...(job.messageId === null ? {} : { messageId: job.messageId }),
-        })
+        job.audioComplete = true
+        job.batch.pending -= 1
+        this.saveDuplexRecording(job.batch)
         this.duplexJobs.shift()
       }
     } catch (error) {

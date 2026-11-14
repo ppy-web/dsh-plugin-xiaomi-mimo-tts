@@ -1,11 +1,14 @@
 import type SpeechToText from '@deepseek-ai/dsh-experimental-speech-to-text'
+import { isSupportedTtsApiKey } from '../types/settings.js'
+import { DEEPSEEK_ASR_MAX_PCM, recognizeDeepseek } from './deepseek-asr.js'
+import type { PassportSettings } from '../types/passport.js'
 import type { ResolvedTtsSettings } from '../types/settings.js'
 import { pcmWave } from './audio.js'
 import { recognitionError } from './asr-error.js'
 import { DoubaoRecognition } from './doubao-asr.js'
 import type { WebSocket } from 'ws'
 
-export type RecognitionSource = 'host' | 'xiaomi' | 'doubao' | 'doubao-nostream'
+export type RecognitionSource = PassportSettings['asrProvider']
 export interface RecognitionInput {
   append(pcm: Buffer): void
   finish(): Promise<string>
@@ -89,14 +92,22 @@ export class PassportRecognition implements PassportRecognitionService {
   }
   choices(): RecognitionChoice[] {
     const settings = this.current()
-    return [{ id: 'host', configured: true }, { id: 'xiaomi', configured: !!settings.apiKey.trim() }, { id: 'doubao', configured: !!settings.doubaoApiKey.trim() }, { id: 'doubao-nostream', configured: !!settings.doubaoApiKey.trim() }]
+    const doubao = !!settings.doubaoApiKey.trim()
+    return [
+      { id: 'host', configured: true },
+      { id: 'xiaomi', configured: !!settings.apiKey.trim() },
+      { id: 'doubao', configured: doubao },
+      { id: 'doubao-nostream', configured: doubao },
+      { id: 'deepseek', configured: isSupportedTtsApiKey(settings.deepseekApiKey ?? '', 'deepseek') },
+    ]
   }
   recognizer(source: RecognitionSource, host?: Pick<SpeechToText, 'snapshot' | 'resolve' | 'transcribe'>): PassportRecognizer {
     if (source === 'host') return hostRecognizer(host)
-    const key = () => (source === 'xiaomi' ? this.current().apiKey : this.current().doubaoApiKey).trim()
+    const key = () => (source === 'xiaomi' ? this.current().apiKey : source === 'deepseek' ? this.current().deepseekApiKey ?? '' : this.current().doubaoApiKey).trim()
     const check = () => {
       if (!this.enabled()) throw new Error(this.disposed ? 'passport-asr-unavailable' : 'passport-asr-disabled')
       if (!key()) throw new Error('passport-asr-key-required')
+      if (source === 'deepseek' && !isSupportedTtsApiKey(key(), 'deepseek')) throw new Error('passport-asr-auth-failed')
     }
     return { check, create: (signal, maxBytes) => {
       check()
@@ -110,6 +121,8 @@ export class PassportRecognition implements PassportRecognitionService {
         input = new DoubaoRecognition(savedKey, activeSignal, maxBytes, this.doubaoPlan, plan => {
           if (this.doubaoKey === savedKey) this.doubaoPlan = plan
         }, this.connectDoubao, source === 'doubao-nostream' ? 'nostream' : 'async')
+      } else if (source === 'deepseek') {
+        input = bufferedRecognition(activeSignal, Math.min(maxBytes, DEEPSEEK_ASR_MAX_PCM), pcm => recognizeDeepseek(pcm, savedKey, activeSignal, this.current().requestTimeoutMs))
       } else input = bufferedRecognition(activeSignal, maxBytes, async pcm => {
         const response = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {
           method: 'POST', redirect: 'error', signal: activeSignal,

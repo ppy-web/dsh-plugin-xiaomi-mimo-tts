@@ -41,7 +41,7 @@ import { registerVoiceInputProviders } from './host/voice-input-providers.js'
 import { registerOpenApiRoutes } from './host/open-api-routes.js'
 import { registerEngineRoutes } from './host/engine-routes.js'
 import SpeechHost from './host/speech-service.js'
-import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, ttsApiKey } from './shared.js'
+import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, DEEPSEEK_VOICES, ttsApiKey } from './shared.js'
 import type { ResolvedTtsSettings } from './shared.js'
 
 /** Cordis plugin identifier. */
@@ -72,6 +72,9 @@ export const Config = z.object({
   doubaoVoice: z.string().default(DEFAULT_TTS_SETTINGS.doubaoVoice).volatile(),
   doubaoClonedVoice: z.string().default('').volatile(),
   doubaoInstruction: z.string().default(DEFAULT_TTS_SETTINGS.doubaoInstruction).volatile(),
+  deepseekEnabled: z.boolean().default(false).volatile(),
+  deepseekApiKey: z.string().role('secret').default('').volatile(),
+  deepseekVoice: z.union(DEEPSEEK_VOICES).default('stella').volatile(),
   breezeEnabled: z.boolean().default(false).volatile(),
   breezeApiKey: z.string().role('secret').default(DEFAULT_TTS_SETTINGS.breezeApiKey).volatile(),
   breezeVoice: z.string().default(DEFAULT_TTS_SETTINGS.breezeVoice).volatile(),
@@ -96,7 +99,6 @@ export const Config = z.object({
   readScope: z.union([...TTS_READ_SCOPES, 'first-segment'] as const).default(DEFAULT_TTS_SETTINGS.readScope).volatile(),
   autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay).volatile(),
   showReadingCaptions: z.boolean().default(DEFAULT_TTS_SETTINGS.showReadingCaptions).volatile(),
-  voiceInputCompatibility: z.boolean().default(DEFAULT_TTS_SETTINGS.voiceInputCompatibility).volatile(),
   inputAvoidance: z.boolean().default(DEFAULT_TTS_SETTINGS.inputAvoidance).volatile(),
   importantAnnouncementsFirst: z.boolean().default(DEFAULT_TTS_SETTINGS.importantAnnouncementsFirst).volatile(),
   instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction).volatile(),
@@ -156,10 +158,11 @@ export function apply(ctx: Context, config: Config): void {
 
   // Register all static assets using helper functions
   for (const [provider, path] of Object.entries(TTS_PROVIDER_LOGO_ASSET_ROUTES)) {
+    const filename = path.slice(path.lastIndexOf('/') + 1)
     registerStaticAsset(ctx, {
       path,
-      data: readFileSync(new URL(`../assets/ui/provider-${provider === 'xiaomi' ? 'mimo' : provider}-logo.png`, import.meta.url)),
-      contentType: 'image/png',
+      data: readFileSync(new URL(`../assets/ui/${filename}`, import.meta.url)),
+      contentType: filename.endsWith('.svg') ? 'image/svg+xml' : 'image/png',
       description: `${provider} provider logo`,
     })
   }

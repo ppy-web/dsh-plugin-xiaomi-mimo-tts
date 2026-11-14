@@ -8,7 +8,7 @@ const { AutomaticReading } = await loadClientModule('src/client/conversation/aut
 const { finalAssistantMessageId } = await loadClientModule('src/client/conversation/message-text.ts')
 const { PreviewPlayer } = await loadClientModule('src/client/playback/preview-player.ts')
 const { HistoryReplay } = await loadClientModule('src/client/history/history-replay.ts')
-const { zh, en, ja, fr } = await loadClientModule('src/client/localization.ts')
+const { zh, en } = await loadClientModule('src/client/localization.ts')
 
 function source(initial) {
   let value = initial
@@ -126,13 +126,11 @@ test('activation browser preview never falls back to a cloud request and disposa
   }, { fetch: () => assert.fail('activation preview must not contact a provider') })
 })
 
-test('Japanese and French dictionaries cover every UI key and preserve interpolation parameters', () => {
-  for (const dictionary of [en, ja, fr]) {
-    assert.deepEqual(Object.keys(dictionary).sort(), Object.keys(zh).sort())
-    for (const [key, value] of Object.entries(dictionary)) {
-      assert.ok(value.trim(), `${key}: empty translation`)
-      assert.deepEqual([...value.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort(), [...zh[key].matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort(), `${key}: missing placeholder`)
-    }
+test('Chinese and English translations agree on interpolation parameters', () => {
+  assert.deepEqual(Object.keys(en).sort(), Object.keys(zh).sort())
+  for (const [key, value] of Object.entries(en)) {
+    assert.ok(value.trim() && zh[key].trim(), `${key}: empty translation`)
+    assert.deepEqual([...value.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort(), [...zh[key].matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort(), `${key}: missing placeholder`)
   }
 })
 

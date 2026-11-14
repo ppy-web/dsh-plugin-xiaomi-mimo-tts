@@ -2,9 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { resolveTtsSettings } from '../lib/shared.js'
+import { prepareTtsText, resolveTtsSettings } from '../lib/shared.js'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { withBrowserPlayback } from './helpers/browser-playback.mjs'
+import { withDuplexBrowser } from './helpers/duplex-browser.mjs'
 
 const { ReadingCaptions, mediaCaptionTiming, readingCaptionText } = await loadClientModule('src/client/playback/reading-captions.ts')
 const { splitCaptionLines } = await loadClientModule('src/client/playback/caption-lines.ts')
@@ -33,6 +34,114 @@ function captionClock() {
     pending: () => timers.size,
   }
 }
+
+for (const provider of ['doubao', 'deepseek']) {
+  test(`${provider} duplex captions start with audio, grow with appended text, and freeze in a playback gap`, async () => {
+    await withBrowserPlayback(state => withDuplexBrowser(async sockets => {
+      const clock = captionClock(), captions = new ReadingCaptions(clock)
+      const unsubscribe = captions.subscribe(() => {})
+      const live = new LiveSpeechController(undefined, captions)
+      live.configure(resolveTtsSettings({ provider, deepseekEnabled: true }))
+      live.activateSession('session')
+      try {
+        live.observe('session', 1, 0, '第一句。')
+        await settle()
+        assert.equal(captions.getSnapshot().text, '')
+        sockets[0].audio(new Uint8Array(48_000))
+        await settle()
+        const context = state.contexts[0]
+        assert.equal(captions.getSnapshot().text, '')
+        context.advanceTo(.04)
+        assert.equal(captions.getSnapshot().text, prepareTtsText('第一句。'))
+        live.observe('session', 1, 0, '第一句。第二句。')
+        await settle()
+        context.advanceTo(1.04)
+        assert.equal(captions.getSnapshot().paused, false)
+        assert.equal(clock.pending(), 0)
+        clock.advance(10)
+        assert.equal(captions.getSnapshot().text, prepareTtsText('第一句。'))
+        sockets[0].audio(new Uint8Array(48_000))
+        await settle()
+        await live.pause('session')
+        context.advanceTo(1.8)
+        clock.advance(2)
+        assert.equal(captions.getSnapshot().text, prepareTtsText('第一句。'))
+        assert.equal(captions.getSnapshot().paused, true)
+        await live.resume('session')
+        live.finish('session', { turn: 1, step: 0, messageId: 'reply', text: '第一句。第二句。', interrupted: false })
+        await settle()
+        context.advanceTo(1.4)
+        clock.advance(.1)
+        assert.equal(captions.getSnapshot().text, prepareTtsText('第二句。'))
+        assert.equal(captions.getSnapshot().previousText, prepareTtsText('第一句。'))
+        assert.equal(live.stop('session'), true)
+        assert.equal(captions.getSnapshot().text, '')
+        assert.equal(clock.pending(), 0)
+      } finally { unsubscribe(); await live.dispose() }
+    }, { handle: (_socket, command) => command.type === 'text' }))
+  })
+}
+
+test('DeepSeek rolls over long text, advances captions on the next audio cue and keeps a single WAV', async () => {
+  const parts = ['甲'.repeat(5000), '乙'.repeat(5000), '丙'.repeat(30)]
+  await withBrowserPlayback(state => withDuplexBrowser(async sockets => {
+    const captions = new ReadingCaptions(captionClock()), saved = []
+    const live = new LiveSpeechController({ add: entry => saved.push(entry) }, captions)
+    live.configure(resolveTtsSettings({ provider: 'deepseek', deepseekEnabled: true, maxTextLength: 12_000, voiceRate: 2 }))
+    live.activateSession('session')
+    try {
+      live.playCompleted('session', 'reply', parts.join(''), () => assert.fail('unexpected fallback'))
+      await settle()
+      assert.equal(sockets.length, 3)
+      assert.deepEqual(sockets.map(socket => socket.sent.filter(command => command.type === 'text').map(command => command.text).join('')), parts)
+      const context = state.contexts[0]
+      assert.equal(captions.getSnapshot().text, '')
+      context.advanceTo(.04)
+      assert.ok(captions.getSnapshot().text.startsWith('甲'))
+      context.advanceTo(.54)
+      assert.ok(captions.getSnapshot().text.startsWith('乙'))
+      context.advanceTo(1.04)
+      assert.ok(captions.getSnapshot().text.startsWith('丙'))
+      assert.equal(saved.length, 1)
+      assert.equal(saved[0].messageId, 'reply')
+      assert.equal(saved[0].voiceRateApplied, false)
+      assert.equal(saved[0].format, 'wav')
+      const wav = new DataView(await saved[0].blob.arrayBuffer())
+      assert.equal(wav.getUint32(40, true), 48_000 * parts.length)
+      context.advanceTo(1.6)
+      assert.equal(captions.getSnapshot().text, '')
+    } finally { await live.dispose() }
+  }, { handle(socket, command) { if (command.type === 'text') { socket.audio(new Uint8Array(48_000)); return true } } }))
+})
+
+test('DeepSeek idle rollover finishes only the current connection and saves the reply after its final ID arrives', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  await withBrowserPlayback(() => withDuplexBrowser(async sockets => {
+    const saved = []
+    const live = new LiveSpeechController({ add: entry => saved.push(entry) })
+    live.configure(resolveTtsSettings({ provider: 'deepseek', deepseekEnabled: true }))
+    live.activateSession('session')
+    try {
+      live.observe('session', 1, 0, 'First sentence. ')
+      await settle()
+      t.mock.timers.tick(55_000)
+      await settle()
+      assert.ok(sockets[0].sent.some(command => command.type === 'finish'))
+      assert.equal(saved.length, 0)
+      const text = 'First sentence. Second sentence.'
+      live.observe('session', 1, 0, text)
+      live.finishInput('session', 1, 0)
+      await settle()
+      assert.equal(saved.length, 0)
+      live.finish('session', { turn: 1, step: 0, messageId: 'reply', text, interrupted: false })
+      await settle()
+      assert.equal(sockets.length, 2)
+      assert.equal(sockets.flatMap(socket => socket.sent.filter(command => command.type === 'text').map(command => command.text)).join(''), text)
+      assert.equal(saved.length, 1)
+      assert.equal(saved[0].messageId, 'reply')
+    } finally { await live.dispose() }
+  }), { endPcm: true })
+})
 
 test('long Chinese and mixed-language text is split into readable lines without losing content', () => {
   const text = '第一句话。第二句比较长，需要分成一行一行显示，数字 12.5 不应拆开。Hello world, welcome to the voice assistant!'
@@ -159,14 +268,14 @@ test('caption setting is available in Host integration and Voice reading with th
 test('Host integration presents one shared override action for multiple overridden switches', () => {
   const html = renderToStaticMarkup(createElement(AnnouncementSettings, {
     t: key => key, sources: [], writable: true, overridden: false, onChange() {}, onReset() {},
-    voiceInputCompatibility: false, voiceInputCompatibilityOverridden: true, onVoiceInputCompatibilityReset() {},
+    voiceRecognitionService: false, voiceRecognitionServiceOverridden: true, onVoiceRecognitionServiceReset() {},
     showReadingCaptions: false, showReadingCaptionsOverridden: true, onShowReadingCaptionsReset() {},
   }))
   const host = html.match(/<section\b[^>]*aria-label="settings\.hostIntegration"[^>]*>([\s\S]*?)<\/section>/u)?.[1]
   assert.ok(host)
   assert.equal((host.match(/settings\.overridden/gu) ?? []).length, 1)
   assert.equal((host.match(/settings\.reset/gu) ?? []).length, 1)
-  assert.match(host, /aria-label="settings\.voiceInputCompatibility"/u)
+  assert.match(host, /aria-label="settings\.voiceRecognitionService"/u)
   assert.match(host, /aria-label="settings\.readingCaptions"/u)
 })
 

@@ -9,6 +9,7 @@ import {
   TTS_STREAM_ROUTE,
 } from '../../src/shared.js'
 import type { TtsSettings } from '../../src/shared.js'
+import { TTS_PROVIDERS, ttsApiKey } from '../../src/types/providers.js'
 import type { TtsProvider } from '../../src/types/providers.js'
 import { TTS_DUPLEX_ROUTE } from '../../src/constants.js'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -42,8 +43,9 @@ export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
     return true
   }
 
-  async mutate(ops: Parameters<ConfigForm<TtsSettings>['mutate']>[0]): Promise<boolean> {
+  async mutate(ops: Parameters<ConfigForm<TtsSettings>['mutate']>[0], revision?: number): Promise<boolean> {
     if (!this.writable) throw new Error('Preview settings are read-only')
+    if (revision !== undefined && revision !== this.revision) return false
     const next = { ...this.user } as Record<string, unknown>
     for (const op of ops) {
       const field = op.path[0]
@@ -84,7 +86,7 @@ export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
       supported: this.keyStatusPreview === 'recognized',
       provider,
     }
-    const apiKey = this.snapshot.value?.[provider === 'doubao' ? 'doubaoApiKey' : provider === 'breeze' ? 'breezeApiKey' : 'apiKey']?.trim() ?? ''
+    const apiKey = ttsApiKey({ ...resolveTtsSettings(this.snapshot.value), provider })
     return {
       provider,
       configured: apiKey.length > 0,
@@ -172,7 +174,8 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
         if (init?.signal?.aborted) abort()
         else init?.signal?.addEventListener('abort', abort, { once: true })
       })
-      return jsonResponse(scope.apiKeyStatus(url.searchParams.get('provider') === 'doubao' ? 'doubao' : 'xiaomi'))
+      const provider = TTS_PROVIDERS.find(item => item === url.searchParams.get('provider'))
+      return jsonResponse(scope.apiKeyStatus(provider))
     }
     if (pathname === TTS_ROUTE || pathname === TTS_STREAM_ROUTE) {
       const engine = engineStateStore.getSnapshot().engine

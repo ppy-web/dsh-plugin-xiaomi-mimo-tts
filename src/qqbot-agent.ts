@@ -43,9 +43,10 @@ function registerQqbotFeatures(ctx: Context): void {
       const provider = speech?.currentProvider?.() ?? 'xiaomi'
       return JSON.stringify({ automaticSpeech: speech?.isAutomaticDeliveryEnabled?.('qqbot') === true, delivery: 'qqbot', provider, voice: 'saved-host-settings' })
         + '\n'
-        + 'automaticSpeech 为 true 时，输出最终正文，宿主在本轮成功结束后自动发送语音，不要另调 speak；但用户明确要求本轮换一种语气、情绪、方言或表达方式时例外：调用 speak 并传入 speechInstruction，它会取代本轮自动语音。为 false 时普通聊天回复文字。用户明确要求语音时调用 speak，传正文；若同时指定了语气、情绪、方言或表达方式，再传 speechInstruction（与正文同语言，简洁描述），仍沿用已保存的服务商、模型和音色。合成失败且尚未发送音频时，允许增加 provider 参数，在 xiaomi、doubao 与 breeze 之间切换服务商重试一次（仅使用已配置的服务商），并继续使用同一 speechInstruction；移除原供应商标签，再按新供应商能力决定是否添加标签。所选服务商已保存的模型和音色不变。'
+        + 'automaticSpeech 为 true 时，输出最终正文，宿主在本轮成功结束后自动发送语音，不要另调 speak；但用户明确要求本轮换一种语气、情绪、方言或表达方式时例外：调用 speak 并传入 speechInstruction，它会取代本轮自动语音。为 false 时普通聊天回复文字。用户明确要求语音时调用 speak，传正文；若同时指定了语气、情绪、方言或表达方式，再传 speechInstruction（与正文同语言，简洁描述），仍沿用已保存的服务商、模型和音色。合成失败且尚未发送音频时，允许增加 provider 参数，在 xiaomi、doubao、breeze 与 deepseek 之间切换服务商重试一次（仅使用已配置的服务商），新服务商支持语音指令时保留 speechInstruction；移除原供应商标签，再按新供应商能力决定是否添加标签。所选服务商已保存的模型和音色不变。'
         + (provider === 'breeze'
           ? '当前服务商是 Breeze：仅在 speak 的 text 中，可按实际情绪或动作在自然停顿处加入 speak 工具说明里 Breeze audio tags 清单中的标签，每次少量、不要堆叠；中文正文用方括号标签，英文正文用圆括号标签，不混用，只使用清单内的精确拼写。普通聊天回复和自动语音正文都不要写标签。'
+          : provider === 'deepseek' ? '当前服务商是 DeepSeek：speak 只传朗读正文，省略语音指令和声音标签。'
           : provider === 'xiaomi' && speech?.supportsAudioTags?.() === true
             ? '当前服务商是小米 MiMo 预置音色：仅在 speak 的 text 中按需使用 Xiaomi MiMo audio tags。句首可用 (温柔 俏皮) 指定整体风格，句内可用 [轻笑]、（紧张，深呼吸）等标签；支持中英文、自定义声音描述及组合，只写可听见的语气、情绪、呼吸或哭笑，不写身体动作，少量不堆叠。唱歌必须在 text 最开头放 (唱歌)、(sing) 或 (singing)。普通聊天回复和自动语音正文不要写标签。'
             : '当前服务商或模型不支持音频标签：speak 的 text 和普通回复都只写可朗读的正文，用 speechInstruction 描述语气；小米 VoiceDesign 也遵守此规则。')

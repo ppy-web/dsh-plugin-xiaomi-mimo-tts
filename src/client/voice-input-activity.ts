@@ -20,8 +20,7 @@ export class VoiceInputActivity implements SnapshotSource<boolean> {
     return () => { this.listeners.delete(listener) }
   }
 
-  configure(enabled: boolean): void {
-    if (!enabled) { this.dispose(); return }
+  start(): void {
     if (this.observer !== null) return
     this.observer = new MutationObserver(records => {
       // Chat text streams produce many unrelated child mutations. Only rescan
@@ -48,7 +47,7 @@ export class VoiceInputActivity implements SnapshotSource<boolean> {
   }
 
   private refresh = (): void => {
-    // A queued callback after disable/unload must not reclaim audio permission.
+    // A queued callback after disposal must not reclaim audio permission.
     if (this.observer !== null) this.publish(this.document.querySelector(ACTIVE_VOICE_INPUT) !== null)
   }
 

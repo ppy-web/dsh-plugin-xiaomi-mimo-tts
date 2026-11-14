@@ -103,7 +103,8 @@ test('recognition test probes the selected provider and rejects untrusted reques
   assert.equal((await post('bad', { 'x-dsh-speech-adapter': '1' })).status, 400)
   assert.equal(calls.length, 0)
   assert.equal((await post('doubao', { 'x-dsh-speech-adapter': '1' })).status, 200)
-  assert.deepEqual(calls, ['doubao'])
+  assert.equal((await post('deepseek', { origin: run.webBaseURL })).status, 200)
+  assert.deepEqual(calls, ['doubao', 'deepseek'])
   result = 'passport-no-speech'
   assert.equal((await post('xiaomi', { origin: run.webBaseURL })).status, 200)
   result = 'passport-asr-auth-failed'
@@ -118,21 +119,22 @@ test('recognition test probes the selected provider and rejects untrusted reques
   assert.deepEqual(await unsafe.json(), { error: 'passport-recognition-failed' })
 })
 
-test('cloud ASR listens without Host speechToText and exposes only credential availability', async t => {
-  const run = await host(t, { port: await freePort(), accessToken: token, asrProvider: 'xiaomi' })
+test('DeepSeek ASR listens without Host speechToText and exposes only credential availability', async t => {
+  const run = await host(t, { port: await freePort(), accessToken: token, asrProvider: 'deepseek' })
   await run.ctx.plugin({ name: 'cloud-services', apply(child) {
     child.provide('speechSynthesis', { registerDelivery() { return () => {} } })
-    child.provide('passportRecognition', new passport.PassportRecognition(() => ({ apiKey: 'private-cloud-key', doubaoApiKey: '' })))
+    child.provide('passportRecognition', new passport.PassportRecognition(() => ({ apiKey: '', doubaoApiKey: '', deepseekApiKey: 'private-cloud-key' })))
     for (const name of ['agents', 'agentPresets', 'agentDefaultModel']) child.provide(name, {})
   } })
   await until(async () => (await run.status()).listening)
   const status = await run.status()
   assert.equal(status.servicesReady, true)
   assert.equal(status.recognitionReady, true)
-  assert.equal(status.asrProvider, 'xiaomi')
+  assert.equal(status.asrProvider, 'deepseek')
   assert.equal(run.ctx.get('speechToText'), undefined)
   assert.equal(JSON.stringify(status).includes('private-cloud-key'), false)
   assert.equal(status.recognitionChoices.find(c => c.id === 'doubao').configured, false)
+  assert.equal(status.recognitionChoices.find(c => c.id === 'deepseek').configured, true)
 })
 
 test('fresh enabled Passport exposes editable Host settings without a token or ASR services', async t => {

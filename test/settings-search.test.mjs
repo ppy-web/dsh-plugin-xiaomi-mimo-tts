@@ -19,6 +19,15 @@ test('a query can match an alias, localized hint, or normalized name across coll
   assert.equal(search('no-such-setting').visible.size, 0)
 })
 
+test('search opens the provider section for external takeover settings', () => {
+  for (const dictionary of [zh, en]) {
+    const result = search(dictionary['settings.acceptExternalProviders'], dictionary)
+    assert.ok(result.visible.has('settings.acceptExternalProviders'))
+    assert.ok(result.groups.has('providers'))
+    assert.ok(!result.groups.has('host'))
+  }
+})
+
 test('an unavailable match points to the control that makes it editable', () => {
   const volume = search('音效音量', zh, { soundEnabled: false })
   assert.ok(volume.visible.has('soundEnabled'))

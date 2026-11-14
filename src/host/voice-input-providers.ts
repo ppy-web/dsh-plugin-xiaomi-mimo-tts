@@ -8,6 +8,7 @@ type CloudSource = Exclude<RecognitionSource, 'host'>
 const SOURCES: readonly { source: CloudSource; id: string; name: string }[] = [
   { source: 'xiaomi', id: 'xiaomi-mimo-tts-asr', name: 'Xiaomi MiMo ASR' },
   { source: 'doubao', id: 'xiaomi-mimo-tts-doubao-asr', name: 'Doubao real-time ASR' },
+  { source: 'deepseek', id: 'xiaomi-mimo-tts-deepseek-asr', name: 'DeepSeek ASR' },
   { source: 'doubao-nostream', id: 'xiaomi-mimo-tts-doubao-utterance-asr', name: 'Doubao utterance ASR' },
 ]
 const MAX_PCM_BYTES = 4 * 1024 * 1024
@@ -57,20 +58,25 @@ export function voiceInputProvider(source: CloudSource, id: string, name: string
 export function registerVoiceInputProviders(ctx: Context, enabled: () => boolean, subscribe: (update: () => void) => () => void): void {
   ctx.effect(() => {
     let disposed = false
-    let registrations: (() => Promise<void>)[] = []
+    const registrations = new Map<CloudSource, () => Promise<void>>()
     let pending = Promise.resolve()
     const withdraw = async (): Promise<void> => {
-      const active = registrations
-      registrations = []
+      const active = [...registrations.values()]
+      registrations.clear()
       await Promise.allSettled(active.map(async remove => { await remove() }))
     }
     const update = (): void => {
       // Serialize withdrawal and registration so quick toggles cannot create duplicate providers.
       pending = pending.then(async () => {
         if (disposed || !enabled()) { await withdraw(); return }
-        if (registrations.length > 0) return
         try {
-          for (const item of SOURCES) registrations.push(ctx.speechToText.register(voiceInputProvider(item.source, item.id, item.name, ctx.passportRecognition)))
+          const deepseekReady = ctx.passportRecognition.choices().some(choice => choice.id === 'deepseek' && choice.configured)
+          for (const item of SOURCES) {
+            const previous = registrations.get(item.source)
+            if (item.source === 'deepseek' && !deepseekReady) {
+              if (previous) { registrations.delete(item.source); await previous() }
+            } else if (!previous) registrations.set(item.source, ctx.speechToText.register(voiceInputProvider(item.source, item.id, item.name, ctx.passportRecognition)))
+          }
         } catch (error) {
           await withdraw()
           throw error

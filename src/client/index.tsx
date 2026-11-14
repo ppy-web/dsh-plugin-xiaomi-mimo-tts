@@ -13,7 +13,7 @@ import { AutomaticReading } from './conversation/automatic-reading.js'
 import { ReadAloudAction } from './conversation/read-aloud.js'
 import { SessionPlaybackObserver } from './conversation/session-playback-observer.js'
 import { ReadingCaptionBar } from './conversation/reading-caption-bar.js'
-import { NS, en, zh, ja, fr } from './localization.js'
+import { NS, en, zh } from './localization.js'
 import type { Translate } from './localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback/index.js'
 import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
@@ -98,7 +98,7 @@ export function apply(ctx: Context): void {
     register(namespace: string, dictionaries: Record<string, typeof en>): () => void
   }
   const t = locale.bind(NS)
-  ctx.effect(() => locale.register(NS, { zh, en, ja, fr }), 'xiaomi-mimo-tts: dictionaries')
+  ctx.effect(() => locale.register(NS, { zh, en }), 'xiaomi-mimo-tts: dictionaries')
 
   const scope = ctx.configForms.get<TtsSettings>(TTS_SETTINGS_NAMESPACE)
   const focusOwner = new TabAudioFocus()
@@ -202,11 +202,9 @@ export function apply(ctx: Context): void {
     return () => { deactivate(); off() }
   }, 'xiaomi-mimo-tts: tab audio focus')
   ctx.effect(() => {
-    const update = () => voiceInput.configure(resolveTtsSettings(scope.getSnapshot().value).voiceInputCompatibility)
-    const off = scope.subscribe(update)
-    update()
-    return () => { off(); voiceInput.dispose() }
-  }, 'xiaomi-mimo-tts: voice input compatibility')
+    voiceInput.start()
+    return () => voiceInput.dispose()
+  }, 'xiaomi-mimo-tts: voice input activity')
   ctx.effect(() => {
     const offActivity = composerInput.subscribe(() => {
       playback.resetAutomaticPlayback()

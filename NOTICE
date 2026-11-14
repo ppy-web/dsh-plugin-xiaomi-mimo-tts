@@ -14,6 +14,9 @@ and character usage terms. This package's dialogue and voice instructions
 are independently written; no upstream images or template files are bundled
 by this preset update.
 
+DeepSeek logo asset: Simple Icons, https://simpleicons.org/?q=deepseek
+The DeepSeek mark identifies the voice service.
+
 Voice Studio title: Zen Maru Gothic Black (subset embedded in the client stylesheet).
 Copyright 2021 The Zen Maru Gothic Project Authors.
 https://github.com/googlefonts/zen-marugothic

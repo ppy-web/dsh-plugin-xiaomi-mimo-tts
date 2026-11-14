@@ -5,7 +5,7 @@ import { FiLink, FiCopy, FiCheck, FiRefreshCw, FiKey, FiWifi } from 'react-icons
 import type { PluginConfigViewProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { resolveTtsSettings, type TtsSettings } from '../../shared.js'
-import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, PASSPORT_STATUS_ROUTE, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from '../../types/passport.js'
+import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_ASR_PROVIDERS, PASSPORT_NUMBER_FIELDS, PASSPORT_STATUS_ROUTE, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from '../../types/passport.js'
 import type { PassportNumberField, PassportSettings } from '../../types/passport.js'
 import type { PassportConnectionStatus, PassportPreset } from '../../types/passport.js'
 import { IDLE_PLUGIN_CHANGES } from '../plugin-activity.js'
@@ -295,12 +295,12 @@ function PassportForm({ scope, ttsScope, t, changes = IDLE_PLUGIN_CHANGES, token
         <label htmlFor={`${id}-asr`}>{t('passport.asrService')}</label>
         <select id={`${id}-asr`} name="asrProvider" value={value.asrProvider} disabled={disabled}
           aria-describedby={`${id}-asr-hint`} onChange={event => edit('asrProvider', event.currentTarget.value)}>
-          {(['host', 'xiaomi', 'doubao', 'doubao-nostream'] as const).map(source => <option key={source} value={source}
+          {PASSPORT_ASR_PROVIDERS.map(source => <option key={source} value={source}
             disabled={source !== 'host' && (!recognitionEnabled || !status?.recognitionChoices?.some(choice => choice.id === source && choice.configured))}>
             {t(`passport.asr.${source}`)}{source !== 'host' ? ` · ${t(!recognitionEnabled ? 'passport.asrDisabled' : status?.recognitionChoices?.some(choice => choice.id === source && choice.configured) ? 'passport.keyConfigured' : 'passport.keyMissing')}` : ''}
           </option>)}
         </select>
-        <small id={`${id}-asr-hint`}>{t(value.asrProvider === 'host' ? 'passport.asrHostHint' : 'passport.asrCloudHint')}</small>
+        <small id={`${id}-asr-hint`}>{t(value.asrProvider === 'host' ? 'passport.asrHostHint' : value.asrProvider === 'deepseek' ? 'passport.asrDeepseekHint' : 'passport.asrCloudHint')}</small>
         <div className="xmimo-passport-option-actions">
           {openTtsSettings ? <Button type="button" variant="outline" size="sm" onClick={openTtsSettings}><FiKey aria-hidden="true" />{t('passport.configureKeys')}</Button> : null}
           <Button type="button" variant="outline" size="sm" disabled={changing || asrTest === 'testing' || (!recognitionEnabled && value.asrProvider !== 'host')} onClick={() => { void testAsr() }}><FiWifi aria-hidden="true" />{t(asrTest === 'testing' ? 'passport.asrTesting' : 'passport.asrTest')}</Button>

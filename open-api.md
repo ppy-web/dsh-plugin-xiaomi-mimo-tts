@@ -49,13 +49,13 @@ export async function apply(ctx: Context) {
 | 字段 | 类型与含义 |
 | --- | --- |
 | `text` | 必填字符串，按所选供应商规则清理后合成。 |
-| `provider` | 可选 `xiaomi` / `doubao` / `breeze` / 已注册的 `external:*` ID；省略时使用当前有效引擎，外部接管优先。显式指定内置供应商时使用其保存配置。 |
+| `provider` | 可选 `xiaomi` / `doubao` / `breeze` / `deepseek` / 已注册的 `external:*` ID；省略时使用当前有效引擎，外部接管优先。显式指定内置供应商时使用其保存配置。 |
 | `engineRevision` | 可选引擎状态版本。浏览器请求携带此值；过期返回 `speech-engine-changed`，不会改用其他引擎执行。 |
-| `model` / `voice` | 可选模型或音色覆盖；省略时使用所选供应商保存的值。Breeze 固定为 `breeze-tts-2`。 |
-| `speechInstruction` | 本次语气、情绪、方言等自然语言指令，不写回设置；豆包复刻模型不支持。空字符串清除本次请求的默认指令。 |
+| `model` / `voice` | 可选模型或音色覆盖；省略时使用所选供应商保存的值。Breeze 固定为 `breeze-tts-2`。DeepSeek 固定为 `deepseek-tts`，音色为 `stella` 或 `tide`。 |
+| `speechInstruction` | 本次语气、情绪、方言等自然语言指令，不写回设置；支持小米、豆包标准音色和 Breeze。空字符串清除本次请求的默认指令。 |
 | `voiceDesignPrompt` | 小米 VoiceDesign 的本次声音描述。 |
-| `voiceRate` | 豆包、Breeze 的服务端语速，范围 0.5–2；小米无该服务端参数。 |
-| `format` | `mp3` / `wav` / `silk`。省略时，宿主格式为 WAV 则输出 WAV，否则输出 MP3。 |
+| `voiceRate` | 豆包、Breeze 的服务端语速，范围 0.5–2。 |
+| `format` | `mp3` / `wav` / `silk`。DeepSeek 支持 WAV 和基于 WAV 转换的 SILK，默认 WAV。其他内置供应商沿用宿主配置。 |
 | `maxDurationMs` | 可选正数，要求 WAV / SILK；在交付前检查真实时长，超限拒绝，不截断。 |
 | `signal` | 宿主插件传入的 `AbortSignal`，用于取消。 |
 | `splitLongText` | 仅渠道 `deliver()` 使用；设为 `true` 后按供应商单次限制分段，依次合成并发送。不合并成一个文件。 |
@@ -96,14 +96,14 @@ Authorization: Bearer <openApiToken>
 | `provider` | 保存的当前供应商。 |
 | `formats` | 当前有效引擎支持的完整音频格式，以及由 WAV 转换的 `silk`。 |
 | `providers[]` | 各供应商的本地配置与模型能力。 |
-| `providers[].id` | `xiaomi` / `doubao` / `breeze`，以及当前已注册的 `external:*`。 |
+| `providers[].id` | `xiaomi` / `doubao` / `breeze` / `deepseek`，以及当前已注册的 `external:*`。 |
 | `providers[].configured` | 是否保存了非空密钥。 |
 | `providers[].ready` | 当前保存的密钥格式、音色等是否通过本地校验。 |
 | `providers[].unavailableReason` | 未就绪时的稳定错误码，例如 `api-key-not-configured`、`api-key-rejected`、`voice-required`。 |
 | `providers[].selectedModel` / `selectedVoice` | 该供应商保存的模型与音色 ID。 |
-| `providers[].maxTextLength` | 清理后单次文本上限；Breeze 还会取插件上限与 1000 的较小值。 |
+| `providers[].maxTextLength` | 清理后单次文本上限；Breeze 还会取插件上限与 1000 的较小值。DeepSeek 同时受 10000 计费字符和 64 KiB 限制，汉字计作两个字符。 |
 | `providers[].models[]` | 模型能力清单，结构见下表。 |
-| `http.formats` | 当前引擎完整二进制 `/synthesize` 支持的格式。内置为 MP3 / WAV，外部必需 WAV、可选 MP3。 |
+| `http.formats` | 当前引擎完整二进制 `/synthesize` 支持的格式。DeepSeek 为 WAV。其余内置供应商为 MP3 / WAV，外部必需 WAV、可选 MP3。 |
 | `http.exportFormats` | 当前引擎可导出的格式，包含其完整音频格式及基于 WAV 转换的 SILK。 |
 | `http.downloadTtlMs` | 下载 URL 的有效期，当前为 86400000 毫秒（24 小时）。 |
 
@@ -119,9 +119,9 @@ Authorization: Bearer <openApiToken>
 | `audioTags` | 是否支持正文内供应商特定的音频标签。 |
 | `voiceRate` | 是否支持服务端语速参数。 |
 | `streaming` | 现有 Web SSE 接口是否支持该模型的流式输出。 |
-| `duplex` | 现有 WebSocket 接口是否支持持续输入文字，目前仅豆包。 |
+| `duplex` | 现有 WebSocket 接口是否支持持续输入文字，支持豆包和 DeepSeek。 |
 
-查询不消耗合成请求，不返回密钥、上游地址或保存的声音描述与指令。`ready` 不代表已验证上游账户、额度或音色权限，也不代表浏览器自动朗读已开启。豆包、Breeze 的 UI 显示开关不限制宿主显式调用。浏览器本地语音和 MOSS 不属于这个三供应商宿主服务。
+查询不消耗合成请求，不返回密钥、上游地址或保存的声音描述与指令。`ready` 不代表已验证上游账户、额度或音色权限，也不代表浏览器自动朗读已开启。豆包、Breeze 和 DeepSeek 的显示开关控制选择界面，宿主与 Open API 中显式指定的供应商使用独立保存的配置。浏览器本地语音和 MOSS 由客户端提供。
 
 小米的 `selectedModel` 可能是用于浏览器策略的 `browser-local-fallback`；它不是独立云端模型，不列入 `models`。宿主完整合成会按现有逻辑使用 MiMo 预置模型，调用方也可显式选择清单中的模型。
 
@@ -135,7 +135,7 @@ Content-Type: application/json
 {"text":"欢迎回来。","format":"wav"}
 ```
 
-接受前述请求字段中的 `text`、`provider`、`model`、`voice`、`voiceDesignPrompt`、`speechInstruction`、`voiceRate`、`format`、`maxDurationMs`。其他字段拒绝；不接受文件路径、密钥、上游地址、`signal` 或 `splitLongText`。正文上限为 128 KiB，文本另受供应商单次限制。客户端断开会取消待处理合成。
+接受前述请求字段中的 `text`、`provider`、`engineRevision`、`model`、`voice`、`voiceDesignPrompt`、`speechInstruction`、`voiceRate`、`format`、`maxDurationMs`。其他字段拒绝；不接受文件路径、密钥、上游地址、`signal` 或 `splitLongText`。正文上限为 128 KiB，文本另受供应商单次限制。DeepSeek 显式请求 MP3 时返回 `audio-format-unsupported`，超长的单次导出返回 `text-too-long`。客户端断开会取消待处理合成。
 
 成功返回 `201`，以下为结构示例：
 
@@ -345,7 +345,7 @@ async function configure(selection: ExternalSpeechSelection, { signal }: { signa
 
 ### 接收开关与供应商卡片切换
 
-宿主配置 `acceptExternalProviders` 默认 `true`，对应「播报台 → 更多 → 宿主适配 → 接收外部供应商」。保存为 `false` 后，已注册的外部适配器仍保留注册和配置，但不参与默认合成、显式外部请求、能力查询或浏览器引擎状态；正在运行的外部任务取消，恢复内置供应商。重新开启后直接使用现有注册，无需适配器重载。
+宿主配置 `acceptExternalProviders` 默认 `true`，对应「播报台 → 语音服务商 → 外部供应商」。保存为 `false` 后，已注册的外部适配器仍保留注册和配置，但不参与默认合成、显式外部请求、能力查询或浏览器引擎状态；正在运行的外部任务取消，恢复内置供应商。重新开启后直接使用现有注册，无需适配器重载。
 
 多供应商适配器可在快照中添加 `configurations: { id: string; name: string }[]`，并用 `configurationId` 标识当前项。列表最多 200 项，ID 和名称最长 200 字符；浏览器只接收这两个字段，不接收凭据、地址或供应商配置。提供可选方法 `selectConfiguration(configurationId, { signal }): Promise<void>`，在适配器中保存当前供应商并通知订阅者；供应商各自的模型、音色和密钥应保持不变。Host 根据方法是否存在派生 `configurationSwitchable`。
 

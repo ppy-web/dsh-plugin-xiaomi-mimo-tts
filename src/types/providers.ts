@@ -2,16 +2,26 @@ import type { TtsModel } from './models.js'
 import type { ResolvedTtsSettings } from './settings.js'
 import { normalizeVoiceRate } from '../utils/encoding.js'
 
-export const TTS_PROVIDERS = ['xiaomi', 'doubao', 'breeze'] as const
+export const TTS_PROVIDERS = ['xiaomi', 'doubao', 'breeze', 'deepseek'] as const
 export type TtsProvider = typeof TTS_PROVIDERS[number]
 
+export const DEEPSEEK_TTS_MODEL = 'deepseek-tts' as const
+export const DEEPSEEK_VOICES = ['stella', 'tide'] as const
+export type DeepSeekVoice = typeof DEEPSEEK_VOICES[number]
+export const OPTIONAL_TTS_PROVIDERS = ['doubao', 'breeze', 'deepseek'] as const
+export type OptionalTtsProvider = typeof OPTIONAL_TTS_PROVIDERS[number]
+export const TTS_PROVIDER_SWITCH = {
+  doubao: 'doubaoEnabled', breeze: 'breezeEnabled', deepseek: 'deepseekEnabled',
+} as const
+
 /** Available choices, in the order used by the provider switch. */
-export function availableTtsProviders(doubaoEnabled: boolean, breezeEnabled: boolean): TtsProvider[] {
-  return TTS_PROVIDERS.filter(provider => provider === 'xiaomi' || (provider === 'doubao' ? doubaoEnabled : breezeEnabled))
+export function availableTtsProviders(doubaoEnabled: boolean, breezeEnabled: boolean, deepseekEnabled = false): TtsProvider[] {
+  const enabled = { doubao: doubaoEnabled, breeze: breezeEnabled, deepseek: deepseekEnabled }
+  return ['xiaomi', ...OPTIONAL_TTS_PROVIDERS.filter(provider => enabled[provider])]
 }
 
-export function nextTtsProvider(provider: TtsProvider, doubaoEnabled: boolean, breezeEnabled: boolean): TtsProvider {
-  const options = availableTtsProviders(doubaoEnabled, breezeEnabled)
+export function nextTtsProvider(provider: TtsProvider, doubaoEnabled: boolean, breezeEnabled: boolean, deepseekEnabled = false): TtsProvider {
+  const options = availableTtsProviders(doubaoEnabled, breezeEnabled, deepseekEnabled)
   return options[(options.indexOf(provider) + 1) % options.length]!
 }
 export const DOUBAO_TTS_MODELS = ['seed-tts-2.0', 'seed-icl-2.0'] as const
@@ -61,19 +71,29 @@ export type TtsSelection =
   | { provider: 'xiaomi'; model: TtsModel; voice: string; voiceDesignPrompt: string; speechInstruction?: string }
   | { provider: 'doubao'; model: DoubaoTtsModel; voice: string; voiceRate?: number; speechInstruction?: string }
   | { provider: 'breeze'; model: typeof BREEZE_TTS_MODEL; voice: string; voiceRate?: number; speechInstruction?: string }
+  | { provider: 'deepseek'; model: typeof DEEPSEEK_TTS_MODEL; voice: DeepSeekVoice }
 
 export function ttsSelection(settings: ResolvedTtsSettings): TtsSelection {
+  if (settings.provider === 'deepseek') return { provider: 'deepseek', model: DEEPSEEK_TTS_MODEL, voice: settings.deepseekVoice }
   if (settings.provider === 'doubao') return { provider: 'doubao', model: settings.doubaoModel, voice: settings.doubaoModel === 'seed-icl-2.0' ? settings.doubaoClonedVoice : settings.doubaoVoice, voiceRate: normalizeVoiceRate(settings.voiceRate), ...(settings.doubaoModel === 'seed-tts-2.0' ? { speechInstruction: settings.doubaoInstruction.trim() } : {}) }
   if (settings.provider === 'breeze') return { provider: 'breeze', model: BREEZE_TTS_MODEL, voice: settings.breezeVoice, voiceRate: normalizeVoiceRate(settings.voiceRate), speechInstruction: settings.breezeInstruction.trim() }
   return { provider: 'xiaomi', model: settings.model, voice: settings.voice, voiceDesignPrompt: settings.voiceDesignPrompt, speechInstruction: settings.instruction.trim() }
 }
 
+export function supportsDuplexTts(provider: TtsProvider): provider is 'doubao' | 'deepseek' {
+  return provider === 'doubao' || provider === 'deepseek'
+}
+
+export function usesCloudVoiceRate(provider: TtsProvider): boolean {
+  return provider === 'doubao' || provider === 'breeze'
+}
+
 export function supportsRealtimeTts(settings: ResolvedTtsSettings): boolean {
-  if (settings.provider === 'doubao' || settings.provider === 'breeze') return true
+  if (settings.provider === 'doubao' || settings.provider === 'breeze' || settings.provider === 'deepseek') return true
   return settings.provider === 'xiaomi' && settings.model === 'mimo-v2.5-tts'
 }
 
 export function ttsApiKey(settings: ResolvedTtsSettings): string {
-  const key = settings.provider === 'doubao' ? settings.doubaoApiKey : settings.provider === 'breeze' ? settings.breezeApiKey : settings.apiKey
+  const key = settings.provider === 'doubao' ? settings.doubaoApiKey : settings.provider === 'breeze' ? settings.breezeApiKey : settings.provider === 'deepseek' ? settings.deepseekApiKey : settings.apiKey
   return key.trim()
 }

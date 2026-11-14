@@ -1,4 +1,4 @@
-export type PreviewLocale = 'zh' | 'en' | 'ja' | 'fr'
+export type PreviewLocale = 'zh' | 'en'
 export const PREVIEW_PALETTES = ['vintage-paper', 'notebook', 'kodama-grove', 'ocean-breeze', 'amethyst-haze', 'original'] as const
 export type PreviewPalette = typeof PREVIEW_PALETTES[number]
 export type PreviewView = 'settings' | 'workbench' | 'live2d' | 'voice' | 'conversation' | 'detail' | 'components' | 'filter' | 'manual' | 'qqbot' | 'xiaomi' | 'doubao' | 'breeze' | 'passport'
@@ -80,62 +80,6 @@ export const PREVIEW_COPY: Record<PreviewLocale, PreviewCopy> = {
       doubao: { title: 'Doubao voice setup', description: 'Enable the service, configure a key and voice, and verify cloud speech and streaming.' },
       xiaomi: { title: 'Xiaomi MiMo setup', description: 'Review the free trial and limitations, then configure a key and voice.' },
       breeze: { title: 'Breeze setup', description: 'Prepare network access, register for credits, and configure a key, voice, and delivery.' },
-    },
-  },
-  ja: {
-    skipContent: '本文に移動',
-    workspace: '操作プレビュー', navigation: '機能ナビゲーション', closeNavigation: 'ナビゲーションを閉じる', toggleNavigation: 'サイドバーを切り替え',
-    speech: '音声体験', plugin: 'プラグイン管理', help: 'ツールとヘルプ',
-    source: 'ソースを見る', language: '言語',
-    lightTheme: 'ライトテーマに切り替え', darkTheme: 'ダークテーマに切り替え', dayMode: 'ライトテーマ', activation: '新機能のご紹介',
-    palette: '配色', palettes: {
-      'vintage-paper': 'ヴィンテージペーパー', notebook: 'ノートブック', 'kodama-grove': 'こだまの森',
-      'ocean-breeze': '海のそよ風', 'amethyst-haze': 'アメジストの霞', original: 'オリジナル',
-    },
-    notice: 'プレビュー専用です。DSH の設定は変更しません。', externalTakeover: '外部サービスの引き継ぎを再現',
-    pages: {
-      live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
-      settings: { title: 'プラグイン設定', description: 'サービス、音声、効果音を設定できる実際のパネルです。' },
-      workbench: { title: 'Voice Studio', description: 'Configure voices, previews, and sound effects in a dedicated studio.' },
-      voice: { title: '音声読み上げ', description: 'ホスト設定から音声、速度、自動読み上げを調整します。' },
-      conversation: { title: '会話プレビュー', description: 'サンプル会話でメッセージの読み上げと再生操作を試せます。' },
-      detail: { title: 'プラグイン詳細', description: 'サービス、キー状態ごとの詳細表示を確認します。' },
-      components: { title: '含まれるコンポーネント', description: '音声プラグインとクジラメイドの Agent プリセットを確認します。' },
-      filter: { title: 'テキストフィルター', description: '入力文やサンプルで、元の文章と読み上げ用テキストを比較します。' },
-      manual: { title: 'ユーザーマニュアル', description: '設定と操作のガイドです。中国語と英語で提供しています。' },
-      qqbot: { title: 'QQBot 連携', description: 'QQ の接続から音声メッセージの確認まで。本文は英語で表示します。' },
-      passport: { title: 'AI Passport 接続', description: 'ホストと端末を設定して Wi-Fi 音声会話を始めます。本文は英語で表示します。' },
-      doubao: { title: '豆包音声の接続', description: 'サービスの有効化、キーと音声の設定、動作確認。本文は英語で表示します。' },
-      xiaomi: { title: '小米 MiMo の接続', description: '無料体験と制限、キーと音声の設定。本文は英語で表示します。' },
-      breeze: { title: 'Breeze の接続', description: 'ネットワーク、登録とクレジット、音声の設定。本文は英語で表示します。' },
-    },
-  },
-  fr: {
-    skipContent: 'Aller au contenu',
-    workspace: 'Aperçu interactif', navigation: 'Navigation', closeNavigation: 'Fermer la navigation', toggleNavigation: 'Afficher ou masquer le menu',
-    speech: 'Lecture vocale', plugin: 'Plugin', help: 'Outils et aide',
-    source: 'Voir le code', language: 'Langue',
-    lightTheme: 'Passer au thème clair', darkTheme: 'Passer au thème sombre', dayMode: 'Thème clair', activation: 'Les nouveautés',
-    palette: 'Palette de couleurs', palettes: {
-      'vintage-paper': 'Papier vintage', notebook: 'Carnet', 'kodama-grove': 'Bosquet de Kodama',
-      'ocean-breeze': 'Brise marine', 'amethyst-haze': 'Brume améthyste', original: 'Palette d’origine',
-    },
-    notice: 'Aperçu uniquement. Les réglages de DSH restent inchangés.', externalTakeover: 'Simuler un fournisseur externe',
-    pages: {
-      live2d: { title: 'Live2D settings', description: 'Choose a character and adjust its size and position.' },
-      settings: { title: 'Réglages du plugin', description: 'Découvrez les services, les voix et les effets sonores du panneau complet.' },
-      workbench: { title: 'Voice Studio', description: 'Configure voices, previews, and sound effects in a dedicated studio.' },
-      voice: { title: 'Lecture vocale', description: 'Réglez la voix, la vitesse et la lecture automatique depuis les paramètres de l’hôte.' },
-      conversation: { title: 'Conversation', description: 'Essayez la lecture des messages dans un exemple de conversation.' },
-      detail: { title: 'Détails du plugin', description: 'Vérifiez l’affichage selon le service et l’état de la clé.' },
-      components: { title: 'Composants inclus', description: 'Découvrez le plugin vocal et le préréglage Agent Whale Girl.' },
-      filter: { title: 'Filtrage du texte', description: 'Comparez le texte source et le texte lu avec votre saisie ou les exemples.' },
-      manual: { title: 'Manuel utilisateur', description: 'Le guide des réglages et des commandes, disponible en chinois et en anglais.' },
-      qqbot: { title: 'Connexion QQBot', description: 'Connectez le bot et vérifiez les messages vocaux. Guide en anglais.' },
-      passport: { title: 'Connexion AI Passport', description: 'Configurez l’hôte et l’appareil pour parler à DSH via Wi-Fi. Guide en anglais.' },
-      doubao: { title: 'Connexion vocale Doubao', description: 'Activez le service, configurez la clé et testez la voix. Guide en anglais.' },
-      xiaomi: { title: 'Connexion Xiaomi MiMo', description: 'Découvrez l’essai gratuit et les limites, puis configurez la voix. Guide en anglais.' },
-      breeze: { title: 'Connexion Breeze', description: 'Préparez le réseau, les crédits et les réglages de voix. Guide en anglais.' },
     },
   },
 }

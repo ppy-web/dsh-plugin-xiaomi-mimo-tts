@@ -13,6 +13,8 @@ export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 /** Same-origin route that proxies MiMo PCM16 server-sent audio chunks. */
 export const TTS_STREAM_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-stream'
 
+export const DEEPSEEK_TTS_ENDPOINT = 'wss://api.deepseek.com/v1/tools/tts'
+export const DEEPSEEK_ASR_ENDPOINT = 'https://api.deepseek.com/v1/tools/asr'
 export const TTS_DUPLEX_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-duplex'
 export const TTS_CAPABILITIES_ROUTE = '/plugins/xiaomi-mimo-tts/capabilities'
 export const TTS_EXPORT_ROUTE = '/plugins/xiaomi-mimo-tts/export-audio'
@@ -54,6 +56,7 @@ export const TTS_PROVIDER_CHARACTER_ASSET_ROUTES = {
   xiaomi: '/plugins/xiaomi-mimo-tts/provider-mimo.webp',
   doubao: '/plugins/xiaomi-mimo-tts/provider-doubao.webp',
   breeze: '/plugins/xiaomi-mimo-tts/provider-breeze.webp',
+  deepseek: '/plugins/xiaomi-mimo-tts/provider-deepseek.webp',
 } as const
 
 export const TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/provider-external-takeover.webp'
@@ -63,6 +66,7 @@ export const TTS_PROVIDER_LOGO_ASSET_ROUTES = {
   xiaomi: '/plugins/xiaomi-mimo-tts/provider-mimo-logo.png',
   doubao: '/plugins/xiaomi-mimo-tts/provider-doubao-logo.png',
   breeze: '/plugins/xiaomi-mimo-tts/provider-breeze-logo.png',
+  deepseek: '/plugins/xiaomi-mimo-tts/provider-deepseek-logo.svg',
 } as const
 
 /** Breeze Blue wordmark used by the optional provider setting. */

@@ -16,6 +16,9 @@ import { ttsSelection, BREEZE_TTS_MODEL } from '../../types/providers.js'
 import { engineText, externalFallbackText, externalEngine, speechRequestBody, splitExternalText } from '../engine-state.js'
 import { resolveTtsSettings } from '../../utils/settings.js'
 import type { TtsProvider, DoubaoTtsModel } from '../../types/providers.js'
+import { splitDeepseekText } from '../../text/deepseek-limit.js'
+import { supportsDuplexTts } from '../../types/providers.js'
+import type { DeepSeekVoice } from '../../types/providers.js'
 import { DuplexPcmStream, DuplexPcmError } from './duplex-pcm.js'
 import { fetchMossAudio } from '../moss-service.js'
 import { playMossAudio } from './moss-playback.js'
@@ -23,7 +26,7 @@ import type { MossAudioHandle } from './moss-playback.js'
 import type { ExternalSpeechSelection } from '../../host-api.js'
 
 export type PreviewStatus = 'idle' | 'loading' | 'playing' | 'error'
-export type PreviewSource = 'mimo' | 'doubao' | 'breeze' | 'external' | 'local' | null
+export type PreviewSource = 'mimo' | 'doubao' | 'breeze' | 'deepseek' | 'external' | 'local' | null
 export type PreviewError = 'api-key-not-configured' | 'api-key-rejected' | 'rate-limited' | 'timeout' | 'local-voice-unavailable' | 'autoplay-blocked' | 'request-failed' | 'save-key-first' | 'voice-required' | 'voice-unavailable' | 'resource-unavailable' | 'stream-buffer-limit'
 
 export interface PreviewView {
@@ -45,6 +48,9 @@ export interface PreviewSettings {
   doubaoVoice?: string
   doubaoClonedVoice?: string
   doubaoInstruction?: string
+  deepseekVoice?: DeepSeekVoice
+  deepseekEnabled?: boolean
+  maxTextLength?: number
   breezeVoice?: string
   breezeInstruction?: string
   instruction?: string
@@ -307,25 +313,31 @@ export class PreviewPlayer {
       }
       return
     }
-    if (settings.provider === 'doubao') {
-      this.pcm.setPlaybackRate(1)
-      this.publish('loading', 'doubao')
+    if (settings.provider && supportsDuplexTts(settings.provider)) {
+      const provider = settings.provider
+      this.pcm.setPlaybackRate(provider === 'deepseek' ? this.voiceRate : 1)
+      this.publish('loading', provider)
       const controller = new AbortController()
       this.request = controller
       this.requestBusy = true
       const recording = new PcmRecording()
       try {
-        const stream = new DuplexPcmStream(ttsSelection(resolveTtsSettings(settings)), controller.signal, async bytes => {
-          if (generation !== this.generation || controller.signal.aborted) return
-          recording.appendBytes(bytes)
-          await this.pcm.enqueueBytes(bytes)
-        })
-        stream.append(text)
-        await stream.finish()
+        const resolved = resolveTtsSettings({ ...settings, ...(provider === 'deepseek' ? { deepseekEnabled: true } : {}) })
+        const parts = provider === 'deepseek' ? splitDeepseekText(text, resolved.maxTextLength) : [text]
+        for (const part of parts) {
+          controller.signal.throwIfAborted()
+          const stream = new DuplexPcmStream(ttsSelection(resolved), controller.signal, async bytes => {
+            if (generation !== this.generation || controller.signal.aborted) return
+            recording.appendBytes(bytes)
+            await this.pcm.enqueueBytes(bytes)
+          }, resolved.maxPausedPcmBytes, resolved.requestTimeoutMs, resolved.maxTextLength)
+          stream.append(part)
+          await stream.finish()
+        }
         if (generation === this.generation) {
           const blob = recording.toWav()
           if (blob !== null) this.setRecording({ blob, text, format: 'wav' })
-          recording.save(this.history, { text, source: 'preview', voiceRateApplied: true })
+          recording.save(this.history, { text, source: 'preview', voiceRateApplied: provider === 'doubao' })
         }
       } finally {
         controller.abort()

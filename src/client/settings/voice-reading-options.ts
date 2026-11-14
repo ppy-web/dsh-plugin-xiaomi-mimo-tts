@@ -8,7 +8,7 @@
 
 import { BREEZE_VOICE_PRESETS, DOUBAO_VOICE_PRESETS, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, ttsSelection } from '../../shared.js'
 import type { ResolvedTtsSettings, TtsReadScope } from '../../shared.js'
-import type { LocaleKey } from '../localization.js'
+import type { LocaleKey, Translate } from '../localization.js'
 import type { VoiceIdHistoryKind } from './voice-id-history.js'
 import type { ApiKeyStatus } from './api-key-state.js'
 
@@ -22,7 +22,7 @@ export function voiceReadingWarningKey(settings: ResolvedTtsSettings, apiKeyStat
   return null
 }
 
-export type VoiceReadingField = 'voice' | 'voiceDesignPrompt' | 'doubaoVoice' | 'doubaoClonedVoice' | 'breezeVoice'
+export type VoiceReadingField = 'voice' | 'voiceDesignPrompt' | 'doubaoVoice' | 'doubaoClonedVoice' | 'breezeVoice' | 'deepseekVoice'
 
 export interface VoiceReadingChoice {
   value: string
@@ -64,7 +64,14 @@ export function buildVoiceReadingVoiceSource(
   settings: ResolvedTtsSettings,
   clonedVoiceHistory: readonly string[] = [],
   library: VoiceIdLibrary = {},
+  t?: Translate,
 ): VoiceReadingVoiceSource {
+  if (settings.provider === 'deepseek') return {
+    field: 'deepseekVoice',
+    value: settings.deepseekVoice,
+    choices: [{ value: 'stella', label: t?.('settings.deepseekStella') ?? 'Stella' }, { value: 'tide', label: t?.('settings.deepseekTide') ?? 'Tide' }],
+    hintKey: 'settings.deepseekVoiceHint',
+  }
   if (settings.provider === 'breeze') return {
     field: 'breezeVoice',
     value: settings.breezeVoice,

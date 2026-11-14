@@ -1,13 +1,20 @@
 import type { ResolvedTtsSettings } from '../types/index.js'
 import { TTS_MODELS, TTS_VOICES, DOUBAO_TTS_MODELS, isSupportedTtsApiKey, ttsApiKey, ttsSelection, normalizeVoiceRate } from '../shared.js'
+import { TTS_PROVIDERS, DEEPSEEK_TTS_MODEL, DEEPSEEK_VOICES } from '../types/providers.js'
+import type { TtsProvider, DeepSeekVoice } from '../types/providers.js'
 import { TtsProviderError } from './provider-error.js'
 import type { SynthesizeBody } from './synthesis.js'
 
 export function synthesisOptions(options: ResolvedTtsSettings, body: SynthesizeBody): ResolvedTtsSettings {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) throw new TtsProviderError('invalid-request', 'Expected an object.', 400)
-  if (body.provider !== undefined && body.provider !== 'xiaomi' && body.provider !== 'doubao' && body.provider !== 'breeze') throw new TtsProviderError('invalid-provider', 'Unknown speech provider.', 400)
+  if (body.provider !== undefined && !TTS_PROVIDERS.includes(body.provider as TtsProvider)) throw new TtsProviderError('invalid-provider', 'Unknown speech provider.', 400)
   const provider = body.provider ?? options.provider
   if (body.speechInstruction !== undefined && typeof body.speechInstruction !== 'string') throw new TtsProviderError('invalid-speech-instruction', 'Speech instruction must be a string.', 400)
+  if (provider === 'deepseek') {
+    if (body.model !== undefined && body.model !== DEEPSEEK_TTS_MODEL) throw new TtsProviderError('invalid-model', undefined, 400)
+    if (body.voice !== undefined && !DEEPSEEK_VOICES.includes(body.voice as DeepSeekVoice)) throw new TtsProviderError('voice-unavailable', undefined, 400)
+    return { ...options, provider, deepseekVoice: (body.voice ?? options.deepseekVoice) as DeepSeekVoice }
+  }
   if (provider === 'doubao') {
     if (body.voiceRate !== undefined && (typeof body.voiceRate !== 'number' || !Number.isFinite(body.voiceRate) || body.voiceRate < 0.5 || body.voiceRate > 2)) throw new TtsProviderError('invalid-voice-rate', 'Speech speed must be between 0.5 and 2.', 400)
     if (body.model !== undefined && !DOUBAO_TTS_MODELS.includes(body.model as typeof DOUBAO_TTS_MODELS[number])) throw new TtsProviderError('invalid-model', 'Select a Doubao model.', 400)
@@ -43,7 +50,7 @@ export function validateSynthesisSettings(settings: ResolvedTtsSettings): void {
 export type CompleteAudioFormat = 'mp3' | 'wav'
 
 export function completeAudioFormat(options: ResolvedTtsSettings): CompleteAudioFormat {
-  return options.format === 'wav' ? 'wav' : 'mp3'
+  return options.provider === 'deepseek' || options.format === 'wav' ? 'wav' : 'mp3'
 }
 
 export function completeAudioLimit(options: ResolvedTtsSettings, format: CompleteAudioFormat): number {

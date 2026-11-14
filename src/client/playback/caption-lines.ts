@@ -9,13 +9,13 @@ function graphemes(value: string): string[] {
 
 function displayWidth(value: string): number {
   return graphemes(value).reduce((width, char) => width
-    + (/\s/u.test(char) ? .35 : /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Extended_Pictographic}]/u.test(char) ? 1 : .6), 0)
+    + (/\s/u.test(char) ? .35 : /[\p{Script=Han}\p{Extended_Pictographic}]/u.test(char) ? 1 : .6), 0)
 }
 
 /** Approximate spoken time; used only when the provider supplies no word timestamps. */
 function speechWeight(value: string): number {
   return Math.max(.3, graphemes(value).reduce((seconds, char) => seconds
-    + (/\s/u.test(char) ? .04 : /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(char) ? .22
+    + (/\s/u.test(char) ? .04 : /[\p{Script=Han}]/u.test(char) ? .22
       : /[\p{L}\p{N}]/u.test(char) ? .065 : .13), 0))
 }
 

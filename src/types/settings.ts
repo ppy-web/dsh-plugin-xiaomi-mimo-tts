@@ -1,6 +1,6 @@
 import type { TtsFormat, TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope, TtsVoiceDesignPlaybackMode } from './models.js'
 import type { SoundPack } from './sound.js'
-import type { DoubaoTtsModel, TtsProvider } from './providers.js'
+import type { DeepSeekVoice, DoubaoTtsModel, TtsProvider } from './providers.js'
 import {
   DEFAULT_MAX_MP3_AUDIO_BYTES,
   DEFAULT_MAX_PAUSED_PCM_BYTES,
@@ -30,6 +30,9 @@ export interface TtsSettings {
   doubaoVoice?: string
   doubaoClonedVoice?: string
   doubaoInstruction?: string
+  deepseekEnabled?: boolean
+  deepseekApiKey?: string
+  deepseekVoice?: DeepSeekVoice
   breezeEnabled?: boolean
   breezeApiKey?: string
   breezeVoice?: string
@@ -56,7 +59,6 @@ export interface TtsSettings {
   readScope?: TtsReadScope | 'first-segment'
   autoPlay?: boolean
   showReadingCaptions?: boolean
-  voiceInputCompatibility?: boolean
   inputAvoidance?: boolean
   importantAnnouncementsFirst?: boolean
   instruction?: string
@@ -91,6 +93,9 @@ export interface ResolvedTtsSettings {
   doubaoVoice: string
   doubaoClonedVoice: string
   doubaoInstruction: string
+  deepseekEnabled: boolean
+  deepseekApiKey: string
+  deepseekVoice: DeepSeekVoice
   breezeEnabled: boolean
   breezeApiKey: string
   breezeVoice: string
@@ -115,7 +120,6 @@ export interface ResolvedTtsSettings {
   readScope: TtsReadScope
   autoPlay: boolean
   showReadingCaptions: boolean
-  voiceInputCompatibility: boolean
   inputAvoidance: boolean
   importantAnnouncementsFirst: boolean
   instruction: string
@@ -151,6 +155,9 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   doubaoVoice: 'zh_female_vv_uranus_bigtts',
   doubaoClonedVoice: '',
   doubaoInstruction: '',
+  deepseekEnabled: false,
+  deepseekApiKey: '',
+  deepseekVoice: 'stella',
   breezeEnabled: false,
   breezeApiKey: '',
   breezeVoice: 'voc_rh6e8hdbraz6',
@@ -175,7 +182,6 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   readScope: 'smart',
   autoPlay: false,
   showReadingCaptions: true,
-  voiceInputCompatibility: true,
   inputAvoidance: false,
   importantAnnouncementsFirst: false,
   instruction: '',
@@ -196,9 +202,10 @@ export function resolveTtsBaseURL(apiKey: string, configuredBaseURL: string): st
     : configuredBaseURL
 }
 
-/** Whether an API key selects one of the Xiaomi endpoints supported by this plugin. */
+/** Local validation before a saved key is used with its provider. */
 export function isSupportedTtsApiKey(apiKey: string, provider: TtsProvider = 'xiaomi'): boolean {
   const normalized = apiKey.trim()
+  if (provider === 'deepseek') return /^[A-Za-z0-9._~+/-]+=*$/u.test(normalized)
   if (provider === 'doubao' || provider === 'breeze') return normalized.length > 0 && !/[\r\n]/u.test(normalized)
   return normalized.startsWith('sk-') || normalized.startsWith('tp-')
 }

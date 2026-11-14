@@ -47,14 +47,14 @@ const ENTRIES = {
   preview: { group: 'preview', terms: ['settings.previewText', 'settings.previewPlay', 'settings.previewPresets', 'settings.previewDownload'] },
   xiaomiEnabled: { group: 'providers', terms: ['settings.providerXiaomi'] },
   doubaoEnabled: { group: 'providers', terms: ['settings.providerDoubao'], aliases: 'Doubao Seed' },
+  deepseekEnabled: { group: 'providers', terms: ['settings.deepseekEnabled', 'settings.apiKey'] },
   breezeEnabled: { group: 'providers', terms: ['settings.breezeEnabled'] },
   mossEnabled: { group: 'providers', terms: ['settings.mossProvider'] },
+  'settings.acceptExternalProviders': { group: 'providers', terms: ['settings.acceptExternalProviders', 'settings.acceptExternalProvidersHint'] },
   'settings.readingCaptions': { group: 'host', terms: ['settings.readingCaptions', 'settings.readingCaptionsHint'], aliases: '字幕 captions subtitles' },
   'settings.voiceRecognitionService': { group: 'host', terms: ['settings.voiceRecognitionService', 'settings.voiceRecognitionServiceHint'], aliases: '语音识别 听写 asr speech recognition' },
-  'settings.voiceInputCompatibility': { group: 'host', terms: ['settings.voiceInputCompatibility', 'settings.voiceInputCompatibilityHint'] },
   'settings.showInHostSettings': { group: 'host', terms: ['settings.showInHostSettings', 'settings.showInHostSettingsHint'] },
   'settings.showFeatureGuide': { group: 'host', terms: ['settings.showFeatureGuide', 'settings.showFeatureGuideHint'] },
-  'settings.acceptExternalProviders': { group: 'host', terms: ['settings.acceptExternalProviders', 'settings.acceptExternalProvidersHint'] },
   'settings.inputAvoidance': { group: 'host', terms: ['settings.inputAvoidance', 'settings.inputAvoidanceHint'] },
   'settings.importantAnnouncementsFirst': { group: 'host', terms: ['settings.importantAnnouncementsFirst', 'settings.importantAnnouncementsFirstHint'] },
   'question-titles': { group: 'sources', terms: ['settings.announcementsQuestions', 'settings.announcementsQuestionsHint'] },
@@ -85,7 +85,7 @@ type SearchContext = {
 }
 
 const ROWS = Object.entries(ENTRIES) as [SearchSetting, SearchEntry][]
-const PROVIDER_LABELS = { xiaomi: 'settings.providerXiaomi', doubao: 'settings.providerDoubao', breeze: 'settings.providerBreeze' } as const
+const PROVIDER_LABELS = { xiaomi: 'settings.providerXiaomi', doubao: 'settings.providerDoubao', breeze: 'settings.providerBreeze', deepseek: 'settings.providerDeepseek' } as const
 const normalize = (text: string): string => text.normalize('NFKC').toLowerCase()
 
 type Prerequisite = { message: LocaleKey; controls: readonly SearchSetting[] }
@@ -112,12 +112,12 @@ export function searchSettings(query: string, t: Translate, context: SearchConte
 
   for (const [id, entry] of ROWS) {
     // Cloud settings describe the current provider and model only.
-    if (id === 'model' && !externalName && provider === 'breeze') continue
+    if (id === 'model' && !externalName && (provider === 'breeze' || provider === 'deepseek')) continue
     if (id === 'voice' && (externalName || (provider === 'xiaomi' && voiceDesign) || (provider === 'doubao' && doubaoClone))) continue
     if (id === 'externalVoice' && !externalName) continue
     if (id === 'clonedVoice' && (externalName || provider !== 'doubao')) continue
     if (id === 'voiceDesign' && (externalName || provider !== 'xiaomi')) continue
-    if (id === 'instruction' && !externalName && provider === 'doubao' && doubaoClone) continue
+    if (id === 'instruction' && !externalName && (provider === 'deepseek' || (provider === 'doubao' && doubaoClone))) continue
     const ownTerms = normalize([
       ...entry.terms.map(t), entry.aliases,
       ...((id === 'provider' || id === 'apiKey') ? [providerName] : []),

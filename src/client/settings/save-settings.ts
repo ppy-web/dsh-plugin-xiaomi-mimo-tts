@@ -1,14 +1,15 @@
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { isSupportedTtsApiKey } from '../../types/settings.js'
+import { OPTIONAL_TTS_PROVIDERS, TTS_PROVIDER_SWITCH } from '../../types/providers.js'
+import { DEFAULT_TTS_SETTINGS, isSupportedTtsApiKey } from '../../types/settings.js'
 import type { TtsSettings } from '../../types/settings.js'
 import { resolveTtsSettings } from '../../utils/settings.js'
 import type { DraftChanges, SettingsValues, EditableSettingField } from './types.js'
 
-export const EDITABLE_SETTING_FIELDS: readonly EditableSettingField[] = ['showInSidebar', 'showInHostSettings', 'showFeatureGuide', 'acceptExternalProviders', 'voiceRecognitionService', 'qqbotEnabled', 'announcementSources', 'provider', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'doubaoEnabled', 'breezeEnabled', 'breezeVoice', 'breezeInstruction', 'instruction', 'enabled', 'autoPlay', 'showReadingCaptions', 'voiceInputCompatibility', 'inputAvoidance', 'importantAnnouncementsFirst', 'voiceVolume', 'voiceRate', 'readScope', 'model', 'localSpeechMode', 'localVoiceURI', 'localVoiceEngine', 'mossEnabled', 'mossBaseURL', 'mossVoice', 'mossVoiceName', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
+export const EDITABLE_SETTING_FIELDS: readonly EditableSettingField[] = ['showInSidebar', 'showInHostSettings', 'showFeatureGuide', 'acceptExternalProviders', 'voiceRecognitionService', 'qqbotEnabled', 'announcementSources', 'provider', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'doubaoEnabled', 'deepseekEnabled', 'deepseekVoice', 'breezeEnabled', 'breezeVoice', 'breezeInstruction', 'instruction', 'enabled', 'autoPlay', 'showReadingCaptions', 'inputAvoidance', 'importantAnnouncementsFirst', 'voiceVolume', 'voiceRate', 'readScope', 'model', 'localSpeechMode', 'localVoiceURI', 'localVoiceEngine', 'mossEnabled', 'mossBaseURL', 'mossVoice', 'mossVoiceName', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
 
-export type SaveSettingsErrorCode = 'voice-required' | 'api-key-rejected' | 'host-rejected'
+export type SaveSettingsErrorCode = 'voice-required' | 'api-key-rejected' | 'host-rejected' | 'provider-count'
 
-export const BUILTIN_SETTING_FIELDS = new Set<string>(['provider', 'apiKey', 'doubaoEnabled', 'doubaoApiKey', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'breezeEnabled', 'breezeApiKey', 'breezeVoice', 'breezeInstruction', 'instruction', 'model', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt'])
+export const BUILTIN_SETTING_FIELDS = new Set<string>(['provider', 'apiKey', 'doubaoEnabled', 'doubaoApiKey', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'deepseekEnabled', 'deepseekApiKey', 'deepseekVoice', 'breezeEnabled', 'breezeApiKey', 'breezeVoice', 'breezeInstruction', 'instruction', 'model', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt'])
 
 /** A failed draft write with a stable code, so the settings card never matches messages. */
 export class SaveSettingsError extends Error {
@@ -24,32 +25,55 @@ export function validateSettingsDraft(draft: SettingsValues): 'voice-required' |
 }
 
 /** Commit the draft atomically so credentials and provider selection change together. */
-export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: SettingsValues, changes: DraftChanges, keys: { xiaomi: string; doubao: string; breeze: string }, external = false): Promise<void> {
+export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: SettingsValues, changes: DraftChanges, keys: { xiaomi: string; doubao: string; breeze: string; deepseek?: string }, external = false): Promise<void> {
   if (external) changes = Object.fromEntries(Object.entries(changes).filter(([field]) => !BUILTIN_SETTING_FIELDS.has(field)))
   const invalid = external ? null : validateSettingsDraft(draft)
   if (invalid) throw new SaveSettingsError(invalid)
-  for (const [provider, field] of [['xiaomi', 'apiKey'], ['doubao', 'doubaoApiKey'], ['breeze', 'breezeApiKey']] as const) {
-    if (changes[field]?.kind === 'set' && keys[provider].trim() && !isSupportedTtsApiKey(keys[provider], provider)) throw new SaveSettingsError('api-key-rejected')
+  for (const [provider, field] of [['xiaomi', 'apiKey'], ['doubao', 'doubaoApiKey'], ['breeze', 'breezeApiKey'], ['deepseek', 'deepseekApiKey']] as const) {
+    if (changes[field]?.kind === 'set' && (keys[provider] ?? '').trim() && !isSupportedTtsApiKey(keys[provider] ?? '', provider)) throw new SaveSettingsError('api-key-rejected')
   }
   const snapshot = scope.getSnapshot()
   const acceptedValues = resolveTtsSettings(snapshot.value)
+  const base = snapshot.base as TtsSettings | undefined
+  const switchFields = OPTIONAL_TTS_PROVIDERS.map(provider => TTS_PROVIDER_SWITCH[provider])
+  const switchesChanged = switchFields.some(field => changes[field] !== undefined)
+  const selected = changes.provider?.kind === 'set' ? draft.provider : acceptedValues.provider
+  const available = switchFields.filter(field => {
+    const change = changes[field]
+    if (change?.kind === 'set') return draft[field]
+    if (change?.kind === 'clear') return base?.[field] ?? DEFAULT_TTS_SETTINGS[field]
+    return acceptedValues[field]
+  })
+  if (switchesChanged && (available.length < 1 || available.length > 2)) throw new SaveSettingsError('provider-count')
+  if (changes.provider?.kind === 'set' && selected !== 'xiaomi' && !available.includes(TTS_PROVIDER_SWITCH[selected])) throw new SaveSettingsError('host-rejected')
   const overridden = (field: string) => snapshot.user !== null && typeof snapshot.user === 'object' && Object.hasOwn(snapshot.user, field)
   const ops: Parameters<ConfigForm<TtsSettings>['mutate']>[0][number][] = []
   const write = (field: EditableSettingField, value: SettingsValues[EditableSettingField]): void => {
     const change = changes[field]
     if (!change) return
-    if (change.kind === 'set' && (Array.isArray(value) ? JSON.stringify(acceptedValues[field]) === JSON.stringify(value) : Object.is(acceptedValues[field], value))) return
+    const accepted = snapshot.value?.[field] ?? acceptedValues[field]
+    if (change.kind === 'set' && (Array.isArray(value) ? JSON.stringify(accepted) === JSON.stringify(value) : Object.is(accepted, value))) return
     if (change.kind === 'clear' && !overridden(field)) return
     ops.push(change.kind === 'clear' ? { op: 'unset', path: [field] } : { op: 'set', path: [field], value })
   }
   for (const field of EDITABLE_SETTING_FIELDS) {
     if (field !== 'provider') write(field, draft[field])
   }
-  for (const [provider, field] of [['xiaomi', 'apiKey'], ['doubao', 'doubaoApiKey'], ['breeze', 'breezeApiKey']] as const) {
-    if (changes[field]?.kind === 'set' && keys[provider].trim()) {
-      ops.push({ op: 'set', path: [field], value: keys[provider].trim() })
+  // Fix excess or missing saved switches when saving a new provider selection.
+  if (switchesChanged || changes.provider) {
+    for (const field of switchFields) {
+      const raw = snapshot.value?.[field] ?? DEFAULT_TTS_SETTINGS[field]
+      if (!changes[field] && raw !== acceptedValues[field]) ops.push({ op: 'set', path: [field], value: acceptedValues[field] })
+    }
+  }
+  for (const [provider, field] of [['xiaomi', 'apiKey'], ['doubao', 'doubaoApiKey'], ['breeze', 'breezeApiKey'], ['deepseek', 'deepseekApiKey']] as const) {
+    if (changes[field]?.kind === 'set' && (keys[provider] ?? '').trim()) {
+      ops.push({ op: 'set', path: [field], value: (keys[provider] ?? '').trim() })
     }
   }
   write('provider', draft.provider)
-  if (ops.length && !await scope.mutate(ops)) throw new SaveSettingsError('host-rejected')
+  if (switchesChanged && !changes.provider && selected !== 'xiaomi' && !available.includes(TTS_PROVIDER_SWITCH[selected])) {
+    ops.push({ op: 'set', path: ['provider'], value: 'xiaomi' })
+  }
+  if (ops.length && !await scope.mutate(ops, snapshot.revision)) throw new SaveSettingsError('host-rejected')
 }

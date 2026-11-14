@@ -181,8 +181,8 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
   const writeInFlight = useRef(false)
   const settings = useMemo(() => resolveTtsSettings(snapshot.value), [snapshot.value])
   const source = useMemo(
-    () => buildVoiceReadingVoiceSource(settings, [], library),
-    [settings, library],
+    () => buildVoiceReadingVoiceSource(settings, [], library, t),
+    [settings, library, t],
   )
 
   const canWrite = (): boolean => !writeInFlight.current && !changes.getSnapshot() && scope.getSnapshot().writable
@@ -250,7 +250,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
       <p className="xmimo-voice-reading-description">{t('settings.voiceReadingDescription')}</p>
     </div>
     {changing ? <p role="status">{t('plugin.changing')}</p> : null}
-    <VoiceReadingProvider value={settings.provider} doubaoEnabled={settings.doubaoEnabled} breezeEnabled={settings.breezeEnabled} disabled={disabled} t={t} onChange={provider => {
+    <VoiceReadingProvider value={settings.provider} doubaoEnabled={settings.doubaoEnabled} breezeEnabled={settings.breezeEnabled} deepseekEnabled={settings.deepseekEnabled} disabled={disabled} t={t} onChange={provider => {
       void write([{ op: 'set', path: ['provider'], value: provider }])
     }} />
     {ready ? <VoiceReadingWarning active={!changing} settings={settings} t={t} openPluginSettings={openPluginSettings} /> : null}

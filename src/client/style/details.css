@@ -40,6 +40,44 @@
   white-space: nowrap;
 }
 
+.xmimo-tts-deepseek-voices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 3px;
+  border: 1px solid var(--xmimo-ui-border);
+  border-radius: 12px;
+  background: var(--xmimo-ui-hover);
+}
+
+.xmimo-tts-deepseek-voices label { position: relative; min-width: 0; }
+.xmimo-tts-deepseek-voices input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+.xmimo-tts-deepseek-voice-choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  color: var(--xmimo-ui-text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.xmimo-tts-deepseek-voices input:checked + span { background: var(--xmimo-ui-surface); }
+.xmimo-tts-deepseek-voices input:focus-visible + span { outline: var(--xmimo-ui-focus); }
+.xmimo-tts-deepseek-voices:disabled { opacity: .55; }
+.xmimo-tts-deepseek-voices:disabled .xmimo-tts-deepseek-voice-choice { cursor: default; }
+
 .xmimo-tts-more-settings {
   min-width: 0;
 }

@@ -7,7 +7,8 @@ import { PcmAudioQueue } from './pcm-audio-queue.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { AudioHistory } from '../history/audio-history.js'
 import { PcmRecording } from '../history/pcm-recording.js'
-import { ttsSelection } from '../../types/providers.js'
+import { supportsDuplexTts, ttsSelection, usesCloudVoiceRate } from '../../types/providers.js'
+import { splitDeepseekText } from '../../text/deepseek-limit.js'
 import { DuplexPcmStream } from './duplex-pcm.js'
 import type { SnapshotSource } from '../plugin-activity.js'
 import { engineCanRequest, engineMaxTextLength, engineText, externalEngine, splitExternalText } from '../engine-state.js'
@@ -136,7 +137,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       if (interruptConversation) this.interruptConversationPlayback()
       this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
       this.setVolume(settings.voiceVolume)
-      this.audio.setPlaybackRate(externalEngine() || settings.provider === 'xiaomi' ? settings.voiceRate : 1)
+      this.audio.setPlaybackRate(externalEngine() || !usesCloudVoiceRate(settings.provider) ? settings.voiceRate : 1)
 
       const generation = this.generation
       const controller = new AbortController()
@@ -175,10 +176,14 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
           }
           return
         }
-        if (!external && settings.provider === 'doubao') {
-          const stream = new DuplexPcmStream(ttsSelection(settings), controller.signal, consume, settings.maxPausedPcmBytes, settings.requestTimeoutMs, settings.maxTextLength)
-          stream.append(normalized)
-          await stream.finish()
+        if (!external && supportsDuplexTts(settings.provider)) {
+          const parts = settings.provider === 'deepseek' ? splitDeepseekText(normalized, settings.maxTextLength) : [normalized]
+          for (const part of parts) {
+            controller.signal.throwIfAborted()
+            const stream = new DuplexPcmStream(ttsSelection(settings), controller.signal, consume, settings.maxPausedPcmBytes, settings.requestTimeoutMs, settings.maxTextLength)
+            stream.append(part)
+            await stream.finish()
+          }
           return
         }
         await streamPcmAudio(normalized, controller.signal, async (pcm) => {
@@ -191,7 +196,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       }
       void synthesize().then(() => {
         if (!this.disposed && !controller.signal.aborted && generation === this.generation) {
-          recording.save(this.history, { text: normalized, source: 'service', voiceRateApplied: !externalEngine() && settings.provider !== 'xiaomi' })
+          recording.save(this.history, { text: normalized, source: 'service', voiceRateApplied: !externalEngine() && usesCloudVoiceRate(settings.provider) })
         }
       }).catch((error: unknown) => {
         if (this.disposed || controller.signal.aborted || generation !== this.generation) return

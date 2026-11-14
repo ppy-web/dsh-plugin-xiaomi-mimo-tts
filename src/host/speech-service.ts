@@ -6,6 +6,9 @@ import type { ExternalSpeechProvider, SpeechEngineState, SpeechAudio, SpeechArti
 import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
 import type { SynthesisRuntime } from './complete-synthesis.js'
 import { completeAudioFormat, completeAudioLimit, CompleteAudioResponseError, synthesisOptions } from './validation.js'
+import { supportsDuplexTts, TTS_PROVIDERS } from '../types/providers.js'
+import type { TtsProvider } from '../types/providers.js'
+import { splitDeepseekText } from '../text/deepseek-limit.js'
 import { TtsProviderError, safeProviderError } from './provider-error.js'
 import { cleanupSpeechArtifacts, writeSpeechArtifact } from './speech-files.js'
 import { speechCapabilities } from './capabilities.js'
@@ -59,7 +62,7 @@ export class HostSpeechService implements SpeechSynthesisService {
     const current = speechCapabilities(settings).providers.find(provider => provider.id === settings.provider)!
     return { provider: settings.provider, revision: this.external.revision, name: settings.provider, ready: current.ready,
       ...(current.unavailableReason ? { unavailableReason: current.unavailableReason } : {}),
-      formats: ['mp3', 'wav'], maxTextLength: current.maxTextLength,
+      formats: settings.provider === 'deepseek' ? ['wav'] : ['mp3', 'wav'], maxTextLength: current.maxTextLength,
       streaming: current.models.find(model => model.id === current.selectedModel)?.streaming ?? false }
   }
 
@@ -68,7 +71,7 @@ export class HostSpeechService implements SpeechSynthesisService {
     if (request.provider !== undefined && typeof request.provider !== 'string') throw new TtsProviderError('invalid-provider', undefined, 400)
     if (request.engineRevision !== undefined && (!Number.isSafeInteger(request.engineRevision) || request.engineRevision !== this.external.revision)) throw new TtsProviderError('speech-engine-changed', undefined, 409)
     const id = request.provider ?? this.currentProvider()
-    if (!['xiaomi', 'doubao', 'breeze'].includes(id)) {
+    if (!TTS_PROVIDERS.includes(id as TtsProvider)) {
       if (typeof id !== 'string' || !id.startsWith('external:')) throw new TtsProviderError('invalid-provider', undefined, 400)
       if (id !== this.external.id) throw new TtsProviderError('external-provider-unavailable', undefined, 409)
     }
@@ -204,7 +207,7 @@ export class HostSpeechService implements SpeechSynthesisService {
       settings = prepared.settings
       const format = request.format ?? completeAudioFormat(settings)
       if (!['mp3', 'wav', 'silk'].includes(format)) throw new TtsProviderError('invalid-audio-format', 'Select MP3, WAV or SILK.', 400)
-      if (settings.provider !== 'doubao') timeout = setTimeout(() => controller.abort(new TtsProviderError('tts-timeout', 'Synthesis timed out.', 504)), settings.requestTimeoutMs)
+      if (!supportsDuplexTts(settings.provider)) timeout = setTimeout(() => controller.abort(new TtsProviderError('tts-timeout', 'Synthesis timed out.', 504)), settings.requestTimeoutMs)
       const data = await synthesizeCompleteAudio(settings, prepared.text, format === 'silk' ? 'wav' : format, controller, this.runtime)
       controller.signal.throwIfAborted()
       let durationMs: number | undefined
@@ -232,7 +235,7 @@ export class HostSpeechService implements SpeechSynthesisService {
       if (request.signal?.aborted) throw new TtsProviderError('tts-canceled', 'Speech synthesis canceled.', 499)
       if (error instanceof CompleteAudioResponseError) throw new TtsProviderError(error.code)
       if (controller.signal.aborted) throw new TtsProviderError(this.disposed ? 'speech-service-disposed' : 'tts-timeout', 'Speech synthesis stopped.', 504)
-      const detail = safeProviderError(error, [settings.apiKey, settings.doubaoApiKey, settings.breezeApiKey])
+      const detail = safeProviderError(error, [settings.apiKey, settings.doubaoApiKey, settings.breezeApiKey, settings.deepseekApiKey])
       throw new TtsProviderError(detail.error, detail.message, error instanceof TtsProviderError ? error.status : 502)
     } finally {
       clearTimeout(timeout)
@@ -327,7 +330,7 @@ export class HostSpeechService implements SpeechSynthesisService {
       const configuredLimit = Math.floor(settings.maxTextLength)
       const limit = external ? Math.min(configuredLimit, external.maxTextLength) : settings.provider === 'breeze' ? Math.min(configuredLimit, BREEZE_MAX_TEXT_LENGTH) : configuredLimit
       if (request.splitLongText && (!Number.isFinite(limit) || limit < 1)) throw new TtsProviderError('invalid-text-limit')
-      const chunks = request.splitLongText ? (!external && settings.provider === 'breeze' ? splitBreezeTtsSegments(text, limit) : splitDeliveryText(text, limit, !external && supportsXiaomiAudioTags(settings), externalTags)) : [text]
+      const chunks = request.splitLongText ? (!external && settings.provider === 'breeze' ? splitBreezeTtsSegments(text, limit) : !external && settings.provider === 'deepseek' ? splitDeepseekText(text, limit) : splitDeliveryText(text, limit, !external && supportsXiaomiAudioTags(settings), externalTags)) : [text]
       let result: SpeechDeliveryResult | undefined
       const providerCapabilities = speechCapabilities(settings).providers.find(provider => provider.id === selected)
       const streaming = external ? external.streaming && external.models?.find(model => model.id === (request.model ?? external.selection?.model))?.streaming !== false

@@ -1,5 +1,6 @@
 import type { ResolvedTtsSettings } from '../shared.js'
 import { parseSseRecords } from '../utils/index.js'
+import { streamDeepseek } from './deepseek.js'
 import { streamXiaomi } from './xiaomi.js'
 import { streamBreeze, evenPcmChunks } from './breeze.js'
 import { synthesizeDoubao } from './doubao.js'
@@ -10,6 +11,7 @@ import { TtsProviderError } from './provider-error.js'
 /** Host integrations use upstream transports directly, without a local HTTP round-trip. */
 export async function streamSynthesis(settings: ResolvedTtsSettings, text: string, signal: AbortSignal,
   consume: (bytes: Uint8Array) => void | Promise<void>, runtime: SynthesisRuntime): Promise<void> {
+  if (settings.provider === 'deepseek') return streamDeepseek(text, settings, signal, consume, runtime.connectDeepseek)
   if (settings.provider === 'doubao') {
     const controller = new AbortController(), combined = AbortSignal.any([signal, controller.signal])
     const queue = new PcmQueue(settings.maxPausedPcmBytes, combined)

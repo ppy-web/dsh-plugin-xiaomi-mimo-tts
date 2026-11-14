@@ -12,6 +12,7 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 
 const { voiceInputProvider, registerVoiceInputProviders } = await loadClientModule('src/host/voice-input-providers.ts')
+const { PassportRecognition } = await loadClientModule('src/passport/recognition.ts')
 const { pcmWave } = await loadClientModule('src/passport/audio.ts')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
 
@@ -24,7 +25,7 @@ test('Host recognition providers deliver the same PCM to the selected Passport r
     },
   } } }
   const pcm = Buffer.alloc(32000, 1), wave = pcmWave(pcm)
-  for (const source of ['xiaomi', 'doubao', 'doubao-nostream']) {
+  for (const source of ['xiaomi', 'doubao', 'doubao-nostream', 'deepseek']) {
     const provider = voiceInputProvider(source, `test-${source}`, source, recognition)
     const result = await provider.transcribe({ audio: wave, language: 'auto' }, new AbortController().signal)
     assert.equal(result.text, '识别结果')
@@ -34,6 +35,65 @@ test('Host recognition providers deliver the same PCM to the selected Passport r
     assert.equal(calls.at(-1).cancelled, true)
     await assert.rejects(provider.transcribe({ audio: Buffer.from('bad'), language: 'auto' }, new AbortController().signal), { message: 'passport-invalid-audio' })
   }
+})
+
+test('DeepSeek dictation uploads saved credentials and canonical 16 kHz WAV and shares Passport recognition', async t => {
+  const recognition = new PassportRecognition(() => resolveTtsSettings({ deepseekEnabled: false, deepseekApiKey: 'test-asr-key' }))
+  t.after(() => recognition.dispose())
+  const source = recognition.choices().find(choice => choice.id === 'deepseek')
+  assert.ok(source?.configured)
+  const provider = voiceInputProvider('deepseek', 'test-deepseek-asr', 'DeepSeek', recognition)
+  const pcm = Buffer.alloc(32_000, 7)
+  const response = t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(String(url), 'https://api.deepseek.com/v1/tools/asr')
+    assert.equal(options.method, 'POST')
+    assert.equal(options.redirect, 'error')
+    assert.equal(new Headers(options.headers).get('authorization'), 'Bearer test-asr-key')
+    const file = options.body.get('file')
+    assert.equal(file.type, 'audio/wav')
+    const wav = Buffer.from(await file.arrayBuffer())
+    assert.equal(wav.readUInt16LE(22), 1)
+    assert.equal(wav.readUInt32LE(24), 16000)
+    assert.equal(wav.readUInt16LE(34), 16)
+    assert.deepEqual(wav.subarray(44), pcm)
+    return Response.json({ text: ' 本地模拟转写 ', duration_ms: 1000 })
+  })
+  const signal = new AbortController().signal
+  assert.equal((await provider.transcribe({ audio: pcmWave(pcm) }, signal)).text, '本地模拟转写')
+  const input = recognition.recognizer('deepseek').create(signal, 4 * 1024 * 1024)
+  assert.throws(() => input.append(Buffer.alloc(120 * 32_000 + 2)), { message: 'passport-recording-too-long' })
+  input.cancel()
+  assert.equal(response.mock.callCount(), 1)
+})
+
+test('DeepSeek ASR masks upstream details, reports invalid results and stops immediately when recognition is disabled', async t => {
+  let enabled = true
+  const recognition = new PassportRecognition(() => resolveTtsSettings({ voiceRecognitionService: enabled, deepseekApiKey: 'test-asr-key' }))
+  t.after(() => recognition.dispose())
+  const pending = Promise.withResolvers()
+  const request = Promise.withResolvers()
+  let next = Response.json({ error: 'private test-asr-key' }, { status: 401 })
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    if (next) return next
+    request.resolve(options.signal)
+    return pending.promise
+  })
+  const create = () => {
+    const input = recognition.recognizer('deepseek').create(new AbortController().signal, 640)
+    input.append(Buffer.alloc(640))
+    return input
+  }
+  await assert.rejects(create().finish(), { message: 'passport-asr-auth-failed' })
+  next = Response.json({ text: {} })
+  await assert.rejects(create().finish(), { message: 'passport-asr-invalid-response' })
+  next = null
+  const cancelled = assert.rejects(create().finish(), { message: 'passport-asr-disabled' })
+  const signal = await request.promise
+  enabled = false
+  recognition.refresh()
+  await cancelled
+  assert.equal(signal.aborted, true)
+  pending.resolve(Response.json({ text: 'late' }))
 })
 
 test('Host recognition masks provider errors and cancellation releases its input', async () => {
@@ -56,16 +116,16 @@ test('Host recognition masks provider errors and cancellation releases its input
 test('recognition service defaults on and saves independently of other settings', async () => {
   assert.equal(resolveTtsSettings().voiceRecognitionService, true)
   assert.equal(resolveTtsSettings({ voiceRecognitionService: false }).voiceRecognitionService, false)
-  const user = { voiceInputCompatibility: false }
+  const user = { showReadingCaptions: false }
   const scope = { getSnapshot: () => ({ value: user, user }), async mutate(ops) {
     for (const op of ops) { if (op.op === 'set') user[op.path[0]] = op.value; else delete user[op.path[0]] }
     return true
   } }
   const keys = { xiaomi: '', doubao: '', breeze: '' }
   await saveSettingsDraft(scope, resolveTtsSettings({ ...user, voiceRecognitionService: false }), { voiceRecognitionService: { kind: 'set' } }, keys)
-  assert.deepEqual(user, { voiceInputCompatibility: false, voiceRecognitionService: false })
+  assert.deepEqual(user, { showReadingCaptions: false, voiceRecognitionService: false })
   await saveSettingsDraft(scope, resolveTtsSettings(user), { voiceRecognitionService: { kind: 'clear' } }, keys)
-  assert.deepEqual(user, { voiceInputCompatibility: false })
+  assert.deepEqual(user, { showReadingCaptions: false })
 })
 
 test('rapid service toggles wait for withdrawal and never change the Host selection', async () => {
@@ -79,7 +139,7 @@ test('rapid service toggles wait for withdrawal and never change the Host select
     providers.set(provider.info.id, provider)
     return async () => { providers.delete(provider.info.id); if (blockRemoval) await gate }
   } }
-  const ctx = { speechToText: speech, passportRecognition: {}, logger: { error: assert.fail }, effect(register) { cleanup = register() } }
+  const ctx = { speechToText: speech, passportRecognition: { choices: () => [] }, logger: { error: assert.fail }, effect(register) { cleanup = register() } }
   registerVoiceInputProviders(ctx, () => enabled, listener => { update = listener; return () => { update = undefined } })
   await settle()
   assert.equal(providers.size, 0)
@@ -132,6 +192,11 @@ test('saved service toggle registers and withdraws providers without restarting 
     for (let i = 0; i < 50 && providers.size < 3; i += 1) await settle()
     assert.equal(entry.fiber, fiber)
     assert.equal(providers.size, 3)
+    const deepseek = 'xiaomi-mimo-tts-deepseek-asr'
+    await entry.update({ config: { voiceRecognitionService: true, deepseekEnabled: false, deepseekApiKey: 'test-deepseek' } })
+    await ctx.loader.await()
+    await settle()
+    assert.ok(providers.has(deepseek))
     await entry.update({ config: { voiceRecognitionService: false } })
     await ctx.loader.await()
     for (let i = 0; i < 50 && providers.size > 0; i += 1) await settle()

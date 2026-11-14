@@ -51,7 +51,7 @@ export function playCompletedReply(request: ReadAloudRequest, automatic: boolean
       else void playback.toggle(sessionId, messageId, scopedText, automatic, localFallback, 'mp3')
     } else {
       playback.cancelPlayback(sessionId)
-      live.playCompleted(sessionId, messageId, scopedText, () => {
+      live.playCompleted(sessionId, messageId, scopedText, settings.provider === 'deepseek' && !externalEngine() ? localFallback : () => {
         if (localFallback !== undefined) localFallback()
         else void playback.toggle(sessionId, messageId, scopedText, automatic, undefined, 'mp3')
       })

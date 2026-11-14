@@ -1,5 +1,5 @@
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, isPassportAccessToken } from '../../types/passport.js'
+import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_ASR_PROVIDERS, PASSPORT_NUMBER_FIELDS, isPassportAccessToken } from '../../types/passport.js'
 import type { PassportSettings, PassportNumberField, PassportPreset } from '../../types/passport.js'
 
 /** Reject the incomplete range so every four-digit code is equally likely. */
@@ -10,7 +10,7 @@ export function generatePassportPairingCode(): string {
 }
 
 export function validatePassportDraft(value: PassportSettings, tokenConfigured = false): keyof PassportSettings | null {
-  if (!['host', 'xiaomi', 'doubao', 'doubao-nostream'].includes(value.asrProvider)) return 'asrProvider'
+  if (!PASSPORT_ASR_PROVIDERS.includes(value.asrProvider)) return 'asrProvider'
   if (!value.host.trim() || /[\s/]/u.test(value.host)) return 'host'
   if (!(tokenConfigured && value.accessToken === '') && !isPassportAccessToken(value.accessToken)) return 'accessToken'
   if (value.deviceId && !/^[a-zA-Z0-9_.:-]{1,128}$/u.test(value.deviceId)) return 'deviceId'

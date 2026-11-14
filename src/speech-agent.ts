@@ -4,7 +4,7 @@ import type { ToolRegistrationOptions, ToolRunContext } from '@deepseek-ai/dsh-t
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import z from '@deepseek-ai/schemastery'
 import type { SpeechDeliveryResult, SpeechRequest } from './host-api.js'
-import { BREEZE_AUDIO_TAG_GUIDANCE, XIAOMI_AUDIO_TAG_GUIDANCE } from './shared.js'
+import { BREEZE_AUDIO_TAG_GUIDANCE, TTS_PROVIDERS, XIAOMI_AUDIO_TAG_GUIDANCE } from './shared.js'
 import { SessionSpeech, type SessionSpeechOptions } from './host/session-speech.js'
 import { SpeechModeStore } from './host/speech-mode-store.js'
 import { TtsProviderError } from './host/provider-error.js'
@@ -28,7 +28,7 @@ export function speechOwner(exec: ToolRunContext): Agent {
 
 const selection = {
   text: { type: 'string', description: 'Text to read. Preserve the requested content; do not add narration.' },
-  provider: { type: 'string', enum: ['xiaomi', 'doubao', 'breeze'], description: 'Omit to use the saved Host provider. After a synthesis failure, retry once with another configured provider (xiaomi, doubao or breeze); its saved model, voice and credentials apply.' },
+  provider: { type: 'string', enum: TTS_PROVIDERS, description: 'Omit to use the saved Host provider. After a synthesis failure, retry once with another configured provider (xiaomi, doubao, breeze or deepseek); its saved model, voice and credentials apply.' },
   model: { type: 'string' },
   voice: { type: 'string' },
   speechInstruction: { type: 'string', description: 'Optional natural-language emotion, tone, dialect or delivery style for this call, written in the language of the text. Saved voice and model stay unchanged.' },
@@ -37,6 +37,7 @@ const selection = {
 } as const
 
 const EXTERNAL_SPEECH_GUIDANCE = ' When an external speech plugin has taken over, omit provider, model, voice, voiceDesignPrompt, speechInstruction and voiceRate to use its configured voice. Only pass model, voice, speechInstruction or audio tags when the external engine advertises support for those options. External engines do not accept voiceDesignPrompt or voiceRate overrides. Use WAV when the engine does not advertise MP3 support.'
+const DEEPSEEK_SPEECH_GUIDANCE = ' DeepSeek supports WAV and SILK, with Stella and Tide voices. Omit speechInstruction, voiceDesignPrompt and voiceRate for DeepSeek.'
 
 interface SpeakOptions { replyWithText?: boolean }
 
@@ -88,9 +89,9 @@ export function registerSpeak(ctx: Context, send: (request: SpeechRequest, exec:
     name: 'speak',
     description: 'Read the requested text and deliver audio through this conversation\'s configured speech adapter. Use when asked to answer by voice or read a passage. A successful call already delivered the audio: do not send the file again. When the user explicitly requests an emotion, tone, dialect or delivery style, pass speechInstruction in the same language as the text and keep the saved voice and model. Use provider-specific audio tags only for Breeze or Xiaomi preset voices; use speechInstruction for Doubao and Xiaomi VoiceDesign.'
       + (qq
-        ? ' QQ replies use the saved Host provider by default. speechInstruction is allowed for the user\'s requested style and applies only to this call; the saved model, voice and credentials still apply. If synthesis fails before audio delivery, you may retry once with provider set to another configured provider (xiaomi, doubao or breeze), keeping the same speechInstruction. Do not export and resend to bypass speak. Delivery reads all text in order and remains available when automatic speech is off. When automatic speech is on, use speak for an explicitly requested style so the automatic copy is suppressed. Put the full spoken reply in text, with no chat preamble. Successful delivery ends the turn unless replyWithText is true. If the retry also fails, reply in text and report the failure.'
+        ? ' QQ replies use the saved Host provider by default. speechInstruction is allowed for the user\'s requested style and applies only to this call; the saved model, voice and credentials still apply. If synthesis fails before audio delivery, you may retry once with provider set to another configured provider (xiaomi, doubao, breeze or deepseek), keeping speechInstruction when supported. Do not export and resend to bypass speak. Delivery reads all text in order and remains available when automatic speech is off. When automatic speech is on, use speak for an explicitly requested style so the automatic copy is suppressed. Put the full spoken reply in text, with no chat preamble. Successful delivery ends the turn unless replyWithText is true. If the retry also fails, reply in text and report the failure.'
         : ' Use the saved provider and voice unless the user explicitly requests a change. If synthesis fails before audio delivery, you may retry once with the other configured provider; omit model and voice overrides to use that provider\'s saved settings.')
-      + BREEZE_AUDIO_TAG_GUIDANCE + XIAOMI_AUDIO_TAG_GUIDANCE + EXTERNAL_SPEECH_GUIDANCE
+      + BREEZE_AUDIO_TAG_GUIDANCE + XIAOMI_AUDIO_TAG_GUIDANCE + EXTERNAL_SPEECH_GUIDANCE + DEEPSEEK_SPEECH_GUIDANCE
       + ' Do not retry a canceled request, denied delivery, partially delivered passage or an uncertain send outcome.',
     parameters: { type: 'object', properties: { ...properties, replyWithText }, required: ['text'], additionalProperties: false },
     output: {
@@ -120,7 +121,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.tools.register({
     name: 'synthesize_speech',
     description: 'Generate an audio file using the configured Host speech provider. Returns a local path for download, present or another delivery tool. Does not send it to a chat. Credentials stay on the Host. If synthesis fails, you may retry once with the other configured provider; omit model and voice overrides to use that provider\'s saved settings. Do not retry a canceled request.'
-      + BREEZE_AUDIO_TAG_GUIDANCE + XIAOMI_AUDIO_TAG_GUIDANCE + EXTERNAL_SPEECH_GUIDANCE,
+      + BREEZE_AUDIO_TAG_GUIDANCE + XIAOMI_AUDIO_TAG_GUIDANCE + EXTERNAL_SPEECH_GUIDANCE + DEEPSEEK_SPEECH_GUIDANCE,
     parameters: { type: 'object', properties: { ...selection, format: { type: 'string', enum: ['mp3', 'wav', 'silk'] } }, required: ['text'], additionalProperties: false },
     output: {
       schema: { type: 'object', properties: { path: { type: 'string' }, format: { type: 'string' }, size: { type: 'integer' } }, required: ['path', 'format', 'size'], additionalProperties: false },

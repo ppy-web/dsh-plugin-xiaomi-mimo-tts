@@ -57,11 +57,12 @@ function CharacterToggle({ kind, checked, disabled, label, stateLabel, minimal, 
   </label>
 }
 
-function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, writable, switching, onChange, onExternalChange }: {
+function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, deepseekEnabled, minimal, writable, switching, onChange, onExternalChange }: {
   t: Translate
   provider: TtsProvider
   doubaoEnabled: boolean
   breezeEnabled: boolean
+  deepseekEnabled?: boolean
   minimal: boolean
   writable: boolean
   switching: boolean
@@ -84,7 +85,7 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
       back: turns % 2 === 1 ? image : portrait.back,
     })
   }
-  const nextProvider = nextTtsProvider(provider, doubaoEnabled, breezeEnabled)
+  const nextProvider = nextTtsProvider(provider, doubaoEnabled, breezeEnabled, deepseekEnabled)
   const nextExternal = external ? nextExternalConfiguration(external) : undefined
   const label = external?.name ?? t(providerLabelKey(provider))
   const nextLabel = nextExternal?.name ?? t(providerLabelKey(nextProvider))
@@ -145,6 +146,7 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, minimal, wr
 export interface SwitchModuleProps {
   doubaoEnabled: boolean
   breezeEnabled: boolean
+  deepseekEnabled?: boolean
   t: Translate
   provider: TtsProvider
   enabled: boolean
@@ -158,7 +160,7 @@ export interface SwitchModuleProps {
   onSoundEnabledChange: (next: boolean) => void
 }
 
-export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, enabled, autoPlay, soundEnabled, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
+export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, deepseekEnabled, enabled, autoPlay, soundEnabled, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
   const { result } = useSettingsSearch()
   const rowRef = useHoloHover(!minimal && writable)
   const [switching, setSwitching] = useState(false)
@@ -174,7 +176,7 @@ export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, enable
       <CharacterToggle kind="voice" checked={enabled} disabled={!writable} label={t(minimal ? 'settings.enabled' : enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onEnabledChange} />
       <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!writable} label={t(minimal ? 'settings.autoPlay' : enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onAutoPlayChange} />
       <CharacterToggle kind="sound" checked={soundEnabled} disabled={!writable} label={t(minimal ? 'settings.soundEffectsTitle' : soundEnabled ? 'settings.soundEffectsOnLabel' : 'settings.soundEffectsOffLabel')} stateLabel={t(soundEnabled ? 'settings.stateOn' : 'settings.stateOff')} minimal={minimal} onChange={onSoundEnabledChange} />
-      <ProviderToggle t={t} provider={provider} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} minimal={minimal} writable={writable} switching={switching} onChange={onProviderChange} onExternalChange={changeExternal} />
+      <ProviderToggle t={t} provider={provider} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} deepseekEnabled={deepseekEnabled ?? false} minimal={minimal} writable={writable} switching={switching} onChange={onProviderChange} onExternalChange={changeExternal} />
     </div>
     {switchFailed ? <p className="xmimo-tts-failed" role="alert">{t('settings.externalSwitchFailed')}</p> : null}
   </section>

@@ -27,6 +27,7 @@ const assetFiles = new Map([
   ['sound-effects-toggle-characters.webp', path.join(repositoryRoot, 'assets', 'ui', 'sound-effects-toggle-characters.webp')],
   ['provider-mimo.webp', path.join(repositoryRoot, 'assets', 'ui', 'provider-mimo.webp')],
   ['provider-doubao.webp', path.join(repositoryRoot, 'assets', 'ui', 'provider-doubao.webp')],
+  ['provider-deepseek.webp', path.join(repositoryRoot, 'assets', 'ui', 'provider-deepseek.webp')],
   ['provider-breeze.webp', path.join(repositoryRoot, 'assets', 'ui', 'provider-breeze.webp')],
   ['provider-external-takeover.webp', path.join(repositoryRoot, 'assets', 'ui', 'provider-external-takeover.webp')],
   ['api-key-whale.webp', path.join(repositoryRoot, 'assets', 'ui', 'api-key-whale.webp')],
@@ -34,6 +35,7 @@ const assetFiles = new Map([
   ['qq-group.webp', path.join(repositoryRoot, 'assets', 'ui', 'qq-group.webp')],
   ['provider-mimo-logo.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-mimo-logo.png')],
   ['provider-doubao-logo.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-doubao-logo.png')],
+  ['provider-deepseek-logo.svg', path.join(repositoryRoot, 'assets', 'ui', 'provider-deepseek-logo.svg')],
   ['provider-breeze-logo.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-breeze-logo.png')],
   ['provider-breeze-logo-light.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-breeze-logo-light.png')],
 ])

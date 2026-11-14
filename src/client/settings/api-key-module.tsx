@@ -54,12 +54,12 @@ export function ApiKeyModule({ t, provider, value, message, invalid, writable, m
   const [bubbleKey, setBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const inputId = useId()
   const messageId = useId()
-  const keyUrl = provider === 'doubao' ? 'https://console.volcengine.com/speech/new/setting/apikeys?projectName=default' : provider === 'breeze' ? 'https://breezeblue.ai/zh?code=JHKLSJ' : 'https://platform.xiaomimimo.com/console/api-keys'
+  const keyUrl = provider === 'deepseek' ? 'https://platform.deepseek.com/api_keys' : provider === 'doubao' ? 'https://console.volcengine.com/speech/new/setting/apikeys?projectName=default' : provider === 'breeze' ? 'https://breezeblue.ai/zh?code=JHKLSJ' : 'https://platform.xiaomimimo.com/console/api-keys'
 
   return <ModuleShell hidden={hide('apiKey')} className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-ui-module-padded" title={<SettingFieldHeading
       label={<span className="xmimo-ui-module-title">
         <RiKey2Line size={14} aria-hidden="true" focusable="false" />
-        {external ? external.name : provider === 'doubao' ? t('settings.providerDoubao') : provider === 'breeze' ? t('settings.providerBreeze') : <span
+        {external ? external.name : provider === 'deepseek' ? t('settings.providerDeepseek') : provider === 'doubao' ? t('settings.providerDoubao') : provider === 'breeze' ? t('settings.providerBreeze') : <span
           className="xmimo-tts-api-key-logo"
           role="img"
           aria-label={t('settings.apiKey')}

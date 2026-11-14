@@ -1,5 +1,7 @@
+export const PASSPORT_ASR_PROVIDERS = ['host', 'xiaomi', 'doubao', 'doubao-nostream', 'deepseek'] as const
+
 export interface PassportSettings {
-  asrProvider: 'host' | 'xiaomi' | 'doubao' | 'doubao-nostream'
+  asrProvider: typeof PASSPORT_ASR_PROVIDERS[number]
   host: string
   port: number
   accessToken: string

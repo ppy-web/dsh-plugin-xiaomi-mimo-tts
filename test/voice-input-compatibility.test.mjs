@@ -6,7 +6,6 @@ import { pcmEvent, withBrowserPlayback } from './helpers/browser-playback.mjs'
 
 const { VoiceInputActivity } = await loadClientModule('src/client/voice-input-activity.ts')
 const { PluginAudioFocus } = await loadClientModule('src/client/plugin-activity.ts')
-const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
 const { LiveSpeechController } = await loadClientModule('src/client/playback/live-speech-controller.ts')
 
 // Model the browser boundary, including queued callbacks after disconnect.
@@ -41,41 +40,15 @@ function voiceDocument(t, initial = []) {
   }
 }
 
-test('voice input compatibility defaults on and saves or resets independently of other audio settings', async () => {
-  assert.equal(resolveTtsSettings().voiceInputCompatibility, true)
-  assert.equal(resolveTtsSettings({ voiceInputCompatibility: false }).voiceInputCompatibility, false)
-  const user = { autoPlay: true, soundEnabled: true, localVoiceURI: 'saved-voice' }
-  const scope = {
-    getSnapshot: () => ({ user, value: resolveTtsSettings(user) }),
-    async mutate(ops) {
-      for (const op of ops) {
-        if (op.op === 'set') user[op.path[0]] = op.value
-        else delete user[op.path[0]]
-      }
-      return true
-    },
-  }
-  const original = { ...user }
-  const keys = { xiaomi: '', doubao: '', breeze: '' }
-  await saveSettingsDraft(scope, resolveTtsSettings({ ...user, voiceInputCompatibility: false }), { voiceInputCompatibility: { kind: 'set' } }, keys)
-  assert.deepEqual(user, { ...original, voiceInputCompatibility: false })
-  await saveSettingsDraft(scope, resolveTtsSettings(user), { voiceInputCompatibility: { kind: 'clear' } }, keys)
-  assert.deepEqual(user, original)
-  assert.equal(resolveTtsSettings(user).voiceInputCompatibility, true)
-})
-
 test('requesting, recording and transcribing block audio until success, cancellation or feedback', t => {
-  const dom = voiceDocument(t)
+  const dom = voiceDocument(t, ['recording'])
   const activity = new VoiceInputActivity(dom.document)
   let claims = 0
   const focus = new PluginAudioFocus({ canPlay: () => true, claim: () => claims++, subscribe: () => () => {} }, activity)
   const permissions = []
   const off = focus.subscribe(() => permissions.push(focus.canPlay()))
-  // A disabled adapter does not observe or block even if the official plugin is active.
-  dom.change(['recording'])
-  assert.equal(focus.canPlay(), true)
-  activity.configure(true)
-  assert.equal(focus.canPlay(), false, 'enabling during recording must stop playback immediately')
+  activity.start()
+  assert.equal(focus.canPlay(), false, 'starting during recording must stop playback immediately')
   for (const phase of ['requesting', 'recording', 'transcribing']) {
     dom.change([phase])
     focus.claim()
@@ -96,23 +69,22 @@ test('requesting, recording and transcribing block audio until success, cancella
   activity.dispose()
 })
 
-test('all visible composers participate and disable/unload releases observation without overriding other audio gates', t => {
+test('all visible composers participate and unloading releases observation without overriding other audio gates', t => {
   const dom = voiceDocument(t, ['feedback', 'recording'])
   const activity = new VoiceInputActivity(dom.document)
   let owner = true
   const focus = new PluginAudioFocus({ canPlay: () => owner, claim: () => {}, subscribe: () => () => {} }, activity)
-  activity.configure(true)
-  activity.configure(true)
+  activity.start()
   assert.equal(focus.canPlay(), false)
   dom.change(['feedback', 'transcribing'])
   assert.equal(focus.canPlay(), false)
   const oldObserver = dom.observers[0]
-  activity.configure(false)
+  activity.dispose()
   assert.equal(oldObserver.connected, false)
   assert.equal(focus.canPlay(), true)
   oldObserver.callback([{ type: 'attributes' }])
   assert.equal(focus.canPlay(), true)
-  activity.configure(true)
+  activity.start()
   assert.equal(focus.canPlay(), false)
   owner = false
   dom.change([], 'remove')
@@ -125,7 +97,7 @@ test('voice input interrupts a pending synthesis, rejects late audio and does no
   const dom = voiceDocument(t)
   const activity = new VoiceInputActivity(dom.document)
   const focus = new PluginAudioFocus({ canPlay: () => true, claim: () => {}, subscribe: () => () => {} }, activity)
-  activity.configure(true)
+  activity.start()
   let response
   await withBrowserPlayback(async state => {
     const live = new LiveSpeechController()
@@ -158,7 +130,7 @@ test('recording stops already playing PCM and ending input only permits a fresh 
   const dom = voiceDocument(t)
   const activity = new VoiceInputActivity(dom.document)
   const focus = new PluginAudioFocus({ canPlay: () => true, claim: () => {}, subscribe: () => () => {} }, activity)
-  activity.configure(true)
+  activity.start()
   await withBrowserPlayback(async state => {
     const live = new LiveSpeechController()
     live.activateSession('session')

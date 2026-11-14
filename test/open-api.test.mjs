@@ -9,6 +9,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { isSilk } from 'silk-wasm'
 import { apply, Config } from '../lib/index.js'
 import { resolveTtsSettings, TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE } from '../lib/shared.js'
+import { withDeepseekServer } from './helpers/deepseek-server.mjs'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 
 const { HostSpeechService } = await loadClientModule('src/host/speech-service.ts')
@@ -55,10 +56,10 @@ async function withApi(run, options = {}) {
     apiKey: 'sk-open-api-provider-secret', baseURL: upstreamBase,
     doubaoApiKey: 'doubao-private-key', breezeApiKey: 'breeze-private-key',
     instruction: 'private-saved-instruction', voiceDesignPrompt: 'private-voice-design',
-    requestTimeoutMs: 1000,
+    requestTimeoutMs: 1000, ...options.settings,
   })
   let now = Date.now(), token = 'independent-open-api-secret'
-  const host = new HostSpeechService(() => settings)
+  const host = new HostSpeechService(() => settings, options.runtime)
   const downloads = new AudioDownloads(() => now)
   const service = {
     capabilities: () => host.capabilities(),
@@ -150,6 +151,38 @@ test('capabilities follow saved settings and expose actionable model features wi
     assert.equal(current.providers.find(provider => provider.id === 'breeze').unavailableReason, 'api-key-rejected')
     assert.equal(current.providers.find(provider => provider.id === 'breeze').maxTextLength, 50)
   })
+})
+
+test('Open API advertises DeepSeek WAV and SILK and exports using saved provider settings', async () => {
+  await withDeepseekServer(({ connect, sessions }) => withApi(async ({ base, auth, post }) => {
+    const response = await fetch(base + TTS_CAPABILITIES_ROUTE, { headers: auth() })
+    const info = await response.json()
+    assert.equal(info.provider, 'deepseek')
+    assert.deepEqual(info.http.formats, ['wav'])
+    assert.deepEqual(info.http.exportFormats, ['wav', 'silk'])
+    const model = info.providers.find(provider => provider.id === 'deepseek').models[0]
+    assert.equal(model.duplex, true)
+    assert.deepEqual(model.voices.map(voice => voice.id), ['stella', 'tide'])
+    assert.equal(JSON.stringify(info).includes('test-deepseek-export-key'), false)
+
+    const mp3 = await post({ text: '导出失败。', format: 'mp3' })
+    assert.equal(mp3.status, 400)
+    assert.equal((await mp3.json()).error, 'audio-format-unsupported')
+    assert.equal(sessions.length, 0)
+    const exportResponse = await post({ text: '导出语音。' })
+    assert.equal(exportResponse.status, 201)
+    const result = await exportResponse.json()
+    const download = await fetch(new URL(result.url, exportResponse.url))
+    assert.equal(download.status, 200)
+    assert.equal(download.headers.get('content-type'), 'audio/wav')
+    const audio = Buffer.from(await download.arrayBuffer())
+    assert.equal(audio.readUInt32LE(24), 24000)
+    assert.equal(audio.readUInt32LE(40), 4800)
+    assert.equal(sessions[0].authorization, 'Bearer test-deepseek-export-key')
+  }, {
+    settings: { provider: 'deepseek', deepseekEnabled: true, deepseekApiKey: 'test-deepseek-export-key' },
+    runtime: { connectDeepseek: connect },
+  }))
 })
 
 test('management requires its own token, rejects cross-origin calls and observes token rotation', async () => {

@@ -6,7 +6,7 @@ import z from '@deepseek-ai/schemastery'
 import { readFileSync } from 'node:fs'
 import { PassportBridge } from './passport/bridge.js'
 import { PassportSession } from './passport/session.js'
-import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_ASR_TEST_ROUTE, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from './types/passport.js'
+import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_ASR_TEST_ROUTE, PASSPORT_ASR_PROVIDERS, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from './types/passport.js'
 import type { PassportSettings } from './types/passport.js'
 import { json, readJsonBody } from './host/http.js'
 import { TTS_DESKTOP_WRITE_HEADER } from './constants.js'
@@ -27,7 +27,7 @@ const ASR_TEST_ERRORS = new Set(['passport-asr-unavailable', 'passport-asr-disab
 export const inject: string[] = []
 const messages = (language: string) => JSON.parse(readFileSync(new URL(`./locale/passport/${language}.json`, import.meta.resolve('dsh-xiaomi-tts/package.json')), 'utf8')).config
 export const Config = z.object({
-  asrProvider: z.union(['host', 'xiaomi', 'doubao', 'doubao-nostream']).default('host').volatile(),
+  asrProvider: z.union(PASSPORT_ASR_PROVIDERS).default('host').volatile(),
   host: z.string().default(defaults.host).volatile(),
   port: z.number().step(1).min(1).max(65535).default(defaults.port).volatile(),
   accessToken: z.string().max(192).pattern(/^\S*$/u).role('secret').default(defaults.accessToken).volatile(),
@@ -65,8 +65,9 @@ export function apply(ctx: Context, config: Config): void {
       let source: PassportSettings['asrProvider']
       try {
         const body = await readJsonBody(req, 1024) as Record<string, unknown>
-        if (!body || typeof body.source !== 'string' || Object.keys(body).length !== 1 || !['host', 'xiaomi', 'doubao', 'doubao-nostream'].includes(body.source)) throw new Error('invalid')
-        source = body.source as PassportSettings['asrProvider']
+        const selected = PASSPORT_ASR_PROVIDERS.find(provider => provider === body?.source)
+        if (!selected || Object.keys(body).length !== 1) throw new Error('invalid')
+        source = selected
       } catch { json(res, 400, { error: 'passport-asr-test-invalid' }); return }
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), 15000)

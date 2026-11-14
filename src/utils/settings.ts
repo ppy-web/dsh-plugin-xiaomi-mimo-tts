@@ -1,5 +1,6 @@
 import type { TtsSettings, ResolvedTtsSettings } from '../types/index.js'
 import { DEFAULT_TTS_SETTINGS, TTS_LOCAL_VOICE_ENGINES, TTS_READ_SCOPES, TTS_VOICE_DESIGN_PRESETS, SOUND_PACKS, DOUBAO_TTS_MODELS, ANNOUNCEMENT_SOURCES } from '../types/index.js'
+import { DEEPSEEK_VOICES, OPTIONAL_TTS_PROVIDERS, TTS_PROVIDER_SWITCH } from '../types/providers.js'
 import { DEFAULT_MOSS_BASE_URL } from '../constants.js'
 import { normalizeVoiceRate } from './encoding.js'
 
@@ -31,6 +32,13 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
   const mossBaseURL = typeof resolved.mossBaseURL === 'string' && resolved.mossBaseURL.trim().length > 0
     ? resolved.mossBaseURL.trim().replace(/\/+$/u, '')
     : DEFAULT_MOSS_BASE_URL
+  const optional = OPTIONAL_TTS_PROVIDERS.filter(provider => provider === 'doubao'
+    ? resolved.doubaoEnabled !== false : resolved[TTS_PROVIDER_SWITCH[provider]] === true)
+  if (optional.length === 0) optional.push('doubao')
+  if (optional.length > 2) {
+    const index = optional.findLastIndex(provider => provider !== resolved.provider)
+    optional.splice(index, 1)
+  }
   return {
     ...resolved,
     showInSidebar: resolved.showInSidebar === true,
@@ -40,9 +48,11 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     voiceRecognitionService: resolved.voiceRecognitionService !== false,
     qqbotEnabled: resolved.qqbotEnabled === true,
     announcementSources: ANNOUNCEMENT_SOURCES.filter(source => (Array.isArray(value?.announcementSources) ? value.announcementSources : DEFAULT_TTS_SETTINGS.announcementSources).includes(source)),
-    breezeEnabled: resolved.breezeEnabled === true,
-    doubaoEnabled: resolved.doubaoEnabled !== false || resolved.breezeEnabled !== true,
-    provider: (resolved.provider === 'doubao' && (resolved.doubaoEnabled !== false || resolved.breezeEnabled !== true)) || (resolved.provider === 'breeze' && resolved.breezeEnabled === true) ? resolved.provider : 'xiaomi',
+    breezeEnabled: optional.includes('breeze'),
+    doubaoEnabled: optional.includes('doubao'),
+    deepseekEnabled: optional.includes('deepseek'),
+    deepseekVoice: DEEPSEEK_VOICES.includes(resolved.deepseekVoice) ? resolved.deepseekVoice : 'stella',
+    provider: optional.some(provider => provider === resolved.provider) ? resolved.provider : 'xiaomi',
     instruction: typeof resolved.instruction === 'string' ? resolved.instruction : DEFAULT_TTS_SETTINGS.instruction,
     doubaoInstruction: typeof resolved.doubaoInstruction === 'string' ? resolved.doubaoInstruction : '',
     doubaoModel: DOUBAO_TTS_MODELS.includes(resolved.doubaoModel) ? resolved.doubaoModel : 'seed-tts-2.0',
@@ -55,7 +65,6 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     mossVoiceName: typeof resolved.mossVoiceName === 'string' ? resolved.mossVoiceName : '',
     autoPlay: resolved.enabled ? resolved.autoPlay : false,
     showReadingCaptions: resolved.showReadingCaptions !== false,
-    voiceInputCompatibility: resolved.voiceInputCompatibility !== false,
     inputAvoidance: resolved.inputAvoidance === true,
     importantAnnouncementsFirst: resolved.importantAnnouncementsFirst === true,
     soundVolume,

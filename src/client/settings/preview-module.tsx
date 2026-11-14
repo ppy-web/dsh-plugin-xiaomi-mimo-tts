@@ -32,7 +32,11 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<Prov
   externalSelection?: ExternalSpeechSelection | undefined
 }
 
-export function PreviewModule({ t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, externalSelection, doubaoEnabled, breezeEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange, ...settings }: PreviewModuleProps): ReactElement {
+export function PreviewModule({
+  t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, externalSelection,
+  doubaoEnabled, breezeEnabled, deepseekEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange,
+  acceptExternalProviders, onAcceptExternalProvidersChange, ...settings
+}: PreviewModuleProps): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   useEngineState()
   const external = externalEngine()
@@ -80,10 +84,10 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
   const messageKey = external && source === null ? external.ready ? 'settings.externalManaged' : 'settings.externalNotReady' : source === 'external' && status !== 'error' ? status === 'loading' ? 'settings.externalLoading' : status === 'playing' ? 'settings.externalPlaying' : 'settings.externalCompleted' : status === 'error'
     ? errorKey
     : status === 'loading'
-      ? source === 'doubao' ? 'settings.previewLoadingDoubao' : source === 'breeze' ? 'settings.previewLoadingBreeze' : source === 'local' ? 'settings.previewLoadingLocal' : 'settings.previewLoadingMimo'
+      ? source === 'deepseek' ? 'settings.previewLoadingDeepseek' : source === 'doubao' ? 'settings.previewLoadingDoubao' : source === 'breeze' ? 'settings.previewLoadingBreeze' : source === 'local' ? 'settings.previewLoadingLocal' : 'settings.previewLoadingMimo'
       : status === 'playing'
-        ? source === 'doubao' ? 'settings.previewPlayingDoubao' : source === 'breeze' ? 'settings.previewPlayingBreeze' : source === 'local' ? 'settings.previewPlayingLocal' : 'settings.previewPlayingMimo'
-        : source === 'doubao' ? 'settings.previewCompletedDoubao' : source === 'breeze' ? 'settings.previewCompletedBreeze' : source === 'local'
+        ? source === 'deepseek' ? 'settings.previewPlayingDeepseek' : source === 'doubao' ? 'settings.previewPlayingDoubao' : source === 'breeze' ? 'settings.previewPlayingBreeze' : source === 'local' ? 'settings.previewPlayingLocal' : 'settings.previewPlayingMimo'
+        : source === 'deepseek' ? 'settings.previewCompletedDeepseek' : source === 'doubao' ? 'settings.previewCompletedDoubao' : source === 'breeze' ? 'settings.previewCompletedBreeze' : source === 'local'
           ? 'settings.previewCompletedLocal'
           : source === 'mimo'
             ? 'settings.previewCompletedMimo'
@@ -153,7 +157,10 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
         {downloadFailed ? <small className="xmimo-tts-failed" role="alert">{t('settings.previewDownloadFailed')}</small> : null}
       </div>
-      <ProviderSettings t={t} writable={settings.writable} providerLocked={external !== null} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} mossEnabled={mossEnabled} visibleSettings={search?.visible} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange} />
+      <ProviderSettings t={t} writable={settings.writable} providerLocked={external !== null} visibleSettings={search?.visible}
+        doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} deepseekEnabled={deepseekEnabled ?? false}
+        mossEnabled={mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange}
+        acceptExternalProviders={acceptExternalProviders} onAcceptExternalProvidersChange={onAcceptExternalProvidersChange} />
       <AnnouncementSettings t={t} {...settings} parentOpen={open}>
       </AnnouncementSettings>
     </div>

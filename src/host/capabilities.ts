@@ -1,8 +1,9 @@
 import type { SpeechCapabilities, SpeechModelCapabilities } from '../host-api.js'
 import { BREEZE_MAX_TEXT_LENGTH } from '../constants.js'
 import { TTS_VOICES } from '../types/models.js'
-import { BREEZE_TTS_MODEL, BREEZE_VOICE_PRESETS, DOUBAO_TTS_MODELS, TTS_PROVIDERS, ttsApiKey, ttsSelection } from '../types/providers.js'
+import { BREEZE_TTS_MODEL, BREEZE_VOICE_PRESETS, DEEPSEEK_TTS_MODEL, DEEPSEEK_VOICES, DOUBAO_TTS_MODELS, TTS_PROVIDERS, ttsApiKey, ttsSelection } from '../types/providers.js'
 import type { ResolvedTtsSettings } from '../types/settings.js'
+import { DEEPSEEK_TEXT_UNITS } from '../text/deepseek-limit.js'
 import { DOUBAO_VOICE_PRESETS } from '../doubao-voices.js'
 import { TtsProviderError } from './provider-error.js'
 import { validateSynthesisSettings } from './validation.js'
@@ -11,7 +12,7 @@ import { validateSynthesisSettings } from './validation.js'
 export function speechCapabilities(settings: ResolvedTtsSettings): SpeechCapabilities {
   return {
     provider: settings.provider,
-    formats: ['mp3', 'wav', 'silk'],
+    formats: settings.provider === 'deepseek' ? ['wav', 'silk'] : ['mp3', 'wav', 'silk'],
     providers: TTS_PROVIDERS.map(id => {
       const selected = { ...settings, provider: id }
       const selection = ttsSelection(selected)
@@ -35,6 +36,13 @@ export function speechCapabilities(settings: ResolvedTtsSettings): SpeechCapabil
           customVoice: true, voiceDesign: false, speechInstruction: model === 'seed-tts-2.0',
           audioTags: false, voiceRate: true, streaming: true, duplex: true,
         }))
+      } else if (id === 'deepseek') {
+        models = [{
+          id: DEEPSEEK_TTS_MODEL,
+          voices: DEEPSEEK_VOICES.map(voice => ({ id: voice, name: voice === 'stella' ? 'Stella' : 'Tide' })),
+          customVoice: false, voiceDesign: false, speechInstruction: false, audioTags: false, voiceRate: false,
+          streaming: true, duplex: true,
+        }]
       } else {
         models = [{
           id: BREEZE_TTS_MODEL,
@@ -47,7 +55,7 @@ export function speechCapabilities(settings: ResolvedTtsSettings): SpeechCapabil
         id, configured: ttsApiKey(selected).length > 0, ready: unavailableReason === undefined,
         ...(unavailableReason === undefined ? {} : { unavailableReason }),
         selectedModel: selection.model, selectedVoice: selection.voice,
-        maxTextLength: id === 'breeze' ? Math.min(settings.maxTextLength, BREEZE_MAX_TEXT_LENGTH) : settings.maxTextLength,
+        maxTextLength: id === 'breeze' ? Math.min(settings.maxTextLength, BREEZE_MAX_TEXT_LENGTH) : id === 'deepseek' ? Math.min(settings.maxTextLength, DEEPSEEK_TEXT_UNITS) : settings.maxTextLength,
         models,
       }
     }),

@@ -8,7 +8,7 @@ import { VoiceSettingsPage } from '../../src/client/settings/voice-settings-page
 import { PluginDetailActions } from '../../src/client/settings/plugin-detail.js'
 import { createSoundEffectsController } from '../../src/client/sound-effects/index.js'
 import { CLIENT_STYLES } from '../../src/client/style/index.js'
-import { en, zh, ja, fr } from '../../src/client/localization.js'
+import { en, zh } from '../../src/client/localization.js'
 import type { LocaleKey, Translate } from '../../src/client/localization.js'
 import pluginIcon from '../../assets/plugin-icons/avatar.webp'
 import { installPreviewFetch, PreviewSettingsScope } from './mock-settings.js'
@@ -50,13 +50,12 @@ const soundEffects = createSoundEffectsController()
 const history = new AudioHistory()
 const localeOptions = [
   { id: 'zh', label: '中文' }, { id: 'en', label: 'English' },
-  { id: 'ja', label: '日本語' }, { id: 'fr', label: 'Français' },
 ] as const
 
 if (import.meta.hot) import.meta.hot.dispose(() => { externalTakeover.dispose(); unbindApiKeyStatus(); restorePreviewFetch(); restorePreviewHostIcons(); void soundEffects.dispose(); void history.dispose() })
 
 function translator(locale: PreviewLocale): Translate {
-  const dictionary: Record<LocaleKey, string> = { zh, en, ja, fr }[locale]
+  const dictionary: Record<LocaleKey, string> = { zh, en }[locale]
   return (key) => dictionary[key]
 }
 
@@ -180,14 +179,14 @@ function PreviewApp() {
               : activeView === 'conversation' ? <ConversationPreview scope={scope} />
               : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} settingsProps={settingsPageProps} onOpenWorkbench={openWorkbench}
                 externalTakeover={externalTakeover} externalTakeoverLabel={copy.externalTakeover} />
-              : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} ttsScope={scope} />
-              : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} />
-              : activeView === 'qqbot' ? <DocumentPage key="qqbot" copy={QQBOT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
-              : activeView === 'doubao' ? <DocumentPage key="doubao" copy={DOUBAO_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
-              : activeView === 'xiaomi' ? <DocumentPage key="xiaomi" copy={XIAOMI_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
-              : activeView === 'breeze' ? <DocumentPage key="breeze" copy={BREEZE_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
-              : activeView === 'passport' ? <DocumentPage key="passport" copy={PASSPORT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
-              : <UserManual locale={locale === 'zh' ? 'zh' : 'en'} />}
+              : activeView === 'components' ? <BundleComponents locale={locale} ttsScope={scope} />
+              : activeView === 'filter' ? <FilterLab locale={locale} />
+              : activeView === 'qqbot' ? <DocumentPage key="qqbot" copy={QQBOT_GUIDE[locale]} />
+              : activeView === 'doubao' ? <DocumentPage key="doubao" copy={DOUBAO_GUIDE[locale]} />
+              : activeView === 'xiaomi' ? <DocumentPage key="xiaomi" copy={XIAOMI_GUIDE[locale]} />
+              : activeView === 'breeze' ? <DocumentPage key="breeze" copy={BREEZE_GUIDE[locale]} />
+              : activeView === 'passport' ? <DocumentPage key="passport" copy={PASSPORT_GUIDE[locale]} />
+              : <UserManual locale={locale} />}
           </div>
         </div>
       </main>

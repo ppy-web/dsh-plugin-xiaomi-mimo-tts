@@ -68,9 +68,9 @@ export class PcmAudioQueue {
     return this.enqueueBytes(Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)), onStart)
   }
 
-  enqueueBytes(bytes: Uint8Array, onStart?: () => void): Promise<void> {
+  enqueueBytes(bytes: Uint8Array, onStart?: () => void, onSchedule?: (elapsed: () => number, duration: number) => void): Promise<void> {
     const revision = this.revision
-    const run = this.chain.then(() => this.schedule(bytes, revision, onStart))
+    const run = this.chain.then(() => this.schedule(bytes, revision, onStart, onSchedule))
     this.chain = run.catch(() => {})
     return run
   }
@@ -107,7 +107,7 @@ export class PcmAudioQueue {
     if (context !== null && context.state !== 'closed') await context.close()
   }
 
-  private async schedule(bytes: Uint8Array, revision: number, onStart?: () => void): Promise<void> {
+  private async schedule(bytes: Uint8Array, revision: number, onStart?: () => void, onSchedule?: (elapsed: () => number, duration: number) => void): Promise<void> {
     if (revision !== this.revision) {
       return
     }
@@ -132,7 +132,8 @@ export class PcmAudioQueue {
     applyPcmVoiceRate(source, this.playbackRate)
     source.connect(this.getGain(context))
     const startAt = Math.max(context.currentTime + 0.03, this.scheduledAt)
-    this.scheduledAt = startAt + pcmPlaybackDuration(buffer.duration, this.playbackRate)
+    const duration = pcmPlaybackDuration(buffer.duration, this.playbackRate)
+    this.scheduledAt = startAt + duration
     if (this.userPaused && this.queuedBytes + bytes.byteLength > this.maxPausedPcmBytes) throw new Error('pcm-pause-buffer-limit')
     this.sources.add(source)
     this.sourceBytes.set(source, bytes.byteLength)
@@ -152,6 +153,7 @@ export class PcmAudioQueue {
       this.sourceBytes.delete(source)
       throw error
     }
+    onSchedule?.(() => Math.min(duration, Math.max(0, context.currentTime - startAt)), duration)
     if (onStart !== undefined) this.scheduleMarker(context, startAt, revision, onStart)
     this.setBusy(true)
     if (!this.userPaused && context.state === 'running') this.callbacks.onPlaybackStart()

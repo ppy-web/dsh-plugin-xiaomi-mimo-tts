@@ -110,7 +110,7 @@ test('priority can replace ordinary PCM while stale cancellation cannot stop its
   })
 })
 
-test('new adaptation switches default off and persist without changing either default-on switch', async () => {
+test('composer input avoidance and priority announcements default off and persist independently', async () => {
   const user = {}
   const scope = {
     getSnapshot: () => ({ user, value: user }),
@@ -121,6 +121,5 @@ test('new adaptation switches default off and persist without changing either de
   const changes = { inputAvoidance: { kind: 'set' }, importantAnnouncementsFirst: { kind: 'set' } }
   await saveSettingsDraft(scope, resolveTtsSettings({ inputAvoidance: true, importantAnnouncementsFirst: true }), changes, { xiaomi: '', doubao: '', breeze: '' })
   assert.deepEqual(user, { inputAvoidance: true, importantAnnouncementsFirst: true })
-  assert.equal(resolveTtsSettings(user).voiceInputCompatibility, true)
   assert.equal(resolveTtsSettings(user).showInHostSettings, true)
 })

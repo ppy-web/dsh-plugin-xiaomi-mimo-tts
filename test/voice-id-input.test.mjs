@@ -73,7 +73,7 @@ test('voice history uses preset names only for standard IDs and respects saved l
 })
 
 test('saved voice remarks retain their IDs across voice types and languages', () => {
-  for (const kind of ['standard', 'cloned']) for (const locale of ['zh', 'en', 'ja', 'fr']) {
+  for (const kind of ['standard', 'cloned']) for (const locale of ['zh', 'en']) {
     const html = renderInput({ kind, locale, value: 'custom-id', names: { 'custom-id': 'My voice' } })
     const named = selectButtons(html).find(button => button.text === 'My voice')
     assert.ok(named, `${kind}: ${locale}`)

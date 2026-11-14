@@ -39,7 +39,7 @@ const copy = {
 } as const
 type CopyKey = keyof typeof copy.en
 type Translate = (key: `live2d.${CopyKey}`) => string
-const translate = (locale: PreviewLocale): Translate => key => copy[locale === 'zh' ? 'zh' : 'en'][key.slice(7) as CopyKey]
+const translate = (locale: PreviewLocale): Translate => key => copy[locale][key.slice(7) as CopyKey]
 
 type Character = 'p01' | 'p02'
 type Settings = { character: Character; size: number; position: number; visible: boolean }

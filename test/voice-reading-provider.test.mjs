@@ -2,21 +2,21 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { TTS_PROVIDERS } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { VoiceReadingProvider } = await loadClientModule('src/client/settings/voice-reading-provider.tsx')
 const { VoiceReadingSelect } = await loadClientModule('src/client/settings/voice-reading-select.tsx')
 const { engineStateStore } = await loadClientModule('src/client/engine-state.ts')
 
-function checkProviderSelection(provider) {
+function checkProviderSelection(provider, enabled) {
   const html = renderToStaticMarkup(createElement(VoiceReadingProvider, {
-    value: provider, doubaoEnabled: true, breezeEnabled: true, disabled: false, t: key => key, onChange: () => {},
+    value: provider, doubaoEnabled: enabled.includes('doubao'), breezeEnabled: enabled.includes('breeze'),
+    deepseekEnabled: enabled.includes('deepseek'), disabled: false, t: key => key, onChange: () => {},
   }))
   const inputs = [...html.matchAll(/<input\b[^>]*>/g)].map(match => match[0])
-  assert.equal(inputs.length, TTS_PROVIDERS.length)
+  assert.equal(inputs.length, enabled.length)
   assert.equal(inputs.filter(input => /\bchecked=""/.test(input)).length, 1)
-  for (const value of TTS_PROVIDERS) {
+  for (const value of enabled) {
     const input = inputs.find(input => input.includes(`value="${value}"`))
     assert.ok(input)
     assert.match(input, /type="radio"/)
@@ -28,15 +28,17 @@ function checkProviderSelection(provider) {
 }
 
 test('provider selector exposes one selected option in a native radio group', () => {
-  for (const provider of TTS_PROVIDERS) checkProviderSelection(provider)
+  for (const choices of [['xiaomi', 'doubao'], ['xiaomi', 'doubao', 'breeze'], ['xiaomi', 'breeze', 'deepseek']]) {
+    for (const provider of choices) checkProviderSelection(provider, choices)
+  }
 })
 
-test('Breeze choice is hidden until enabled', () => {
+test('Breeze and DeepSeek choices are hidden until enabled', () => {
   const html = renderToStaticMarkup(createElement(VoiceReadingProvider, {
     value: 'xiaomi', doubaoEnabled: true, breezeEnabled: false, disabled: false, t: key => key, onChange: () => {},
   }))
   assert.equal([...html.matchAll(/<input\b[^>]*>/g)].length, 2)
-  assert.doesNotMatch(html, /value="breeze"/)
+  assert.doesNotMatch(html, /value="(?:breeze|deepseek)"/)
 })
 
 test('Doubao choice is hidden when disabled and Breeze is enabled', () => {

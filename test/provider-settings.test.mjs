@@ -10,7 +10,7 @@ function form(initial = {}, rejectField) {
   const writes = []
   return {
     user, writes,
-    getSnapshot: () => ({ user, value: resolveTtsSettings(user) }),
+    getSnapshot: () => ({ user, value: { ...DEFAULT_TTS_SETTINGS, ...user } }),
     async mutate(ops) {
       writes.push(ops)
       if (ops.some(op => op.path[0] === rejectField)) return false
@@ -50,6 +50,32 @@ test('provider availability controls selection and always keeps an optional prov
   assert.equal(resolveTtsSettings({ doubaoEnabled: false, breezeEnabled: false }).doubaoEnabled, true)
   assert.equal(resolveTtsSettings({ doubaoEnabled: false, breezeEnabled: true, provider: 'doubao' }).provider, 'xiaomi')
   assert.equal(resolveTtsSettings({ doubaoEnabled: true, breezeEnabled: false, provider: 'breeze' }).provider, 'xiaomi')
+})
+
+test('DeepSeek stays off by default, and invalid profiles keep their selected optional provider within the cap', () => {
+  const available = settings => availableTtsProviders(settings.doubaoEnabled, settings.breezeEnabled, settings.deepseekEnabled)
+  assert.deepEqual(available(resolveTtsSettings()), ['xiaomi', 'doubao'])
+  const overCap = resolveTtsSettings({ provider: 'deepseek', doubaoEnabled: true, breezeEnabled: true, deepseekEnabled: true, deepseekVoice: 'tide' })
+  assert.deepEqual(available(overCap), ['xiaomi', 'doubao', 'deepseek'])
+  assert.equal(ttsSelection(overCap).voice, 'tide')
+  assert.equal(nextTtsProvider('doubao', overCap.doubaoEnabled, overCap.breezeEnabled, overCap.deepseekEnabled), 'deepseek')
+})
+
+test('provider changes enforce the cap against the latest settings and preserve DeepSeek credentials when disabled', async () => {
+  const scope = form({ breezeEnabled: true })
+  const draft = resolveTtsSettings({ deepseekEnabled: true, provider: 'deepseek', deepseekVoice: 'tide' })
+  const keys = { xiaomi: '', doubao: '', breeze: '', deepseek: 'test-deepseek-key' }
+  const changes = { deepseekEnabled: { kind: 'set' }, provider: { kind: 'set' }, deepseekApiKey: { kind: 'set' }, deepseekVoice: { kind: 'set' } }
+  await assert.rejects(saveSettingsDraft(scope, draft, changes, keys), { code: 'provider-count' })
+  assert.deepEqual(scope.writes, [])
+  await saveSettingsDraft(scope, draft, { ...changes, breezeEnabled: { kind: 'set' } }, keys)
+  assert.equal(scope.user.provider, 'deepseek')
+  assert.equal(scope.user.deepseekVoice, 'tide')
+  assert.equal(scope.user.breezeEnabled, false)
+  await saveSettingsDraft(scope, { ...draft, deepseekEnabled: false }, { deepseekEnabled: { kind: 'set' } }, keys)
+  assert.equal(scope.user.provider, 'xiaomi')
+  assert.equal(scope.user.deepseekApiKey, keys.deepseek)
+  assert.equal(scope.user.deepseekVoice, 'tide')
 })
 
 test('provider availability persists atomically without deleting credentials', async () => {

@@ -43,6 +43,7 @@ export class ReadingCaptions {
   private segmentText = ''
   private lines: CaptionLine[] = []
   private lineIndex = 0
+  private buffering = false
   private timing: CaptionTiming = {}
   private elapsed = 0
   private startedAt = 0
@@ -72,6 +73,7 @@ export class ReadingCaptions {
     this.segmentText = text
     this.lines = lines
     this.lineIndex = 0
+    this.buffering = false
     this.timing = timing
     this.elapsed = 0
     this.startedAt = this.scheduler.now()
@@ -80,12 +82,33 @@ export class ReadingCaptions {
     this.scheduleTick()
   }
 
+  update(owner: object, source: object, text: string): void {
+    if (this.owner !== owner || this.timing.source !== source || this.segmentText === text) return
+    const lines = splitCaptionLines(text)
+    if (!lines.length) return
+    this.segmentText = text
+    this.lines = lines
+    this.lineIndex = Math.min(this.lineIndex, lines.length - 1)
+    this.updateCurrentLine()
+    this.scheduleTick()
+  }
+
+  private updateCurrentLine(): void {
+    if (this.buffering || this.view.paused) return
+    const current = this.lines[this.lineIndex]?.text
+    if (current !== undefined && this.view.text !== current) {
+      this.view = { ...this.view, text: current }
+      this.notify()
+    }
+  }
+
   clear(owner: object): void {
     if (this.owner !== owner) return
     this.cancelTick()
     this.owner = null
     this.segmentText = ''
     this.lines = []
+    this.buffering = false
     this.timing = {}
     this.view = { sessionId: null, text: '', previousText: '', paused: false }
     this.notify()
@@ -101,7 +124,14 @@ export class ReadingCaptions {
     }
     this.view = { ...this.view, paused }
     this.notify()
-    if (!paused) this.scheduleTick()
+    if (!paused) { this.updateCurrentLine(); this.scheduleTick() }
+  }
+
+  setBuffering(owner: object, buffering: boolean): void {
+    if (this.owner !== owner || this.buffering === buffering) return
+    this.buffering = buffering
+    if (buffering) this.cancelTick()
+    else { this.updateCurrentLine(); this.scheduleTick() }
   }
 
   private notify(): void {
@@ -115,7 +145,7 @@ export class ReadingCaptions {
   }
 
   private scheduleTick(): void {
-    if (this.timer !== null || this.listeners.size === 0 || this.owner === null || this.view.paused || this.lineIndex >= this.lines.length - 1) return
+    if (this.timer !== null || this.listeners.size === 0 || this.owner === null || this.buffering || this.view.paused || this.lineIndex >= this.lines.length - 1) return
     this.timer = this.scheduler.schedule(() => {
       this.timer = null
       const mediaElapsed = this.timing.elapsed?.()
