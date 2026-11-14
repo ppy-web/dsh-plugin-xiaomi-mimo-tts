@@ -127,6 +127,8 @@ test('rendered QQ controls read QQ persona values and preserve separate write pe
   }
   const qq = defaults(), desktop = defaults()
   qq.persona.name = 'QQ configured name'
+  qq.memory.enabled = false
+  qq.memes.enabled = false
   desktop.persona.name = 'DSH configured name'
   const t = key => key
   const html = renderToStaticMarkup(createElement(QqbotSpeechSettings, {
@@ -151,5 +153,10 @@ test('rendered QQ controls read QQ persona values and preserve separate write pe
   assert.ok(!desktopHtml.includes('QQ configured name'))
   assert.ok(desktopHtml.includes('aria-label="whale.memoryEnabled"'))
   assert.ok(desktopHtml.includes('aria-label="whale.memesEnabled"'))
-  assert.ok(!personaForm.includes('aria-label="whale.memesEnabled"'))
+  const qqToggles = personaInputs.map(([tag]) => tag).filter(tag => tag.includes('role="switch"'))
+  for (const label of ['qq.personaMemoryEnabled', 'whale.memesEnabled']) {
+    const toggle = qqToggles.find(tag => tag.includes(`aria-label="${label}"`))
+    assert.ok(toggle, `${label} is available in QQ settings`)
+    assert.ok(!toggle.includes('checked=""'), `${label} reflects the saved QQ setting`)
+  }
 })

@@ -10,8 +10,9 @@ import { entryListSchema, applyEntryPatches } from '@deepseek-ai/cordis-plugin-i
 const root = fileURLToPath(new URL('../', import.meta.url))
 const require = createRequire(import.meta.url)
 const buildPersona = require('../skills/whale-girl/persona.cjs')
-const catalog = JSON.parse(await readFile(new URL('../skills/whale-girl/memes.json', import.meta.url), 'utf8'))
+const catalog = Object.entries(JSON.parse(await readFile(new URL('../skills/whale-girl/memes.json', import.meta.url), 'utf8')))
 const skill = (await readFile(new URL('../skills/whale-girl/SKILL.md', import.meta.url), 'utf8')).replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
+const imageTemplate = /!\[[^\]\n]*\]\(<([^>\n]+\/)编号\.webp>\)/u
 
 function webpSize(data) {
   assert.equal(data.toString('ascii', 0, 4), 'RIFF')
@@ -37,21 +38,17 @@ function webpSize(data) {
   assert.fail('Missing WebP image chunk')
 }
 
-test('catalog entries reference unique, readable WebP images', async () => {
-  const directory = new URL('../skills/whale-girl/meme/', import.meta.url)
-  assert.equal(new Set(catalog.memes.map(e => e.file)).size, catalog.memes.length)
-  for (const entry of catalog.memes) {
-    const data = await readFile(new URL(entry.file, directory))
-    const [width, height] = webpSize(data)
-    assert.ok(width > 0 && height > 0, entry.file)
-  }
-})
-
-test('persona exposes every bundled meme for automatic selection', () => {
+test('DSH persona indexes the bundled WebP images using the installation path', async () => {
+  assert.ok(catalog.length > 0)
   const persona = buildPersona(root)
-  for (const entry of catalog.memes.filter(entry => entry.automatic)) {
-    const path = join(root, 'skills', 'whale-girl', 'meme', entry.file).replace(/\\/g, '/')
-    assert.equal(persona.includes(`](<${path}>)`), true, entry.file)
+  const directory = imageTemplate.exec(persona)?.[1]
+  assert.equal(directory, `${join(root, 'skills', 'whale-girl', 'meme').replace(/\\/g, '/')}/`)
+  const rows = new Set(persona.split('\n'))
+  for (const [id, label] of catalog) {
+    assert.ok(rows.has(`${id} ${label}`), `meme ${id} must be selectable by label`)
+    const data = await readFile(`${directory}${id}.webp`)
+    const [width, height] = webpSize(data)
+    assert.ok(width > 0 && height > 0, `${id}.webp`)
   }
 })
 
@@ -68,18 +65,19 @@ test('installation paths with spaces work and damaged optional resources keep th
     assert.ok(base.trim())
     await writeFile(join(skillDir, 'memes.json'), '{broken')
     assert.equal(buildPersona(directory), base)
-    const entry = { file: 'example-happy.webp', mood: 'happy', description: '例图', context: '庆祝', automatic: true }
     const manifest = join(skillDir, 'memes.json')
-    await writeFile(manifest, JSON.stringify({ memes: [entry] }))
+    await writeFile(manifest, JSON.stringify({ 1: '庆祝图' }))
     assert.equal(buildPersona(directory), base)
-    await writeFile(join(skillDir, 'meme', entry.file), 'fixture')
-    await writeFile(manifest, JSON.stringify({ memes: [entry, entry, { ...entry, file: '../outside-happy.webp' }, { ...entry, file: 'wrong-sad.webp' }] }))
+    await writeFile(join(skillDir, 'meme', '1.webp'), 'fixture')
+    await writeFile(join(skillDir, 'outside.webp'), 'outside image')
+    await mkdir(join(skillDir, 'meme', '3.webp'))
+    await writeFile(manifest, JSON.stringify({ 1: '庆祝图', 2: '缺失图片', 3: '目录冒充图片', '../outside': '目录外图片' }))
     const persona = buildPersona(directory)
-    const path = join(skillDir, 'meme', entry.file).replace(/\\/g, '/')
-    assert.equal(persona.split(`](<${path}>)`).length - 1, 1)
-    assert.equal(persona.includes('outside-happy.webp'), false)
-    assert.equal(persona.includes('wrong-sad.webp'), false)
-    await writeFile(manifest, JSON.stringify({ memes: {} }))
+    const imageDirectory = imageTemplate.exec(persona)?.[1]
+    assert.equal(`${imageDirectory}1.webp`, join(skillDir, 'meme', '1.webp').replace(/\\/g, '/'))
+    assert.ok(persona.includes('\n1 庆祝图\n'))
+    for (const label of ['缺失图片', '目录冒充图片', '目录外图片']) assert.ok(!persona.includes(label))
+    await writeFile(manifest, JSON.stringify(['庆祝图', '其他图片']))
     assert.equal(buildPersona(directory), base)
   } finally {
     assert.ok(resolve(directory).startsWith(`${resolve(root)}${sep}tmp-whale memes-`))
@@ -94,24 +92,20 @@ test('independent DSH and QQ skills apply custom fields and expose only their ow
   for (const text of [dsh, qq]) {
     for (const value of Object.values(persona)) assert.ok(text.includes(value))
   }
-  const file = catalog.memes.find(entry => entry.automatic)?.file
-  if (file) {
-    assert.ok(dsh.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
-    assert.ok(!qq.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
-    assert.ok(qq.includes(file.slice(0, -5)))
-  }
+  assert.ok(imageTemplate.test(dsh))
+  assert.ok(!qq.includes(join(root, 'skills', 'whale-girl', 'meme').replace(/\\/g, '/')))
 })
 
 
 test('DSH persona includes custom settings and only enabled capabilities', () => {
   const persona = { name: '自定义小鲸', selfReference: '我', userAddress: '朋友', relationship: '助手', personality: '认真', replyStyle: '简短', likes: '绘画', boundaries: '不嘲笑' }
-  const image = catalog.memes.find(entry => entry.automatic)?.file
+  const [id, label] = catalog[0]
   for (const memoryEnabled of [false, true]) {
     for (const memesEnabled of [false, true]) {
       const prompt = buildPersona(root, { channel: 'dsh', persona, memoryEnabled, memesEnabled })
       assert.ok(prompt.includes(JSON.stringify(persona)))
       assert.equal(prompt.includes('whale-girl-memory'), memoryEnabled)
-      if (image) assert.equal(prompt.includes(image), memesEnabled)
+      assert.equal(prompt.split('\n').includes(`${id} ${label}`), memesEnabled)
     }
   }
 })

@@ -11,6 +11,7 @@ const messages = (component: 'whale-girl' | 'qqbot', language: string) => JSON.p
 
 /** Each component owns distinct live values, while sharing the field contract. */
 export function whaleConfigFields(component: 'whale-girl' | 'qqbot') {
+  const zh = messages(component, 'zh'), en = messages(component, 'en')
   const Persona = z.object({
     name: z.string().min(1).max(60).default(DEFAULT_WHALE_PERSONA.name),
     selfReference: z.string().min(1).max(40).default(DEFAULT_WHALE_PERSONA.selfReference),
@@ -20,27 +21,25 @@ export function whaleConfigFields(component: 'whale-girl' | 'qqbot') {
     replyStyle: z.string().max(1200).default(DEFAULT_WHALE_PERSONA.replyStyle),
     likes: z.string().max(1000).default(DEFAULT_WHALE_PERSONA.likes),
     boundaries: z.string().max(1200).default(''),
-  }).i18n({ zh: messages(component, 'zh').persona, en: messages(component, 'en').persona })
+  }).i18n({ zh: zh.persona, en: en.persona })
   const Memory = z.object({ enabled: z.boolean().default(true) })
-    .i18n({ zh: messages(component, 'zh').memory, en: messages(component, 'en').memory })
+    .i18n({ zh: zh.memory, en: en.memory })
+  const Memes = z.object({ enabled: z.boolean().default(true) })
+    .i18n({ zh: zh.memes, en: en.memes })
 
   return {
     persona: Persona.default(DEFAULT_WHALE_PERSONA).volatile(),
     memory: Memory.default({ enabled: true }).volatile(),
+    memes: Memes.default({ enabled: true }).volatile(),
   }
 }
-export const WHALE_CONFIG_FIELDS = {
-  ...whaleConfigFields('whale-girl'),
-  memes: z.object({ enabled: z.boolean().default(true) })
-    .i18n({ zh: messages('whale-girl', 'zh').memes, en: messages('whale-girl', 'en').memes })
-    .default({ enabled: true }).volatile(),
-}
+export const WHALE_CONFIG_FIELDS = whaleConfigFields('whale-girl')
 export const WhaleConfig: z<WhaleConfig> = z.object(WHALE_CONFIG_FIELDS).i18n({ zh: messages('whale-girl', 'zh'), en: messages('whale-girl', 'en') })
 export interface WhaleConfig {
   persona: Volatile<WhaleSettings['persona']>
   memory: Volatile<WhaleSettings['memory']>
-  memes?: Volatile<NonNullable<WhaleSettings['memes']>>
+  memes: Volatile<NonNullable<WhaleSettings['memes']>>
 }
 export function readWhaleConfig(config: WhaleConfig): WhaleSettings {
-  return { persona: config.persona.get(), memory: config.memory.get(), ...(config.memes ? { memes: config.memes.get() } : {}) }
+  return { persona: config.persona.get(), memory: config.memory.get(), memes: config.memes.get() }
 }

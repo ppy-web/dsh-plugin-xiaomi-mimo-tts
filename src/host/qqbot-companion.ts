@@ -36,11 +36,13 @@ export class QqCompanion {
     return this.remember(await this.store.update(key, mutate, combined))
   }
   async prepare(agent: Agent): Promise<QqPeerState> {
+    if (!this.current().memory.enabled) return failure('qqbot-memory-disabled')
     if (this.lifetime.signal.aborted || agent.session.header.origin === 'subagent') return failure('qqbot-agent-unavailable')
     try {
       const identity = await this.identity.resolve(agent.id)
       const state = await this.store.load(identity.key)
       this.lifetime.signal.throwIfAborted()
+      if (!this.current().memory.enabled) return failure('qqbot-memory-disabled')
       this.remember(state)
       this.sessions.set(agent.id, identity.key)
       this.diagnostics.delete(agent.id)
@@ -54,9 +56,10 @@ export class QqCompanion {
   release(agent: Agent): void { this.sessions.delete(agent.id); this.diagnostics.delete(agent.id) }
 
   context(agent: Agent): string {
+    if (!this.current().memory.enabled) return ''
     const key = this.sessions.get(agent.id), state = key ? this.snapshots.get(key) : undefined
     if (!state) return `QQ 记忆状态：${this.diagnostics.get(agent.id) ?? 'qqbot-identity-unavailable'}。不要声称已保存记忆。`
-    if (!this.current().memory.enabled || !state.memoryEnabled) return '本会话的记忆已暂停。不自动保存或使用旧记忆；可用 qqbot_memory 查看或按要求恢复。'
+    if (!state.memoryEnabled) return '本会话的记忆已暂停。不自动保存或使用旧记忆；可用 qqbot_memory 查看或按要求恢复。'
     const value: Pick<QqPeerState, 'entries' | 'topics'> = { entries: [], topics: [] }
     const entries = [...state.entries].sort((a, b) => Number(b.kind === 'requirement') - Number(a.kind === 'requirement') || b.updatedAt - a.updatedAt)
     for (const entry of entries) {
@@ -75,15 +78,16 @@ export class QqCompanion {
     if (Array.isArray(input) || Object.keys(input).some(key => !['action', 'id', 'kind', 'text', 'expiresInDays'].includes(key))
       || (input.id !== undefined && typeof input.id !== 'string') || (input.text !== undefined && typeof input.text !== 'string')) return failure('qqbot-memory-input-invalid')
     const state = await this.prepare(agent)
-    if (input.action === 'list') return { enabled: this.current().memory.enabled && state.memoryEnabled, entries: state.entries, topics: state.topics }
+    signal.throwIfAborted()
+    if (input.action === 'list') {
+      if (!this.current().memory.enabled) return failure('qqbot-memory-disabled')
+      return { enabled: state.memoryEnabled, entries: state.entries, topics: state.topics }
+    }
     let savedId: string | undefined
     const saved = await this.update(state.key, current => {
+      if (!this.current().memory.enabled) return failure('qqbot-memory-disabled')
       if (input.action === 'pause') { current.memoryEnabled = false; return }
-      if (input.action === 'resume') {
-        if (!this.current().memory.enabled) return failure('qqbot-memory-disabled')
-        current.memoryEnabled = true
-        return
-      }
+      if (input.action === 'resume') { current.memoryEnabled = true; return }
       if (input.action === 'clear') { current.entries = []; current.topics = []; return }
       if (input.action === 'forget') {
         if (!input.id || ![...current.entries, ...current.topics].some(entry => entry.id === input.id)) return failure('qqbot-memory-not-found')
@@ -91,7 +95,7 @@ export class QqCompanion {
         current.topics = current.topics.filter(entry => entry.id !== input.id)
         return
       }
-      if (!this.current().memory.enabled || !current.memoryEnabled) return failure('qqbot-memory-paused')
+      if (!current.memoryEnabled) return failure('qqbot-memory-paused')
       const text = input.text?.trim()
       if (!text || !['preference', 'requirement', 'topic'].includes(input.kind ?? '') || [...text].length > (input.kind === 'topic' ? 80 : 300)) return failure('qqbot-memory-input-invalid')
       const now = this.now()

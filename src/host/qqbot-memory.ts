@@ -81,7 +81,14 @@ export class QqMemoryStore {
       for (let attempt = 0; attempt < 60; attempt++) {
         signal?.throwIfAborted()
         try { await writeFile(lock, token, { flag: 'wx', mode: 0o600 }); acquired = true; break } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+          const code = (error as NodeJS.ErrnoException).code
+          if (code === 'EPERM' && process.platform === 'win32') {
+            // An exclusive open can race a lock marked for deletion on Windows.
+            await delay(50, undefined, signal ? { signal } : {})
+            if (attempt === 59) throw error
+            continue
+          }
+          if (code !== 'EEXIST') throw error
           // Recover stale locks left by an interrupted write.
           const age = await stat(lock).then(info => Date.now() - info.mtimeMs, () => 0)
           if (age > 5 * 60 * 1000) await rm(lock, { force: true })

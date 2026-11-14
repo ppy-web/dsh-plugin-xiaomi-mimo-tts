@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { encode, getDuration, getWavFileInfo } from 'silk-wasm'
 import { BREEZE_MAX_TEXT_LENGTH, prepareExternalTtsText, prepareProviderTtsText, supportsXiaomiAudioTags, XIAOMI_AUDIO_TAG_PATTERN, resolveTtsSettings, splitBreezeTtsSegments } from '../shared.js'
 import type { ResolvedTtsSettings } from '../shared.js'
-import type { ExternalSpeechProvider, SpeechEngineState, SpeechAudio, SpeechArtifact, SpeechDeliveryAdapter, SpeechDeliveryContext, SpeechDeliveryResult, SpeechRequest, SpeechSynthesisService } from '../host-api.js'
+import type { ExternalSpeechProvider, SpeechEngineState, SpeechAudio, SpeechArtifact, SpeechConversationCapability, SpeechDeliveryAdapter, SpeechDeliveryContext, SpeechDeliveryResult, SpeechRequest, SpeechSynthesisService } from '../host-api.js'
 import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
 import type { SynthesisRuntime } from './complete-synthesis.js'
 import { completeAudioFormat, completeAudioLimit, CompleteAudioResponseError, synthesisOptions } from './validation.js'
@@ -266,6 +266,12 @@ export class HostSpeechService implements SpeechSynthesisService {
 
   hasDelivery(id: string): boolean { return !this.disposed && !this.disabledDeliveries.has(id) && (id === 'file' || this.adapters.has(id)) }
 
+  conversationDelivery(id: string): SpeechConversationCapability | undefined {
+    const adapter = this.adapters.get(id)
+    if (!adapter?.conversation || !this.hasDelivery(id)) return undefined
+    return { format: adapter.format, automatic: this.isAutomaticDeliveryEnabled(id), policy: adapter.conversation }
+  }
+
   setDeliveryEnabled(id: string, enabled: boolean): void {
     if (enabled) this.disabledDeliveries.delete(id)
     else {
@@ -309,6 +315,7 @@ export class HostSpeechService implements SpeechSynthesisService {
       }
       const adapter = this.adapters.get(id)!
       signal.throwIfAborted()
+      await context.validateRoute?.(signal)
       await adapter.check?.({ ...context, signal })
       signal.throwIfAborted()
       const selected = this.resolveProvider(request)

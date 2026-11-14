@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "QQ Bot 传声筒",
-    "description": "独立 QQ 鲸鱼娘人设、自动完整语音与隔离记忆，可在本组件自定义。"
+    "description": "为宿主预设的 QQ 会话发送语音，附带独立的 QQ 鲸鱼娘预设。"
   },
   "config": {
     "persona": {
@@ -17,7 +17,11 @@
     },
     "memory": {
       "$description": "QQ 本地记忆",
-      "enabled": "允许保存私聊或群的独立记忆，不读取 DSH 工作区。"
+      "enabled": "允许 QQ 鲸鱼娘读取和保存各私聊或群的独立记忆。"
+    },
+    "memes": {
+      "$description": "QQ 本地表情包",
+      "enabled": "允许 QQ 鲸鱼娘在对话中发送内置表情包。"
     }
   }
 }

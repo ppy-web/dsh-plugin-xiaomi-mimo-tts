@@ -123,6 +123,22 @@ test('memory update, forget, clear and pause persist without inventing a success
   })
 })
 
+test('the component memory switch blocks the model from reading or writing while keeping records manageable', async () => {
+  await fixture(async ({ companion, current, identity, peer, store, key }) => {
+    const text = '已有 QQ 记忆'
+    await companion.memory(peer, { action: 'save', kind: 'preference', text }, signal())
+    current.memory.enabled = false
+    assert.ok(!companion.context(peer).includes(text))
+    for (const input of [{ action: 'list' }, { action: 'save', kind: 'preference', text: '关闭期间' }, { action: 'clear' }]) {
+      await assert.rejects(companion.memory(peer, input, signal()), { code: 'qqbot-memory-disabled' })
+    }
+    const records = await new QqMemoryAdmin(store, identity).list()
+    assert.deepEqual(records.find(record => record.key === key).entries.map(entry => entry.text), [text])
+    current.memory.enabled = true
+    assert.deepEqual((await companion.memory(peer, { action: 'list' }, signal())).entries.map(entry => entry.text), [text])
+  })
+})
+
 test('memory limits, topic expiry and concurrent stores protect saved records', async () => {
   await fixture(async ({ companion, peer, store, directory, key }) => {
     await companion.prepare(peer)
@@ -220,7 +236,8 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
     desktopSettings.persona.name = '桌面独立角色'
     ctx.provide('whaleSettings', { current: () => desktopSettings })
     ctx.provide('qqbotSettings', { current: () => current })
-    ctx.provide('qqbotMemes', [])
+    const memes = qqAgent.loadWhaleMemes()
+    ctx.provide('qqbotMemes', memes)
     ctx.provide('llm', { prepareCall: () => assert.fail('memory tools do not request a model') })
     await settle()
     ctx.tools.setExecutor({
@@ -264,6 +281,19 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
       assert.equal((await invoke({ action: 'save', kind: 'preference', text: '非法路径', path: '../outside' })).isError, true)
       const assembly = await ctx.systemPrompt.assemble({ scope: peer, agent: peer })
       assert.ok(assembly.contexts.some(context => context.text.includes('测试称呼')))
+      current.memory.enabled = false
+      current.memes = { enabled: false }
+      const admitted = await ctx.tools.resolve({ agent: peer, modelSelection: {}, signal: signal() })
+      try {
+        const disabled = await ctx.systemPrompt.assemble({ scope: peer, agent: peer, toolSet: admitted })
+        assert.ok(disabled.sections.some(section => section.text.includes('新的角色名丙')))
+        assert.deepEqual(disabled.tools.filter(tool => ['qqbot_send_meme', 'qqbot_memory'].includes(tool.name)), [])
+        const prompt = [...disabled.sections, ...disabled.contexts].map(part => part.text).join('\n')
+        for (const value of [memes[0].label, 'qqbot_send_meme', 'qqbot_memory', '测试称呼']) assert.ok(!prompt.includes(value))
+        assert.equal(speechStatus(disabled).automaticSpeech, true)
+      } finally { admitted.dispose() }
+      current.memory.enabled = true
+      current.memes.enabled = true
       ctx.tools.register({
         name: 'local_file_read', description: 'test desktop file tool', parameters: { type: 'object', properties: {}, additionalProperties: false },
         output: { schema: { type: 'object', properties: {}, additionalProperties: false }, render: () => [] },

@@ -2,27 +2,18 @@ import type { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { randomUUID } from 'node:crypto'
-import { readFileSync, statSync } from 'node:fs'
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import type { SpeechDeliveryContext, SpeechDeliveryResult } from '../host-api.js'
 import { TtsProviderError } from './provider-error.js'
 import { SPEECH_FILE_TTL_MS } from './speech-files.js'
 import { DEFAULT_WHALE_SETTINGS, type WhalePersona } from '../types/whale.js'
-import { buildWhalePersona } from './whale-persona.js'
+import { buildWhalePersona, whalePackageRoot, type WhaleMeme } from './whale-persona.js'
+import { QQBOT_FILE_TOOL, qqbotDeliverySignals } from './qqbot-delivery-signal.js'
 
 export const QQBOT_MEDIA_ROOT = join(homedir(), '.dsh-qqbot', 'media')
-const packageRoot = () => dirname(fileURLToPath(import.meta.resolve('dsh-xiaomi-tts/package.json')))
-
-export interface WhaleMeme {
-  id: string
-  mood: string
-  description: string
-  context: string
-  path: string
-}
+export { loadWhaleMemes } from './whale-persona.js'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -31,28 +22,7 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-/** Both presets select from the same bundled catalog; optional missing images are skipped. */
-export function loadWhaleMemes(root = packageRoot()): WhaleMeme[] {
-  try {
-    const directory = join(root, 'skills', 'whale-girl')
-    const catalog = JSON.parse(readFileSync(join(directory, 'memes.json'), 'utf8'))
-    if (!Array.isArray(catalog.memes)) return []
-    const seen = new Set<string>()
-    return catalog.memes.flatMap((entry: unknown) => {
-      if (!entry || typeof entry !== 'object') return []
-      const { file, mood, description, context, automatic } = entry as Record<string, unknown>
-      if (automatic !== true || typeof file !== 'string' || !/^[a-z]+(?:-[a-z]+)+\.webp$/u.test(file)
-        || typeof mood !== 'string' || !file.endsWith(`-${mood}.webp`)
-        || typeof description !== 'string' || typeof context !== 'string' || seen.has(file)) return []
-      const path = join(directory, 'meme', file)
-      try { if (!statSync(path).isFile()) return [] } catch { return [] }
-      seen.add(file)
-      return [{ id: file.slice(0, -5), mood, description, context, path }]
-    })
-  } catch { return [] }
-}
-
-export function buildQqbotPersona(root = packageRoot(), persona: WhalePersona = DEFAULT_WHALE_SETTINGS.persona): string {
+export function buildQqbotPersona(root = whalePackageRoot(), persona: WhalePersona = DEFAULT_WHALE_SETTINGS.persona): string {
   return buildWhalePersona('qq', { persona, memory: { enabled: true } }, root)
 }
 
@@ -61,11 +31,17 @@ export async function sendQqbotFile(ctx: Context, path: string, context: SpeechD
   const { agent, signal } = context
   signal.throwIfAborted()
   ctx.logger.debug(`dsh-xiaomi-tts: QQ file delivery start agent=${agent.id} file=${path}`)
-  if (!ctx.tools.get('qqbot_send_file', agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending files.', 409)
+  if (!ctx.tools.get(QQBOT_FILE_TOOL, agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending files.', 409)
   const pipeline = new ToolExecutionPipeline(ctx, { get: (name, scope) => ctx.tools.get(name, scope) })
-  const prepared = await pipeline.prepare({ callId: ToolCallId(randomUUID()), name: 'qqbot_send_file', arguments: { file_path: path }, agent, signal })
-  const outcome = prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared
-  const result = await pipeline.complete(prepared.exec, outcome)
+  const invocationSignal = AbortSignal.any([signal])
+  if (context.validateRoute) qqbotDeliverySignals.add(invocationSignal)
+  let result
+  try {
+    const prepared = await pipeline.prepare({ callId: ToolCallId(randomUUID()), name: QQBOT_FILE_TOOL, arguments: { file_path: path }, agent, signal: invocationSignal })
+    if (prepared.kind === 'dispatch') await context.validateRoute?.(invocationSignal)
+    const outcome = prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared
+    result = await pipeline.complete(prepared.exec, outcome)
+  } finally { qqbotDeliverySignals.delete(invocationSignal) }
   if (result.isError) {
     ctx.logger.warn(`dsh-xiaomi-tts: QQ file delivery failed agent=${agent.id}`)
     throw new TtsProviderError('qqbot-send-failed', 'QQ delivery failed. Check QQBot logs before retrying.')

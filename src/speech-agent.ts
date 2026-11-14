@@ -1,14 +1,15 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
-import type {} from '@deepseek-ai/dsh-session'
+import type { ToolDefinition, ToolRegistrationOptions, ToolRunContext } from '@deepseek-ai/dsh-tools'
+import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import z from '@deepseek-ai/schemastery'
 import type { SpeechRequest } from './host-api.js'
 import { BREEZE_AUDIO_TAG_GUIDANCE, XIAOMI_AUDIO_TAG_GUIDANCE } from './shared.js'
-import { SessionSpeech } from './host/session-speech.js'
+import { SessionSpeech, type SessionSpeechOptions } from './host/session-speech.js'
 import { SpeechModeStore } from './host/speech-mode-store.js'
 import { TtsProviderError } from './host/provider-error.js'
 import type {} from './host/speech-service.js'
+import type {} from './host/qqbot-speech.js'
 
 export const name = 'speech-agent'
 export const inject = ['speechSynthesis', 'tools', 'agents']
@@ -20,7 +21,7 @@ export const Config = z.object({
 })
 export type Config = ReturnType<typeof Config>
 
-function owner(exec: ToolRunContext): Agent {
+export function speechOwner(exec: ToolRunContext): Agent {
   if (!exec.agent) throw new TtsProviderError('speech-agent-required', 'Use this tool inside an agent conversation.', 400)
   return exec.agent
 }
@@ -37,20 +38,16 @@ const selection = {
 
 const EXTERNAL_SPEECH_GUIDANCE = ' When an external speech plugin has taken over, omit provider, model, voice, voiceDesignPrompt, speechInstruction and voiceRate to use its configured voice. Only pass model, voice, speechInstruction or audio tags when the external engine advertises support for those options. External engines do not accept voiceDesignPrompt or voiceRate overrides. Use WAV when the engine does not advertise MP3 support.'
 
-function request(args: unknown, signal: AbortSignal): SpeechRequest {
+export function speechRequest(args: unknown, signal: AbortSignal): SpeechRequest {
   if (!args || typeof args !== 'object' || typeof (args as SpeechRequest).text !== 'string') throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)
   return { ...args as SpeechRequest, signal }
 }
 
-export function apply(ctx: Context, config: Config): void {
-  // Existing DSH profiles may still carry the former shared-preset value.
-  const delivery = config.delivery === 'conversation' ? 'file' : config.delivery
-  const sourceControlled = delivery === 'qqbot'
-  const policy = sourceControlled ? {
-    ...config, delivery, sourceControlled,
-    get maxAutoCharacters() { return ctx.get('qqbotSpeechRules')?.current().maxAutoCharacters ?? 0 },
-    get maxDurationMs() { return ctx.get('qqbotSpeechRules')?.current().maxDurationMs ?? 0 },
-  } : { ...config, delivery }
+export function observeSpeech(ctx: Context, policy: SessionSpeechOptions, options: {
+  accepts?: (agent: Agent, session: Session) => boolean
+  suppressAutomatic?: (agent: Agent, turn: number) => boolean
+} = {}): SessionSpeech {
+  const { delivery } = policy
   const sessionSpeech = new SessionSpeech(ctx.speechSynthesis, new SpeechModeStore(), policy,
     (agent, result, automatic) => { ctx.emit('speech/delivered', { agent, result, automatic }) },
     (code, agent, automatic) => {
@@ -61,9 +58,56 @@ export function apply(ctx: Context, config: Config): void {
   ctx.effect(() => () => sessionSpeech.dispose())
   ctx.on('session/event', (session, event) => {
     const agent = ctx.agents.get(session.id)
-    if (agent) sessionSpeech.observe(agent, event)
+    if (!agent || options.accepts?.(agent, session) === false) return
+    const suppress = event.type === 'turn/end' && options.suppressAutomatic?.(agent, event.data.turn) === true
+    sessionSpeech.observe(agent, event, suppress)
   })
   ctx.on('agent/disposed', ({ agent }) => { sessionSpeech.release(agent) })
+  return sessionSpeech
+}
+
+export function qqSpeechPolicy(ctx: Context, turnScoped = false): SessionSpeechOptions {
+  const limits = () => ctx.speechSynthesis.conversationDelivery?.('qqbot')?.policy.limits() ?? ctx.get('qqbotSpeechRules')?.current()
+  return {
+    delivery: 'qqbot', defaultMode: 'manual', sourceControlled: true, turnScoped,
+    get maxAutoCharacters() { return limits()?.maxAutoCharacters ?? 0 },
+    get maxDurationMs() { return limits()?.maxDurationMs ?? 0 },
+  }
+}
+
+export function registerSpeak(ctx: Context, execute: ToolDefinition['execute'], qq: boolean, options?: ToolRegistrationOptions): void {
+  ctx.tools.register({
+    name: 'speak',
+    description: 'Read the requested text and deliver audio through this conversation\'s configured speech adapter. Use when asked to answer by voice or read a passage. A successful call already delivered the audio: do not send the file again. When the user explicitly requests an emotion, tone, dialect or delivery style, pass speechInstruction in the same language as the text and keep the saved voice and model. Use provider-specific audio tags only for Breeze or Xiaomi preset voices; use speechInstruction for Doubao and Xiaomi VoiceDesign.'
+      + (qq
+        ? ' QQ replies use the saved Host provider by default. speechInstruction is allowed for the user\'s requested style and applies only to this call; the saved model, voice and credentials still apply. If synthesis fails before audio delivery, you may retry once with provider set to another configured provider (xiaomi, doubao or breeze), keeping the same speechInstruction. Do not export and resend to bypass speak. Delivery reads all text in order and remains available when automatic speech is off. When automatic speech is on, use speak for an explicitly requested style so the automatic copy is suppressed. After success, end the turn with no final chat text at all: do not announce delivery, mention the tool result, explain that no transcript was sent, or use a placeholder such as parentheses or an ellipsis. Send the matching text only when the user explicitly requests both voice and text. If the retry also fails, reply in text and report the failure.'
+        : ' Use the saved provider and voice unless the user explicitly requests a change. If synthesis fails before audio delivery, you may retry once with the other configured provider; omit model and voice overrides to use that provider\'s saved settings.')
+      + BREEZE_AUDIO_TAG_GUIDANCE + XIAOMI_AUDIO_TAG_GUIDANCE + EXTERNAL_SPEECH_GUIDANCE
+      + ' Do not retry a canceled request, denied delivery, partially delivered passage or an uncertain send outcome.',
+    parameters: { type: 'object', properties: qq ? { text: selection.text, provider: selection.provider, speechInstruction: selection.speechInstruction } : selection, required: ['text'], additionalProperties: false },
+    output: {
+      schema: { type: 'object', properties: { adapter: { type: 'string' }, path: { type: 'string' }, messageId: { type: 'string' }, target: { type: 'string' } }, required: ['adapter'], additionalProperties: false },
+      render: (_args, value) => [{
+        type: 'text',
+        text: JSON.stringify(value) + (qq || (value as { adapter?: string }).adapter === 'qqbot'
+          ? '\nAudio reply delivered. End this turn now without any final chat text, delivery confirmation, summary, or explanation that the transcript was omitted.'
+          : ''),
+      }],
+    },
+    execute,
+  }, options)
+}
+
+export function apply(ctx: Context, config: Config): void {
+  // Existing DSH profiles may still carry the former shared-preset value.
+  const delivery = config.delivery === 'conversation' ? 'file' : config.delivery
+  const qq = delivery === 'qqbot'
+  const sessionSpeech = observeSpeech(ctx, qq ? qqSpeechPolicy(ctx) : { ...config, delivery }, {
+    suppressAutomatic: (agent, turn) => {
+      const bridge = ctx.get('qqbotSpeech')
+      return !!bridge && (qq || bridge.admitted(agent, turn))
+    },
+  })
 
   ctx.tools.register({
     name: 'synthesize_speech',
@@ -75,31 +119,18 @@ export function apply(ctx: Context, config: Config): void {
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     async execute(args, exec) {
-      const artifact = await ctx.speechSynthesis.exportAudio(request(args, exec.signal))
+      const artifact = await ctx.speechSynthesis.exportAudio(speechRequest(args, exec.signal))
       return { path: artifact.path, format: artifact.format, size: artifact.size }
     },
   })
-  ctx.tools.register({
-    name: 'speak',
-    description: 'Read the requested text and deliver audio through this conversation\'s configured speech adapter. Use when asked to answer by voice or read a passage. A successful call already delivered the audio: do not send the file again. When the user explicitly requests an emotion, tone, dialect or delivery style, pass speechInstruction in the same language as the text and keep the saved voice and model. Use provider-specific audio tags only for Breeze or Xiaomi preset voices; use speechInstruction for Doubao and Xiaomi VoiceDesign.'
-      + (sourceControlled
-        ? ' QQ replies use the saved Host provider by default. speechInstruction is allowed for the user\'s requested style and applies only to this call; the saved model, voice and credentials still apply. If synthesis fails before audio delivery, you may retry once with provider set to another configured provider (xiaomi, doubao or breeze), keeping the same speechInstruction. Do not export and resend to bypass speak. Delivery reads all text in order and remains available when automatic speech is off. When automatic speech is on, use speak for an explicitly requested style so the automatic copy is suppressed. After success, end the turn with no final chat text at all: do not announce delivery, mention the tool result, explain that no transcript was sent, or use a placeholder such as parentheses or an ellipsis. Send the matching text only when the user explicitly requests both voice and text. If the retry also fails, reply in text and report the failure.'
-        : ' Use the saved provider and voice unless the user explicitly requests a change. If synthesis fails before audio delivery, you may retry once with the other configured provider; omit model and voice overrides to use that provider\'s saved settings.')
-      + BREEZE_AUDIO_TAG_GUIDANCE + XIAOMI_AUDIO_TAG_GUIDANCE + EXTERNAL_SPEECH_GUIDANCE
-      + ' Do not retry a canceled request, denied delivery, partially delivered passage or an uncertain send outcome.',
-    parameters: { type: 'object', properties: sourceControlled ? { text: selection.text, provider: selection.provider, speechInstruction: selection.speechInstruction } : selection, required: ['text'], additionalProperties: false },
-    output: {
-      schema: { type: 'object', properties: { adapter: { type: 'string' }, path: { type: 'string' }, messageId: { type: 'string' }, target: { type: 'string' } }, required: ['adapter'], additionalProperties: false },
-      render: (_args, value) => [{
-        type: 'text',
-        text: JSON.stringify(value) + (sourceControlled
-          ? '\nAudio reply delivered. End this turn now without any final chat text, delivery confirmation, summary, or explanation that the transcript was omitted.'
-          : ''),
-      }],
-    },
-    execute: (args, exec) => sessionSpeech.say(owner(exec), request(args, exec.signal)),
-  })
-  if (sourceControlled) return
+  registerSpeak(ctx, async (args, exec) => {
+    const agent = speechOwner(exec), input = speechRequest(args, exec.signal)
+    const bridge = ctx.get('qqbotSpeech')
+    if (bridge?.admitted(agent)) return bridge.say(agent, input)
+    if (qq && bridge) throw new TtsProviderError('qqbot-voice-unavailable', 'This turn has no QQ voice delivery route.', 409)
+    return sessionSpeech.say(agent, input)
+  }, qq)
+  if (qq) return
   ctx.tools.register({
     name: 'speech_mode',
     description: 'Set automatic spoken replies for this conversation only, or inspect the current mode. Use auto when the user asks for future replies by voice; manual stops pending automatic speech. Long replies stay as text. Does not change the browser playback setting.',
@@ -112,7 +143,9 @@ export function apply(ctx: Context, config: Config): void {
       const mode = (args as { mode?: unknown } | null)?.mode
       if (mode !== 'manual' && mode !== 'auto' && mode !== 'status') throw new TtsProviderError('invalid-speech-mode')
       exec.signal.throwIfAborted()
-      return sessionSpeech.mode(owner(exec), mode)
+      const agent = speechOwner(exec)
+      if (ctx.get('qqbotSpeech')?.admitted(agent)) throw new TtsProviderError('speech-mode-source-controlled', 'Use the Host QQ Bot source to change automatic speech.', 409)
+      return sessionSpeech.mode(agent, mode)
     },
   })
 }

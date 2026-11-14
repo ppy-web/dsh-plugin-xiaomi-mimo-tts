@@ -1,7 +1,7 @@
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { prepareTtsText } from '../shared.js'
-import type { SpeechDeliveryResult, SpeechRequest, SpeechSynthesisService } from '../host-api.js'
+import type { SpeechDeliveryContext, SpeechDeliveryResult, SpeechRequest, SpeechSynthesisService } from '../host-api.js'
 import type { SpeechMode, SpeechModeStore } from './speech-mode-store.js'
 import { TtsProviderError } from './provider-error.js'
 
@@ -14,6 +14,8 @@ interface SessionState {
   ended: boolean
   text: string
   manual: boolean
+  eligible: boolean
+  validateRoute?: SpeechDeliveryContext['validateRoute']
   controller: AbortController
   pending: Set<Promise<unknown>>
   writes: Promise<void>
@@ -26,6 +28,8 @@ export interface SessionSpeechOptions {
   maxAutoCharacters: number
   maxDurationMs: number
   sourceControlled?: boolean
+  /** Wait for the current turn to be admitted to this delivery channel. */
+  turnScoped?: boolean
 }
 
 /** Live events only. Never reconstruct audio jobs from historical transcripts. */
@@ -48,7 +52,7 @@ export class SessionSpeech {
     if (state) return state
     state = {
       agent, mode: this.options.defaultMode, ready: Promise.resolve(),
-      turn: -1, seq: -1, ended: true, text: '', manual: false,
+      turn: -1, seq: -1, ended: true, text: '', manual: false, eligible: false,
       controller: new AbortController(), pending: new Set(), writes: Promise.resolve(), modeRevision: 0,
     }
     const initial = state
@@ -90,6 +94,7 @@ export class SessionSpeech {
 
   async say(agent: Agent, request: SpeechRequest): Promise<SpeechDeliveryResult> {
     const state = this.state(agent)
+    if (this.options.turnScoped && !this.admitted(agent)) throw new TtsProviderError('qqbot-voice-unavailable', 'This turn has no QQ voice delivery route.', 409)
     // An explicit attempt suppresses automatic duplicates even if the send outcome is ambiguous.
     state.manual = true
     const signal = request.signal ? AbortSignal.any([request.signal, state.controller.signal]) : state.controller.signal
@@ -103,7 +108,8 @@ export class SessionSpeech {
         }
       : request
     try {
-      const result = await this.track(state, this.service.deliver({ ...selection, format: 'wav', ...this.requestPolicy(), signal }, this.options.delivery, { agent, signal }))
+      const context: SpeechDeliveryContext = { agent, signal, ...(state.validateRoute ? { validateRoute: state.validateRoute } : {}) }
+      const result = await this.track(state, this.service.deliver({ ...selection, format: 'wav', ...this.requestPolicy(), signal }, this.options.delivery, context))
       signal.throwIfAborted()
       this.delivered(agent, result, false)
       return result
@@ -113,9 +119,30 @@ export class SessionSpeech {
     }
   }
 
-  observe(agent: Agent, event: SessionEvent): void {
+  admit(agent: Agent, turn: number, validateRoute: NonNullable<SpeechDeliveryContext['validateRoute']>): boolean {
+    const state = this.states.get(agent)
+    if (state?.turn !== turn || state.ended) return false
+    state.eligible = true
+    state.validateRoute = validateRoute
+    return true
+  }
+
+  revoke(agent: Agent, turn: number): void {
+    const state = this.states.get(agent)
+    if (state?.turn !== turn || !state.eligible) return
+    state.eligible = false
+    state.controller.abort()
+  }
+
+  admitted(agent: Agent, turn?: number): boolean {
+    const state = this.states.get(agent)
+    return state?.eligible === true && (turn === undefined ? !state.ended : state.turn === turn)
+  }
+
+  observe(agent: Agent, event: SessionEvent, suppressAutomatic = false): void {
     if (this.disposed || agent.session.header.origin === 'subagent') return
-    const state = this.state(agent)
+    const state = event.type === 'turn/start' ? this.state(agent) : this.states.get(agent)
+    if (!state) return
     if (event.seq <= state.seq) return
     state.seq = event.seq
     if (event.type === 'turn/start') {
@@ -126,19 +153,23 @@ export class SessionSpeech {
       state.ended = false
       state.text = ''
       state.manual = false
+      state.eligible = !this.options.turnScoped
+      delete state.validateRoute
     } else if (event.type === 'assistant/message' && event.data.turn === state.turn && !state.ended) {
       const blocks = event.data.message.content
       state.text = event.data.interrupted || blocks.some(block => block.type === 'tool-call') ? '' : prepareTtsText(blocks.filter(block => block.type === 'text').map(block => block.text).join('\n'))
     } else if (event.type === 'turn/end' && event.data.turn === state.turn && !state.ended) {
       state.ended = true
       if (event.data.reason.kind !== 'completed') { state.controller.abort(); return }
-      const { text, controller } = state
-      if (!text || (this.options.maxAutoCharacters > 0 && [...text].length > this.options.maxAutoCharacters)) return
+      const { text, controller, validateRoute } = state
+      if (suppressAutomatic || !state.eligible || !text || (this.options.maxAutoCharacters > 0 && [...text].length > this.options.maxAutoCharacters)) return
       const run = async () => {
         await state.ready
         const automatic = this.options.sourceControlled ? this.service.isAutomaticDeliveryEnabled(this.options.delivery) : state.mode === 'auto'
         if (controller.signal.aborted || this.disposed || !automatic || state.manual || !this.service.hasDelivery(this.options.delivery)) return
-        const result = await this.service.deliver({ text, format: 'wav', ...this.requestPolicy(), signal: controller.signal }, this.options.delivery, { agent, signal: controller.signal, ...(this.options.sourceControlled ? { automatic: true } : {}) })
+        const result = await this.service.deliver({ text, format: 'wav', ...this.requestPolicy(), signal: controller.signal }, this.options.delivery, {
+          agent, signal: controller.signal, ...(this.options.sourceControlled ? { automatic: true } : {}), ...(validateRoute ? { validateRoute } : {}),
+        })
         controller.signal.throwIfAborted()
         this.delivered(agent, result, true)
       }

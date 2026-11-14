@@ -4,7 +4,7 @@ import type { ManualLocale } from './user-manual.js'
 export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
   zh: {
     title: '让 QQ 里的回复也有声音',
-    intro: '先让机器人正常回复文字，再接通云端语音，最后启用 QQ Bot 传声筒并选择独立 QQ 鲸鱼娘预设。以下操作在真实 DSH 与手机 QQ 中完成；本预览不连接机器人，也不会发送消息。',
+    intro: '先确认机器人能正常回复文字，再配置云端语音并启用 QQ Bot 传声筒。可以继续使用当前预设，也可以在 QQ 中切换预设。',
     toc: '本页目录',
     sections: [
       {
@@ -30,13 +30,13 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
       },
       {
         id: 'qqbot-configure', title: '开启传声与选择预设',
-        summary: '组件、来源开关、会话预设各管一件事，需要逐项完成。',
+        summary: '启用传声筒后，当前 QQ 预设即可接入语音。',
         steps: [
-          { title: '开启 QQ Bot 传声筒组件', detail: '在“设置 → 插件 → 本插件 → 包含的组件”开启“QQ Bot 传声筒”。该组件独立注册 QQ 鲸鱼娘（qq-speech-assistant），并提供自定义人设、记忆和语音发送；无需开启 DSH 鲸鱼娘。' },
+          { title: '开启 QQ Bot 传声筒组件', detail: '在“设置 → 插件 → 本插件 → 包含的组件”开启“QQ Bot 传声筒”。该组件注册 QQ 鲸鱼娘（qq-speech-assistant），并提供自定义人设、记忆、表情包开关和语音发送。' },
           { title: '开启自动发送来源并保存', detail: '打开本插件“播报台 → 插件联动”，打开“QQ Bot”来源开关，再点击底部“保存”。来源默认关闭；希望每轮普通回复都带语音时才打开。浏览器“语音播放”“自动播放”和音效开关不控制 QQ 发送。' },
-          { title: '在目标 QQ 私聊或群查看预设', detail: '向机器人单独发送下面的命令，确认列表中出现“QQ 鲸鱼娘（qq-speech-assistant）”。只查看列表不会切换预设；如果未出现，先检查 QQ Bot 传声筒组件是否运行，以及两个插件是否处于同一 profile。', command: '/preset' },
-          { title: '按 ID 选择 QQ 鲸鱼娘', detail: '单独发送下面的完整命令，等待机器人确认预设已切换。使用 ID qq-speech-assistant；不需要把中文显示名称填入命令。', command: '/preset qq-speech-assistant' },
-          { title: '新建对话让预设生效', detail: '在刚才选择预设的同一个 QQ 私聊或群中单独发送 /new。它会开启新对话并清空原对话上下文；当前对话不会因 /preset 自动换预设。私聊和每个群各自选择，需在每个目标会话重复选择与新建步骤。', command: '/new' },
+          { title: '查看可选预设', detail: '想更换人设时，在目标私聊或群发送 /preset，查看宿主已有预设。', command: '/preset' },
+          { title: '按 ID 选择预设', detail: '发送 /preset 和预设 ID。下面以传声筒内置的 QQ 鲸鱼娘为例。', command: '/preset qq-speech-assistant' },
+          { title: '应用新选的预设', detail: '在同一个 QQ 私聊或群发送 /new，新会话就会使用所选预设。继续使用当前预设时，可直接发消息测试。', command: '/new' },
         ],
         items: [],
         links: [{ label: 'QQBot 官方预设命令实现', href: 'https://github.com/tencent-connect/dsh-qqbot/blob/main/src/commands/preset.ts' }],
@@ -46,7 +46,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         summary: '请在 QQ 中实际点击语音消息播放；网页试听成功只验证了合成，没有验证 QQ 交付。',
         steps: [
           { title: '测试自动语音', detail: '来源开启并保存后，在新对话中发送“你好，介绍一下自己”，无需额外要求语音。等本轮成功结束，确认收到文字和可点击播放的语音消息，播放核对内容与已保存音色。文字与语音的到达先后没有严格保证。' },
-          { title: '测试仅按需发送', detail: '关闭 QQ Bot 来源并保存，再发一条普通消息，确认不会自动附带语音。接着发送“请用语音说一句你好”，由模型调用语音工具完成按需发送；前提是QQ 传声组件及 QQ 预设仍启用、工具权限允许。' },
+          { title: '测试仅按需发送', detail: '关闭 QQ Bot 来源并保存，再发一条普通消息，然后发送“请用语音说一句你好”。工具权限允许时，后一句会收到语音。' },
           { title: '恢复你需要的模式', detail: '希望每轮都带语音就重新打开来源并保存；只想偶尔听语音则保持来源关闭。更换云端服务商、模型或音色后也要保存，再用新的 QQ 消息验证。已发出的语音不会随设置改变。' },
         ],
         table: {
@@ -66,7 +66,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
           { label: '朗读哪些内容', detail: '自动发送最后一条助手正文，过滤思考、工具过程、代码、链接和文件路径。QQ 不按浏览器的“智能／全文／首段”范围裁剪，也不再按 300 字或 60 秒截断；超过合成接口单次文本上限时按顺序分段发送。供应商单次音频大小与 QQ 平台限制仍适用。' },
           { label: '取消与重新发送', detail: '新轮次会取消尚未发送的旧任务；关闭来源取消待处理的自动语音，仍保留按需语音。重新开启不补发关闭期间的回复。失败、取消、被打断的轮次不自动朗读，分段发送中失败会停止后续段落，不自动重试。' },
           { label: '已经开始上传的消息', detail: 'QQBot 上传发送一旦开始，取消不能保证撤回已送出的消息，/stop 也不是语音撤回命令。怀疑发送失败时先查看 QQ 会话和日志，确认实际送达情况后再决定是否重试，避免重复。' },
-          { label: 'QQ 鲸鱼娘与表情包', detail: '内置预设默认用一到三句口语短话回答，明确要求详细说明时展开。它附带人设和本地表情包能力，无需手动加载 skill；可要求“不发图片”或“只要语音”。QQ Bot 来源仅控制自动语音，不控制表情包。' },
+          { label: '表情包和记忆开关', detail: '在 QQ Bot 传声筒组件的人设表单中，可分别关闭“允许使用表情包”和“启用 QQ 记忆”。保存后下一轮生效。关闭记忆后，仍可在设置页查看和管理已保存的记录。' },
         ],
       },
       {
@@ -75,7 +75,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: '文字和语音都没有', detail: '先回到 QQBot 连接页确认在线，再核对目标私聊／群、群内 @要求和对话模型。连普通文字都收不到时，问题通常还没有进入语音链路。' },
           { label: '预设缺失或切换后无变化', detail: '确认“QQ Bot 传声筒”已开启，两个插件在同一实例。需收到 /preset qq-speech-assistant 的切换确认，再在同一 QQ 目标执行 /new；旧会话不会自动换预设。' },
-          { label: '能回文字，但普通消息没有语音', detail: '先在真实 DSH 关闭本地语音并试听，确认云端可用；再检查 QQ Bot 来源是否打开并保存，以及 QQ 会话是否应用了新预设。来源关闭时普通回复不发语音属于预期，可用明确的语音请求继续定位。' },
+          { label: '能回文字，但普通消息没有语音', detail: '先验证云端试听，再检查传声筒组件和 QQ Bot 来源是否开启并保存。也可以明确要求一条语音，检查按需发送。' },
           { label: '明确要求语音也失败', detail: '查看本插件的合成错误及 QQBot 的文件发送日志，区分密钥／资源／音色问题与 qqbot_send_file 工具不可用、工具策略拒绝、路径白名单或 QQ 额度问题。适配器使用 QQBot 默认媒体目录，不需要为正常接入关闭路径限制，也不要手动填写 openid。' },
           { label: '长回复只收到一部分', detail: '检查第一条失败分段的供应商错误、文件发送错误和平台额度。后续分段会停止，不会自动补发；先修复具体错误，再明确请求重发需要的内容。' },
           { label: '反馈时带哪些信息', detail: '记录发生时间、私聊还是群聊、所选服务商／模型、组件和来源开关状态、是否已执行 /new，以及脱敏后的错误代码。不要附带 API Key、QQ 凭据或完整私人对话。' },
@@ -87,7 +87,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
   },
   en: {
     title: 'Give your QQ replies a voice',
-    intro: 'Verify text replies first, then cloud synthesis, then enable QQ Bot Megaphone and select the independent QQ Whale Girl preset. Perform these steps in real DSH and QQ. This preview does not connect a bot or send messages.',
+    intro: 'Verify text replies, configure cloud synthesis, and enable QQ Bot Megaphone. You can keep your current preset or select another one in QQ.',
     toc: 'On this page',
     sections: [
       {
@@ -109,13 +109,13 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         links: [{ label: 'Official QQBot installation', href: 'https://github.com/tencent-connect/dsh-qqbot#安装' }],
       },
       {
-        id: 'qqbot-configure', title: 'Enable delivery and select a preset', summary: 'The component, source switch, and conversation preset have separate roles.',
+        id: 'qqbot-configure', title: 'Enable delivery and select a preset', summary: 'Megaphone adds speech to the preset already selected in QQ.',
         steps: [
-          { title: 'Enable QQ Bot Megaphone', detail: 'Open Settings → Plugins → this plugin → Included components. Turn on QQ Bot Megaphone (QQ Bot 传声筒). It registers the independent qq-speech-assistant preset with its own persona, memory and voice delivery settings. DSH Whale Girl is optional.' },
+          { title: 'Enable QQ Bot Megaphone', detail: 'Open Settings → Plugins → this plugin → Included components. Turn on QQ Bot Megaphone (QQ Bot 传声筒). It registers the qq-speech-assistant preset with its own persona, memory, meme and voice delivery settings.' },
           { title: 'Enable and save automatic delivery', detail: 'In Broadcast Desk → Plugin integrations, turn QQ Bot on and click Save. It starts off. Browser speech, autoplay, and sound effect switches do not control QQ delivery.' },
-          { title: 'List presets in the target QQ chat', detail: 'Send this command separately and find QQ Whale Girl (qq-speech-assistant). Listing presets alone does not select one. If missing, check that QQ Bot Megaphone is enabled and the plugins share one profile.', command: '/preset' },
-          { title: 'Select by preset ID', detail: 'Send the full command and wait for confirmation. Use qq-speech-assistant rather than the Chinese display name. DSH uses a separate preset and settings.', command: '/preset qq-speech-assistant' },
-          { title: 'Apply it to a new conversation', detail: 'Send /new separately in that same private chat or group. This clears the old conversation context and starts with the selected preset. The existing conversation keeps its old preset. Repeat preset selection and /new for every target group or private chat.', command: '/new' },
+          { title: 'List available presets', detail: 'If you want a different persona, send /preset in the target private chat or group to list the Host presets.', command: '/preset' },
+          { title: 'Select by preset ID', detail: 'Send /preset followed by the preset ID. This example selects the built-in QQ Whale Girl.', command: '/preset qq-speech-assistant' },
+          { title: 'Apply the new preset', detail: 'Send /new in the same QQ chat to start a conversation with the newly selected preset. If you kept your current preset, you can send a test message now.', command: '/new' },
         ], items: [],
         links: [{ label: 'Official preset command', href: 'https://github.com/tencent-connect/dsh-qqbot/blob/main/src/commands/preset.ts' }],
       },
@@ -123,7 +123,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         id: 'qqbot-verify', title: 'Test automatic and requested speech', summary: 'Play the actual voice message in QQ. A web preview tests synthesis, not QQ delivery.',
         steps: [
           { title: 'Test automatic voice', detail: 'With the source saved on, ask “Hello, introduce yourself” in the new conversation without requesting voice. After a successful turn, expect text and a playable voice message. Check its content and saved voice. Text and voice arrival order is not guaranteed.' },
-          { title: 'Test voice on request', detail: 'Turn the QQ Bot source off and save. An ordinary message should no longer trigger automatic voice. Then ask “Please say hello in a voice message.” The model can call the speech tool if the relay, QQ preset, and tool permissions remain available.' },
+          { title: 'Test voice on request', detail: 'Turn the QQ Bot source off and save. Send an ordinary message, then ask “Please say hello in a voice message.” The second reply uses speech when tool permissions allow it.' },
           { title: 'Keep your preferred mode', detail: 'Turn the source back on and save for voice on every successful turn, or leave it off for requested voice. Save provider, model, and voice changes and test with a new QQ message; existing recordings do not change.' },
         ],
         table: { caption: 'Delivery switches', headers: ['QQ Bot Megaphone', 'QQ Bot source', 'Result'], rows: [
@@ -138,7 +138,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
           { label: 'What gets read', detail: 'The last assistant body is read, excluding reasoning, tool output, code, links, and paths. QQ ignores browser read scope and has no 300-character or 60-second cutoff. Replies exceeding the synthesis text limit are sent in ordered segments. Provider audio size and QQ platform limits still apply.' },
           { label: 'Cancellation and retries', detail: 'A new turn cancels older unsent work. Turning the source off cancels pending automatic speech but keeps requested speech available. Re-enabling never catches up old replies. Failed, canceled, or interrupted turns are not read automatically. A segment failure stops subsequent segments without automatic retry.' },
           { label: 'Uploads already in progress', detail: 'Cancellation cannot guarantee recall once QQBot begins uploading or sending. /stop is not a voice recall command. Check the chat and delivery logs before requesting a retry to avoid duplicate messages.' },
-          { label: 'Persona and memes', detail: 'QQ Whale Girl normally uses one to three conversational sentences, expanding when asked. Its persona and local memes are bundled; no manual skill loading is required. You can ask for no pictures or voice only. The QQ Bot source controls automatic speech, not memes.' },
+          { label: 'Meme and memory switches', detail: 'In the QQ Bot Megaphone persona form, you can turn off Allow memes and Enable QQ memory separately. Changes apply on the next turn after saving. When memory is off, you can still review and manage saved records in settings.' },
         ],
       },
       {
@@ -146,7 +146,7 @@ export const QQBOT_GUIDE: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: 'No text or voice', detail: 'Check QQBot online status, the target chat, group mention requirements, and the conversation model. If plain text does not work, fix the bot connection first.' },
           { label: 'Missing or ineffective preset', detail: 'Check that QQ Bot Megaphone is enabled and the plugins share one profile. Preset confirmation is not enough: confirm the switch and send /new in the same QQ target. QQ Bot Megaphone registers its own QQ Whale Girl preset and custom persona settings.' },
-          { label: 'Text without automatic voice', detail: 'Verify real cloud synthesis with local fallback disabled. Then check the saved QQ Bot source and that the new conversation uses the QQ preset. With the source off, ordinary text-only replies are expected; use an explicit voice request to investigate further.' },
+          { label: 'Text without automatic voice', detail: 'Verify cloud synthesis first, then check that Megaphone and the saved QQ Bot source are enabled. Ask for a voice message to test requested speech.' },
           { label: 'Requested voice also fails', detail: 'Inspect synthesis errors and QQBot file delivery logs. Separate key/resource/voice errors from unavailable qqbot_send_file, tool policy rejection, path restrictions, or QQ quota. Normal integration uses QQBot’s default media directory; there is no need to disable path restrictions or supply an openid manually.' },
           { label: 'Only part of a long reply arrives', detail: 'Find the first failed segment and inspect provider, file delivery, and quota errors. Later segments stop rather than retry. Resolve the cause before explicitly requesting the missing content.' },
           { label: 'Useful diagnostic details', detail: 'Record the time, private/group chat, provider/model, component and source state, whether /new ran, and redacted error codes. Exclude API keys, QQ credentials, and private conversation contents.' },

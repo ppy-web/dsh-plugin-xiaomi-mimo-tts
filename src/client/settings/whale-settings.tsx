@@ -87,18 +87,18 @@ function WhaleSettingsPage({ scope, t, changes = IDLE_PLUGIN_CHANGES, channel = 
     </section>
     <section aria-label={t('whale.memory')}>
       <div className="xmimo-qq-heading"><h4>{t('whale.memory')}</h4>
-        <Switch label={t('whale.memoryEnabled')} checked={value.memory.enabled} disabled={disabled}
+        <Switch label={t(channel === 'qq' ? 'qq.personaMemoryEnabled' : 'whale.memoryEnabled')} checked={value.memory.enabled} disabled={disabled}
           onChange={enabled => edit(current => ({ ...current, memory: { enabled } }))} />
       </div>
       <p className="xmimo-qq-hint">{t(channel === 'qq' ? 'qq.personaMemoryHint' : 'whale.memoryHint')}</p>
     </section>
-    {channel === 'dsh' ? <section aria-label={t('whale.memes')}>
+    <section aria-label={t('whale.memes')}>
       <div className="xmimo-qq-heading"><h4>{t('whale.memes')}</h4>
         <Switch label={t('whale.memesEnabled')} checked={value.memes?.enabled ?? true} disabled={disabled}
           onChange={enabled => edit(current => ({ ...current, memes: { enabled } }))} />
       </div>
-      <p className="xmimo-qq-hint">{t('whale.memesHint')}</p>
-    </section> : null}
+      <p className="xmimo-qq-hint">{t(channel === 'qq' ? 'qq.personaMemesHint' : 'whale.memesHint')}</p>
+    </section>
     <div className="xmimo-tts-card-footer xmimo-qq-footer">
       <div className="xmimo-tts-card-actions">
         <span role="status">{!snapshot.writable ? t('settings.readOnly') : conflict ? t('whale.conflict') : invalid ? t(ERROR_KEYS[invalid])

@@ -165,6 +165,8 @@ export interface SpeechDeliveryContext {
   agent: Agent
   signal: AbortSignal
   automatic?: boolean
+  /** Recheck the admitted conversation immediately before a transport dispatches the audio. */
+  validateRoute?(signal: AbortSignal): Promise<void>
 }
 
 export interface SpeechDeliveryResult {
@@ -178,11 +180,24 @@ export interface SpeechDeliveryResult {
 export interface SpeechDeliveryAdapter {
   id: string
   format: SpeechFormat
+  /** Optional routing policy for ordinary replies. Inspect the actual Agent and its current turn. */
+  conversation?: SpeechConversationDelivery
   /** Check transport prerequisites before spending a synthesis request. */
   check?(context: SpeechDeliveryContext): void | Promise<void>
   send(audio: SpeechAudio, context: SpeechDeliveryContext): Promise<SpeechDeliveryResult>
   /** Raw PCM16LE mono 24 kHz; resolves after actual playback. */
   sendStream?(source: AsyncIterable<Uint8Array>, context: SpeechDeliveryContext): Promise<SpeechDeliveryResult>
+}
+
+export interface SpeechConversationDelivery {
+  supports(agent: Agent, signal: AbortSignal): boolean | Promise<boolean>
+  limits(): { maxAutoCharacters: number; maxDurationMs: number }
+}
+
+export interface SpeechConversationCapability {
+  format: SpeechFormat
+  automatic: boolean
+  policy: SpeechConversationDelivery
 }
 
 export interface SpeechSynthesisService {
@@ -204,6 +219,8 @@ export interface SpeechSynthesisService {
   exportAudio(request: SpeechRequest): Promise<SpeechArtifact>
   registerDelivery(adapter: SpeechDeliveryAdapter): () => void
   hasDelivery(id: string): boolean
+  /** Inspect the registered conversation policy and live automatic-delivery setting for a channel. */
+  conversationDelivery?(id: string): SpeechConversationCapability | undefined
   /** Disabling cancels pending jobs for this adapter without changing session modes. */
   setDeliveryEnabled(id: string, enabled: boolean): void
   isAutomaticDeliveryEnabled(id: string): boolean

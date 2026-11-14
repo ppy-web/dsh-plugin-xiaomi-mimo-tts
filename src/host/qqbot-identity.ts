@@ -13,7 +13,7 @@ export function qqCompanionNamespace(ctx: Context, owner?: string): string {
 
 export type QqConversation = { kind: 'qqbot'; identity: QqIdentity } | { kind: 'dsh' } | { kind: 'unknown'; reason: 'missing' | 'invalid' }
 
-/** QQbot 0.5.x compatibility bridge. This file is read-only and contains no credentials. */
+/** Read-only QQBot 0.5.x session mapping used for identity checks. */
 export class QqIdentityReader {
   constructor(readonly path = join(homedir(), '.dsh-qqbot', 'model-prefs.json')) {}
   async list(): Promise<QqIdentity[]> {
@@ -31,9 +31,10 @@ export class QqIdentityReader {
       return [...result.values()]
     } catch { return [] }
   }
-  async inspect(sessionId: string): Promise<QqConversation> {
+  async inspect(sessionId: string, signal?: AbortSignal): Promise<QqConversation> {
     try {
-      const data = await readFile(this.path, 'utf8')
+      const data = await readFile(this.path, { encoding: 'utf8', signal })
+      signal?.throwIfAborted()
       if (Buffer.byteLength(data) > 8 * 1024 * 1024) throw new Error('oversized mapping')
       const value = JSON.parse(data) as { sessionIds?: Record<string, unknown> }
       if (!value.sessionIds || typeof value.sessionIds !== 'object' || Array.isArray(value.sessionIds)) throw new Error('missing mapping')
@@ -42,6 +43,7 @@ export class QqIdentityReader {
       if (identity) return { kind: 'qqbot', identity }
       if (matches.length === 0) return { kind: 'dsh' }
     } catch (error) {
+      signal?.throwIfAborted()
       return { kind: 'unknown', reason: (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'missing' : 'invalid' }
     }
     return { kind: 'unknown', reason: 'invalid' }

@@ -214,10 +214,24 @@ URL 最长有效 24 小时。过期后立即拒绝下载，文件由定期任务
 | 工具 | 行为与返回 |
 | --- | --- |
 | `synthesize_speech` | 生成 MP3 / WAV / SILK，返回 `{ path, format, size }`，不会自行发送到聊天，也不会生成下载 URL。 |
-| `speak` | 按预设配置的适配器合成并交付，返回 `{ adapter, path?, messageId?, target? }`。默认 `file` 适配器导出 WAV；不是浏览器播放指令。成功后不要重复发送。 |
-| `speech_mode` | `mode` 为 `manual` / `auto` / `status`，只控制当前会话自动语音，不改浏览器自动朗读设置。QQ 预设不注册此工具，使用宿主 QQ 来源开关。 |
+| `speak` | 在已接入传声筒的 QQ 回合中发送语音，其他会话按预设配置交付。返回 `{ adapter, path?, messageId?, target? }`，默认 `file` 适配器导出 WAV。 |
+| `speech_mode` | `mode` 为 `manual` / `auto` / `status`，控制当前会话的通用自动语音。QQ 自动发送使用宿主的 QQ Bot 来源开关。 |
 
 QQ 的 `speak` 只接受 `text`、可选 `provider` 与 `speechInstruction`；其他会话的工具允许更多模型、音色参数。切换供应商重试需使用另一供应商已保存的凭据，不能借导出接口绕过渠道权限。
+
+## 宿主会话语音能力
+
+插件通过 Cordis 的 `speechSynthesis` 服务发现会话语音能力。传声筒启用后注册 `qqbot` 适配器，格式为 `silk`。宿主预设选入 QQ 会话后，传声筒会在正常 QQ 回合上接入按需和自动交付。
+
+```ts
+import type {} from 'dsh-xiaomi-tts/host-api'
+
+// ctx 为注入了 speechSynthesis 的 Cordis 上下文。
+const delivery = ctx.speechSynthesis.conversationDelivery?.('qqbot')
+const automatic = delivery?.automatic === true
+```
+
+`conversationDelivery(id)` 在组件停用、适配器不可用或未声明会话能力时返回 `undefined`。`policy.supports(agent, signal)` 检查当前 Agent 的发送前提，`policy.limits()` 读取实时字数与时长限制。实际发送仍经过 `qqbot_send_file` 的目标解析和宿主工具权限。
 
 ## 浏览器播放服务
 

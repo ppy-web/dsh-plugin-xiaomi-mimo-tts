@@ -36,11 +36,14 @@ function registerQqbotFeatures(ctx: Context): void {
   })
   ctx.systemPrompt.context({
     name: 'xiaomi:qqbot-speech', order: 310, required: true, interpolate: false,
-    text: () => {
+    text: ({ agent }) => {
       const speech = ctx.get('speechSynthesis')
+      const bridge = ctx.get('qqbotSpeech')
+      if (agent && bridge && (!bridge.admitted(agent) || !speech?.hasDelivery('qqbot'))) return ''
       const provider = speech?.currentProvider?.() ?? 'xiaomi'
       return JSON.stringify({ automaticSpeech: speech?.isAutomaticDeliveryEnabled?.('qqbot') === true, delivery: 'qqbot', provider, voice: 'saved-host-settings' })
-        + '\n先按表情包规则判断本轮是否适合调用 qqbot_send_meme；允许按语境主动发图，不必等用户要求。automaticSpeech 只控制正文朗读，不代表用户要求“只要语音”，也不关闭表情包。为 true 时，完成适合的表情发送后输出最终正文，宿主在本轮成功结束后自动发送语音，不要另调 speak；但用户明确要求本轮换一种语气、情绪、方言或表达方式时例外：调用 speak 并传入 speechInstruction，它会取代本轮自动语音。为 false 时普通聊天回复文字。用户明确要求语音时调用 speak，传正文；若同时指定了语气、情绪、方言或表达方式，再传 speechInstruction（与正文同语言，简洁描述），仍沿用已保存的服务商、模型和音色。合成失败且尚未发送音频时，允许增加 provider 参数，在 xiaomi、doubao 与 breeze 之间切换服务商重试一次（仅使用已配置的服务商），并继续使用同一 speechInstruction；移除原供应商标签，再按新供应商能力决定是否添加标签。所选服务商已保存的模型和音色不变。'
+        + '\n'
+        + 'automaticSpeech 为 true 时，输出最终正文，宿主在本轮成功结束后自动发送语音，不要另调 speak；但用户明确要求本轮换一种语气、情绪、方言或表达方式时例外：调用 speak 并传入 speechInstruction，它会取代本轮自动语音。为 false 时普通聊天回复文字。用户明确要求语音时调用 speak，传正文；若同时指定了语气、情绪、方言或表达方式，再传 speechInstruction（与正文同语言，简洁描述），仍沿用已保存的服务商、模型和音色。合成失败且尚未发送音频时，允许增加 provider 参数，在 xiaomi、doubao 与 breeze 之间切换服务商重试一次（仅使用已配置的服务商），并继续使用同一 speechInstruction；移除原供应商标签，再按新供应商能力决定是否添加标签。所选服务商已保存的模型和音色不变。'
         + (provider === 'breeze'
           ? '当前服务商是 Breeze：仅在 speak 的 text 中，可按实际情绪或动作在自然停顿处加入 speak 工具说明里 Breeze audio tags 清单中的标签，每次少量、不要堆叠；中文正文用方括号标签，英文正文用圆括号标签，不混用，只使用清单内的精确拼写。普通聊天回复和自动语音正文都不要写标签。'
           : provider === 'xiaomi' && speech?.supportsAudioTags?.() === true
@@ -50,7 +53,9 @@ function registerQqbotFeatures(ctx: Context): void {
     },
   })
   ctx.on('agent/pre-step', async ({ agent }, next) => {
-    try { await ctx.qqbotCompanion.prepare(agent) } catch { /* Memory reports its diagnostic; voice and text remain available. */ }
+    if (ctx.qqbotSettings.current().memory.enabled) {
+      try { await ctx.qqbotCompanion.prepare(agent) } catch { /* Memory reports its diagnostic; voice and text remain available. */ }
+    }
     return next()
   })
   ctx.on('agent/disposed', ({ agent }) => { ctx.qqbotCompanion.release(agent) })
@@ -79,15 +84,17 @@ export function registerQqbotCompanionTools(ctx: Context): void {
       return ctx.qqbotCompanion.memory(exec.agent, args as QqMemoryInput, exec.signal)
     },
   }, { when: async ({ agent, signal }) => {
+    if (!ctx.qqbotSettings.current().memory.enabled) return false
     const route = await ctx.qqbotCompanion.identity.inspect(agent.id)
     signal.throwIfAborted()
-    return route.kind === 'qqbot'
+    return route.kind === 'qqbot' && ctx.qqbotSettings.current().memory.enabled
   } })
 }
 
 export function registerQqbotMemeTool(ctx: Context, options: { directory?: string } = {}): void {
   const memes = ctx.qqbotMemes
   if (!memes.length) return
+  const enabled = () => ctx.qqbotSettings.current().memes?.enabled !== false
   const lifetime = new AbortController()
   const pending = new Set<Promise<unknown>>()
   ctx.effect(() => async () => {
@@ -96,7 +103,7 @@ export function registerQqbotMemeTool(ctx: Context, options: { directory?: strin
   })
   ctx.tools.register({
     name: 'qqbot_send_meme',
-    description: 'Send one bundled Whale Girl reaction image as a real file to the current QQ conversation. Select a meme ID from the persona catalog. Proactively use an appropriate image in casual chat before the final reply; no explicit image request is needed. Use occasionally, not every turn, and respect requests for no images or voice only. Automatic speech does not disable images. A successful call already sent the image; do not send it again.',
+    description: 'Send one bundled Whale Girl reaction image to the current QQ conversation using its catalog ID.',
     parameters: { type: 'object', properties: { meme: { type: 'string', enum: memes.map(meme => meme.id) } }, required: ['meme'], additionalProperties: false },
     output: {
       schema: { type: 'object', properties: { adapter: { type: 'string' }, meme: { type: 'string' }, messageId: { type: 'string' }, target: { type: 'string' } }, required: ['adapter', 'meme'], additionalProperties: false },
@@ -104,6 +111,7 @@ export function registerQqbotMemeTool(ctx: Context, options: { directory?: strin
     },
     async execute(args, exec) {
       if (!exec.agent) throw new TtsProviderError('qqbot-agent-required', 'Send memes from a QQ agent conversation.', 400)
+      if (!enabled()) throw new TtsProviderError('qqbot-memes-disabled', 'QQ Whale Girl memes are disabled in settings.', 409)
       const meme = memes.find(entry => entry.id === (args as { meme?: unknown } | null)?.meme)
       if (!meme) throw new TtsProviderError('qqbot-meme-unavailable', 'Choose an available meme from the catalog.', 400)
       const signal = AbortSignal.any([exec.signal, lifetime.signal])
@@ -114,5 +122,5 @@ export function registerQqbotMemeTool(ctx: Context, options: { directory?: strin
       void task.then(done, done)
       return task
     },
-  })
+  }, { when: enabled })
 }

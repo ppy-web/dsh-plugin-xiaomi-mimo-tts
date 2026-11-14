@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "QQ Bot Megaphone",
-    "description": "Independent QQ Whale Girl with custom persona settings, full automatic voice replies and isolated memory."
+    "description": "Voice replies for Host presets in QQ chats, with an independent QQ Whale Girl preset included."
   },
   "config": {
     "persona": {
@@ -17,7 +17,11 @@
     },
     "memory": {
       "$description": "QQ local memory",
-      "enabled": "Allow isolated private-chat or group memory without reading DSH workspaces."
+      "enabled": "Allow QQ Whale Girl to read and save isolated memories for each private chat or group."
+    },
+    "memes": {
+      "$description": "QQ local memes",
+      "enabled": "Allow QQ Whale Girl to send bundled memes in conversations."
     }
   }
 }
