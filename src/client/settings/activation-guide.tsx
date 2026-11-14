@@ -13,11 +13,10 @@ import { hostRoute } from '../host-route.js'
 import { SOURCE_URL } from './plugin-links.js'
 
 const HIGHLIGHTS = [
-  'onboarding.featureConciseReading',
-  'onboarding.featureSubagentAnnouncements',
-  'onboarding.featureSettingsSearch',
-  'onboarding.featureExternalReading',
-  'onboarding.featureVoiceAvatars',
+  'onboarding.featureReadingCaptions',
+  'onboarding.featureVoiceRecognition',
+  'onboarding.featureQqbotPresets',
+  'onboarding.featureQqbotMemes',
 ] as const
 
 const CONFETTI = [-116, -90, -60, -28, 28, 60, 90, 116].map((x, index) => ({
