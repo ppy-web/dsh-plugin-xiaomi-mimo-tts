@@ -84,7 +84,7 @@ export function createClientConfig() {
           `client bundle purity: "${source}" is not an allowed DSH client external or inline-safe package`,
         )
       },
-    }, bundleVisualizer('client')],
+    }, ...(process.env.DSH_BUNDLE_ANALYZE === '1' ? [bundleVisualizer('client')] : [])],
     outputOptions: {
       keepNames: true,
       legalComments: 'inline',
@@ -120,7 +120,7 @@ export default defineConfig([{
   fixedExtension: false,
   dts: false,
   minify: true,
-  plugins: [bundleVisualizer('host')],
+  plugins: process.env.DSH_BUNDLE_ANALYZE === '1' ? [bundleVisualizer('host')] : [],
   outputOptions: { keepNames: true, legalComments: 'inline' },
   clean: true,
 }, createClientConfig()])
