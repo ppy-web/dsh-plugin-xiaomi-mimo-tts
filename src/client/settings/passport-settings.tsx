@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactElement } from 'react'
-import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { FiLink, FiCopy, FiCheck, FiRefreshCw, FiKey, FiWifi } from 'react-icons/fi'
 import type { PluginConfigViewProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -11,7 +11,7 @@ import type { PassportConnectionStatus, PassportPreset } from '../../types/passp
 import { IDLE_PLUGIN_CHANGES } from '../plugin-activity.js'
 import type { SnapshotSource } from '../plugin-activity.js'
 import type { LocaleKey, Translate } from '../localization.js'
-import { savePassportDraft, savePassportRecognitionService, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } from './passport-draft.js'
+import { savePassportDraft, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } from './passport-draft.js'
 import { useSettingsSnapshot } from './scope.js'
 import { hostRoute } from '../host-route.js'
 import { PASSPORT_PRESET_PROMPT } from './passport-prompt.js'
@@ -58,9 +58,6 @@ function PassportForm({ scope, ttsScope, t, changes = IDLE_PLUGIN_CHANGES, token
   const testRequest = useRef<AbortController | null>(null)
   const [asrTest, setAsrTest] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle')
   const [asrTestError, setAsrTestError] = useState<PassportAsrTestFailure | null>(null)
-  const [recognitionSaving, setRecognitionSaving] = useState(false)
-  const [recognitionFailed, setRecognitionFailed] = useState(false)
-  const recognitionWrite = useRef(false)
   useEffect(() => () => { testRequest.current?.abort() }, [])
   const [promptCopy, setPromptCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [pairingCode, setPairingCode] = useState('')
@@ -123,16 +120,6 @@ function PassportForm({ scope, ttsScope, t, changes = IDLE_PLUGIN_CHANGES, token
     testRequest.current?.abort(); testRequest.current = null
     setAsrTest('idle'); setAsrTestError(null)
   }, [recognitionEnabled, value.asrProvider])
-  const setRecognitionEnabled = async (enabled: boolean): Promise<void> => {
-    const current = ttsScope.getSnapshot()
-    if (recognitionWrite.current || changing || state === 'saving' || current.status !== 'ready' || !current.writable || current.revision === undefined) return
-    recognitionWrite.current = true
-    setRecognitionSaving(true); setRecognitionFailed(false)
-    try {
-      await savePassportRecognitionService(ttsScope, enabled)
-    } catch { setRecognitionFailed(true) }
-    finally { recognitionWrite.current = false; setRecognitionSaving(false) }
-  }
   const testAsr = async (): Promise<void> => {
     if (testRequest.current) return
     const request = new AbortController()
@@ -304,14 +291,6 @@ function PassportForm({ scope, ttsScope, t, changes = IDLE_PLUGIN_CHANGES, token
     <section aria-labelledby={`${id}-recognition`}>
       <h4 id={`${id}-recognition`}>{t('passport.asrProvider')}</h4>
       <p className="xmimo-qq-hint xmimo-passport-section-hint">{t('passport.asrSectionHint')}</p>
-      <div className="xmimo-qq-heading">
-        <span>{t('settings.voiceRecognitionService')}</span>
-        <Switch label={t('settings.voiceRecognitionService')} checked={recognitionEnabled}
-          disabled={changing || state === 'saving' || recognitionSaving || ttsSnapshot.status !== 'ready' || !ttsSnapshot.writable}
-          onChange={enabled => { void setRecognitionEnabled(enabled) }} />
-      </div>
-      <p className="xmimo-qq-hint">{t('passport.asrSharedHint')}</p>
-      {recognitionFailed ? <p role="status" className="xmimo-qq-hint">{t('settings.failed')}</p> : null}
       <div className="xmimo-qq-field">
         <label htmlFor={`${id}-asr`}>{t('passport.asrService')}</label>
         <select id={`${id}-asr`} name="asrProvider" value={value.asrProvider} disabled={disabled}

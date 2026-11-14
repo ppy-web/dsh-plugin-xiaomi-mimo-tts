@@ -9,7 +9,7 @@ import { Config } from '../lib/passport.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, isPassportLanAddress } = await loadClientModule('src/types/passport.ts')
-const { savePassportDraft, savePassportRecognitionService, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } = await loadClientModule('src/client/settings/passport-draft.ts')
+const { savePassportDraft, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } = await loadClientModule('src/client/settings/passport-draft.ts')
 const { PassportSettingsPage } = await loadClientModule('src/client/settings/passport-settings.tsx')
 const { copyText } = await loadClientModule('src/client/settings/copy-text.ts')
 const { PASSPORT_PRESET_PROMPT } = await loadClientModule('src/client/settings/passport-prompt.ts')
@@ -113,20 +113,6 @@ test('Passport saves only its edited settings in one revision-fenced mutation', 
   assert.equal(writes.length, 1, 'unchanged settings must not overwrite the Host')
 })
 
-test('Passport updates the shared recognition switch without overwriting other settings', async () => {
-  const value = { voiceRecognitionService: true, voiceRate: 1.2 }, writes = []
-  let writable = true
-  const scope = { getSnapshot: () => ({ status: 'ready', writable, revision: 7, value }), async mutate(ops, revision) {
-    writes.push({ ops, revision }); value.voiceRecognitionService = ops[0].value; return true
-  } }
-  await savePassportRecognitionService(scope, false)
-  assert.deepEqual(writes, [{ revision: 7, ops: [{ op: 'set', path: ['voiceRecognitionService'], value: false }] }])
-  assert.deepEqual(value, { voiceRecognitionService: false, voiceRate: 1.2 })
-  writable = false
-  await assert.rejects(savePassportRecognitionService(scope, true), { message: 'passport-settings-conflict' })
-  assert.equal(writes.length, 1)
-})
-
 test('Passport refuses stale, read-only, unavailable and invalid writes and reports rejection', async () => {
   const base = configured(), value = { ...base, port: 3102 }
   for (const snapshot of [
@@ -198,22 +184,21 @@ test('Passport fields expose labelled controls, mask the token and respect permi
   }
 })
 
-test('Passport reflects the shared service switch while leaving Host recognition selectable', () => {
+test('Passport uses the shared setting for cloud recognition and keeps Host recognition selectable', () => {
   const snapshot = { status: 'ready', value: { ...configured(), asrProvider: 'xiaomi' }, writable: true, revision: 1 }
   const connectionStatus = { configured: true, listening: true, connected: false, servicesReady: true, recognitionReady: true,
     asrProvider: 'xiaomi', host: '127.0.0.1', port: 3101, addresses: [],
     recognitionChoices: [{ id: 'xiaomi', configured: true }, { id: 'doubao', configured: true }, { id: 'doubao-nostream', configured: true }] }
   for (const enabled of [false, true]) {
     const html = renderToStaticMarkup(createElement(PassportSettingsPage, {
-      view: 'page', scope: { getSnapshot: () => snapshot, subscribe: () => () => {} }, ttsScope: ttsScope(enabled),
+      view: 'page', scope: { getSnapshot: () => snapshot, subscribe: () => () => {} }, ttsScope: ttsScope(enabled, false),
       t: key => key, connectionStatus,
     }))
-    const toggle = [...html.matchAll(/<input\b[^>]*>/gu)].map(([tag]) => tag).find(tag => tag.includes('aria-label="settings.voiceRecognitionService"'))
-    assert.ok(toggle)
-    assert.equal(toggle.includes('checked=""'), enabled)
     const options = [...html.matchAll(/<option\b[^>]*>/gu)].map(([tag]) => tag)
     assert.equal(options.find(tag => tag.includes('value="host"')).includes('disabled=""'), false)
-    assert.equal(options.find(tag => tag.includes('value="xiaomi"')).includes('disabled=""'), !enabled)
+    for (const source of ['xiaomi', 'doubao', 'doubao-nostream']) {
+      assert.equal(options.find(tag => tag.includes(`value="${source}"`)).includes('disabled=""'), !enabled)
+    }
   }
 })
 
