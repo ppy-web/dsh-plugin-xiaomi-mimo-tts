@@ -14,11 +14,131 @@ import {
   prepareBreezeTtsText,
   splitBreezeTtsSegments,
   splitBreezeTtsSentences,
+  splitCompletedTtsSentences,
   splitTtsSegments,
   stripBreezeAudioTags,
   TtsFirstSegmentLimiter,
   TTS_SMART_TRUNCATION_OUTROS,
 } from '../lib/shared.js'
+
+test('fenced code stays excluded from speech until a matching fence closes', () => {
+  for (const marker of ['```', '~~~~']) {
+    const before = '正文。\n'
+    const open = before + marker + 'js\nconst privateValue = 123;\n'
+    assert.equal(prepareTtsText(open), prepareTtsText(before))
+    assert.equal(prepareTtsText(open + marker.slice(0, -1) + '\n尾部代码'), prepareTtsText(before))
+    assert.equal(prepareTtsText(open + marker + ' invalid\n尾部代码'), prepareTtsText(before))
+    const pending = splitCompletedTtsSentences(open)
+    assert.deepEqual(pending.sentences, [before])
+    assert.equal(pending.remainder, open.slice(before.length))
+    assert.equal(pending.consumed, before.length)
+    assert.equal(pending.inCode, true)
+    const closed = open + marker + '\n后文。'
+    assert.equal(prepareTtsText(closed), prepareTtsText(before + '后文。'))
+    assert.deepEqual(splitCompletedTtsSentences(closed).sentences, [before, '后文。'])
+    assert.equal(splitCompletedTtsSentences(closed).inCode, false)
+  }
+  const longOpen = '正文。\n~~~python\n' + 'print(privateValue);'.repeat(100)
+  assert.equal(prepareTtsText(longOpen), '正文.')
+  assert.equal(splitCompletedTtsSentences(longOpen).inCode, true)
+})
+
+test('fenced code inside lists and blockquotes stays excluded from speech', () => {
+  for (const text of [
+    '- 项目\n\n    ```js\n    secret();\n    ```\n\n后文。',
+    '1. 第一步\n\n    ```js\n    secret();\n    ```\n\n后文。',
+    '> ```js\n> secret();\n> ```\n\n后文。',
+  ]) {
+    const prepared = prepareTtsText(text)
+    assert.ok(!prepared.includes('secret'), prepared)
+    assert.ok(!prepared.includes('```'), prepared)
+    assert.ok(prepared.includes('后文'), prepared)
+    const split = splitCompletedTtsSentences(text)
+    assert.equal(split.inCode, false)
+    assert.ok(!split.sentences.join('').includes('secret'))
+    assert.ok(!split.sentences.join('').includes('```'))
+    assert.ok(split.sentences.join('').includes('后文'))
+  }
+})
+
+test('an unfinished fence inside a list or blockquote is held until its container closes', () => {
+  const list = splitCompletedTtsSentences('- 项目\n\n    ```js\n    secret();\n')
+  assert.equal(list.inCode, true)
+  assert.ok(list.sentences.join('').includes('项目'))
+  assert.ok(!list.sentences.join('').includes('secret'))
+
+  const quote = splitCompletedTtsSentences('正文。\n> ```js\n> secret();\n')
+  assert.equal(quote.inCode, true)
+  assert.ok(quote.sentences.join('').includes('正文'))
+  assert.ok(!quote.sentences.join('').includes('secret'))
+
+  const ended = splitCompletedTtsSentences('正文。\n> ```js\n> secret();\n\n后文。')
+  assert.equal(ended.inCode, false)
+  assert.match(ended.sentences.join(''), /后文/u)
+  assert.doesNotMatch(ended.sentences.join(''), /secret|```/u)
+})
+
+test('keeps indented list content while removing real indented code', () => {
+  const nested = prepareTtsText('- 第一步\n\n    这是第一步的详细说明。\n- 第二步')
+  assert.match(nested, /第一步.*这是第一步的详细说明.*第二步/u)
+  const ordered = prepareTtsText('1. 第一步\n    1. 子步骤甲\n    2. 子步骤乙\n2. 第二步')
+  assert.match(ordered, /第一步.*子步骤甲.*子步骤乙.*第二步/u)
+  assert.equal(prepareTtsText('正文。\n\n    const hidden = 1\n\n后文。'), '正文.后文.')
+})
+
+test('reference links, footnotes and definitions never reach speech', () => {
+  assert.equal(prepareTtsText('先看 [导出结果][report]。\n\n[report]: https://example.com/x'), '先看 导出结果.')
+  assert.equal(prepareTtsText('如图 ![示意图][pic] 所示。\n\n[pic]: https://example.com/a.png'), '如图 所示.')
+  for (const text of [
+    '先看 [导出结果][report]。\n\n[report]: https://example.com/x',
+    '结论见下。[^1]\n\n[^1]: 隐藏脚注',
+    '如图 ![示意图][pic] 所示。\n\n[pic]: https://example.com/a.png',
+    '参见 [报告]。\n\n[报告]: https://example.com/r',
+  ]) {
+    const prepared = prepareTtsText(text)
+    assert.doesNotMatch(prepared, /report|pic\b|https?:|\^1|隐藏脚注/u)
+  }
+})
+
+test('keeps comparison meaning, contractions and word boundaries', () => {
+  assert.equal(prepareTtsText('条件 3<4 成立。'), '条件 3 小于 4 成立.')
+  assert.equal(prepareTtsText('要求 x>0。'), '要求 x 大于 0.')
+  assert.equal(prepareTtsText('Check x<10 and y>2.'), 'Check x less than 10 and y greater than 2.')
+  assert.equal(prepareTtsText("Don't stop; we're sure it's fine."), "Don't stop; we're sure it's fine.")
+  const math = prepareTtsText('计算 2*3 和 max_retry_count。')
+  assert.doesNotMatch(math, /23|maxretrycount/u)
+  assert.match(math, /2 3/u)
+  assert.match(math, /max retry count/u)
+})
+
+test('decodes entities and removes HTML comments, scripts, rules and setext underlines', () => {
+  assert.equal(prepareTtsText('A&amp;B 与 3&lt;4。'), 'A&B 与 3 小于 4.')
+  assert.equal(prepareTtsText('使用 &lt;b&gt;bold&lt;/b&gt; 标记。'), '使用 bold 标记.')
+  assert.equal(prepareTtsText('正文。\n<!-- 隐藏\n隐藏2 -->\n后文。'), '正文.后文.')
+  assert.equal(prepareTtsText('正文。\n<!-- 未闭合\n隐藏2\n后文。'), '正文.')
+  assert.equal(prepareTtsText('正文。\n<script>\nsecret()\n</script>\n后文。'), '正文.后文.')
+  assert.equal(prepareTtsText('第一部分\n\n---\n\n第二部分'), '第一部分.第二部分')
+  assert.equal(prepareTtsText('重要结论\n====\n\n正文。'), '重要结论.正文.')
+})
+
+test('removes task markers, table delimiters, heading marks and inline fence remnants', () => {
+  const task = prepareTtsText('- [ ] 未完成\n- [x] 已完成')
+  assert.match(task, /未完成.*已完成/u)
+  assert.doesNotMatch(task, /\[|\]|x 已完成/u)
+  const table = prepareTtsText('| 名称 | 值 |\n| --- | :---: |\n| 甲 | 1 |')
+  assert.match(table, /名称.*值.*甲.*1/u)
+  assert.doesNotMatch(table, /---|:/u)
+  const inline = prepareTtsText('运行 ``` 包裹，然后 ``` 结束。')
+  assert.match(inline, /运行.*包裹.*结束/u)
+  assert.doesNotMatch(inline, /```/u)
+  assert.equal(prepareTtsText('#标题\n\n正文。'), '标题.正文.')
+})
+
+test('normalized sentence ends stream promptly while an unfinished decimal stays buffered', () => {
+  assert.deepEqual(splitCompletedTtsSentences('第一句.第二句.未完').sentences, ['第一句.', '第二句.'])
+  assert.equal(splitCompletedTtsSentences('温度是3.').consumed, 0)
+  assert.deepEqual(splitCompletedTtsSentences('温度是3.14度.未完').sentences, ['温度是3.14度.'])
+})
 
 test('preserves documented Breeze audio tags while cleaning text', () => {
   assert.equal(prepareBreezeTtsText('你好，[轻笑]世界！(sighs)继续。'), '你好,[轻笑]世界!(sighs)继续.')

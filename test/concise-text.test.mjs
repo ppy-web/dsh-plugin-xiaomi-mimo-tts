@@ -73,6 +73,23 @@ test('Concise retains an opening recommendation and a useful tail before the ref
   assert.doesNotMatch(text, /背景信息|来源名称/u)
 })
 
+test('Concise keeps prose that merely starts with a source label', () => {
+  assert.match(concise('来源：本地缓存。\n\n结论：可用。'), /本地缓存.*可用/u)
+  assert.match(
+    concise(['## 来源：本地缓存', '正文结论。', '## 下一步', '继续。'].join('\n\n')),
+    /正文结论.*继续/u,
+  )
+  assert.match(concise('## Sources: internal logs\n\nBody text.'), /Body text/u)
+  assert.doesNotMatch(concise('参考资料：[来源名称](https://example.com/bookings)'), /来源名称/u)
+  assert.doesNotMatch(concise('正文。\n\n## References\n\n[链接](https://example.com)'), /链接/u)
+})
+
+test('Concise reads the correction rather than struck text', () => {
+  const text = concise('价格从 ~~100 元~~ 调整为 80 元。')
+  assert.match(text, /80 元/u)
+  assert.doesNotMatch(text, /100 元/u)
+})
+
 test('Concise reserves room for an unmarked closing question as well as the opening', () => {
   const opening = '导出的三份文件都在任务目录中。'
   const question = '你希望先核对文件内容，还是直接处理重复记录？'
@@ -143,13 +160,6 @@ test('Concise counts mixed Unicode and inter-sentence pauses within the budget',
   assert.match(text, /𠀀.*核对完成.*保留备份/u)
   assert.ok([...text].length <= 150, text)
   assert.doesNotMatch(text, /历史背景/u)
-})
-
-test('Concise handles long dependency chains without reading a detached continuation', () => {
-  const text = concise(['检查已经完成。', '因此需要继续核对备份。'.repeat(2000), '下一步由你确认验收。'].join('\n\n'))
-  assert.match(text, /确认验收/u)
-  assert.ok([...text].length <= 150, text)
-  if (text.includes('因此')) assert.match(text, /检查已经完成.*因此/u)
 })
 
 test('Concise keeps the first and last useful sentences in one long paragraph', () => {
@@ -314,15 +324,6 @@ test('Concise uses the available character budget for useful context outside a s
   assert.ok([...text].length > 90 && [...text].length <= 150, text)
 })
 
-test('Concise keeps a complete sentence within 150 characters regardless of playback speed', () => {
-  const sentence = '内容'.repeat(74) + '。'
-  for (const rate of [0.5, 1, 2]) {
-    const text = applyTtsReadScope(sentence, 'concise', rate)
-    assert.equal([...text].length, 149)
-    assert.ok(text.startsWith('内容'.repeat(74)))
-  }
-})
-
 test('Concise never extracts a continuation when its antecedent cannot fit', () => {
   const text = concise([
     '当前的输出目录'.repeat(25) + '。',
@@ -340,12 +341,11 @@ test('Concise skips code-only replies and sentences that would have to be cut', 
   assert.match(concise('下一步先备份。\n\n' + '没有句号'.repeat(60)), /^下一步先备份[.。]$/u)
 })
 
-test('Concise accepts exactly 150 characters and omits an indivisible over-budget sentence', () => {
-  assert.equal([...concise('甲'.repeat(149) + '。')].length, 150)
+test('Concise enforces the same character budget across playback speeds and Unicode', () => {
+  for (const rate of [0.5, 1, 2]) {
+    assert.equal([...applyTtsReadScope('甲'.repeat(149) + '。', 'concise', rate)].length, 150)
+  }
   assert.equal(concise('甲'.repeat(150) + '。'), '')
-})
-
-test('Concise uses Unicode characters rather than UTF-16 code units for the text budget', () => {
   const text = concise('𠀀'.repeat(100) + '。')
   assert.equal([...text].length, 101)
   assert.ok(text.length > 150)

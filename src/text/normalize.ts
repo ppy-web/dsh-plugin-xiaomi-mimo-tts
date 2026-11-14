@@ -1,4 +1,4 @@
-import { findFencedCodeRegions, removeFencedCode } from './fenced-code.js'
+import { findFencedCodeRegions, removeFencedCode, removeIndentedCode } from './fenced-code.js'
 import { XIAOMI_AUDIO_TAG_PATTERN } from './xiaomi-audio-tags.js'
 
 const TTS_PUNCTUATION: Record<string, string> = {
@@ -15,7 +15,11 @@ const TTS_PUNCTUATION: Record<string, string> = {
 }
 
 /** Decorative punctuation can make TTS emit non-speech artifacts, so omit it entirely. */
-const TTS_NON_SPEECH_PUNCTUATION = /[()\[\]【】［］〔〕〖〗{}｛｝「」『』《》〈〉“”‘’"'`<>]/gu
+const TTS_NON_SPEECH_PUNCTUATION = /[()\[\]【】［］〔〕〖〗{}｛｝「」『』《》〈〉“”"`<>]/gu
+/** Keep apostrophes inside words; remove quote marks around them. */
+const TTS_APOSTROPHE_QUOTE = /(?<![\p{L}\p{N}])['’‘]|['’‘](?![\p{L}\p{N}])/gu
+/** Comparison signs carry meaning that plain symbol removal would erase. */
+const TTS_COMPARISON_OPERATOR = /(?<=[\p{L}\p{N}])\s*([<>])\s*(?=[\p{L}\p{N}])/gu
 /** Ellipses and wave dashes carry a sentence-level pause, so keep that cue as a period. */
 const TTS_SENTENCE_PAUSE_PUNCTUATION = /[…⋯〜～]+/gu
 const TTS_PAUSE_MARKER = ''
@@ -27,16 +31,54 @@ const TTS_RELATIVE_PATH_PATTERN = /(?:\.\.?[\\/])(?:[A-Za-z0-9._-]+[\\/])*(?:[A-
 const TTS_PROJECT_PATH_PATTERN = /\b(?:[A-Za-z0-9_-]+[\\/])+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gu
 
 /** Combined Markdown syntax and path removal in a single pass. */
-const MARKDOWN_CODE_BLOCK_RE = /```[\s\S]*?```|~~~[\s\S]*?~~~/g
-const MARKDOWN_INDENTED_CODE_RE = /(^|\n)(?: {4}|\t)[^\n]*(?=\n|$)/g
+const MARKDOWN_REFERENCE_DEFINITION_RE = /(^|\n)(?:[ \t]*>[ \t]?)*[ \t]*\[[^\]\r\n]+\]:[^\r\n]*(?=\r?\n|$)/g
+const MARKDOWN_HTML_COMMENT_RE = /<!--[\s\S]*?-->/g
+const MARKDOWN_UNCLOSED_HTML_COMMENT_RE = /(^|\n)[ \t]{0,3}<!--[\s\S]*$/g
+const MARKDOWN_RAW_HTML_RE = /<(script|style|pre)\b[^>]*>[\s\S]*?<\/\1\s*>/gi
+const MARKDOWN_IMAGE_REFERENCE_RE = /!\[[^\]\r\n]*\]\[[^\]\r\n]*\]/g
+const MARKDOWN_LINK_REFERENCE_RE = /\[([^\]\r\n]*)\]\[[^\]\r\n]*\]/g
+const MARKDOWN_FOOTNOTE_REFERENCE_RE = /\[\^[^\]\r\n]+\]/g
 const MARKDOWN_IMAGE_RE = /!\[([^\]\r\n]*)\]\([^\)\r\n]*\)/g
 const MARKDOWN_LINK_RE = /\[([^\]\r\n]*)\]\([^\)\r\n]*\)/g
-const MARKDOWN_HTML_TAG_RE = /<[^>\r\n]*>/g
-const MARKDOWN_HEADING_RE = /(^|\n)\s{0,3}#{1,6}\s+/g
+/** Only tag-shaped angle brackets are markup; comparisons such as 3<4 survive. */
+const MARKDOWN_HTML_TAG_RE = /<\/?[A-Za-z][^<>]*>/g
+const MARKDOWN_HEADING_RE = /(^|\n)[ \t]{0,3}#+/g
 const MARKDOWN_LIST_RE = /(^|\n)\s*(?:[-*+]|\d+[.)])\s+/g
 const MARKDOWN_BLOCKQUOTE_RE = /(^|\n)\s*>\s?/g
+const MARKDOWN_TASK_MARKER_RE = /(^|\s)\[[ xX]\](?=\s|$)/g
+const MARKDOWN_RULE_RE = /(^|\n)[ \t]{0,3}(?:(?:=[ \t]*)+|(?:-[ \t]*)+|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})[ \t]*(?=\r?\n|$)/g
+const MARKDOWN_TABLE_DELIMITER_RE = /(^|\n)[ \t]{0,3}(?=[^\r\n]*\|)[|:\- \t]+(?=\r?\n|$)/g
 const MARKDOWN_INLINE_FORMAT_RE = /`+|[*_~]{1,3}/g
 const MARKDOWN_TABLE_SEP_RE = /[|]/g
+const WORD_CHARACTER = /[\p{L}\p{N}]/u
+
+const HTML_ENTITY = /&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|([a-zA-Z][a-zA-Z0-9]{1,31}));/gu
+const HTML_NAMED_ENTITIES: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ensp: ' ', emsp: ' ', thinsp: ' ',
+  copy: '©', reg: '®', trade: '™', hellip: '…', mdash: '—', ndash: '–',
+  lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', times: '×', divide: '÷', deg: '°',
+  middot: '·', bull: '•', plusmn: '±', micro: 'µ', para: '¶', sect: '§',
+}
+
+function decodeHtmlEntities(value: string): string {
+  if (!value.includes('&')) return value
+  return value.replace(HTML_ENTITY, (match, decimal: string | undefined, hex: string | undefined, name: string | undefined) => {
+    if (decimal !== undefined || hex !== undefined) {
+      const code = decimal !== undefined ? Number(decimal) : Number.parseInt(hex!, 16)
+      return code > 0 && code <= 0x10FFFF && !(code >= 0xD800 && code <= 0xDFFF) ? String.fromCodePoint(code) : match
+    }
+    return HTML_NAMED_ENTITIES[name!.toLowerCase()] ?? match
+  })
+}
+
+/** Keep word-internal markers apart so 2*3 does not become 23. */
+function stripMarkdownInlineFormat(value: string): string {
+  return value.replace(MARKDOWN_INLINE_FORMAT_RE, (match, offset: number) => {
+    const before = value[offset - 1] ?? ''
+    const after = value[offset + match.length] ?? ''
+    return WORD_CHARACTER.test(before) && WORD_CHARACTER.test(after) ? ' ' : ''
+  })
+}
 
 function removeTtsPaths(value: string): string {
   return value
@@ -48,17 +90,25 @@ function removeTtsPaths(value: string): string {
 
 function removeTtsMarkup(value: string, protect?: (text: string) => string): string {
   let text = removeFencedCode(value)
-    .replace(MARKDOWN_CODE_BLOCK_RE, ' ')
-    .replace(MARKDOWN_INDENTED_CODE_RE, '$1')
+    .replace(MARKDOWN_REFERENCE_DEFINITION_RE, '$1')
+  text = decodeHtmlEntities(removeIndentedCode(text))
+    .replace(MARKDOWN_HTML_COMMENT_RE, ' ')
+    .replace(MARKDOWN_UNCLOSED_HTML_COMMENT_RE, '$1')
+    .replace(MARKDOWN_RAW_HTML_RE, ' ')
+    .replace(MARKDOWN_IMAGE_REFERENCE_RE, ' ')
+    .replace(MARKDOWN_LINK_REFERENCE_RE, '$1')
+    .replace(MARKDOWN_FOOTNOTE_REFERENCE_RE, ' ')
     .replace(MARKDOWN_IMAGE_RE, ' ')
     .replace(MARKDOWN_LINK_RE, '$1')
     .replace(MARKDOWN_HTML_TAG_RE, ' ')
   text = (protect?.(text) ?? text)
+    .replace(MARKDOWN_BLOCKQUOTE_RE, '$1')
+    .replace(MARKDOWN_RULE_RE, '$1')
     .replace(MARKDOWN_HEADING_RE, '$1')
     .replace(MARKDOWN_LIST_RE, '$1')
-    .replace(MARKDOWN_BLOCKQUOTE_RE, '$1')
-    .replace(MARKDOWN_INLINE_FORMAT_RE, '')
-    .replace(MARKDOWN_TABLE_SEP_RE, ' ')
+    .replace(MARKDOWN_TASK_MARKER_RE, '$1')
+    .replace(MARKDOWN_TABLE_DELIMITER_RE, '$1')
+  text = stripMarkdownInlineFormat(text).replace(MARKDOWN_TABLE_SEP_RE, ' ')
 
   text = text.replace(TTS_URL_PATTERN, ' ')
   return removeTtsPaths(text)
@@ -70,13 +120,23 @@ function removeTtsSymbols(value: string): string {
     .replace(/(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Emoji_Modifier}|\p{So}|︎|️|‍|⃣)/gu, ' ')
 }
 
+function normalizeTtsComparisons(value: string): string {
+  if (!/[<>]/u.test(value)) return value
+  const chinese = /\p{Script=Han}/u.test(value)
+  return value.replace(TTS_COMPARISON_OPERATOR, (_match, operator: string) => {
+    if (operator === '<') return chinese ? ' 小于 ' : ' less than '
+    return chinese ? ' 大于 ' : ' greater than '
+  })
+}
+
 /** Combined punctuation normalization: collapse adjacent punctuation, remove non-speech characters, and normalize Chinese punctuation. */
 function normalizeTtsPunctuation(value: string): string {
-  return value
+  return normalizeTtsComparisons(value)
     .replace(TTS_SENTENCE_PAUSE_PUNCTUATION, '.')
     // A dash in prose signals a pause; preserve that cue as a single comma.
     // Keep it marked until standalone punctuation has been removed.
     .replace(/[—–－]+/gu, TTS_PAUSE_MARKER)
+    .replace(TTS_APOSTROPHE_QUOTE, '')
     .replace(TTS_NON_SPEECH_PUNCTUATION, '')
     .replace(/[，。！？；：、（）　]/gu, (character) => TTS_PUNCTUATION[character] ?? character)
     .replace(/(^|\s)[,;:!?]+(?=\s|$)/g, '$1')
@@ -213,7 +273,18 @@ export function splitCompletedTtsSentences(value: string): TtsSentenceSplit {
     while ((match = boundary.exec(value)) !== null) {
       if (tags.some(tag => match!.index >= tag.index && match!.index < tag.index + tag[0].length)) continue
       const end = match.index + match[0].length
-      if (end > to) break
+      if (end > to) {
+        // Trailing whitespace in the boundary can reach into the indentation of
+        // a following code block. Keep the text up to the block instead of
+        // dropping the sentence because the match crossed the region start.
+        if (match.index < to) {
+          const sentence = value.slice(sentenceStart, to)
+          if (sentence.trim().length > 0) sentences.push(sentence)
+          sentenceStart = to
+          consumed = to
+        }
+        break
+      }
       // A trailing digit and period may still grow into a decimal in the next update.
       if (match[0] === '.' && /\d/u.test(value[match.index - 1] ?? '')
         && (/\d/u.test(value[end] ?? '') || end === value.length)) continue

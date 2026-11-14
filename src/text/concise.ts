@@ -6,7 +6,8 @@ import { math } from 'micromark-extension-math'
 import { prepareTtsText } from './normalize.js'
 
 type MarkdownBlock = ReturnType<typeof fromMarkdown>['children'][number]
-type MarkdownPhrase = Extract<MarkdownBlock, { type: 'paragraph' }>['children'][number]
+type MarkdownParagraph = Extract<MarkdownBlock, { type: 'paragraph' }>
+type MarkdownPhrase = MarkdownParagraph['children'][number]
 
 const MAX_CHARACTERS = 150
 const SENTENCE_SEGMENTER = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh', { granularity: 'sentence' }) : null
@@ -15,7 +16,11 @@ const MARKDOWN_OPTIONS = {
   mdastExtensions: [gfmFromMarkdown(), mathFromMarkdown()],
 }
 
-const REFERENCE_LABEL = /^(?:参考(?:资料|文献|链接|来源)|资料来源|引用来源|来源|references?|sources?|bibliography|citations?)(?:\s*[:：]|$)/iu
+const REFERENCE_LABEL = '参考(?:资料|文献|链接|来源)|资料来源|引用来源|来源|references?|sources?|bibliography|citations?'
+/** Only a heading that is exactly a reference label starts a reference section. */
+const REFERENCE_HEADING = new RegExp(`^(?:${REFERENCE_LABEL})\\s*[:：]?\\s*$`, 'iu')
+const REFERENCE_PREFIX = new RegExp(`^(?:${REFERENCE_LABEL})\\s*[:：]\\s*`, 'iu')
+const REFERENCE_SEPARATOR = /^[\s,，、;；:：|。.!！?？-]*$/u
 const KEY_HEADING = /^(?:总结|结论|主要结果|结果|建议|推荐|下一步|待确认|注意事项|summary|conclusion|results?|recommendations?|next steps?|tldr|tl;dr)(?:\s*[:：]\s*(.+)|$)/iu
 const KEY_SENTENCE = /(?:结论|首选|优先|问题是|原因是|最值得|下一步|需要你确认|只需要|建议|先(?:去|看|检查|确认)|已(?:经)?(?:完成|修复|加上|生成|恢复|确认|核对|整理|归档)|^我核对了|\b(?:recommend|the cause|the result|next step|please confirm|we fixed)\b)/iu
 const QUALIFICATION = /^(?:但|不过|然而|除非|仅当|前提是|条件是|仅限|只适用|否则|but\b|however\b|unless\b|only if\b|provided that\b|otherwise\b)/iu
@@ -85,8 +90,24 @@ function phraseText(node: MarkdownPhrase): string {
     case 'inlineCode':
       // Keep short values and terms; never leave a hole where a command or condition was.
       return inlineCodeText(node.value)
+    case 'delete':
+      // Struck text is usually the superseded value, so concise reading keeps the correction only.
+      return ' '
     default: return ' '
   }
+}
+
+/**
+ * A reference list paragraph is a label followed only by links. Requiring that
+ * shape keeps ordinary prose such as "来源：本地缓存。" readable.
+ */
+function isReferenceParagraph(node: MarkdownParagraph): boolean {
+  const [first, ...rest] = node.children
+  if (first?.type !== 'text') return false
+  const prefix = REFERENCE_PREFIX.exec(first.value)
+  if (prefix === null || !REFERENCE_SEPARATOR.test(first.value.slice(prefix[0].length))) return false
+  return rest.every(phrase => phrase.type === 'link' || phrase.type === 'linkReference'
+    || (phrase.type === 'text' && REFERENCE_SEPARATOR.test(phrase.value)))
 }
 
 function clean(value: string): string {
@@ -130,7 +151,7 @@ function readMarkdown(markdown: string): { blocks: Sentence[][]; table: string }
   const addParagraph = (value: string, keyHeading: boolean): void => {
     const prose = value.split(/\r?\n/u)
       .map(line => line.trim())
-      .filter(line => !LOG_LINE.test(line) && !REFERENCE_LABEL.test(line))
+      .filter(line => !LOG_LINE.test(line))
       .join(' ')
       .replace(BRACKET_MARKUP, ' ')
     const block: Sentence[] = []
@@ -165,13 +186,17 @@ function readMarkdown(markdown: string): { blocks: Sentence[][]; table: string }
       if (node.type === 'heading') {
         if (referenceDepth !== 0 && node.depth > referenceDepth) continue
         const heading = node.children.map(phraseText).join('').trim()
-        referenceDepth = REFERENCE_LABEL.test(heading) ? node.depth : 0
+        referenceDepth = REFERENCE_HEADING.test(heading) ? node.depth : 0
         const key = KEY_HEADING.exec(heading)
         keyHeading = key !== null
         previous = undefined
         if (key?.[1]) addParagraph(key[1], true)
       } else if (referenceDepth !== 0) continue
       else if (node.type === 'paragraph') {
+        if (isReferenceParagraph(node)) {
+          previous = undefined
+          continue
+        }
         const codeOnly = node.children.some(phrase => phrase.type === 'inlineCode')
           && node.children.every(phrase => phrase.type === 'inlineCode' || (phrase.type === 'text' && !SPEECH_CONTENT.test(phrase.value)))
         if (!codeOnly || node.children.every(phrase => phrase.type !== 'inlineCode' || /^[+-]?\d/u.test(phrase.value))) {
