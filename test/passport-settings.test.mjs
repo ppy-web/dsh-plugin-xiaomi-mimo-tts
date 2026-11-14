@@ -9,13 +9,17 @@ import { Config } from '../lib/passport.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, isPassportLanAddress } = await loadClientModule('src/types/passport.ts')
-const { savePassportDraft, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } = await loadClientModule('src/client/settings/passport-draft.ts')
+const { savePassportDraft, savePassportRecognitionService, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } = await loadClientModule('src/client/settings/passport-draft.ts')
 const { PassportSettingsPage } = await loadClientModule('src/client/settings/passport-settings.tsx')
 const { copyText } = await loadClientModule('src/client/settings/copy-text.ts')
 const { PASSPORT_PRESET_PROMPT } = await loadClientModule('src/client/settings/passport-prompt.ts')
 const { requestPassportAsrTest, passportAsrTestError } = await loadClientModule('src/client/settings/passport-asr-test.ts')
 const { registerPassportSettings } = await loadClientModule('src/client/settings/passport-registration.ts')
 const configured = () => ({ ...DEFAULT_PASSPORT_SETTINGS, accessToken: 'test-passport-private-token-123456789' })
+const ttsScope = (enabled = true, writable = true) => {
+  const snapshot = { status: 'ready', writable, revision: 1, value: { voiceRecognitionService: enabled } }
+  return { getSnapshot: () => snapshot, subscribe: () => () => {}, mutate: async () => true }
+}
 
 test('recognition test presents specific safe failures and never exposes provider secrets', async t => {
   const controller = new AbortController()
@@ -109,6 +113,20 @@ test('Passport saves only its edited settings in one revision-fenced mutation', 
   assert.equal(writes.length, 1, 'unchanged settings must not overwrite the Host')
 })
 
+test('Passport updates the shared recognition switch without overwriting other settings', async () => {
+  const value = { voiceRecognitionService: true, voiceRate: 1.2 }, writes = []
+  let writable = true
+  const scope = { getSnapshot: () => ({ status: 'ready', writable, revision: 7, value }), async mutate(ops, revision) {
+    writes.push({ ops, revision }); value.voiceRecognitionService = ops[0].value; return true
+  } }
+  await savePassportRecognitionService(scope, false)
+  assert.deepEqual(writes, [{ revision: 7, ops: [{ op: 'set', path: ['voiceRecognitionService'], value: false }] }])
+  assert.deepEqual(value, { voiceRecognitionService: false, voiceRate: 1.2 })
+  writable = false
+  await assert.rejects(savePassportRecognitionService(scope, true), { message: 'passport-settings-conflict' })
+  assert.equal(writes.length, 1)
+})
+
 test('Passport refuses stale, read-only, unavailable and invalid writes and reports rejection', async () => {
   const base = configured(), value = { ...base, port: 3102 }
   for (const snapshot of [
@@ -140,9 +158,11 @@ test('Passport configuration registration owns only its component and can be wit
   try {
     const dispose = registerPassportSettings(ctx, key => key, { getSnapshot: () => false, subscribe: () => () => {} })
     const entry = registered.get('dsh-xiaomi-tts#speech-delivery-passport')
+    const injected = entry.options.inject()
     assert.equal(entry.options.name, 'plugins.row.config')
-    assert.equal(entry.options.inject().scope, scope)
-    assert.deepEqual(requested, ['speech-delivery-passport'])
+    assert.equal(injected.scope, scope)
+    assert.equal(injected.ttsScope, scope)
+    assert.deepEqual(requested, ['speech-delivery-passport', 'xiaomi-mimo-tts'])
     dispose()
     assert.equal(registered.size, 0)
   } finally { await ctx.fiber.dispose() }
@@ -161,6 +181,7 @@ test('Passport fields expose labelled controls, mask the token and respect permi
     const snapshot = { status: 'ready', value: configured(), writable, revision: 1 }
     const html = renderToStaticMarkup(createElement(PassportSettingsPage, {
       view: 'page', scope: { getSnapshot: () => snapshot, subscribe: () => () => {} }, t: key => key,
+      ttsScope: ttsScope(true, writable),
       presets: [{ id: DEFAULT_PASSPORT_SETTINGS.agentPreset }],
       changes: { getSnapshot: () => changing, subscribe: () => () => {} },
     }))
@@ -177,12 +198,31 @@ test('Passport fields expose labelled controls, mask the token and respect permi
   }
 })
 
+test('Passport reflects the shared service switch while leaving Host recognition selectable', () => {
+  const snapshot = { status: 'ready', value: { ...configured(), asrProvider: 'xiaomi' }, writable: true, revision: 1 }
+  const connectionStatus = { configured: true, listening: true, connected: false, servicesReady: true, recognitionReady: true,
+    asrProvider: 'xiaomi', host: '127.0.0.1', port: 3101, addresses: [],
+    recognitionChoices: [{ id: 'xiaomi', configured: true }, { id: 'doubao', configured: true }, { id: 'doubao-nostream', configured: true }] }
+  for (const enabled of [false, true]) {
+    const html = renderToStaticMarkup(createElement(PassportSettingsPage, {
+      view: 'page', scope: { getSnapshot: () => snapshot, subscribe: () => () => {} }, ttsScope: ttsScope(enabled),
+      t: key => key, connectionStatus,
+    }))
+    const toggle = [...html.matchAll(/<input\b[^>]*>/gu)].map(([tag]) => tag).find(tag => tag.includes('aria-label="settings.voiceRecognitionService"'))
+    assert.ok(toggle)
+    assert.equal(toggle.includes('checked=""'), enabled)
+    const options = [...html.matchAll(/<option\b[^>]*>/gu)].map(([tag]) => tag)
+    assert.equal(options.find(tag => tag.includes('value="host"')).includes('disabled=""'), false)
+    assert.equal(options.find(tag => tag.includes('value="xiaomi"')).includes('disabled=""'), !enabled)
+  }
+})
+
 test('live device panel renders connected activity and hides old text when disconnected', () => {
   const snapshot = { status: 'ready', value: configured(), writable: true, revision: 1 }
   const status = { configured: true, listening: true, connected: true, servicesReady: true, recognitionReady: true,
     host: '0.0.0.0', port: 3101, addresses: [], activity: { microphone: 'open', phase: 'playing', transcript: '识别内容', reply: '播放内容' } }
   const render = connectionStatus => renderToStaticMarkup(createElement(PassportSettingsPage, {
-    view: 'page', scope: { getSnapshot: () => snapshot, subscribe: () => () => {} }, t: key => key, connectionStatus,
+    view: 'page', scope: { getSnapshot: () => snapshot, subscribe: () => () => {} }, ttsScope: ttsScope(), t: key => key, connectionStatus,
   }))
   const connected = render(status)
   assert.ok(connected.includes('识别内容'))
@@ -198,6 +238,7 @@ test('a redacted saved Passport token remains write-only without blocking other 
   const snapshot = { status: 'ready', value: { ...DEFAULT_PASSPORT_SETTINGS, accessToken: undefined }, writable: true, revision: 1 }
   const html = renderToStaticMarkup(createElement(PassportSettingsPage, {
     view: 'page', scope: { getSnapshot: () => snapshot, subscribe: () => () => {} }, t: key => key,
+    ttsScope: ttsScope(),
     tokenConfigured: { getSnapshot: () => true, subscribe: () => () => {} },
   }))
   const input = [...html.matchAll(/<input\b[^>]*>/gu)].map(([tag]) => tag).find(tag => tag.includes('name="accessToken"'))

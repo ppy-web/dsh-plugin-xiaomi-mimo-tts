@@ -33,6 +33,13 @@
   min-width: 0;
 }
 
+.xmimo-tts-xiaomi-models [role='tab'] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .xmimo-tts-more-settings {
   min-width: 0;
 }

@@ -180,7 +180,7 @@ function PreviewApp() {
               : activeView === 'conversation' ? <ConversationPreview scope={scope} />
               : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} settingsProps={settingsPageProps} onOpenWorkbench={openWorkbench}
                 externalTakeover={externalTakeover} externalTakeoverLabel={copy.externalTakeover} />
-              : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} />
+              : activeView === 'components' ? <BundleComponents locale={locale === 'zh' ? 'zh' : 'en'} ttsScope={scope} />
               : activeView === 'filter' ? <FilterLab locale={locale === 'zh' ? 'zh' : 'en'} />
               : activeView === 'qqbot' ? <DocumentPage key="qqbot" copy={QQBOT_GUIDE[locale === 'zh' ? 'zh' : 'en']} />
               : activeView === 'doubao' ? <DocumentPage key="doubao" copy={DOUBAO_GUIDE[locale === 'zh' ? 'zh' : 'en']} />

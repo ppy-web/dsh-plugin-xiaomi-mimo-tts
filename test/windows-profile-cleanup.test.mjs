@@ -27,7 +27,7 @@ function cleanup(directory, profile) {
   })
 }
 
-for (const kind of ['directory', 'junction']) test(`profile cleanup removes only target ${kind} entries and preserves other data`, windows, async t => {
+test('profile cleanup removes target directories and junctions while preserving other data', windows, async t => {
   const directory = await sandbox(t)
   const modules = join(directory, 'profiles', 'desktop', 'node_modules')
   const outside = join(directory, 'linked-source')
@@ -36,14 +36,10 @@ for (const kind of ['directory', 'junction']) test(`profile cleanup removes only
   await writeFile(join(outside, 'keep.txt'), 'source')
   await writeFile(join(otherProfile, 'keep.txt'), 'other profile')
   await writeFile(join(modules, 'unrelated.txt'), 'unrelated')
-  for (const name of ['dsh-xiaomi-tts', 'dsh-plugin-xiaomi-mimo-tts']) {
-    const target = join(modules, name)
-    if (kind === 'junction') await symlink(outside, target, 'junction')
-    else {
-      await mkdir(target)
-      await writeFile(join(target, 'stale.txt'), 'stale')
-    }
-  }
+  const target = join(modules, 'dsh-xiaomi-tts')
+  await mkdir(target)
+  await writeFile(join(target, 'stale.txt'), 'stale')
+  await symlink(outside, join(modules, 'dsh-plugin-xiaomi-mimo-tts'), 'junction')
   await cleanup(directory, 'desktop')
   for (const name of ['dsh-xiaomi-tts', 'dsh-plugin-xiaomi-mimo-tts']) {
     await assert.rejects(lstat(join(modules, name)), { code: 'ENOENT' })

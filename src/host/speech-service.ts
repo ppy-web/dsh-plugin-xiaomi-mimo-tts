@@ -367,12 +367,13 @@ export default class SpeechHost {
   constructor(ctx: Context, config: { current: () => ResolvedTtsSettings; updates?: (listener: () => void) => (() => void) }) {
     const service = new HostSpeechService(config.current)
     ctx.provide('speechSynthesis', service)
-    ctx.provide('passportRecognition', new PassportRecognition(config.current))
+    const recognition = new PassportRecognition(config.current)
+    ctx.provide('passportRecognition', recognition)
     ctx.provide('qqbotSpeechRules', { current: () => ({
       maxAutoCharacters: config.current().qqbotMaxAutoCharacters ?? 0,
       maxDurationMs: (config.current().qqbotMaxDurationSeconds ?? 0) * 1000,
     }) })
-    const update = () => { service.setAutomaticDeliveryEnabled('qqbot', config.current().qqbotEnabled === true); service.refreshEngine() }
+    const update = () => { service.setAutomaticDeliveryEnabled('qqbot', config.current().qqbotEnabled === true); service.refreshEngine(); recognition.refresh() }
     update()
     if (config.updates) ctx.effect(() => config.updates!(update))
     const clean = () => cleanupSpeechArtifacts().catch(() => ctx.logger.warn('Speech audio cleanup failed.'))
@@ -380,7 +381,7 @@ export default class SpeechHost {
       void clean()
       const timer = setInterval(() => { void clean() }, 60 * 60 * 1000)
       timer.unref()
-      return () => { clearInterval(timer); return service.dispose() }
+      return () => { clearInterval(timer); recognition.dispose(); return service.dispose() }
     })
   }
 }

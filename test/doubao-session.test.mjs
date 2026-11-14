@@ -16,7 +16,7 @@ test('Doubao sends multiple text inputs in one session and delivers audio before
     const chunks = []
     let firstAudio
     const received = new Promise(resolve => { firstAudio = resolve })
-    const session = new DoubaoSession({ settings: settings(), connect, signal: new AbortController().signal, onAudio: bytes => { chunks.push(bytes); firstAudio() } })
+    const session = new DoubaoSession({ settings: settings({ doubaoVoice: 'test-speaker' }), connect, signal: new AbortController().signal, onAudio: bytes => { chunks.push(bytes); firstAudio() } })
     await session.ready
     session.append('你好。')
     await received
@@ -30,7 +30,7 @@ test('Doubao sends multiple text inputs in one session and delivers audio before
     assert.equal(headers[0]['x-api-key'], 'test-key')
     assert.equal(headers[0]['x-api-resource-id'], 'seed-tts-2.0')
     const start = frames.find(frame => frame.event === 100).payload.req_params
-    assert.equal(start.speaker, 'zh_female_vv_uranus_bigtts')
+    assert.equal(start.speaker, 'test-speaker')
     assert.equal(start.model, undefined)
     assert.deepEqual(start.audio_params, { format: 'pcm', sample_rate: 24000, speech_rate: 0 })
     assert.throws(() => session.append('too late'), { code: 'invalid-session-state' })
@@ -70,20 +70,22 @@ test('a rejected Ark key fails on Agent Plan without trying the standard endpoin
   }, undefined, (_info, done) => done(false, 401))
 })
 
-for (const status of [401, 403]) test(`Doubao retries Agent Plan after a standard HTTP ${status} handshake rejection`, async () => {
-  const attempts = []
-  await withDoubaoServer(async ({ url, frames, headers }) => {
-    const connect = (values, endpoint) => {
-      attempts.push(endpoint)
-      return new WebSocket(`${url}${new URL(endpoint).pathname}`, { headers: values })
-    }
-    await synthesizeDoubao('自动识别', { settings: settings(), connect, signal: new AbortController().signal, onAudio() {} })
-    assert.deepEqual(attempts.map(endpoint => new URL(endpoint).pathname), ['/api/v3/tts/bidirection', '/api/v3/plan/tts/bidirection'])
-    assert.equal(headers.length, 1)
-    assert.equal(headers[0]['x-api-key'], 'test-key')
-    assert.equal(headers[0]['x-api-resource-id'], 'seed-tts-2.0')
-    assert.equal(frames.filter(frame => frame.event === 200).length, 1)
-  }, undefined, (info, done) => done(info.req.url.includes('/plan/'), status))
+test('Doubao retries Agent Plan after standard authentication or permission rejection', async () => {
+  for (const status of [401, 403]) {
+    const attempts = []
+    await withDoubaoServer(async ({ url, frames, headers }) => {
+      const connect = (values, endpoint) => {
+        attempts.push(endpoint)
+        return new WebSocket(`${url}${new URL(endpoint).pathname}`, { headers: values })
+      }
+      await synthesizeDoubao('自动识别', { settings: settings(), connect, signal: new AbortController().signal, onAudio() {} })
+      assert.deepEqual(attempts.map(endpoint => new URL(endpoint).pathname), ['/api/v3/tts/bidirection', '/api/v3/plan/tts/bidirection'])
+      assert.equal(headers.length, 1)
+      assert.equal(headers[0]['x-api-key'], 'test-key')
+      assert.equal(headers[0]['x-api-resource-id'], 'seed-tts-2.0')
+      assert.equal(frames.filter(frame => frame.event === 200).length, 1)
+    }, undefined, (info, done) => done(info.req.url.includes('/plan/'), status))
+  }
 })
 
 test('Doubao does not retry other handshake failures or a rejected Agent Plan handshake', async () => {
@@ -108,23 +110,25 @@ test('Doubao uses the standard endpoint when its handshake succeeds', async () =
   })
 })
 
-for (const failure of ['abort', 'timeout']) test(`Agent Plan fallback releases its connection on ${failure}`, async () => {
-  await withDoubaoServer(async ({ url }) => {
-    const controller = new AbortController()
-    const sockets = []
-    const connect = (headers, endpoint) => {
-      const socket = new WebSocket(`${url}${new URL(endpoint).pathname}`, { headers })
-      sockets.push(socket)
-      if (failure === 'abort' && sockets.length === 2) socket.once('open', () => queueMicrotask(() => controller.abort()))
-      return socket
-    }
-    const session = new DoubaoSession({ settings: settings({ requestTimeoutMs: 200 }), connect, signal: controller.signal, onAudio() { assert.fail('canceled synthesis must not deliver audio') } })
-    const code = failure === 'abort' ? 'tts-canceled' : 'tts-timeout'
-    await assert.rejects(session.ready, error => error.code === code)
-    await assert.rejects(session.done, error => error.code === code)
-    assert.equal(sockets.length, 2)
-    await Promise.all(sockets.map(socket => socket.readyState === WebSocket.CLOSED ? undefined : once(socket, 'close')))
-  }, () => true, (info, done) => done(info.req.url.includes('/plan/'), 401))
+test('Agent Plan fallback releases its connection on abort or timeout', async () => {
+  for (const failure of ['abort', 'timeout']) {
+    await withDoubaoServer(async ({ url }) => {
+      const controller = new AbortController()
+      const sockets = []
+      const connect = (headers, endpoint) => {
+        const socket = new WebSocket(`${url}${new URL(endpoint).pathname}`, { headers })
+        sockets.push(socket)
+        if (failure === 'abort' && sockets.length === 2) socket.once('open', () => queueMicrotask(() => controller.abort()))
+        return socket
+      }
+      const session = new DoubaoSession({ settings: settings({ requestTimeoutMs: 200 }), connect, signal: controller.signal, onAudio() { assert.fail('canceled synthesis must not deliver audio') } })
+      const code = failure === 'abort' ? 'tts-canceled' : 'tts-timeout'
+      await assert.rejects(session.ready, error => error.code === code)
+      await assert.rejects(session.done, error => error.code === code)
+      assert.equal(sockets.length, 2)
+      await Promise.all(sockets.map(socket => socket.readyState === WebSocket.CLOSED ? undefined : once(socket, 'close')))
+    }, () => true, (info, done) => done(info.req.url.includes('/plan/'), 401))
+  }
 })
 
 test('cloned voice uses its own resource and explicit inference model without context_texts', async () => {
@@ -183,27 +187,29 @@ test('empty standard voice instructions omit upstream additions', async () => {
   })
 })
 
-for (const format of ['pcm', 'mp3']) test(`${format} text requests retain the session voice, speed and instruction snapshot`, async () => {
-  await withDoubaoServer(async ({ connect, frames }) => {
-    const configured = settings({ voiceRate: 1.5, doubaoInstruction: '轻声说话', doubaoVoice: 'zh_female_vv_uranus_bigtts' })
-    const session = new DoubaoSession({ settings: configured, format, connect, signal: new AbortController().signal, onAudio() {} })
-    await session.ready
-    configured.voiceRate = 2
-    configured.doubaoVoice = 'different-voice'
-    configured.doubaoInstruction = 'another style'
-    session.append('第一段。')
-    session.append('第二段。')
-    await session.finish()
-    const requests = frames.filter(frame => frame.event === 100 || frame.event === 200)
-    assert.equal(requests.length, 3)
-    for (const frame of requests) {
-      const params = frame.payload.req_params
-      assert.equal(params.speaker, 'zh_female_vv_uranus_bigtts')
-      assert.deepEqual(params.audio_params, { format, sample_rate: 24000, speech_rate: 50 })
-      assert.deepEqual(JSON.parse(params.additions), { context_texts: ['轻声说话'] })
-    }
-    assert.deepEqual(requests.slice(1).map(frame => frame.payload.req_params.text), ['第一段。', '第二段。'])
-  })
+test('PCM and MP3 text requests retain the session voice, speed and instruction snapshot', async () => {
+  for (const format of ['pcm', 'mp3']) {
+    await withDoubaoServer(async ({ connect, frames }) => {
+      const configured = settings({ voiceRate: 1.5, doubaoInstruction: '轻声说话', doubaoVoice: 'test-speaker' })
+      const session = new DoubaoSession({ settings: configured, format, connect, signal: new AbortController().signal, onAudio() {} })
+      await session.ready
+      configured.voiceRate = 2
+      configured.doubaoVoice = 'different-voice'
+      configured.doubaoInstruction = 'another style'
+      session.append('第一段。')
+      session.append('第二段。')
+      await session.finish()
+      const requests = frames.filter(frame => frame.event === 100 || frame.event === 200)
+      assert.equal(requests.length, 3)
+      for (const frame of requests) {
+        const params = frame.payload.req_params
+        assert.equal(params.speaker, 'test-speaker')
+        assert.deepEqual(params.audio_params, { format, sample_rate: 24000, speech_rate: 50 })
+        assert.deepEqual(JSON.parse(params.additions), { context_texts: ['轻声说话'] })
+      }
+      assert.deepEqual(requests.slice(1).map(frame => frame.payload.req_params.text), ['第一段。', '第二段。'])
+    })
+  }
 })
 
 test('instruction overrides support saved defaults, clearing and type validation', () => {
@@ -247,21 +253,23 @@ test('stop after ready releases the upstream even without a cancel acknowledgmen
   }, (_ws, frame) => frame.event === 101)
 })
 
-for (const failure of ['close', 'session', 'mismatch', 'timeout', 'empty']) test(`Doubao rejects ${failure} without a false completion`, async () => {
-  await withDoubaoServer(async ({ connect }) => {
-    const session = new DoubaoSession({ settings: settings({ requestTimeoutMs: 500 }), connect, signal: new AbortController().signal, onAudio() {} })
-    await session.ready
-    session.append('你好')
-    await assert.rejects(session.finish(), error => error.code === ({ close: 'doubao-connection-closed', session: 'voice-unavailable', mismatch: 'doubao-session-mismatch', timeout: 'tts-timeout', empty: 'stream-audio-empty' })[failure])
-  }, (ws, frame) => {
-    if (frame.event === 200) {
-      if (failure === 'close') ws.close()
-      if (failure === 'session') ws.send(serverFrame(153, { message: 'speaker not available', status_code: 45000001 }, frame.sessionId))
-      if (failure === 'mismatch') ws.send(serverFrame(352, Buffer.from([0, 0]), 'wrong-session', 11))
-      return true
-    }
-    return failure === 'timeout' && frame.event === 102
-  })
+test('Doubao rejects interrupted or invalid sessions without a false completion', async () => {
+  for (const failure of ['close', 'session', 'mismatch', 'timeout', 'empty']) {
+    await withDoubaoServer(async ({ connect }) => {
+      const session = new DoubaoSession({ settings: settings({ requestTimeoutMs: 500 }), connect, signal: new AbortController().signal, onAudio() {} })
+      await session.ready
+      session.append('你好')
+      await assert.rejects(session.finish(), error => error.code === ({ close: 'doubao-connection-closed', session: 'voice-unavailable', mismatch: 'doubao-session-mismatch', timeout: 'tts-timeout', empty: 'stream-audio-empty' })[failure])
+    }, (ws, frame) => {
+      if (frame.event === 200) {
+        if (failure === 'close') ws.close()
+        if (failure === 'session') ws.send(serverFrame(153, { message: 'speaker not available', status_code: 45000001 }, frame.sessionId))
+        if (failure === 'mismatch') ws.send(serverFrame(352, Buffer.from([0, 0]), 'wrong-session', 11))
+        return true
+      }
+      return failure === 'timeout' && frame.event === 102
+    })
+  }
 })
 
 test('provider selection preserves legacy defaults and isolates credentials and voice overrides', () => {

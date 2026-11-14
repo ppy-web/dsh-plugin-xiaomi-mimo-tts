@@ -108,6 +108,8 @@ export function PreviewModule({ t, enabled, status, source, error, text, recordi
       </TactileButton>
       {ANNOUNCEMENT_SOURCE_OPTIONS.filter(option => settings.sources.includes(option.id)).map(option => <span key={option.id}>{t(option.label)}</span>)}
       {settings.qqbotEnabled ? <span>{t('settings.qqbotIntegration')}</span> : null}
+      {settings.voiceRecognitionService ? <span>{t('settings.voiceRecognitionService')}</span> : null}
+      {settings.showReadingCaptions ? <span>{t('settings.readingCaptions')}</span> : null}
       {settings.sources.length === 0 && !settings.qqbotEnabled ? <span>{t('settings.announcementsNone')}</span> : null}
     </span>
       {!open && status === 'error' ? <small className="xmimo-tts-preview-summary-status xmimo-tts-failed" role="status">{t(messageKey)}</small> : null}

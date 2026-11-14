@@ -60,12 +60,33 @@ function bufferedRecognition(signal: AbortSignal, maxBytes: number, run: (pcm: B
   }
 }
 
+/** Settle on cancellation even when a provider ignores its signal. */
+function abortableRecognition(task: Promise<string>, signal: AbortSignal): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const cleanup = (): void => signal.removeEventListener('abort', abort)
+    const abort = (): void => { cleanup(); reject(signal.reason) }
+    signal.addEventListener('abort', abort, { once: true })
+    if (signal.aborted) abort()
+    task.then(value => { cleanup(); resolve(value) }, error => { cleanup(); reject(error) })
+  })
+}
+
 /** Reads only the saved built-in keys, independently of TTS selection/takeover. */
 export class PassportRecognition implements PassportRecognitionService {
   private doubaoKey = ''
   private doubaoPlan = false
+  private disposed = false
+  private readonly active = new Set<AbortController>()
   constructor(private readonly current: () => ResolvedTtsSettings,
     private readonly connectDoubao?: (url: string, headers: Record<string, string>) => WebSocket) {}
+  private enabled(): boolean { return !this.disposed && this.current().voiceRecognitionService !== false }
+  refresh(): void {
+    if (!this.enabled()) for (const controller of this.active) controller.abort(new Error('passport-asr-disabled'))
+  }
+  dispose(): void {
+    this.disposed = true
+    for (const controller of this.active) controller.abort(new Error('passport-asr-unavailable'))
+  }
   choices(): RecognitionChoice[] {
     const settings = this.current()
     return [{ id: 'host', configured: true }, { id: 'xiaomi', configured: !!settings.apiKey.trim() }, { id: 'doubao', configured: !!settings.doubaoApiKey.trim() }, { id: 'doubao-nostream', configured: !!settings.doubaoApiKey.trim() }]
@@ -73,19 +94,25 @@ export class PassportRecognition implements PassportRecognitionService {
   recognizer(source: RecognitionSource, host?: Pick<SpeechToText, 'snapshot' | 'resolve' | 'transcribe'>): PassportRecognizer {
     if (source === 'host') return hostRecognizer(host)
     const key = () => (source === 'xiaomi' ? this.current().apiKey : this.current().doubaoApiKey).trim()
-    const check = () => { if (!key()) throw new Error('passport-asr-key-required') }
+    const check = () => {
+      if (!this.enabled()) throw new Error(this.disposed ? 'passport-asr-unavailable' : 'passport-asr-disabled')
+      if (!key()) throw new Error('passport-asr-key-required')
+    }
     return { check, create: (signal, maxBytes) => {
       check()
+      signal.throwIfAborted()
       const savedKey = key()
+      const controller = new AbortController()
+      const activeSignal = AbortSignal.any([signal, controller.signal])
+      let input: RecognitionInput
       if (source === 'doubao' || source === 'doubao-nostream') {
         if (this.doubaoKey !== savedKey) { this.doubaoKey = savedKey; this.doubaoPlan = false }
-        return new DoubaoRecognition(savedKey, signal, maxBytes, this.doubaoPlan, plan => {
+        input = new DoubaoRecognition(savedKey, activeSignal, maxBytes, this.doubaoPlan, plan => {
           if (this.doubaoKey === savedKey) this.doubaoPlan = plan
         }, this.connectDoubao, source === 'doubao-nostream' ? 'nostream' : 'async')
-      }
-      return bufferedRecognition(signal, maxBytes, async pcm => {
+      } else input = bufferedRecognition(activeSignal, maxBytes, async pcm => {
         const response = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {
-          method: 'POST', redirect: 'error', signal,
+          method: 'POST', redirect: 'error', signal: activeSignal,
           headers: { 'api-key': savedKey, 'content-type': 'application/json' },
           body: JSON.stringify({ model: 'mimo-v2.5-asr', stream: false, asr_options: { language: 'auto' },
             messages: [{ role: 'user', content: [{ type: 'input_audio', input_audio: { data: `data:audio/wav;base64,${pcmWave(pcm).toString('base64')}` } }] }] }),
@@ -109,6 +136,28 @@ export class PassportRecognition implements PassportRecognitionService {
         if (result?.finish_reason !== 'stop' || typeof result.message?.content !== 'string') throw new Error('passport-asr-invalid-response')
         return result.message.content
       })
+      this.active.add(controller)
+      let released = false
+      const release = (): void => {
+        if (released) return
+        released = true
+        activeSignal.removeEventListener('abort', abort)
+        this.active.delete(controller)
+      }
+      const abort = (): void => { try { input.cancel() } finally { release() } }
+      activeSignal.addEventListener('abort', abort, { once: true })
+      if (activeSignal.aborted) abort()
+      return {
+        append(pcm) { activeSignal.throwIfAborted(); input.append(pcm) },
+        async finish() {
+          activeSignal.throwIfAborted()
+          try { return await abortableRecognition(input.finish(), activeSignal) } finally { release() }
+        },
+        cancel() {
+          if (released) input.cancel()
+          else controller.abort(new Error('passport-recognition-cancelled'))
+        },
+      }
     } }
   }
 }

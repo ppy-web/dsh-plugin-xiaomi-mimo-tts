@@ -37,6 +37,81 @@ test('cloud recognition reuses its own saved key independently of TTS selection 
   assert.throws(() => service.recognizer('host').check(), /passport-asr-unavailable/)
 })
 
+test('the shared recognition switch gates Passport cloud sources without disabling Host recognition', async () => {
+  const settings = resolveTtsSettings({ apiKey: 'xiaomi-key', doubaoApiKey: 'doubao-key', voiceRecognitionService: false })
+  const service = new PassportRecognition(() => settings)
+  for (const source of ['xiaomi', 'doubao', 'doubao-nostream']) {
+    assert.equal(service.choices().find(choice => choice.id === source).configured, true)
+    assert.throws(() => service.recognizer(source).check(), { message: 'passport-asr-disabled' })
+    assert.throws(() => service.recognizer(source).create(new AbortController().signal, 640), { message: 'passport-asr-disabled' })
+  }
+  const host = {
+    snapshot: () => ({ selection: { providerId: 'local' }, providers: [{ id: 'local', preparation: { phase: 'ready' } }] }),
+    resolve: request => request,
+    transcribe: async () => ({ text: '本地识别' }),
+  }
+  const input = service.recognizer('host', host).create(new AbortController().signal, 640)
+  input.append(Buffer.alloc(640))
+  assert.equal(await input.finish(), '本地识别')
+  settings.voiceRecognitionService = true
+  for (const source of ['xiaomi', 'doubao', 'doubao-nostream']) service.recognizer(source).check()
+})
+
+test('disabling recognition cancels an in-flight Passport cloud request and ignores its late result', async t => {
+  const original = globalThis.fetch
+  t.after(() => { globalThis.fetch = original })
+  const started = Promise.withResolvers(), upstream = Promise.withResolvers()
+  let requestSignal
+  globalThis.fetch = (_url, options) => { requestSignal = options.signal; started.resolve(); return upstream.promise }
+  const settings = resolveTtsSettings({ apiKey: 'xiaomi-key' })
+  const service = new PassportRecognition(() => settings)
+  const input = service.recognizer('xiaomi').create(new AbortController().signal, 640)
+  input.append(Buffer.alloc(640))
+  const pending = input.finish()
+  await started.promise
+  settings.voiceRecognitionService = false
+  service.refresh()
+  await assert.rejects(pending, { message: 'passport-asr-disabled' })
+  assert.equal(requestSignal.aborted, true)
+  upstream.resolve(Response.json({ choices: [{ finish_reason: 'stop', message: { content: 'late' } }] }))
+  assert.throws(() => service.recognizer('xiaomi').check(), { message: 'passport-asr-disabled' })
+})
+
+test('cancelling a Passport recognition aborts its in-flight cloud request', async t => {
+  const original = globalThis.fetch
+  t.after(() => { globalThis.fetch = original })
+  const started = Promise.withResolvers(), upstream = Promise.withResolvers()
+  globalThis.fetch = (_url, options) => { started.resolve(options.signal); return upstream.promise }
+  const settings = resolveTtsSettings({ apiKey: 'xiaomi-key' })
+  const input = new PassportRecognition(() => settings).recognizer('xiaomi').create(new AbortController().signal, 640)
+  input.append(Buffer.alloc(640))
+  const pending = assert.rejects(input.finish(), { message: 'passport-recognition-cancelled' })
+  const signal = await started.promise
+  input.cancel()
+  await pending
+  assert.equal(signal.aborted, true)
+  upstream.resolve(Response.json({ choices: [{ finish_reason: 'stop', message: { content: 'late' } }] }))
+})
+
+test('disabling recognition closes an in-flight Doubao connection', async t => {
+  const server = createServer(), wss = new WebSocketServer({ noServer: true })
+  server.on('upgrade', (req, socket, head) => wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws)))
+  server.listen(0, '127.0.0.1'); await once(server, 'listening')
+  t.after(async () => { for (const ws of wss.clients) ws.terminate(); wss.close(); await new Promise(resolve => server.close(resolve)) })
+  const settings = resolveTtsSettings({ doubaoApiKey: 'doubao-key' })
+  const service = new PassportRecognition(() => settings, (_url, headers) => new WebSocket(`ws://127.0.0.1:${server.address().port}`, { headers }))
+  const connected = once(wss, 'connection')
+  const input = service.recognizer('doubao').create(new AbortController().signal, 640)
+  input.append(Buffer.alloc(640))
+  const pending = assert.rejects(input.finish(), { message: 'passport-asr-disabled' })
+  const [socket] = await connected
+  const closed = once(socket, 'close')
+  settings.voiceRecognitionService = false
+  service.refresh()
+  await pending
+  await closed
+})
+
 test('cloud failures expose stable codes and cancellation rejects a late transcript', async t => {
   const original = globalThis.fetch
   t.after(() => { globalThis.fetch = original })
@@ -63,38 +138,44 @@ function response(text, last = false) {
   return Buffer.concat([header, body])
 }
 
-for (const [source, endpoint] of [['doubao', 'bigmodel_async'], ['doubao-nostream', 'bigmodel_nostream']]) for (const plan of [false, true]) test(`Doubao ${source} uploads and returns the final result with ${plan ? 'Plan' : 'standard'} credentials`, async t => {
+test('both Doubao recognition modes support standard and Plan credentials', async t => {
   const server = createServer(), wss = new WebSocketServer({ noServer: true })
+  let scenario
   server.on('upgrade', (req, socket, head) => {
     assert.equal(req.headers['x-api-key'], 'doubao-key')
-    if (plan && !req.url.includes('/plan/')) { socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return }
+    if (scenario.plan && !req.url.includes('/plan/')) { socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return }
     wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws))
   })
   server.listen(0, '127.0.0.1'); await once(server, 'listening')
   t.after(async () => { for (const ws of wss.clients) ws.terminate(); wss.close(); await new Promise(resolve => server.close(resolve)) })
-  const paths = [], uploaded = Promise.withResolvers(), frames = [], finalFrames = []
-  wss.on('connection', ws => ws.on('message', raw => {
-    const frame = Buffer.from(raw), kind = frame[1] >> 4, flags = frame[1] & 15
-    if (kind === 1) return
-    const pcm = gunzipSync(frame.subarray(12)); frames.push(pcm)
-    if (flags & 2) { finalFrames.push(pcm); ws.send(response('最终整句', true)) }
-    else { ws.send(response('临时结果')); uploaded.resolve() }
-  }))
-  const service = new PassportRecognition(() => resolveTtsSettings({ provider: 'xiaomi', doubaoApiKey: 'doubao-key' }), (url, headers) => {
-    paths.push(new URL(url).pathname)
-    return new WebSocket(`ws://127.0.0.1:${server.address().port}${new URL(url).pathname}`, { headers })
+  wss.on('connection', ws => {
+    const current = scenario
+    ws.on('message', raw => {
+      const frame = Buffer.from(raw), kind = frame[1] >> 4, flags = frame[1] & 15
+      if (kind === 1) return
+      const pcm = gunzipSync(frame.subarray(12)); current.frames.push(pcm)
+      if (flags & 2) { current.finalFrames.push(pcm); ws.send(response('最终整句', true)) }
+      else { ws.send(response('临时结果')); current.uploaded.resolve() }
+    })
   })
-  const input = service.recognizer(source).create(new AbortController().signal, 32000)
-  input.append(Buffer.alloc(7040, 1)); await uploaded.promise
-  assert.equal(Buffer.concat(frames).length, 6400)
-  input.append(Buffer.alloc(640, 2)); assert.equal(await input.finish(), '最终整句')
-  assert.deepEqual(Buffer.concat(frames), Buffer.concat([Buffer.alloc(7040, 1), Buffer.alloc(640, 2)]))
-  assert.ok(finalFrames[0].length > 0, 'the final frame carries audio')
-  const next = service.recognizer(source).create(new AbortController().signal, 32000)
-  next.append(Buffer.alloc(640)); assert.equal(await next.finish(), '最终整句')
-  assert.deepEqual(paths, plan
-    ? [`/api/v3/sauc/${endpoint}`, `/api/v3/plan/sauc/${endpoint}`, `/api/v3/plan/sauc/${endpoint}`]
-    : [`/api/v3/sauc/${endpoint}`, `/api/v3/sauc/${endpoint}`])
+  for (const [source, endpoint] of [['doubao', 'bigmodel_async'], ['doubao-nostream', 'bigmodel_nostream']]) for (const plan of [false, true]) {
+    const current = scenario = { plan, paths: [], uploaded: Promise.withResolvers(), frames: [], finalFrames: [] }
+    const service = new PassportRecognition(() => resolveTtsSettings({ provider: 'xiaomi', doubaoApiKey: 'doubao-key' }), (url, headers) => {
+      current.paths.push(new URL(url).pathname)
+      return new WebSocket(`ws://127.0.0.1:${server.address().port}${new URL(url).pathname}`, { headers })
+    })
+    const input = service.recognizer(source).create(new AbortController().signal, 32000)
+    input.append(Buffer.alloc(7040, 1)); await current.uploaded.promise
+    assert.equal(Buffer.concat(current.frames).length, 6400)
+    input.append(Buffer.alloc(640, 2)); assert.equal(await input.finish(), '最终整句')
+    assert.deepEqual(Buffer.concat(current.frames), Buffer.concat([Buffer.alloc(7040, 1), Buffer.alloc(640, 2)]))
+    assert.ok(current.finalFrames[0].length > 0, 'the final frame carries audio')
+    const next = service.recognizer(source).create(new AbortController().signal, 32000)
+    next.append(Buffer.alloc(640)); assert.equal(await next.finish(), '最终整句')
+    assert.deepEqual(current.paths, plan
+      ? [`/api/v3/sauc/${endpoint}`, `/api/v3/plan/sauc/${endpoint}`, `/api/v3/plan/sauc/${endpoint}`]
+      : [`/api/v3/sauc/${endpoint}`, `/api/v3/sauc/${endpoint}`], `${source}, plan=${plan}`)
+  }
 })
 
 test('Doubao accepts a valid final response without text for silent audio', async t => {

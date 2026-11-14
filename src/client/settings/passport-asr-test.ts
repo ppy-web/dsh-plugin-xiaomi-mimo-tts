@@ -7,6 +7,7 @@ import { hostRoute } from '../host-route.js'
 const ERROR_LABELS: Record<string, LocaleKey> = {
   'passport-asr-key-required': 'passport.asrErrorKey',
   'passport-asr-unavailable': 'passport.asrErrorUnavailable',
+  'passport-asr-disabled': 'passport.asrErrorDisabled',
   'passport-asr-auth-failed': 'passport.asrErrorAuth',
   'passport-asr-permission-denied': 'passport.asrErrorPermission',
   'passport-asr-quota-exceeded': 'passport.asrErrorQuota',

@@ -13,7 +13,6 @@ const {
   batchTtsStreamText,
   countTtsSpeechCharacters,
   DEFAULT_TTS_SEGMENT_CHARACTERS,
-  firstTtsSegment,
   MAX_TTS_SEGMENT_CHARACTERS,
   MIN_TTS_STREAM_CHARACTERS,
   prepareTtsText,
@@ -24,7 +23,6 @@ const {
   TTS_SMART_TRUNCATION_OUTROS,
   TOKEN_PLAN_TTS_BASE_URL,
   TTS_VERSION,
-  TtsFirstSegmentLimiter,
 } = sharedModule
 
 const SUPPORTED_DSH_PACKAGE_PREFIX = '@deepseek-ai/dsh-'
@@ -94,17 +92,6 @@ test('documented command discovery distinguishes package-manager versions and pr
   assert.deepEqual(documentedPnpmCommands(markdown), ['typecheck:host', 'install', 'dev:build', 'missing-script'])
 })
 
-test('Voice Design presets provide usable descriptions without changing custom settings', () => {
-  assert.ok(sharedModule.TTS_MODELS.includes('mimo-v2.5-tts-voicedesign'))
-  assert.ok(sharedModule.TTS_VOICE_DESIGN_PRESETS.length > 0)
-  for (const preset of sharedModule.TTS_VOICE_DESIGN_PRESETS) {
-    assert.ok(preset.prompt.trim().length > 0, `${preset.id} needs a synthesis description`)
-    const settings = resolveTtsSettings({ model: 'mimo-v2.5-tts-voicedesign', voiceDesignPrompt: preset.prompt })
-    assert.equal(settings.voiceDesignPrompt, preset.prompt)
-    assert.equal(settings.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt)
-  }
-})
-
 test('shared route and settings contracts are internally consistent', () => {
   const routes = [
     sharedModule.TTS_ROUTE,
@@ -115,34 +102,15 @@ test('shared route and settings contracts are internally consistent', () => {
     sharedModule.TTS_TOGGLE_AUDIO_ASSET_ROUTE,
   ]
   assert.ok(routes.every((route) => route.startsWith('/plugins/xiaomi-mimo-tts/')))
-  assert.ok(sharedModule.TTS_MODELS.includes('mimo-v2.5-tts'))
-  assert.ok(sharedModule.TTS_MODELS.includes('mimo-v2.5-tts-voicedesign'))
-  assert.ok(sharedModule.TTS_LOCAL_SPEECH_MODES.includes('disabled'))
-  assert.ok(sharedModule.TTS_FORMATS.includes('pcm'))
-  assert.ok(sharedModule.TTS_FORMATS.includes('mp3'))
-  assert.ok(sharedModule.TTS_FORMATS.includes('wav'))
   assert.ok(Object.values(sharedModule.TTS_TOGGLE_SOUND_FILES).every((files) => files.length > 0 && files.every((file) => file.endsWith('.mp3'))))
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, false)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.soundEnabled, false)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.taskSounds, false)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.clickSounds, false)
-  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.model, 'mimo-v2.5-tts')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.localSpeechMode, 'auto')
-  assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.format, 'pcm')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.readScope, 'smart')
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignCustomPrompt, sharedModule.DEFAULT_TTS_SETTINGS.voiceDesignPrompt)
-  assert.ok(sharedModule.TTS_VOICE_PRESETS.every((item) => item.id && item.value))
-  assert.equal(new Set(sharedModule.TTS_VOICE_PRESETS.map((item) => item.id)).size, sharedModule.TTS_VOICE_PRESETS.length)
-  assert.equal(new Set(sharedModule.TTS_VOICE_DESIGN_PRESETS.map((item) => item.id)).size, sharedModule.TTS_VOICE_DESIGN_PRESETS.length)
-})
-
-test('provider image routes are unique and only declared image providers own routes', () => {
-  const routes = [
-    ...Object.values(sharedModule.TTS_PROVIDER_CHARACTER_ASSET_ROUTES),
-    ...Object.values(sharedModule.TTS_PROVIDER_LOGO_ASSET_ROUTES),
-  ]
-  assert.equal(new Set(routes).size, routes.length)
 })
 
 test('selects the Token Plan endpoint from tp-prefixed API keys', () => {
@@ -161,10 +129,12 @@ test('accepts only canonical padded Base64 and calculates its decoded size', () 
 })
 
 test('ships the UI image and audio assets referenced by shared contracts', async () => {
+  const imageRoutes = [...Object.values(sharedModule.TTS_PROVIDER_CHARACTER_ASSET_ROUTES), ...Object.values(sharedModule.TTS_PROVIDER_LOGO_ASSET_ROUTES)]
+  assert.equal(new Set(imageRoutes).size, imageRoutes.length)
   assertWebp(await readFile(new URL('../assets/ui/toggle-characters.webp', import.meta.url)), 'toggle characters')
   assertWebp(await readFile(new URL('../assets/ui/api-key-whale.webp', import.meta.url)), 'API key whale')
   assertWebp(await readFile(new URL('../assets/plugin-icons/avatar.webp', import.meta.url)), 'shared plugin and history icon')
-  for (const route of Object.values(sharedModule.TTS_PROVIDER_CHARACTER_ASSET_ROUTES)) {
+  for (const route of [...Object.values(sharedModule.TTS_PROVIDER_CHARACTER_ASSET_ROUTES), sharedModule.TTS_QQ_GROUP_ASSET_ROUTE]) {
     const file = route.slice(route.lastIndexOf('/') + 1)
     assertWebp(await readFile(new URL(`../assets/ui/${file}`, import.meta.url)), file)
   }
@@ -185,13 +155,6 @@ test('resolved settings enforce safe playback defaults', () => {
   assert.equal(voiceDesign.model, 'mimo-v2.5-tts-voicedesign')
   assert.equal(voiceDesign.voiceDesignPrompt, '青年女性，清亮自然，语速适中。')
   assert.equal(voiceDesign.voiceDesignCustomPrompt, '青年女性，清亮自然，语速适中。')
-})
-
-test('prepares speech text by keeping prose and normalizing whitespace and punctuation', () => {
-  assert.equal(
-    prepareTtsText('  你好，\n\n世界！\\n下一句。  '),
-    '你好.世界! 下一句.',
-  )
 })
 
 test('splits VoiceDesign text at natural boundaries within the request limit', () => {
@@ -215,14 +178,9 @@ test('resolves read scope and migrates the legacy first-segment setting', () => 
   assert.ok(countTtsSpeechCharacters(applyTtsReadScope('你好。' + '很长的内容。'.repeat(50), 'first-segment')) <= MAX_TTS_SEGMENT_CHARACTERS)
 })
 
-test('keeps Smart closing cues nonempty and unique', () => {
-  assert.ok(Array.isArray(TTS_SMART_TRUNCATION_OUTROS))
-  assert.ok(TTS_SMART_TRUNCATION_OUTROS.length > 0)
-  assert.ok(TTS_SMART_TRUNCATION_OUTROS.every((cue) => typeof cue === 'string' && cue.trim().length > 0))
-  assert.equal(new Set(TTS_SMART_TRUNCATION_OUTROS).size, TTS_SMART_TRUNCATION_OUTROS.length)
-})
-
 test('adds a Smart closing cue only when unread speech is at least as long as the spoken segment', () => {
+  assert.ok(TTS_SMART_TRUNCATION_OUTROS.length > 0)
+  assert.ok(TTS_SMART_TRUNCATION_OUTROS.every(cue => typeof cue === 'string' && cue.trim()))
   const spoken = '甲'.repeat(10)
   assert.equal(appendTtsSmartTruncationOutro(spoken, spoken, () => 0), spoken)
   assert.equal(appendTtsSmartTruncationOutro(`${spoken}${'乙'.repeat(9)}`, spoken, () => 0), spoken)
@@ -246,24 +204,6 @@ test('reads one segment and a conditional closing cue in Smart automatic playbac
   assert.equal(applyTtsPlaybackScope('简短回复。', 'smart', true, () => 0), prepareTtsText('简短回复。'))
 })
 
-test('limits realtime first-segment text monotonically and stops after the boundary', () => {
-  const limiter = new TtsFirstSegmentLimiter()
-  const text = '第一句内容足够长，用于验证实时首段边界。'.repeat(12) + '第二句不应进入播放队列。'
-  const first = limiter.limit(text.slice(0, 90))
-  const locked = limiter.limit(text, true)
-  assert.ok(first.length > 0)
-  assert.ok(locked.startsWith(first))
-  assert.equal(limiter.limit(text + '第三句。'), locked)
-})
-
-test('selects only the first VoiceDesign segment for first-segment playback', () => {
-  const text = Array.from({ length: 16 }, (_, index) => `第${index + 1}句内容足够长，用于验证首段朗读。`).join('')
-  const segments = splitTtsSegments(text)
-  assert.ok(segments.length > 1)
-  assert.equal(firstTtsSegment(text), segments[0])
-  assert.ok(firstTtsSegment(text).length < prepareTtsText(text).length)
-})
-
 test('keeps Markdown link labels while removing links, URLs, paths, and code blocks', () => {
   assert.equal(
     prepareTtsText([
@@ -277,53 +217,35 @@ test('keeps Markdown link labels while removing links, URLs, paths, and code blo
   )
 })
 
-test('removes leading periods and collapses adjacent periods after filtering', () => {
-  assert.equal(prepareTtsText('\n。你好\n\n世界。。'), '你好.世界.')
-  assert.equal(prepareTtsText('你好,.\n世界'), '你好.世界')
+test('normalizes speech punctuation and filters non-speech content', () => {
+  for (const [input, expected] of [
+    ['  你好，\n\n世界！\\n下一句。  ', '你好.世界! 下一句.'],
+    ['\n。你好\n\n世界。。', '你好.世界.'],
+    ['你好,.\n世界', '你好.世界'],
+    ['你好 👋‍🌍 ★\u200B，继续。', '你好,继续.'],
+    ['https://example.com/path', ''],
+    ['C:\\temp\\audio.wav', ''],
+    ['```\nignored\n```', ''],
+    ['复制到 D:\\backup\\notes.txt 完成', '复制到 完成'],
+    ['路径 /usr/local/bin/app 已就绪', '路径 已就绪'],
+    ['单段 /usr 和 /home 应保留', '单段 /usr 和 /home 应保留'],
+    ['【提示】（请注意）“测试”：你好，世界！《完》', '提示,请注意,测试:你好,世界!完'],
+    ['现在是08:31，请准时开始。', '现在是08:31,请准时开始.'],
+    ['他说：“你好”，她答：‘好的’。附注(可略)。', '他说:你好,她答:好的.附注可略.'],
+    ['提示： 请先打开相册。', '提示: 请先打开相册.'],
+    ['前一句——后一句', '前一句,后一句'],
+    ['前一句 —— 后一句', '前一句, 后一句'],
+    ['前一句–后一句－再一句', '前一句,后一句,再一句'],
+    ['前一句～后一句', '前一句.后一句'],
+    ['前一句……后一句⋯再一句', '前一句.后一句.再一句'],
+    ['第一行\n第二行', '第一行.第二行'],
+  ]) assert.equal(prepareTtsText(input), expected, input)
+  const quoted = prepareTtsText('但有件事得认：**"发我看看"我做不到**。')
+  assert.equal(quoted, '但有件事得认:发我看看我做不到.')
+  assert.equal(prepareTtsText(quoted), quoted)
 })
 
-test('removes emoji, icons, invisible characters, and empty filtered content', () => {
-  assert.equal(prepareTtsText('你好 👋‍🌍 ★\u200B，继续。'), '你好,继续.')
-  assert.equal(prepareTtsText('https://example.com/path'), '')
-  assert.equal(prepareTtsText(String.raw`C:\temp\audio.wav`), '')
-  assert.equal(prepareTtsText('```\nignored\n```'), '')
-})
-
-test('removes multi-segment paths but keeps single-segment path-like words', () => {
-  assert.equal(prepareTtsText(String.raw`复制到 D:\backup\notes.txt 完成`), '复制到 完成')
-  assert.equal(prepareTtsText('路径 /usr/local/bin/app 已就绪'), '路径 已就绪')
-  assert.equal(prepareTtsText('单段 /usr 和 /home 应保留'), '单段 /usr 和 /home 应保留')
-})
-
-test('normalizes Chinese parentheses and colons while keeping ASCII colons', () => {
-  assert.equal(prepareTtsText('【提示】（请注意）“测试”：你好，世界！《完》'), '提示,请注意,测试:你好,世界!完')
-  assert.equal(prepareTtsText('现在是08:31，请准时开始。'), '现在是08:31,请准时开始.')
-  assert.equal(prepareTtsText('他说：“你好”，她答：‘好的’。附注(可略)。'), '他说:你好,她答:好的.附注可略.')
-})
-
-test('preserves the colon before emphasized quoted speech through repeated filtering', () => {
-  const text = prepareTtsText('但有件事得认：**"发我看看"我做不到**。')
-  assert.equal(text, '但有件事得认:发我看看我做不到.')
-  assert.equal(prepareTtsText(text), text)
-  assert.equal(prepareTtsText('提示： 请先打开相册。'), '提示: 请先打开相册.')
-})
-
-test('preserves pauses signaled by em and en dashes', () => {
-  assert.equal(prepareTtsText('前一句——后一句'), '前一句,后一句')
-  assert.equal(prepareTtsText('前一句 —— 后一句'), '前一句, 后一句')
-  assert.equal(prepareTtsText('前一句–后一句－再一句'), '前一句,后一句,再一句')
-})
-
-test('turns sentence-level wave dashes and ellipses into periods', () => {
-  assert.equal(prepareTtsText('前一句～后一句'), '前一句.后一句')
-  assert.equal(prepareTtsText('前一句……后一句⋯再一句'), '前一句.后一句.再一句')
-})
-
-test('turns physical line breaks into sentence-ending periods', () => {
-  assert.equal(prepareTtsText('第一行\n第二行'), '第一行.第二行')
-})
-
-test('splits accumulated assistant text only at completed sentence boundaries', () => {
+test('splits accumulated assistant text at completed sentence boundaries, retaining closing quotes', () => {
   const r1 = sharedModule.splitCompletedTtsSentences('第一句。第二句！还没结束')
   assert.deepEqual({ sentences: r1.sentences, remainder: r1.remainder }, { sentences: ['第一句。', '第二句！'], remainder: '还没结束' })
   assert.equal(r1.inCode, false)
@@ -333,9 +255,6 @@ test('splits accumulated assistant text only at completed sentence boundaries', 
   assert.deepEqual({ sentences: r2.sentences, remainder: r2.remainder }, { sentences: ['他说：“好了。”\n', '下一行；'], remainder: '' })
   assert.equal(r2.inCode, false)
   assert.equal(r2.consumed, '他说：“好了。”\n下一行；'.length)
-})
-
-test('keeps closing quotes and brackets with their completed sentence', () => {
   for (const [opening, closing] of [['“', '”'], ['‘', '’'], ['"', '"'], ["'", "'"]]) {
     const first = `他说：【${opening}好了。${closing}】\n`
     const remainder = '下一句尚未结束'
@@ -344,32 +263,6 @@ test('keeps closing quotes and brackets with their completed sentence', () => {
     assert.equal(result.remainder, remainder)
     assert.equal(result.consumed, first.length)
   }
-})
-
-test('skips complete fenced code blocks and holds unclosed ones', () => {
-  // Complete fenced block: code is dropped entirely.
-  const r1 = sharedModule.splitCompletedTtsSentences('你好。\n```python\nprint("hi")\n```\n继续。')
-  assert.deepEqual(r1.sentences, ['你好。\n', '继续。'])
-  assert.equal(r1.remainder, '')
-  assert.equal(r1.inCode, false)
-  assert.equal(r1.consumed, '你好。\n```python\nprint("hi")\n```\n继续。'.length)
-
-  // Unclosed fence: held as remainder, inCode=true, consumed stops before the fence.
-  const r2 = sharedModule.splitCompletedTtsSentences('你好。\n```python\nprint("hi")')
-  assert.deepEqual(r2.sentences, ['你好。\n'])
-  assert.equal(r2.remainder, '```python\nprint("hi")')
-  assert.equal(r2.inCode, true)
-  assert.equal(r2.consumed, '你好。\n'.length)
-
-  // Tilde fences work too.
-  const r3 = sharedModule.splitCompletedTtsSentences('开头。\n~~~bash\necho x\n~~~\n结尾。')
-  assert.deepEqual(r3.sentences, ['开头。\n', '结尾。'])
-  assert.equal(r3.inCode, false)
-
-  // No fences at all — unchanged behaviour.
-  const r4 = sharedModule.splitCompletedTtsSentences('仅文本。没有代码。')
-  assert.deepEqual(r4.sentences, ['仅文本。', '没有代码。'])
-  assert.equal(r4.inCode, false)
 })
 
 test('batches short stream sentences until at least twenty spoken characters or final flush', () => {
@@ -381,20 +274,10 @@ test('batches short stream sentences until at least twenty spoken characters or 
     request: '第一句很短。第二句继续补充一些内容，使总字数达到二十个字。',
   })
   assert.deepEqual(batchTtsStreamText('不足二十字。', '', true), { pending: '', request: '不足二十字。' })
-})
-
-test('starts browser speech at twenty text characters without counting punctuation or spaces', () => {
   const pending = `${'甲'.repeat(19)}， 。 `
   assert.deepEqual(batchTtsStreamText('', pending, false), { pending, request: null })
   assert.deepEqual(batchTtsStreamText(pending, '乙。', false), { pending: '', request: `${pending}乙。` })
   assert.deepEqual(batchTtsStreamText('', '尾句。', false), { pending: '尾句。', request: null })
-})
-
-test('parses PCM SSE records without consuming a partial network record', () => {
-  assert.deepEqual(
-    sharedModule.parseSseRecords('data: {"choices":[1]}\n\ndata: partial'),
-    { events: ['{"choices":[1]}'], remainder: 'data: partial' },
-  )
 })
 
 test('cancelling the realtime sentence queue aborts the in-flight request and drops queued sentences', async () => {

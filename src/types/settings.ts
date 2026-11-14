@@ -174,7 +174,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   voiceDesignPlaybackMode: 'complete',
   readScope: 'smart',
   autoPlay: false,
-  showReadingCaptions: false,
+  showReadingCaptions: true,
   voiceInputCompatibility: true,
   inputAvoidance: false,
   importantAnnouncementsFirst: false,

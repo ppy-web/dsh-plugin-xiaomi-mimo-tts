@@ -42,8 +42,8 @@ test('MOSS availability is independent from cloud providers and respects read-on
   }
 })
 
-for (const [doubaoEnabled, breezeEnabled] of [[true, false], [false, true], [true, true]]) {
-  test(`provider switches protect the last optional provider: ${doubaoEnabled}/${breezeEnabled}`, () => {
+test('provider switches protect the last optional provider', () => {
+  for (const [doubaoEnabled, breezeEnabled] of [[true, false], [false, true], [true, true]]) {
     const calls = []
     const controls = switches(ProviderSettings({
       t: key => key, writable: true, doubaoEnabled, breezeEnabled, mossEnabled: false,
@@ -76,5 +76,5 @@ for (const [doubaoEnabled, breezeEnabled] of [[true, false], [false, true], [tru
       assert.equal(html.includes('checked=""'), checked)
       assert.equal(html.includes('disabled=""'), disabled)
     }
-  })
-}
+  }
+})

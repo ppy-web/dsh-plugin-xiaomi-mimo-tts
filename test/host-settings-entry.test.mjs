@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { Context } from '@deepseek-ai/cordis'
 import { resolveTtsSettings } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { observeHostSettingsEntry } = await loadClientModule('src/client/settings/host-settings-entry.ts')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
+const { VOICE_READING_SECTION_ID, registerVoiceReadingNavIcon } = await loadClientModule('src/client/settings/nav-icon.tsx')
 
 function host(initial, status = 'ready') {
   let snapshot = { value: initial, status }
@@ -86,4 +88,23 @@ test('Host settings visibility defaults on and persists independently from voice
   await saveSettingsDraft(scope, resolveTtsSettings(user), { showInHostSettings: { kind: 'clear' } }, keys)
   assert.deepEqual(user, original)
   assert.equal(resolveTtsSettings(user).showInHostSettings, true)
+})
+
+test('Voice reading registers and removes the matching Host settings nav icon', async () => {
+  const ctx = new Context(), registered = new Map()
+  ctx.provide('slots', {
+    register(options, component) {
+      registered.set(options.id, { options, component })
+      return () => registered.delete(options.id)
+    },
+  })
+  try {
+    const dispose = registerVoiceReadingNavIcon(ctx)
+    const entry = registered.get(VOICE_READING_SECTION_ID)
+    assert.equal(entry.options.name, 'settings.section.icon')
+    assert.equal(entry.options.id, 'voice-reading')
+    assert.equal(typeof entry.component, 'function')
+    dispose()
+    assert.equal(registered.size, 0)
+  } finally { await ctx.fiber.dispose() }
 })

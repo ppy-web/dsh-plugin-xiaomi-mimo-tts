@@ -3,14 +3,14 @@ import test from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import ToolsService from '@deepseek-ai/dsh-tools'
 import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { createScope } from '@deepseek-ai/dsh-scope'
-import { QqCompanion, QqIdentityReader, QqMemoryStore, DEFAULT_WHALE_PERSONA } from '../lib/qqbot.js'
+import { QqCompanion, QqIdentityReader, QqMemoryStore, QqMemoryAdmin, DEFAULT_WHALE_PERSONA } from '../lib/qqbot.js'
 import * as whaleAgent from '../lib/whale-agent.js'
 import * as qqAgent from '../lib/qqbot-agent.js'
 
@@ -45,7 +45,9 @@ async function fixture(run) {
       now: () => now, time: value => { now = value } })
   } finally {
     await Promise.all(instances.map(instance => instance.dispose()))
-    await rm(directory, { recursive: true, force: true })
+    assert.equal(dirname(resolve(directory)), resolve(tmpdir()))
+    assert.ok(basename(directory).startsWith('qq-companion-'))
+    await rm(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
   }
 }
 
@@ -61,6 +63,22 @@ test('identity mapping is structural, read-only and rejects missing, malformed o
     await assert.rejects(identity.resolve(peer.id), { code: 'qqbot-identity-unavailable' })
     await rm(mapping)
     await assert.rejects(identity.resolve(peer.id), { code: 'qqbot-identity-unavailable' })
+  })
+})
+
+test('QQ memory admin lists known peers and edits only the selected namespace', async () => {
+  await fixture(async ({ mapping, store, key, map }) => {
+    const other = 'qqbot:bot-one:group:room'
+    await map({ [key]: 'session-one', [other]: 'session-two' })
+    const admin = new QqMemoryAdmin(store, new QqIdentityReader(mapping))
+    const first = await admin.update({ key, action: 'save', kind: 'preference', text: '叫我小林' })
+    assert.equal(first.entries[0].text, '叫我小林')
+    const edited = await admin.update({ key, action: 'save', id: first.entries[0].id, kind: 'preference', text: '叫我小鲸' })
+    assert.equal(edited.entries[0].text, '叫我小鲸')
+    assert.equal((await admin.list()).find(peer => peer.key === other).entries.length, 0)
+    await admin.update({ key, action: 'delete', id: edited.entries[0].id })
+    assert.equal((await admin.list()).find(peer => peer.key === key).entries.length, 0)
+    await assert.rejects(admin.update({ key: 'qqbot:bot-one:c2c:unknown', action: 'clear' }), { code: 'qqbot-memory-identity-unavailable' })
   })
 })
 
@@ -109,18 +127,25 @@ test('memory limits, topic expiry and concurrent stores protect saved records', 
   await fixture(async ({ companion, peer, store, directory, key }) => {
     await companion.prepare(peer)
     const secondStore = new QqMemoryStore('profile-one:qq-component', directory)
-    await Promise.all(Array.from({ length: 12 }, (_, index) => (index % 2 ? store : secondStore).update(key, state => {
-      state.entries.push({ id: String(index), kind: 'preference', text: `偏好 ${index}`, updatedAt: baseTime })
-    })))
-    assert.equal((await store.load(key)).entries.length, 12)
-    for (let index = 12; index < 32; index++) await companion.memory(peer, { action: 'save', kind: 'preference', text: `偏好 ${index}` }, signal())
+    try {
+      await Promise.all(Array.from({ length: 12 }, (_, index) => (index % 2 ? store : secondStore).update(key, state => {
+        state.entries.push({ id: String(index), kind: 'preference', text: `偏好 ${index}`, updatedAt: baseTime })
+      })))
+    } finally { await secondStore.drain() }
+    const saved = await store.load(key)
+    assert.deepEqual(new Set(saved.entries.map(entry => entry.id)), new Set(Array.from({ length: 12 }, (_, index) => String(index))))
+    await store.update(key, state => {
+      for (let index = 12; index < 31; index++) state.entries.push({ id: String(index), kind: 'preference', text: `偏好 ${index}`, updatedAt: baseTime })
+      state.entries = state.entries.map(entry => ({ ...entry, text: `${entry.text} ${'长内容'.repeat(70)}` }))
+      state.topics = Array.from({ length: 7 }, (_, index) => ({ id: `topic-${index}`, title: `话题 ${index}`, updatedAt: baseTime, expiresAt: baseTime + day }))
+    })
+    await companion.memory(peer, { action: 'save', kind: 'preference', text: '偏好 31' }, signal())
     await assert.rejects(companion.memory(peer, { action: 'save', kind: 'preference', text: '超过上限' }, signal()), { code: 'qqbot-memory-full' })
     const entries = (await companion.memory(peer, { action: 'list' }, signal())).entries
-    for (const entry of entries) await companion.memory(peer, { action: 'save', id: entry.id, kind: 'preference', text: `偏好 ${entry.id} ${'长内容'.repeat(70)}` }, signal())
     await companion.memory(peer, { action: 'save', id: entries[0].id, kind: 'requirement', text: '优先保留的重要要求' }, signal())
     assert.ok(companion.context(peer).includes('优先保留的重要要求'))
     assert.ok(companion.context(peer).length < 6500, 'bounded context must retain the user requirements')
-    for (let index = 0; index < 8; index++) await companion.memory(peer, { action: 'save', kind: 'topic', text: `话题 ${index}` }, signal())
+    await companion.memory(peer, { action: 'save', kind: 'topic', text: '话题 7' }, signal())
     await assert.rejects(companion.memory(peer, { action: 'save', kind: 'topic', text: '第九个' }, signal()), { code: 'qqbot-memory-full' })
     await assert.rejects(companion.memory(peer, { action: 'save', kind: 'topic', text: '非法过期', expiresInDays: 31 }, signal()), { code: 'qqbot-topic-expiry-invalid' })
     assert.ok((await readdir(store.directory)).every(file => file.endsWith('.json')))
@@ -155,7 +180,10 @@ test('earlier memory files keep preferences and topics across restart and subseq
 
 test('expired topics leave normal conversation context and free capacity for a new topic', async () => {
   await fixture(async ({ companion, peer, time, store, key }) => {
-    for (let index = 0; index < 8; index++) await companion.memory(peer, { action: 'save', kind: 'topic', text: `旧话题 ${index}`, expiresInDays: 1 }, signal())
+    await store.update(key, state => {
+      state.topics = Array.from({ length: 7 }, (_, index) => ({ id: `old-${index}`, title: `旧话题 ${index}`, updatedAt: baseTime, expiresAt: baseTime + day }))
+    })
+    await companion.memory(peer, { action: 'save', kind: 'topic', text: '旧话题 7', expiresInDays: 1 }, signal())
     assert.ok(companion.context(peer).includes('旧话题 0'))
     time(baseTime + 2 * day)
     assert.ok(!companion.context(peer).includes('旧话题'))

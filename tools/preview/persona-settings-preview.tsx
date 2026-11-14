@@ -55,7 +55,7 @@ function componentFromHash(): Component {
   return COMPONENTS.includes(id as Component) ? id as Component : 'desktop'
 }
 
-export function PersonaSettingsPreview({ locale, readOnly = false }: { locale: 'zh' | 'en'; readOnly?: boolean }) {
+export function PersonaSettingsPreview({ locale, ttsScope, readOnly = false }: { locale: 'zh' | 'en'; ttsScope: PreviewSettingsScope; readOnly?: boolean }) {
   const [desktop] = useState(() => componentScope(structuredClone(DEFAULT_WHALE_SETTINGS)))
   const [qq] = useState(() => componentScope(structuredClone(DEFAULT_WHALE_SETTINGS)))
   const [passport] = useState(() => componentScope({ ...DEFAULT_PASSPORT_SETTINGS }))
@@ -63,8 +63,8 @@ export function PersonaSettingsPreview({ locale, readOnly = false }: { locale: '
   const [selected, setSelected] = useState<Component>(componentFromHash)
   const t: Translate = key => (locale === 'zh' ? zh : en)[key]
   useEffect(() => {
-    for (const scope of [desktop, qq, passport, speech]) scope.setWritable(!readOnly)
-  }, [readOnly, desktop, qq, passport, speech])
+    for (const scope of [desktop, qq, passport, speech, ttsScope]) scope.setWritable(!readOnly)
+  }, [readOnly, desktop, qq, passport, speech, ttsScope])
   useEffect(() => {
     const navigate = (): void => {
       if (!window.location.hash.startsWith('#components-')) return
@@ -101,7 +101,7 @@ export function PersonaSettingsPreview({ locale, readOnly = false }: { locale: '
       <QqbotSpeechSettings view="page" scope={speech} personaScope={qq} t={t} />
     </div>
     <div className="preview-component-panel" role="tabpanel" id="preview-panel-passport" aria-labelledby="preview-tab-passport" hidden={selected !== 'passport'}>
-      <PassportSettingsPage view="page" scope={passport} t={t} guideHref="#passport" openTtsSettings={() => { window.location.hash = 'settings' }} tokenConfigured={IDLE_PLUGIN_CHANGES}
+      <PassportSettingsPage view="page" scope={passport} ttsScope={ttsScope} t={t} guideHref="#passport" openTtsSettings={() => { window.location.hash = 'settings' }} tokenConfigured={IDLE_PLUGIN_CHANGES}
         presets={[{ id: 'whale-girl', name: locale === 'zh' ? '鲸鱼娘' : 'Whale Girl' }, { id: 'standard', name: locale === 'zh' ? '通用助手' : 'General assistant' }]}
         connectionStatus={{ configured: false, listening: false, connected: false, servicesReady: true, recognitionReady: true,
           recognitionChoices: [{ id: 'host', configured: true }, { id: 'xiaomi', configured: true }, { id: 'doubao', configured: true }, { id: 'doubao-nostream', configured: true }],

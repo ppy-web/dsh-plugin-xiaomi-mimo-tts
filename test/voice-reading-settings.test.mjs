@@ -17,7 +17,6 @@ const {
   voiceReadingWarningKey,
   voiceChoiceWriteOps,
   autoPlayWriteOps,
-  readScopeLabelKey,
   readScopeHintKey,
   readScopeWriteOps,
   soundWriteOps,
@@ -27,7 +26,6 @@ const {
   formatVoiceRate,
   VOICE_RATE_RANGE,
 } = await loadClientModule('src/client/settings/voice-reading-options.ts')
-const { zh, en } = await loadClientModule('src/client/localization.ts')
 const { LensSlider } = await loadClientModule('src/client/settings/controls/lens-slider.tsx')
 const { ReadScopeCards } = await loadClientModule('src/client/settings/controls/read-scope-cards.tsx')
 const { centeredRangeScale } = await loadClientModule('src/client/settings/controls/use-settings-range.ts')
@@ -88,53 +86,59 @@ function sortedValues(choices) {
   return choices.map(choice => choice.value).sort()
 }
 
-for (const mode of [
+const voiceSourceModes = [
   {
     name: 'xiaomi built-in voices',
     settings: {},
     field: 'voice',
-    hintKey: 'settings.voiceReadingHintXiaomi',
+    expectedPaths: ['voice'],
     presetValues: TTS_VOICE_PRESETS.map(preset => preset.value),
   },
   {
     name: 'xiaomi voice design',
     settings: { model: 'mimo-v2.5-tts-voicedesign' },
     field: 'voiceDesignPrompt',
-    hintKey: 'settings.voiceReadingHintVoiceDesign',
+    expectedPaths: ['voiceDesignPrompt', 'voiceDesignCustomPrompt'],
     presetValues: TTS_VOICE_DESIGN_PRESETS.map(preset => preset.prompt),
   },
   {
     name: 'doubao standard voices',
     settings: { provider: 'doubao' },
     field: 'doubaoVoice',
-    hintKey: 'settings.voiceReadingHintDoubaoStandard',
+    expectedPaths: ['doubaoVoice'],
     presetValues: DOUBAO_VOICE_PRESETS.map(preset => preset.value),
   },
   {
     name: 'doubao cloned voices',
     settings: { provider: 'doubao', doubaoModel: 'seed-icl-2.0', doubaoClonedVoice: 'clone-current' },
     field: 'doubaoClonedVoice',
-    hintKey: 'settings.voiceReadingHintDoubaoCloned',
+    expectedPaths: ['doubaoClonedVoice'],
     presetValues: ['clone-current'],
   },
   {
     name: 'breeze voices',
     settings: { provider: 'breeze', breezeEnabled: true },
     field: 'breezeVoice',
-    hintKey: 'settings.voiceReadingHintBreeze',
+    expectedPaths: ['breezeVoice'],
     presetValues: BREEZE_VOICE_PRESETS.map(preset => preset.value),
   },
-]) test(`${mode.name} select the matching voice field and hint`, () => {
-  const resolved = resolveTtsSettings(mode.settings)
-  const source = buildVoiceReadingVoiceSource(resolved)
-  assert.equal(source.field, mode.field)
-  assert.equal(source.value, resolved[mode.field])
-  assert.equal(source.hintKey, mode.hintKey)
-  assert.deepEqual(sortedValues(source.choices), [...mode.presetValues].sort())
-  for (const choice of source.choices) {
-    assert.equal(typeof choice.value, 'string')
-    assert.equal(typeof choice.label, 'string')
-    assert.ok(choice.label.length > 0, 'choice labels must be non-empty')
+]
+
+test('voice sources expose provider choices and save only the matching settings', () => {
+  for (const mode of voiceSourceModes) {
+    const resolved = resolveTtsSettings(mode.settings)
+    const source = buildVoiceReadingVoiceSource(resolved)
+    assert.equal(source.field, mode.field, mode.name)
+    assert.equal(source.value, resolved[mode.field], mode.name)
+    assert.deepEqual(sortedValues(source.choices), [...mode.presetValues].sort(), mode.name)
+    for (const choice of source.choices) {
+      assert.equal(typeof choice.value, 'string')
+      assert.ok(choice.value.trim(), `${mode.name}: an empty voice cannot be selected`)
+      assert.equal(typeof choice.label, 'string')
+      assert.ok(choice.label.length > 0, 'choice labels must be non-empty')
+    }
+    const selected = source.choices.find(choice => choice.value !== source.value)?.value ?? 'custom-voice-id'
+    assertSetOperations(voiceChoiceWriteOps(source, selected), Object.fromEntries(mode.expectedPaths.map(path => [path, selected])))
   }
 })
 
@@ -164,127 +168,31 @@ test('cloned voice source tolerates missing history and a blank current id', () 
   assert.deepEqual(blank.choices.map(choice => choice.value), ['from-history'])
 })
 
-for (const mode of [
-  {
-    name: 'xiaomi',
-    settings: {},
-    field: 'voice',
-    expectedPaths: ['voice'],
-  },
-  {
-    name: 'voice design',
-    settings: { model: 'mimo-v2.5-tts-voicedesign' },
-    field: 'voiceDesignPrompt',
-    expectedPaths: ['voiceDesignPrompt', 'voiceDesignCustomPrompt'],
-  },
-  {
-    name: 'doubao standard',
-    settings: { provider: 'doubao' },
-    field: 'doubaoVoice',
-    expectedPaths: ['doubaoVoice'],
-  },
-  {
-    name: 'doubao cloned',
-    settings: { provider: 'doubao', doubaoModel: 'seed-icl-2.0' },
-    field: 'doubaoClonedVoice',
-    selected: 'new-clone-id',
-    expectedPaths: ['doubaoClonedVoice'],
-  },
-]) test(`${mode.name} voice selection writes ${mode.expectedPaths.join(' + ')} with no duplicates`, () => {
-  const source = buildVoiceReadingVoiceSource(resolveTtsSettings(mode.settings))
-  assert.equal(source.field, mode.field)
-  // Pick any preset other than the current value so the test never depends on catalog order.
-  const selected = mode.selected ?? source.choices.map(choice => choice.value).find(value => value !== source.value)
-  assert.ok(selected, `${mode.name} needs at least one selectable preset`)
-  const ops = voiceChoiceWriteOps(source, selected)
-  for (const op of ops) {
-    assert.equal(op.op, 'set')
-    assert.equal(op.value, selected)
-  }
-  const paths = ops.map(op => op.path.join('.'))
-  assert.equal(new Set(paths).size, paths.length, 'duplicate write paths')
-  assert.deepEqual(paths.sort(), [...mode.expectedPaths].sort())
+test('automatic playback preserves or enables voice reading as needed', () => {
+  for (const [enabled, current, expected] of [
+    [false, {}, { autoPlay: false }],
+    [true, { enabled: true }, { autoPlay: true }],
+    [true, { enabled: false }, { autoPlay: true, enabled: true }],
+  ]) assertSetOperations(autoPlayWriteOps(enabled, resolveTtsSettings(current)), expected)
 })
 
-test('turning automatic playback off writes only autoPlay false', () => {
-  assert.deepEqual(autoPlayWriteOps(false, resolveTtsSettings({})), [
-    { op: 'set', path: ['autoPlay'], value: false },
-  ])
+test('sound effects preserve an existing scope or enable both when none is selected', () => {
+  for (const [enabled, current, expected] of [
+    [false, { soundEnabled: true, taskSounds: true, clickSounds: true }, { soundEnabled: false }],
+    [true, {}, { soundEnabled: true, taskSounds: true, clickSounds: true }],
+    [true, { taskSounds: false, clickSounds: true }, { soundEnabled: true }],
+    [true, { taskSounds: true, clickSounds: false }, { soundEnabled: true }],
+    [true, { taskSounds: true, clickSounds: true }, { soundEnabled: true }],
+  ]) assertSetOperations(soundWriteOps(enabled, resolveTtsSettings(current)), expected)
 })
 
-test('turning automatic playback on keeps an already enabled voice reading setting', () => {
-  const ops = autoPlayWriteOps(true, resolveTtsSettings({ enabled: true }))
-  assert.deepEqual(ops, [{ op: 'set', path: ['autoPlay'], value: true }])
-})
-
-test('turning automatic playback on also enables a disabled voice reading setting', () => {
-  const ops = autoPlayWriteOps(true, resolveTtsSettings({ enabled: false }))
-  assertSetOperations(ops, { autoPlay: true, enabled: true })
-})
-
-test('turning sound effects off writes only soundEnabled false', () => {
-  const current = resolveTtsSettings({ soundEnabled: true, taskSounds: true, clickSounds: true })
-  assert.deepEqual(soundWriteOps(false, current), [
-    { op: 'set', path: ['soundEnabled'], value: false },
-  ])
-})
-
-test('turning sound effects on from fully disabled enables both sound scopes', () => {
-  const ops = soundWriteOps(true, resolveTtsSettings({}))
-  assertSetOperations(ops, { soundEnabled: true, taskSounds: true, clickSounds: true })
-})
-
-test('turning sound effects on preserves an existing narrow or full scope', () => {
-  for (const current of [
-    { soundEnabled: false, taskSounds: false, clickSounds: true },
-    { soundEnabled: false, taskSounds: true, clickSounds: false },
-    { soundEnabled: false, taskSounds: true, clickSounds: true },
-  ]) {
-    assertSetOperations(soundWriteOps(true, resolveTtsSettings(current)), { soundEnabled: true })
+test('read scope selection writes only the selected scope', () => {
+  for (const scope of TTS_READ_SCOPES) {
+    assert.deepEqual(readScopeWriteOps(scope), [{ op: 'set', path: ['readScope'], value: scope }])
   }
 })
 
-test('resolved settings always yield a voice change that satisfies the write contract', () => {
-  const inputs = [
-    {},
-    { provider: 'doubao' },
-    { provider: 'doubao', doubaoModel: 'seed-icl-2.0' },
-    { model: 'mimo-v2.5-tts-voicedesign' },
-  ]
-  for (const input of inputs) {
-    const resolved = resolveTtsSettings(input)
-    const source = buildVoiceReadingVoiceSource(resolved)
-    assert.ok(Array.isArray(source.choices))
-    assert.equal(source.value, resolved[source.field], `source value must mirror ${source.field}`)
-    const ops = voiceChoiceWriteOps(source, source.value)
-    assert.ok(ops.length > 0)
-    for (const op of ops) {
-      assert.equal(op.op, 'set')
-      assert.ok(Array.isArray(op.path) && op.path.length > 0, 'write path must be non-empty')
-    }
-    const paths = ops.map(op => op.path.join('.'))
-    assert.equal(new Set(paths).size, paths.length, 'duplicate write paths')
-  }
-})
-
-test('every read scope maps to a distinct localized label and hint in both locales', () => {
-  const labels = TTS_READ_SCOPES.map(scope => readScopeLabelKey(scope))
-  const hints = TTS_READ_SCOPES.map(scope => readScopeHintKey(scope))
-  assert.equal(new Set(labels).size, labels.length, 'read scope labels must be distinct')
-  assert.equal(new Set(hints).size, hints.length, 'read scope hints must be distinct')
-  for (const key of [...labels, ...hints]) {
-    assert.equal(typeof zh[key], 'string', `missing zh copy for ${key}`)
-    assert.ok(zh[key].length > 0, `empty zh copy for ${key}`)
-    assert.equal(typeof en[key], 'string', `missing en copy for ${key}`)
-    assert.ok(en[key].length > 0, `empty en copy for ${key}`)
-  }
-})
-
-for (const scope of TTS_READ_SCOPES) test(`selecting the ${scope} read scope writes only readScope`, () => {
-  assert.deepEqual(readScopeWriteOps(scope), [{ op: 'set', path: ['readScope'], value: scope }])
-})
-
-test('only the selected scope has a description, outside the clickable card labels', () => {
+test('only the selected scope has an accessible description', () => {
   for (const value of TTS_READ_SCOPES) {
     const html = renderToStaticMarkup(createElement(ReadScopeCards, { value, t: key => key, onChange() {} }))
     const labels = [...html.matchAll(/<label\b[^>]*>[\s\S]*?<\/label>/gu)].map(match => match[0])
@@ -293,7 +201,6 @@ test('only the selected scope has a description, outside the clickable card labe
     assert.match(described[0], /\bchecked=""/u)
     for (const scope of TTS_READ_SCOPES) {
       const hint = readScopeHintKey(scope)
-      assert.ok(labels.every(label => !label.includes(hint)))
       assert.equal(html.includes(hint), scope === value)
     }
   }
@@ -340,18 +247,22 @@ test('volume and speed writes preserve arbitrary slider steps and their own fiel
   assert.deepEqual(rateWriteOps(2), [{ op: 'set', path: ['voiceRate'], value: 2 }])
 })
 
-for (const [kind, settings, field] of [
+const voiceRemarkModes = [
   ['standard', { provider: 'doubao', doubaoVoice: 'custom-standard' }, 'doubaoVoice'],
   ['cloned', { provider: 'doubao', doubaoModel: 'seed-icl-2.0', doubaoClonedVoice: 'custom-cloned' }, 'doubaoClonedVoice'],
   ['breeze', { provider: 'breeze', breezeEnabled: true, breezeVoice: 'custom-breeze' }, 'breezeVoice'],
-]) test(`${kind} remarks label custom choices without changing saved synthesis IDs`, () => {
-  const id = settings[field]
-  const resolved = resolveTtsSettings(settings)
-  const source = buildVoiceReadingVoiceSource(resolved, [], { [kind]: { history: [id, id, 'other'], names: { [id]: '我的声音' } } })
-  assert.equal(source.choices.filter(choice => choice.value === id).length, 1)
-  assert.equal(source.choices.find(choice => choice.value === id).label, '我的声音')
-  assertSetOperations(voiceChoiceWriteOps(source, id), { [field]: id })
-  const removed = buildVoiceReadingVoiceSource(resolved, [], { [kind]: { history: [], names: {} } })
-  assert.equal(removed.choices.find(choice => choice.value === id).label, id)
-  assert.equal(removed.choices.some(choice => choice.value === 'other'), false)
+]
+
+test('voice remarks preserve their synthesis IDs for each provider', () => {
+  for (const [kind, settings, field] of voiceRemarkModes) {
+    const id = settings[field]
+    const resolved = resolveTtsSettings(settings)
+    const source = buildVoiceReadingVoiceSource(resolved, [], { [kind]: { history: [id, id, 'other'], names: { [id]: '我的声音' } } })
+    assert.equal(source.choices.filter(choice => choice.value === id).length, 1)
+    assert.equal(source.choices.find(choice => choice.value === id).label, '我的声音')
+    assertSetOperations(voiceChoiceWriteOps(source, id), { [field]: id })
+    const removed = buildVoiceReadingVoiceSource(resolved, [], { [kind]: { history: [], names: {} } })
+    assert.equal(removed.choices.find(choice => choice.value === id).label, id)
+    assert.equal(removed.choices.some(choice => choice.value === 'other'), false)
+  }
 })

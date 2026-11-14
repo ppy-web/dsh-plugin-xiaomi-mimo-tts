@@ -13,7 +13,7 @@ function elements(node, type) {
   return [...(node.type === type ? [node] : []), ...elements(node.props.children, type)]
 }
 
-for (const locale of ['zh', 'en', 'ja', 'fr']) test(`${locale} style selection uses the selected provider's catalog and preserves custom input`, () => {
+function checkProviderInstructions(locale) {
   const t = key => {
     assert.equal(typeof locales[locale][key], 'string', `missing ${locale} translation: ${key}`)
     return locales[locale][key]
@@ -43,6 +43,10 @@ for (const locale of ['zh', 'en', 'ja', 'fr']) test(`${locale} style selection u
     assert.equal(shanghai, provider === 'doubao', 'MiMo must only offer its own dialect recommendations')
   }
   assert.notEqual(selectedPrompts[0], selectedPrompts[1], 'providers must not share the same delivery prompt')
+}
+
+test('style selection uses each provider catalog and preserves custom input in every language', () => {
+  for (const locale of ['zh', 'en', 'ja', 'fr']) checkProviderInstructions(locale)
 })
 
 test('compact and read-only style pickers retain provider-specific prompts and disable native controls', () => {
@@ -57,7 +61,7 @@ test('compact and read-only style pickers retain provider-specific prompts and d
   }
 })
 
-for (const locale of ['zh', 'en', 'ja', 'fr']) test(`${locale} Breeze presets replace custom instructions and Natural clears them in both display modes`, () => {
+function checkBreezeInstructions(locale) {
   const t = key => {
     assert.equal(typeof locales[locale][key], 'string', `missing ${locale} translation: ${key}`)
     return locales[locale][key]
@@ -81,4 +85,8 @@ for (const locale of ['zh', 'en', 'ja', 'fr']) test(`${locale} Breeze presets re
     textarea.props.onChange({ target: { value: 'edited Breeze instruction' } })
     assert.equal(value, 'edited Breeze instruction')
   }
+}
+
+test('Breeze presets replace and clear custom instructions in both display modes and every language', () => {
+  for (const locale of ['zh', 'en', 'ja', 'fr']) checkBreezeInstructions(locale)
 })

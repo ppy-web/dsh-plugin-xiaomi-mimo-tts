@@ -93,7 +93,7 @@ test('estimated caption timing stops while paused and does not restart after own
   assert.equal(clock.pending(), 0)
 })
 
-test('floating captions are opt-in', () => {
+test('floating captions default on and can be disabled', () => {
   const captions = new ReadingCaptions()
   const owner = {}
   captions.show(owner, 'first', '<unsafe> 正在读')
@@ -101,7 +101,8 @@ test('floating captions are opt-in', () => {
     sessionId, captions, t: () => 'Reading captions',
     settings: { getSnapshot: () => ({ status: 'ready', value: { showReadingCaptions: enabled } }), subscribe: () => () => {} },
   }))
-  assert.equal(resolveTtsSettings({}).showReadingCaptions, false)
+  assert.equal(resolveTtsSettings({}).showReadingCaptions, true)
+  assert.equal(resolveTtsSettings({ showReadingCaptions: false }).showReadingCaptions, false)
   assert.equal(render('first', false), '')
   // The visual portal is mounted only in a browser, after the composer is measured.
   assert.doesNotMatch(render('first', true), /unsafe/u)
@@ -120,10 +121,10 @@ test('caption settings save and reset without changing unrelated preferences', a
     },
   }
   const keys = { xiaomi: '', doubao: '', breeze: '' }
-  await saveSettingsDraft(scope, resolveTtsSettings({ ...user, showReadingCaptions: true }), { showReadingCaptions: { kind: 'set' } }, keys)
-  assert.equal(resolveTtsSettings(user).showReadingCaptions, true)
-  await saveSettingsDraft(scope, resolveTtsSettings(user), { showReadingCaptions: { kind: 'clear' } }, keys)
+  await saveSettingsDraft(scope, resolveTtsSettings({ ...user, showReadingCaptions: false }), { showReadingCaptions: { kind: 'set' } }, keys)
   assert.equal(resolveTtsSettings(user).showReadingCaptions, false)
+  await saveSettingsDraft(scope, resolveTtsSettings(user), { showReadingCaptions: { kind: 'clear' } }, keys)
+  assert.equal(resolveTtsSettings(user).showReadingCaptions, true)
   assert.equal(user.voiceRate, 1.3)
 })
 
@@ -153,6 +154,20 @@ test('caption setting is available in Host integration and Voice reading with th
     assert.equal(readingControl.includes('checked=""'), enabled)
     assert.equal(readingControl.includes('disabled=""'), !writable)
   }
+})
+
+test('Host integration presents one shared override action for multiple overridden switches', () => {
+  const html = renderToStaticMarkup(createElement(AnnouncementSettings, {
+    t: key => key, sources: [], writable: true, overridden: false, onChange() {}, onReset() {},
+    voiceInputCompatibility: false, voiceInputCompatibilityOverridden: true, onVoiceInputCompatibilityReset() {},
+    showReadingCaptions: false, showReadingCaptionsOverridden: true, onShowReadingCaptionsReset() {},
+  }))
+  const host = html.match(/<section\b[^>]*aria-label="settings\.hostIntegration"[^>]*>([\s\S]*?)<\/section>/u)?.[1]
+  assert.ok(host)
+  assert.equal((host.match(/settings\.overridden/gu) ?? []).length, 1)
+  assert.equal((host.match(/settings\.reset/gu) ?? []).length, 1)
+  assert.match(host, /aria-label="settings\.voiceInputCompatibility"/u)
+  assert.match(host, /aria-label="settings\.readingCaptions"/u)
 })
 
 test('caption history follows one playback and session across pauses', () => {

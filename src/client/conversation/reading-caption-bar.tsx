@@ -32,9 +32,10 @@ export function ReadingCaptionBar({ sessionId, captions, settings, t }: ReadingC
   const view = useSyncExternalStore(subscribe, captions.getSnapshot, captions.getSnapshot)
   const anchor = useRef<HTMLSpanElement>(null)
   const [position, setPosition] = useState<Position | null>(null)
+  const visible = enabled && view.sessionId === sessionId && !view.paused && !!view.text
 
   useClientLayoutEffect(() => {
-    if (!enabled || !anchor.current) { setPosition(null); return }
+    if (!visible || !anchor.current) { setPosition(null); return }
     const seat = anchor.current.closest('[data-composer-seat]')
     if (!seat) { setPosition(null); return }
     let card: Element | null = null
@@ -59,10 +60,9 @@ export function ReadingCaptionBar({ sessionId, captions, settings, t }: ReadingC
     window.visualViewport?.addEventListener('scroll', measure)
     measure()
     return () => { resize.disconnect(); mutations.disconnect(); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure, true); window.visualViewport?.removeEventListener('resize', measure); window.visualViewport?.removeEventListener('scroll', measure) }
-  }, [enabled, sessionId])
+  }, [visible, sessionId])
 
   if (!enabled) return null
-  const visible = view.sessionId === sessionId && !view.paused && !!view.text
   return <>
     <span ref={anchor} className="xmimo-reading-caption-anchor" aria-hidden="true" />
     {position && visible && typeof document !== 'undefined' && createPortal(

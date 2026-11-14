@@ -20,7 +20,7 @@ export { pcmWave, playbackPcm, PcmUtterances } from './passport/audio.js'
 export { PassportRecognition, hostRecognizer } from './passport/recognition.js'
 
 export const name = 'speech-delivery-passport'
-const ASR_TEST_ERRORS = new Set(['passport-asr-unavailable', 'passport-asr-key-required', 'passport-asr-auth-failed',
+const ASR_TEST_ERRORS = new Set(['passport-asr-unavailable', 'passport-asr-disabled', 'passport-asr-key-required', 'passport-asr-auth-failed',
   'passport-asr-permission-denied', 'passport-asr-quota-exceeded', 'passport-asr-rate-limited', 'passport-asr-timeout',
   'passport-asr-network-failed', 'passport-asr-invalid-response', 'passport-asr-input-overflow', 'passport-recognition-failed'])
 // Keep the configuration owner alive before ASR or the conversation services are ready.
@@ -196,6 +196,10 @@ export function apply(ctx: Context, config: Config): void {
     child.inject(['speechToText'], recognitionCtx => {
       if (config.asrProvider.get() === 'host') update()
       recognitionCtx.effect(() => () => { if (config.asrProvider.get() === 'host') update() })
+    })
+    child.inject(['passportRecognition'], recognitionCtx => {
+      if (config.asrProvider.get() !== 'host') update()
+      recognitionCtx.effect(() => () => { if (config.asrProvider.get() !== 'host') update() })
     })
     update()
   })

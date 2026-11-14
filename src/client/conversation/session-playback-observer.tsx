@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -38,7 +38,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   useEffect(() => questions?.activateSession(sessionId), [questions, sessionId])
   const ownsAudio = useSyncExternalStore(automaticAudioFocus.subscribe, automaticAudioFocus.canPlay, automaticAudioFocus.canPlay)
   const settingsSnapshot = useSettingsSnapshot(settings)
-  const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
+  const resolvedSettings = useMemo(() => resolveTtsSettings(settingsSnapshot.value), [settingsSnapshot.value])
   const engineView = useEngineState()
   const builtinKeySupported = useApiKeySupported(ownsAudio && !externalEngine() && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider)
   const apiKeySupported = externalEngine() ? engineView.engine?.ready ?? false : builtinKeySupported
@@ -47,15 +47,15 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   local.setMossVoice(resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice)
   local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
 
-  const sessionSnapshot = useSession(snapshot => snapshot)
+  const runningSnapshot = useSession(snapshot => snapshot.running)
+  const openState = useSession(snapshot => snapshot.openState)
   const legacy = useChat(chat => chat.legacy)
-  const runningSnapshot = sessionSnapshot.running
   const foldedReplies = useSyncExternalStore(automaticReading.subscribe, automaticReading.getSnapshot, automaticReading.getSnapshot)
   const replyMode = automaticReplyMode(foldedReplies, resolvedSettings.readScope)
   const concise = resolvedSettings.readScope === 'concise'
 
   const [speech] = useState(() => new RealtimeSpeechSession(live, local))
-  const selectionKey = JSON.stringify([ttsSelection(resolvedSettings), engineView, concise])
+  const selectionKey = useMemo(() => JSON.stringify([ttsSelection(resolvedSettings), engineView, concise]), [resolvedSettings, engineView, concise])
   const previousSelection = useRef(selectionKey)
   const active = useRef<{ turn: number; step: number } | null>(null)
   const wasRunning = useRef(runningSnapshot)
@@ -66,7 +66,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   const partialText = replyMode === 'final' || partial === null ? '' : assistantText(partial.blocks)
   const attachedMidRun = useRef(runningSnapshot)
   const resumeCheckpoint = useRef(runningSnapshot ? partial : null)
-  const awaitingOpen = useRef(runningSnapshot && sessionSnapshot.openState !== 'open')
+  const awaitingOpen = useRef(runningSnapshot && openState !== 'open')
 
   useEffect(() => {
     active.current = null
@@ -74,7 +74,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
     runArmed.current = true
     attachedMidRun.current = runningSnapshot
     resumeCheckpoint.current = runningSnapshot ? partial : null
-    awaitingOpen.current = runningSnapshot && sessionSnapshot.openState !== 'open'
+    awaitingOpen.current = runningSnapshot && openState !== 'open'
     playback.activateSession(sessionId)
     speech.activate(sessionId)
     return () => {
@@ -133,7 +133,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
     }
     if (!runArmed.current) return
     if (awaitingOpen.current) {
-      if (sessionSnapshot.openState !== 'open') return
+      if (openState !== 'open') return
       resumeCheckpoint.current = partial
       awaitingOpen.current = false
     }
@@ -163,7 +163,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       }
       // Keep the cursor across a gap between the partial and durable message snapshots.
     }
-  }, [automaticReading, replyMode, concise, audioFocus, automaticAudioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, sessionSnapshot.openState, speech, turn])
+  }, [automaticReading, replyMode, concise, audioFocus, automaticAudioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, openState, speech, turn])
 
   return null
 }

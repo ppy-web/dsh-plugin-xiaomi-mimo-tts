@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { DOUBAO_VOICE_PRESETS } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { VoiceIdInput } = await loadClientModule('src/client/settings/controls/voice-id-input.tsx')
@@ -47,36 +48,42 @@ function renderInput({ kind = 'standard', value, history = [value], names = {}, 
   }
 }
 
-test('standard history displays a recognized voice name while retaining its ID and selection', () => {
-  const id = 'zh_female_vv_uranus_bigtts'
+test('voice history uses preset names only for standard IDs and respects saved labels', t => {
+  const preset = DOUBAO_VOICE_PRESETS.find(voice => voice.value && voice.name)
+  if (!preset) return t.skip('No built-in voice presets')
+  const id = preset.value
   const html = renderInput({ value: ` ${id} `, history: [id, 'unknown-id'] })
-  const named = selectButtons(html).find(button => button.text === 'Vivi 2.0')
+  const named = selectButtons(html).find(button => button.text === preset.name)
   assert.ok(named, 'the preset name is shown for a recognized ID')
   assert.equal(named.selected, true)
   assert.ok(named.label.includes(id), 'the accessible name retains the synthesis ID')
   assert.equal(selectButtons(html).find(button => button.text === 'unknown-id').label, 'unknown-id')
   assert.equal(voiceField(html).value, ` ${id} `)
-})
 
-for (const kind of ['standard', 'cloned']) for (const locale of ['zh', 'en', 'ja', 'fr']) test(`${locale} ${kind} labels display saved remarks and keep the original voice ID`, () => {
-  const html = renderInput({ kind, locale, value: 'custom-id', names: { 'custom-id': 'My voice' } })
-  const named = selectButtons(html).find(button => button.text === 'My voice')
-  assert.ok(named)
-  assert.equal(named.selected, true)
-  assert.ok(named.label.includes('custom-id'))
-  const labels = renderedButtons(html).map(button => button.label)
-  assert.ok(labels.includes(`${locales[locale]['settings.voiceTagEdit']}: My voice`))
-  assert.ok(labels.includes(`${locales[locale]['settings.voiceTagRemove']}: My voice`))
-  assert.equal(voiceField(html).value, 'custom-id')
-})
-
-test('cloned IDs do not inherit standard names and unlabelled IDs remain usable', () => {
-  const id = 'zh_female_vv_uranus_bigtts'
-  const html = renderInput({ kind: 'cloned', value: id, history: [id, 'constructor'] })
-  const texts = selectButtons(html).map(button => button.text)
+  const cloned = renderInput({ kind: 'cloned', value: id })
+  const texts = selectButtons(cloned).map(button => button.text)
   assert.ok(texts.includes(id))
-  assert.ok(texts.includes('constructor'))
-  assert.ok(!renderedButtons(html).some(button => (button.label ?? '').includes('Vivi 2.0')), 'standard names must not leak into cloned history')
+  assert.ok(!renderedButtons(cloned).some(button => (button.label ?? '').includes(preset.name)), 'standard names must not leak into cloned history')
+
+  const custom = renderInput({ value: id, names: { [id]: 'My voice' } })
+  const labelled = selectButtons(custom).find(button => button.text === 'My voice')
+  assert.ok(labelled)
+  assert.ok(labelled.label.includes(id))
+  assert.equal(voiceField(custom).value, id)
+})
+
+test('saved voice remarks retain their IDs across voice types and languages', () => {
+  for (const kind of ['standard', 'cloned']) for (const locale of ['zh', 'en', 'ja', 'fr']) {
+    const html = renderInput({ kind, locale, value: 'custom-id', names: { 'custom-id': 'My voice' } })
+    const named = selectButtons(html).find(button => button.text === 'My voice')
+    assert.ok(named, `${kind}: ${locale}`)
+    assert.equal(named.selected, true)
+    assert.ok(named.label.includes('custom-id'))
+    const labels = renderedButtons(html).map(button => button.label)
+    assert.ok(labels.includes(`${locales[locale]['settings.voiceTagEdit']}: My voice`))
+    assert.ok(labels.includes(`${locales[locale]['settings.voiceTagRemove']}: My voice`))
+    assert.equal(voiceField(html).value, 'custom-id')
+  }
 })
 
 test('read-only inputs disable voice selection and remark editing', () => {
@@ -85,17 +92,9 @@ test('read-only inputs disable voice selection and remark editing', () => {
   assert.ok(renderedButtons(html).every(button => button.disabled))
 })
 
-test('a saved label overrides the automatic name without changing the synthesis ID', () => {
-  const id = 'zh_female_vv_uranus_bigtts'
-  const html = renderInput({ value: id, names: { [id]: 'My Vivi' } })
-  const named = selectButtons(html).find(button => button.text === 'My Vivi')
-  assert.ok(named)
-  assert.ok(named.label.includes(id))
-  assert.equal(voiceField(html).value, id)
-})
-
 test('opening the control does not recreate a removed current voice', () => {
   const html = renderInput({ kind: 'cloned', value: 'removed-current', history: [] })
   assert.equal(voiceField(html).value, 'removed-current')
   assert.equal(selectButtons(html).length, 0)
+  assert.ok(selectButtons(renderInput({ kind: 'cloned', value: 'constructor' })).some(button => button.text === 'constructor'))
 })

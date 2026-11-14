@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
+import { once } from 'node:events'
+import { createServer as createHttpServer } from 'node:http'
+import { createServer as createNetServer } from 'node:net'
+import { WebSocket } from 'ws'
 import { apply, Config } from '../lib/index.js'
+import * as passport from '../lib/passport.js'
 import { resolveTtsSettings } from '../lib/shared.js'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
@@ -133,4 +138,73 @@ test('saved service toggle registers and withdraws providers without restarting 
     assert.equal(entry.fiber, fiber)
     assert.equal(providers.size, 0)
   } finally { await ctx.fiber.dispose() }
+})
+
+test('the shared switch withdraws Host providers and stops active Passport cloud recognition', async t => {
+  const portServer = createNetServer().listen(0, '127.0.0.1')
+  await once(portServer, 'listening')
+  const port = portServer.address().port
+  await new Promise(resolve => portServer.close(resolve))
+  const ctx = new Context(), providers = new Map(), routes = new Map()
+  ctx.provide('webServer', {
+    register(route) { routes.set(route.path, route.handler); return () => routes.delete(route.path) },
+    registerUpgrade() { return () => {} },
+  })
+  ctx.provide('speechToText', {
+    register(provider) { providers.set(provider.info.id, provider); return async () => { providers.delete(provider.info.id) } },
+    snapshot: () => ({ selection: { providerId: 'local', language: 'auto' }, providers: [{ id: 'local', preparation: { phase: 'ready' } }] }),
+  })
+  for (const name of ['agents', 'agentPresets', 'agentDefaultModel']) ctx.provide(name, {})
+  const web = createHttpServer((req, res) => {
+    const route = routes.get(req.url)
+    if (route) void route(req, res)
+    else { res.writeHead(404); res.end() }
+  }).listen(0, '127.0.0.1')
+  await once(web, 'listening')
+  const nativeFetch = globalThis.fetch, upstream = Promise.withResolvers(), started = Promise.withResolvers()
+  globalThis.fetch = (url, options) => {
+    if (String(url).startsWith('https://api.xiaomimimo.com/')) { started.resolve(options.signal); return upstream.promise }
+    return nativeFetch(url, options)
+  }
+  t.after(async () => { globalThis.fetch = nativeFetch; await ctx.fiber.dispose(); await new Promise(resolve => web.close(resolve)) })
+  await ctx.plugin(Loader).await()
+  ctx.loader.internal = { version: 'v2', async import(name) {
+    if (name === 'dsh-xiaomi-tts') return { apply, Config }
+    if (name === 'dsh-xiaomi-tts/passport') return passport
+    throw new Error(`unexpected plugin: ${name}`)
+  } }
+  const mainConfig = { apiKey: 'test-key', voiceRecognitionService: true }
+  await ctx.loader.root.update([
+    { id: 'test-speech', name: 'dsh-xiaomi-tts', config: mainConfig },
+    { id: 'test-passport', name: 'dsh-xiaomi-tts/passport', config: { asrProvider: 'xiaomi', port, accessToken: '1234' } },
+  ])
+  await ctx.loader.await()
+  const status = async () => (await nativeFetch(`http://127.0.0.1:${web.address().port}/plugins/xiaomi-mimo-tts/passport-status`)).json()
+  const until = async check => {
+    const deadline = Date.now() + 5000
+    while (!await check()) { assert.ok(Date.now() < deadline, 'recognition lifecycle did not settle'); await new Promise(resolve => setTimeout(resolve, 10)) }
+  }
+  await until(async () => providers.size === 3 && (await status()).listening)
+  const device = new WebSocket(`ws://127.0.0.1:${port}/api/realtime`, { headers: { authorization: 'Bearer 1234' } })
+  await once(device, 'open')
+  const mainEntry = ctx.loader.resolve('test-speech'), mainFiber = mainEntry.fiber
+  const passportFiber = ctx.loader.resolve('test-passport').fiber
+  const input = ctx.get('passportRecognition').recognizer('xiaomi').create(new AbortController().signal, 640)
+  input.append(Buffer.alloc(640))
+  const cancelled = assert.rejects(input.finish(), { message: 'passport-asr-disabled' })
+  const signal = await started.promise
+  await mainEntry.update({ config: { ...mainConfig, voiceRecognitionService: false } })
+  await ctx.loader.await()
+  await cancelled
+  assert.equal(signal.aborted, true)
+  await until(async () => providers.size === 0 && (await status()).listening && !(await status()).recognitionReady)
+  assert.equal(device.readyState, WebSocket.OPEN)
+  assert.equal(mainEntry.fiber, mainFiber)
+  assert.equal(ctx.loader.resolve('test-passport').fiber, passportFiber)
+  upstream.resolve(Response.json({ choices: [{ finish_reason: 'stop', message: { content: 'late' } }] }))
+  await mainEntry.update({ config: mainConfig })
+  await ctx.loader.await()
+  await until(async () => providers.size === 3 && (await status()).listening && (await status()).recognitionReady)
+  assert.equal(device.readyState, WebSocket.OPEN)
+  device.terminate()
 })

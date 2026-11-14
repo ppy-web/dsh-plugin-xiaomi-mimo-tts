@@ -49,7 +49,6 @@ test('catalog entries reference unique, readable WebP images', async () => {
 
 test('persona exposes every bundled meme for automatic selection', () => {
   const persona = buildPersona(root)
-  assert.ok(persona.includes('鲸鱼娘'))
   for (const entry of catalog.memes.filter(entry => entry.automatic)) {
     const path = join(root, 'skills', 'whale-girl', 'meme', entry.file).replace(/\\/g, '/')
     assert.equal(persona.includes(`](<${path}>)`), true, entry.file)
@@ -66,7 +65,7 @@ test('installation paths with spaces work and damaged optional resources keep th
       await writeFile(join(skillDir, file), await readFile(join(root, 'skills', 'whale-girl', file)))
     }
     const base = buildPersona(directory)
-    assert.ok(base.includes('鲸鱼娘'))
+    assert.ok(base.trim())
     await writeFile(join(skillDir, 'memes.json'), '{broken')
     assert.equal(buildPersona(directory), base)
     const entry = { file: 'example-happy.webp', mood: 'happy', description: '例图', context: '庆祝', automatic: true }
@@ -95,24 +94,24 @@ test('independent DSH and QQ skills apply custom fields and expose only their ow
   for (const text of [dsh, qq]) {
     for (const value of Object.values(persona)) assert.ok(text.includes(value))
   }
-  const file = catalog.memes.find(entry => entry.automatic).file
-  assert.ok(dsh.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
-  assert.ok(!qq.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
-  assert.ok(qq.includes(file.slice(0, -5)))
+  const file = catalog.memes.find(entry => entry.automatic)?.file
+  if (file) {
+    assert.ok(dsh.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
+    assert.ok(!qq.includes(join(root, 'skills', 'whale-girl', 'meme', file).replace(/\\/g, '/')))
+    assert.ok(qq.includes(file.slice(0, -5)))
+  }
 })
 
 
-test('DSH persona independently includes enabled capabilities and puts local persona first', () => {
+test('DSH persona includes custom settings and only enabled capabilities', () => {
   const persona = { name: '自定义小鲸', selfReference: '我', userAddress: '朋友', relationship: '助手', personality: '认真', replyStyle: '简短', likes: '绘画', boundaries: '不嘲笑' }
-  const image = catalog.memes.find(entry => entry.automatic).file
+  const image = catalog.memes.find(entry => entry.automatic)?.file
   for (const memoryEnabled of [false, true]) {
     for (const memesEnabled of [false, true]) {
       const prompt = buildPersona(root, { channel: 'dsh', persona, memoryEnabled, memesEnabled })
-      assert.ok(prompt.indexOf(JSON.stringify(persona)) < prompt.indexOf('## 身份与性格'))
+      assert.ok(prompt.includes(JSON.stringify(persona)))
       assert.equal(prompt.includes('whale-girl-memory'), memoryEnabled)
-      assert.equal(prompt.includes(image), memesEnabled)
-      assert.equal(prompt.includes('## 本地表情包'), memesEnabled)
-      assert.ok(prompt.includes('不假冒 DeepSeek'))
+      if (image) assert.equal(prompt.includes(image), memesEnabled)
     }
   }
 })

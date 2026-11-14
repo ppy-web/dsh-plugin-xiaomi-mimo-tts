@@ -94,12 +94,12 @@ export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqb
     <div className="xmimo-tts-more-settings-body">
       {children}
       <section className="xmimo-tts-format xmimo-tts-switch-grid" aria-label={t('settings.hostIntegration')} hidden={search !== null && !search.groups.has('host')}>
-        <SettingFieldHeading label={t('settings.hostIntegration')} resettable={false} disabled={!writable} />
+        <SettingFieldHeading label={t('settings.hostIntegration')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')}
+          overridden={hostOptions.some(option => option.overridden)} resettable disabled={!writable}
+          onReset={() => { for (const option of hostOptions) if (option.overridden) option.onReset() }} />
         {hostOptions.map(option => <div key={option.label} className="xmimo-tts-announcement-source" hidden={hide(option.label)}>
           <div>
-            <SettingFieldHeading label={t(option.label)}
-              overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')}
-              overridden={option.overridden} resettable disabled={!writable} onReset={option.onReset} />
+            <span>{t(option.label)}</span>
             <small>{t(option.hint)}</small>
           </div>
           <Switch checked={option.checked} disabled={!writable} label={t(option.label)} onChange={option.onChange} />

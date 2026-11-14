@@ -1,4 +1,5 @@
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { TtsSettings } from '../../shared.js'
 import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, isPassportAccessToken } from '../../types/passport.js'
 import type { PassportSettings, PassportNumberField, PassportPreset } from '../../types/passport.js'
 
@@ -33,6 +34,13 @@ export async function savePassportDraft(scope: ConfigForm<PassportSettings>, bas
     if (value[field] !== base[field]) ops.push({ op: 'set', path: [field], value: value[field] })
   }
   if (ops.length && !await scope.mutate(ops, revision)) throw new Error('passport-settings-save-failed')
+}
+
+/** The recognition service is shared with the main plugin, not the Passport draft. */
+export async function savePassportRecognitionService(scope: ConfigForm<TtsSettings>, enabled: boolean): Promise<void> {
+  const snapshot = scope.getSnapshot()
+  if (snapshot.status !== 'ready' || !snapshot.writable || snapshot.revision === undefined) throw new Error('passport-settings-conflict')
+  if (!await scope.mutate([{ op: 'set', path: ['voiceRecognitionService'], value: enabled }], snapshot.revision)) throw new Error('passport-settings-save-failed')
 }
 
 /** An explicit, revision-fenced request; unrelated settings saves never rotate a session. */

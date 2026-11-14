@@ -13,6 +13,7 @@
 }
 .xmimo-tts-broadcast + .xmimo-tts-card-actions { border-top: 0; }
 .xmimo-tts-broadcast { padding: 0 !important; }
+.xmimo-tts-broadcast .xmimo-ui-summary { flex-wrap: wrap; }
 
 .xmimo-tts-broadcast .xmimo-tts-preview-tag {
   --xmimo-tactile-surface: var(--xmimo-ui-chip-surface);

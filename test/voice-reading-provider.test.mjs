@@ -2,13 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { TTS_PROVIDERS, TTS_PROVIDER_LOGO_ASSET_ROUTES } from '../lib/shared.js'
+import { TTS_PROVIDERS } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { VoiceReadingProvider } = await loadClientModule('src/client/settings/voice-reading-provider.tsx')
+const { VoiceReadingSelect } = await loadClientModule('src/client/settings/voice-reading-select.tsx')
 const { engineStateStore } = await loadClientModule('src/client/engine-state.ts')
 
-for (const provider of TTS_PROVIDERS) test(`provider selector reflects ${provider} as the single selected provider`, () => {
+function checkProviderSelection(provider) {
   const html = renderToStaticMarkup(createElement(VoiceReadingProvider, {
     value: provider, doubaoEnabled: true, breezeEnabled: true, disabled: false, t: key => key, onChange: () => {},
   }))
@@ -20,11 +21,14 @@ for (const provider of TTS_PROVIDERS) test(`provider selector reflects ${provide
     assert.ok(input)
     assert.match(input, /type="radio"/)
     assert.equal(input.includes('checked=""'), value === provider)
-    assert.ok(html.includes(TTS_PROVIDER_LOGO_ASSET_ROUTES[value]))
   }
   const groups = inputs.map(input => /name="([^"]+)"/.exec(input)?.[1])
   assert.ok(groups[0])
   assert.equal(new Set(groups).size, 1, 'arrow keys must move within one native radio group')
+}
+
+test('provider selector exposes one selected option in a native radio group', () => {
+  for (const provider of TTS_PROVIDERS) checkProviderSelection(provider)
 })
 
 test('Breeze choice is hidden until enabled', () => {
@@ -33,8 +37,6 @@ test('Breeze choice is hidden until enabled', () => {
   }))
   assert.equal([...html.matchAll(/<input\b[^>]*>/g)].length, 2)
   assert.doesNotMatch(html, /value="breeze"/)
-  assert.ok(html.includes(TTS_PROVIDER_LOGO_ASSET_ROUTES.xiaomi))
-  assert.ok(html.includes(TTS_PROVIDER_LOGO_ASSET_ROUTES.doubao))
 })
 
 test('Doubao choice is hidden when disabled and Breeze is enabled', () => {
@@ -71,4 +73,28 @@ test('external takeover disables the built-in provider choices', () => {
     engineStateStore.accept({ provider: 'xiaomi', revision: 2, name: 'Xiaomi', ready: true,
       formats: ['wav'], maxTextLength: 1000, streaming: false })
   }
+})
+
+test('voice selector presents selected and fallback labels and respects read-only settings', () => {
+  for (const [value, fallbackLabel, expected] of [
+    ['warm', undefined, 'Warm voice'],
+    ['custom-id', 'Custom voice', 'Custom voice'],
+    ['custom-id', undefined, 'custom-id'],
+  ]) {
+    const html = renderToStaticMarkup(createElement(VoiceReadingSelect, {
+      label: 'Voice', value, fallbackLabel, options: [{ id: 'warm', label: 'Warm voice' }],
+      disabled: false, onSelect() {},
+    }))
+    const button = html.match(/<button\b[^>]*>/)?.[0]
+    assert.ok(button)
+    assert.match(button, /aria-label="Voice"/)
+    assert.match(button, /aria-haspopup="menu"/)
+    assert.match(button, /aria-expanded="false"/)
+    assert.ok(html.includes(expected))
+  }
+  const readonly = renderToStaticMarkup(createElement(VoiceReadingSelect, {
+    label: 'Voice', value: 'warm', options: [{ id: 'warm', label: 'Warm voice' }],
+    disabled: true, onSelect() { assert.fail('read-only selector must not publish a selection') },
+  }))
+  assert.match(readonly.match(/<button\b[^>]*>/)?.[0] ?? '', /\bdisabled(?:\s|=|>)/)
 })

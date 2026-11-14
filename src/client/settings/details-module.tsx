@@ -64,7 +64,7 @@ function ModelPicker({ value, disabled, label, presetLabel, voiceDesignLabel, on
       label={label}
       disabled={disabled}
       onChange={onChange}
-      className="xmimo-tts-settings-segmented"
+      className="xmimo-tts-settings-segmented xmimo-tts-xiaomi-models"
     />
   </div>
 }

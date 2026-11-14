@@ -1,16 +1,17 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactElement } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { FiLink, FiCopy, FiCheck, FiRefreshCw, FiKey, FiWifi } from 'react-icons/fi'
 import type { PluginConfigViewProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
+import { resolveTtsSettings, type TtsSettings } from '../../shared.js'
 import { DEFAULT_PASSPORT_SETTINGS, PASSPORT_NUMBER_FIELDS, PASSPORT_STATUS_ROUTE, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from '../../types/passport.js'
 import type { PassportNumberField, PassportSettings } from '../../types/passport.js'
 import type { PassportConnectionStatus, PassportPreset } from '../../types/passport.js'
 import { IDLE_PLUGIN_CHANGES } from '../plugin-activity.js'
 import type { SnapshotSource } from '../plugin-activity.js'
 import type { LocaleKey, Translate } from '../localization.js'
-import { savePassportDraft, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } from './passport-draft.js'
+import { savePassportDraft, savePassportRecognitionService, validatePassportDraft, refreshPassportSession, generatePassportPairingCode } from './passport-draft.js'
 import { useSettingsSnapshot } from './scope.js'
 import { hostRoute } from '../host-route.js'
 import { PASSPORT_PRESET_PROMPT } from './passport-prompt.js'
@@ -20,6 +21,7 @@ import type { PassportAsrTestFailure } from './passport-asr-test.js'
 
 interface Props extends PluginConfigViewProps {
   scope: ConfigForm<PassportSettings>
+  ttsScope: ConfigForm<TtsSettings>
   t: Translate
   changes?: SnapshotSource<boolean>
   tokenConfigured?: SnapshotSource<boolean>
@@ -43,9 +45,10 @@ export function PassportSettingsPage(props: Props): ReactElement {
   return <PassportForm {...props} />
 }
 
-function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured, connectionStatus, presets, openTtsSettings, guideHref = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport' }: Props): ReactElement {
+function PassportForm({ scope, ttsScope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured, connectionStatus, presets, openTtsSettings, guideHref = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport' }: Props): ReactElement {
   const id = useId()
   const snapshot = useSettingsSnapshot(scope)
+  const ttsSnapshot = useSettingsSnapshot(ttsScope)
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
   const source = tokenConfigured ?? IDLE_PLUGIN_CHANGES
   const savedToken = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot)
@@ -55,6 +58,9 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
   const testRequest = useRef<AbortController | null>(null)
   const [asrTest, setAsrTest] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle')
   const [asrTestError, setAsrTestError] = useState<PassportAsrTestFailure | null>(null)
+  const [recognitionSaving, setRecognitionSaving] = useState(false)
+  const [recognitionFailed, setRecognitionFailed] = useState(false)
+  const recognitionWrite = useRef(false)
   useEffect(() => () => { testRequest.current?.abort() }, [])
   const [promptCopy, setPromptCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [pairingCode, setPairingCode] = useState('')
@@ -99,6 +105,7 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'renewed' | 'failed'>('idle')
   const accepted = { ...DEFAULT_PASSPORT_SETTINGS, ...snapshot.value, accessToken: snapshot.value?.accessToken ?? '' }
   const value = draft?.value ?? accepted
+  const recognitionEnabled = resolveTtsSettings(ttsSnapshot.value).voiceRecognitionService
   const disabled = snapshot.status !== 'ready' || !snapshot.writable || changing || state === 'saving'
   const dirty = draft !== null && Object.keys(DEFAULT_PASSPORT_SETTINGS).some(field => draft.base[field as keyof PassportSettings] !== value[field as keyof PassportSettings])
   const conflict = draft !== null && draft.revision !== snapshot.revision
@@ -110,6 +117,21 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
     setDraft(previous => ({ base: previous?.base ?? accepted, revision: previous?.revision ?? revision, value: { ...(previous?.value ?? accepted), [field]: next } }))
     setState('idle')
     if (field === 'asrProvider') { testRequest.current?.abort(); testRequest.current = null; setAsrTest('idle'); setAsrTestError(null) }
+  }
+  useEffect(() => {
+    if (recognitionEnabled || value.asrProvider === 'host') return
+    testRequest.current?.abort(); testRequest.current = null
+    setAsrTest('idle'); setAsrTestError(null)
+  }, [recognitionEnabled, value.asrProvider])
+  const setRecognitionEnabled = async (enabled: boolean): Promise<void> => {
+    const current = ttsScope.getSnapshot()
+    if (recognitionWrite.current || changing || state === 'saving' || current.status !== 'ready' || !current.writable || current.revision === undefined) return
+    recognitionWrite.current = true
+    setRecognitionSaving(true); setRecognitionFailed(false)
+    try {
+      await savePassportRecognitionService(ttsScope, enabled)
+    } catch { setRecognitionFailed(true) }
+    finally { recognitionWrite.current = false; setRecognitionSaving(false) }
   }
   const testAsr = async (): Promise<void> => {
     if (testRequest.current) return
@@ -165,6 +187,7 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
           : status.sessionError === 'passport-session-unavailable' ? 'passport.sessionFailed'
       : typeof status.servicesReady !== 'boolean' ? 'passport.reloadRequired'
       : !status.servicesReady ? 'passport.servicesWaiting'
+        : status.asrProvider !== undefined && status.asrProvider !== 'host' && !recognitionEnabled ? 'passport.asrDisabledStatus'
         : !status.listening ? 'passport.notListening'
           : ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(status.host) ? 'passport.localOnly'
             : !status.recognitionReady ? 'passport.asrWaiting'
@@ -281,19 +304,27 @@ function PassportForm({ scope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured
     <section aria-labelledby={`${id}-recognition`}>
       <h4 id={`${id}-recognition`}>{t('passport.asrProvider')}</h4>
       <p className="xmimo-qq-hint xmimo-passport-section-hint">{t('passport.asrSectionHint')}</p>
+      <div className="xmimo-qq-heading">
+        <span>{t('settings.voiceRecognitionService')}</span>
+        <Switch label={t('settings.voiceRecognitionService')} checked={recognitionEnabled}
+          disabled={changing || state === 'saving' || recognitionSaving || ttsSnapshot.status !== 'ready' || !ttsSnapshot.writable}
+          onChange={enabled => { void setRecognitionEnabled(enabled) }} />
+      </div>
+      <p className="xmimo-qq-hint">{t('passport.asrSharedHint')}</p>
+      {recognitionFailed ? <p role="status" className="xmimo-qq-hint">{t('settings.failed')}</p> : null}
       <div className="xmimo-qq-field">
         <label htmlFor={`${id}-asr`}>{t('passport.asrService')}</label>
         <select id={`${id}-asr`} name="asrProvider" value={value.asrProvider} disabled={disabled}
           aria-describedby={`${id}-asr-hint`} onChange={event => edit('asrProvider', event.currentTarget.value)}>
           {(['host', 'xiaomi', 'doubao', 'doubao-nostream'] as const).map(source => <option key={source} value={source}
-            disabled={source !== 'host' && !status?.recognitionChoices?.some(choice => choice.id === source && choice.configured)}>
-            {t(`passport.asr.${source}`)}{source !== 'host' ? ` · ${t(status?.recognitionChoices?.some(choice => choice.id === source && choice.configured) ? 'passport.keyConfigured' : 'passport.keyMissing')}` : ''}
+            disabled={source !== 'host' && (!recognitionEnabled || !status?.recognitionChoices?.some(choice => choice.id === source && choice.configured))}>
+            {t(`passport.asr.${source}`)}{source !== 'host' ? ` · ${t(!recognitionEnabled ? 'passport.asrDisabled' : status?.recognitionChoices?.some(choice => choice.id === source && choice.configured) ? 'passport.keyConfigured' : 'passport.keyMissing')}` : ''}
           </option>)}
         </select>
         <small id={`${id}-asr-hint`}>{t(value.asrProvider === 'host' ? 'passport.asrHostHint' : 'passport.asrCloudHint')}</small>
         <div className="xmimo-passport-option-actions">
           {openTtsSettings ? <Button type="button" variant="outline" size="sm" onClick={openTtsSettings}><FiKey aria-hidden="true" />{t('passport.configureKeys')}</Button> : null}
-          <Button type="button" variant="outline" size="sm" disabled={changing || asrTest === 'testing'} onClick={() => { void testAsr() }}><FiWifi aria-hidden="true" />{t(asrTest === 'testing' ? 'passport.asrTesting' : 'passport.asrTest')}</Button>
+          <Button type="button" variant="outline" size="sm" disabled={changing || asrTest === 'testing' || (!recognitionEnabled && value.asrProvider !== 'host')} onClick={() => { void testAsr() }}><FiWifi aria-hidden="true" />{t(asrTest === 'testing' ? 'passport.asrTesting' : 'passport.asrTest')}</Button>
         </div>
         <small>{t('passport.asrTestHint')}</small>
         <small role="status">{asrTest === 'success' ? t('passport.asrTestSuccess') : asrTest === 'failed' && asrTestError ? passportAsrTestError(asrTestError, t) : ''}</small>

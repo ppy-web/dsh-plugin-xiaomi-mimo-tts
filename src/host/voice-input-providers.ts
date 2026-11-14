@@ -11,7 +11,7 @@ const SOURCES: readonly { source: CloudSource; id: string; name: string }[] = [
   { source: 'doubao-nostream', id: 'xiaomi-mimo-tts-doubao-utterance-asr', name: 'Doubao utterance ASR' },
 ]
 const MAX_PCM_BYTES = 4 * 1024 * 1024
-const SAFE_ERRORS = new Set(['passport-asr-key-required', 'passport-asr-auth-failed', 'passport-asr-permission-denied',
+const SAFE_ERRORS = new Set(['passport-asr-disabled', 'passport-asr-key-required', 'passport-asr-auth-failed', 'passport-asr-permission-denied',
   'passport-asr-quota-exceeded', 'passport-asr-rate-limited', 'passport-asr-timeout', 'passport-asr-network-failed',
   'passport-asr-invalid-response', 'passport-asr-input-overflow', 'passport-recording-too-long'])
 

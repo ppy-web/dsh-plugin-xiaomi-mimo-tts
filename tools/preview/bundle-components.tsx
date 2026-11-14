@@ -6,6 +6,7 @@ import passportIcon from '../../assets/plugin-icons/passport.webp'
 import { PersonaSettingsPreview } from './persona-settings-preview.js'
 import { ExperimentalComponentListBadge } from '../../src/client/settings/plugin-detail.js'
 import { zh, en } from '../../src/client/localization.js'
+import type { PreviewSettingsScope } from './mock-settings.js'
 
 type PreviewLocale = 'zh' | 'en'
 
@@ -38,7 +39,7 @@ const COPY = {
   },
 } as const
 
-export function BundleComponents({ locale, readOnly = false }: { locale: PreviewLocale; readOnly?: boolean }) {
+export function BundleComponents({ locale, ttsScope, readOnly = false }: { locale: PreviewLocale; ttsScope: PreviewSettingsScope; readOnly?: boolean }) {
   const copy = COPY[locale]
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [agentEnabled, setAgentEnabled] = useState(false)
@@ -83,6 +84,6 @@ export function BundleComponents({ locale, readOnly = false }: { locale: Preview
         </label>
       </li>)}
     </ul>
-    <PersonaSettingsPreview locale={locale} readOnly={readOnly} />
+    <PersonaSettingsPreview locale={locale} ttsScope={ttsScope} readOnly={readOnly} />
   </section>
 }
