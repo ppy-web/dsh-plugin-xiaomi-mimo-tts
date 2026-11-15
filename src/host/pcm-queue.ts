@@ -1,4 +1,4 @@
-import { abortable } from './external-providers.js'
+import { abortable } from './abortable.js'
 import { TtsProviderError } from './provider-error.js'
 
 /** Callback producers fail rather than allocate beyond the configured budget. */

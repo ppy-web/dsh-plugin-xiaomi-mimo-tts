@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { TTS_DESKTOP_WRITE_HEADER } from '../constants.js'
 
 export function json(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status
@@ -33,4 +34,17 @@ export function normalizeBaseURL(value: string): string {
   let end = value.length
   while (end > 0 && value[end - 1] === '/') end -= 1
   return value.slice(0, end)
+}
+
+/** Restrict browser management routes to the host origin and approved desktop writes. */
+export function sameOriginRequest(req: IncomingMessage, write = false): boolean {
+  const origin = req.headers.origin
+  let allowed = origin === undefined && (!write || (req.headers['sec-fetch-site'] === undefined && req.headers[TTS_DESKTOP_WRITE_HEADER] === '1'))
+  if (origin !== undefined) {
+    try {
+      const url = new URL(origin)
+      allowed = ['http:', 'https:'].includes(url.protocol) && url.host === req.headers.host
+    } catch { allowed = false }
+  }
+  return allowed && !['cross-site', 'same-site'].includes(String(req.headers['sec-fetch-site']))
 }

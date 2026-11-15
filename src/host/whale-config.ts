@@ -1,7 +1,7 @@
 import z from '@deepseek-ai/schemastery'
 import type { Volatile } from '@deepseek-ai/cordis'
 import { readFileSync } from 'node:fs'
-import { DEFAULT_WHALE_PERSONA } from '../types/whale.js'
+import { DEFAULT_WHALE_PERSONA, WHALE_PERSONA_LIMITS } from '../types/whale.js'
 import type { WhaleSettings } from '../types/whale.js'
 
 export { DEFAULT_WHALE_PERSONA } from '../types/whale.js'
@@ -13,14 +13,14 @@ const messages = (component: 'whale-girl' | 'qqbot', language: string) => JSON.p
 export function whaleConfigFields(component: 'whale-girl' | 'qqbot') {
   const zh = messages(component, 'zh'), en = messages(component, 'en')
   const Persona = z.object({
-    name: z.string().min(1).max(60).default(DEFAULT_WHALE_PERSONA.name),
-    selfReference: z.string().min(1).max(40).default(DEFAULT_WHALE_PERSONA.selfReference),
-    userAddress: z.string().max(40).default(DEFAULT_WHALE_PERSONA.userAddress),
-    relationship: z.string().max(1000).default(DEFAULT_WHALE_PERSONA.relationship),
-    personality: z.string().max(1200).default(''),
-    replyStyle: z.string().max(1200).default(DEFAULT_WHALE_PERSONA.replyStyle),
-    likes: z.string().max(1000).default(DEFAULT_WHALE_PERSONA.likes),
-    boundaries: z.string().max(1200).default(''),
+    name: z.string().min(1).max(WHALE_PERSONA_LIMITS.name).default(DEFAULT_WHALE_PERSONA.name),
+    selfReference: z.string().min(1).max(WHALE_PERSONA_LIMITS.selfReference).default(DEFAULT_WHALE_PERSONA.selfReference),
+    userAddress: z.string().max(WHALE_PERSONA_LIMITS.userAddress).default(DEFAULT_WHALE_PERSONA.userAddress),
+    relationship: z.string().max(WHALE_PERSONA_LIMITS.relationship).default(DEFAULT_WHALE_PERSONA.relationship),
+    personality: z.string().max(WHALE_PERSONA_LIMITS.personality).default(''),
+    replyStyle: z.string().max(WHALE_PERSONA_LIMITS.replyStyle).default(DEFAULT_WHALE_PERSONA.replyStyle),
+    likes: z.string().max(WHALE_PERSONA_LIMITS.likes).default(DEFAULT_WHALE_PERSONA.likes),
+    boundaries: z.string().max(WHALE_PERSONA_LIMITS.boundaries).default(''),
   }).i18n({ zh: zh.persona, en: en.persona })
   const Memory = z.object({ enabled: z.boolean().default(true) })
     .i18n({ zh: zh.memory, en: en.memory })

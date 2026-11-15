@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-experimental-speech-to-text'
 import type { SpeechProvider, SpeechProviderId } from '@deepseek-ai/dsh-experimental-speech-to-text/types'
 import type { PassportRecognitionService, RecognitionSource } from '../passport/recognition.js'
-import { abortable } from './external-providers.js'
+import { abortable } from './abortable.js'
 
 type CloudSource = Exclude<RecognitionSource, 'host'>
 const SOURCES: readonly { source: CloudSource; id: string; name: string }[] = [

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { QqIdentityReader } from './qqbot-identity.js'
-import { QqMemoryStore, parseQqIdentity, type QqMemoryEntry, type QqPeerState, type QqTopic } from './qqbot-memory.js'
+import { QqMemoryStore, parseQqIdentity, type QqMemoryEntry, type QqTopic } from './qqbot-memory.js'
 import { TtsProviderError } from './provider-error.js'
 
 export type QqMemoryAdminInput = {

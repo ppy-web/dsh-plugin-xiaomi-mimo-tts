@@ -3,7 +3,7 @@ import { DEEPSEEK_TTS_ENDPOINT } from '../constants.js'
 import { DEEPSEEK_INPUT_IDLE_MS, DEEPSEEK_TEXT_BYTES, DEEPSEEK_TEXT_UNITS, deepseekTextSize } from '../text/deepseek-limit.js'
 import type { ResolvedTtsSettings } from '../types/settings.js'
 import { PcmQueue } from './pcm-queue.js'
-import { abortable } from './external-providers.js'
+import { abortable } from './abortable.js'
 import { TtsProviderError } from './provider-error.js'
 
 export interface DeepseekSessionOptions {

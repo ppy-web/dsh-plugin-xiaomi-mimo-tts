@@ -1,3 +1,6 @@
+import { abortable } from './abortable.js'
+export { abortable } from './abortable.js'
+import { hasMp3Header, hasWavHeader } from './audio-format.js'
 import type { ExternalSpeechConfigurationChange, ExternalSpeechProvider, ExternalSpeechProviderSnapshot, SpeechEngineState, SpeechRequest } from '../host-api.js'
 import type { ResolvedTtsSettings } from '../types/settings.js'
 import { prepareExternalTtsText } from '../shared.js'
@@ -8,16 +11,6 @@ const revisionKey = Symbol.for('dsh-xiaomi-tts.engine-revision')
 function nextRevision(): number {
   const state = globalThis as typeof globalThis & { [revisionKey]?: number }
   return state[revisionKey] = Math.max(Date.now(), (state[revisionKey] ?? 0) + 1)
-}
-
-/** Abort even when an adapter ignores cancellation, while observing its eventual rejection. */
-export function abortable<T>(task: Promise<T>, signal: AbortSignal): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const cancel = () => reject(signal.reason ?? new TtsProviderError('tts-canceled', undefined, 499))
-    signal.addEventListener('abort', cancel, { once: true })
-    if (signal.aborted) cancel()
-    task.then(resolve, reject).finally(() => signal.removeEventListener('abort', cancel))
-  })
 }
 
 function code(value: unknown): string | undefined {
@@ -185,10 +178,10 @@ export function validateExternalAudio(bytes: Uint8Array, format: 'wav' | 'mp3', 
   const data = Buffer.from(bytes)
   const invalid = () => { throw new TtsProviderError('invalid-audio-format') }
   if (format === 'mp3') {
-    if (!(data.toString('ascii', 0, 3) === 'ID3' || (data[0] === 255 && (data[1]! & 224) === 224))) invalid()
+    if (!hasMp3Header(data)) invalid()
     return data
   }
-  if (data.length < 44 || data.toString('ascii', 0, 4) !== 'RIFF' || data.toString('ascii', 8, 12) !== 'WAVE' || data.readUInt32LE(4) + 8 !== data.length) invalid()
+  if (data.length < 44 || !hasWavHeader(data) || data.readUInt32LE(4) + 8 !== data.length) invalid()
   let alignment = 0
   let payload = 0
   let position = 12

@@ -1,3 +1,4 @@
+import { hasMp3Header, hasWavHeader } from './audio-format.js'
 import type { ResolvedTtsSettings } from '../types/settings.js'
 import { BREEZE_TTS_MODEL } from '../types/providers.js'
 import { TtsProviderError } from './provider-error.js'
@@ -54,9 +55,7 @@ export async function synthesizeBreeze(settings: ResolvedTtsSettings, text: stri
     }
   } finally { reader.releaseLock() }
   const audio = Buffer.concat(chunks, size)
-  const valid = format === 'wav'
-    ? audio.length >= 12 && audio.toString('ascii', 0, 4) === 'RIFF' && audio.toString('ascii', 8, 12) === 'WAVE'
-    : audio.length >= 2 && (audio.toString('ascii', 0, 3) === 'ID3' || (audio[0] === 0xff && (audio[1]! & 0xe0) === 0xe0))
+  const valid = format === 'wav' ? hasWavHeader(audio) : hasMp3Header(audio)
   if (!valid) throw new TtsProviderError('invalid-audio-format', 'Breeze returned an invalid audio format.')
   return audio
 }

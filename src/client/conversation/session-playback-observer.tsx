@@ -91,7 +91,6 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       const previousTurn = active.current?.turn
       speech.cancel()
       if (previousTurn !== undefined) { live.blockTurn(sessionId, previousTurn); local.blockTurn(sessionId, previousTurn) }
-      live.configure(resolvedSettings)
       active.current = null
       if (runningSnapshot) runArmed.current = false
     }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { once, EventEmitter } from 'node:events'
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { isAbsolute, join, relative } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -696,6 +696,17 @@ test('session identity persists per profile; corruption is not silently replaced
   await writeFile(a.path, '{broken')
   await assert.rejects(a.load())
   assert.equal(await readFile(a.path, 'utf8'), '{broken')
+})
+
+test('a failed session identity replacement cleans its temporary file and preserves other data', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-passport-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new PassportSessionStore('profile-a', directory)
+  await mkdir(store.path)
+  await writeFile(join(store.path, 'keep'), 'untouched')
+  await assert.rejects(store.save({ sessionId: `passport-${randomUUID()}`, preset: 'default' }))
+  assert.equal(await readFile(join(store.path, 'keep'), 'utf8'), 'untouched')
+  assert.equal((await readdir(directory)).some(name => name.endsWith('.tmp')), false)
 })
 
 test('dedicated session composes the Host preset, inherits live model defaults, resumes and cleans up', async () => {

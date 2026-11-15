@@ -1,13 +1,13 @@
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
+import { WHALE_PERSONA_LIMITS } from '../../types/whale.js'
 import type { WhaleSettings } from '../../types/whale.js'
 
 export type WhaleDraftError = 'persona'
 
 export function validateWhaleDraft(draft: WhaleSettings): WhaleDraftError | null {
-  const limits = { name: 60, selfReference: 40, userAddress: 40, relationship: 1000, personality: 1200, replyStyle: 1200, likes: 1000, boundaries: 1200 }
-  for (const field of Object.keys(limits) as Array<keyof typeof limits>) {
+  for (const field of Object.keys(WHALE_PERSONA_LIMITS) as Array<keyof typeof WHALE_PERSONA_LIMITS>) {
     const value = draft.persona[field]
-    if (value.length > limits[field] || ((field === 'name' || field === 'selfReference') && !value.trim())) return 'persona'
+    if (value.length > WHALE_PERSONA_LIMITS[field] || ((field === 'name' || field === 'selfReference') && !value.trim())) return 'persona'
   }
   return null
 }

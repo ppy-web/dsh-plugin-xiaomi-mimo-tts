@@ -1,5 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useRef } from 'react'
+import { usePresetDropdown } from './use-preset-dropdown.js'
 import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import { TTS_VOICE_DESIGN_PRESETS } from '../../../shared.js'
 import { VoiceAvatar } from './voice-avatar.js'
@@ -25,8 +26,7 @@ interface VoiceDesignPresetPickerProps {
 }
 
 export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, customSummary, minimal = false, onChange }: VoiceDesignPresetPickerProps): ReactElement {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement | null>(null)
+  const { open, setOpen, rootRef } = usePresetDropdown(minimal, disabled)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const listboxId = useId()
@@ -38,19 +38,6 @@ export function VoiceDesignPresetPicker({ value, disabled, label, customLabel, c
   const selectedOptionIndex = selectedPresetIndex + (minimal ? 0 : 1)
   const optionCount = visiblePresets.length + (minimal ? 0 : 1)
   const customAvatar = <VoiceAvatar label={customLabel} fallback="+" />
-
-  useEffect(() => {
-    if (minimal || !open) return
-    const closeOnOutsidePointer = (event: PointerEvent): void => {
-      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false)
-    }
-    document.addEventListener('pointerdown', closeOnOutsidePointer)
-    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
-  }, [minimal, open])
-
-  useEffect(() => {
-    if (!minimal && disabled) setOpen(false)
-  }, [disabled, minimal])
 
   const focusOption = (index: number): void => {
     const normalized = (index + optionCount) % optionCount

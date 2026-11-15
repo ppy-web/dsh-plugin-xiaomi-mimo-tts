@@ -1,3 +1,4 @@
+import { pcmDeltaFromSse } from './utils/pcm-delta.js'
 import { TTS_STREAM_ROUTE } from './constants.js'
 import { hostRoute } from './client/host-route.js'
 import { parseSseRecords } from './utils/index.js'
@@ -5,18 +6,6 @@ import type { TtsSelection } from './types/providers.js'
 import { speechRequestBody } from './client/engine-state.js'
 
 export type PcmChunkConsumer = (pcmBase64: string) => void | Promise<void>
-
-function pcmDeltaFromSse(data: string): string | null {
-  if (data === '[DONE]') return null
-  const value = JSON.parse(data) as {
-    choices?: Array<{ delta?: { audio?: { data?: unknown } } }>
-    error?: string | { message?: string }
-  }
-  const upstreamError = typeof value.error === 'string' ? value.error : value.error?.message
-  if (upstreamError !== undefined) throw new Error(upstreamError)
-  const pcm = value.choices?.[0]?.delta?.audio?.data
-  return typeof pcm === 'string' && pcm.length > 0 ? pcm : null
-}
 
 /** Request one preset-model PCM16 stream and deliver each decoded SSE audio payload in order. */
 export async function streamPcmAudio(text: string, signal: AbortSignal, consume: PcmChunkConsumer, selection?: TtsSelection): Promise<void> {

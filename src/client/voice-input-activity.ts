@@ -1,4 +1,4 @@
-import type { SnapshotSource } from './plugin-activity.js'
+import { BooleanActivity } from './plugin-activity.js'
 
 // The official voice-input UI exposes capture phases through this attribute.
 // Keep this optional adapter independent of its CSS, translated labels and bundle.
@@ -6,19 +6,10 @@ const ACTIVE_VOICE_INPUT = '[data-voice-activity="requesting"], [data-voice-acti
 const VOICE_INPUT = '[data-voice-activity]'
 
 /** Blocks audio while the official composer requests, records or transcribes speech. */
-export class VoiceInputActivity implements SnapshotSource<boolean> {
-  private blocked = false
+export class VoiceInputActivity extends BooleanActivity {
   private observer: MutationObserver | null = null
-  private readonly listeners = new Set<() => void>()
 
-  constructor(private readonly document: Document) {}
-
-  getSnapshot = (): boolean => this.blocked
-
-  subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener)
-    return () => { this.listeners.delete(listener) }
-  }
+  constructor(private readonly document: Document) { super() }
 
   start(): void {
     if (this.observer !== null) return
@@ -49,11 +40,5 @@ export class VoiceInputActivity implements SnapshotSource<boolean> {
   private refresh = (): void => {
     // A queued callback after disposal must not reclaim audio permission.
     if (this.observer !== null) this.publish(this.document.querySelector(ACTIVE_VOICE_INPUT) !== null)
-  }
-
-  private publish(blocked: boolean): void {
-    if (this.blocked === blocked) return
-    this.blocked = blocked
-    for (const listener of this.listeners) listener()
   }
 }

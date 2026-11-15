@@ -5,6 +5,24 @@ export interface SnapshotSource<T> {
   subscribe: (listener: () => void) => () => void
 }
 
+/** Shared change-only snapshot for independent activity gates. */
+export class BooleanActivity implements SnapshotSource<boolean> {
+  private blocked = false
+  private readonly listeners = new Set<() => void>()
+
+  getSnapshot = (): boolean => this.blocked
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+
+  protected publish(blocked: boolean): void {
+    if (this.blocked === blocked) return
+    this.blocked = blocked
+    for (const listener of this.listeners) listener()
+  }
+}
+
 export const IDLE_PLUGIN_CHANGES: SnapshotSource<boolean> = {
   getSnapshot: () => false,
   subscribe: () => () => {},

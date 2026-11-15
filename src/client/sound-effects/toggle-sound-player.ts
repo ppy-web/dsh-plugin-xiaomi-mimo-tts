@@ -8,6 +8,14 @@ import { hostRoute } from '../host-route.js'
 
 export const TOGGLE_SOUND_DEBOUNCE_MS = 200
 
+function releaseMedia(audio: HTMLAudioElement): void {
+  audio.onended = null
+  audio.onerror = null
+  audio.pause()
+  audio.removeAttribute('src')
+  audio.load()
+}
+
 export class ToggleSoundPlayer {
   private timer: number | null = null
   private audio: HTMLAudioElement | null = null
@@ -107,21 +115,13 @@ export class ToggleSoundPlayer {
     const audio = this.audio
     if (audio === null) return
     this.audio = null
-    audio.onended = null
-    audio.onerror = null
-    audio.pause()
-    audio.removeAttribute('src')
-    audio.load()
+    releaseMedia(audio)
   }
 
   private releaseVolumePreviewAudio(): void {
     const audio = this.volumePreviewAudio
     if (audio === null) return
     this.volumePreviewAudio = null
-    audio.onended = null
-    audio.onerror = null
-    audio.pause()
-    audio.removeAttribute('src')
-    audio.load()
+    releaseMedia(audio)
   }
 }

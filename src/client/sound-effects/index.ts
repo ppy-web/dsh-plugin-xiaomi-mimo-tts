@@ -47,7 +47,7 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
   }
 }
 
-export function installClickSounds(ctx: Context, controller: SoundEffectsController, getSettings: () => SoundEffectsSettings): () => void {
+export function installClickSounds(_ctx: Context, controller: SoundEffectsController, getSettings: () => SoundEffectsSettings): () => void {
   let lastClickAt = 0
   const onPointerDown = (event: PointerEvent): void => {
     const settings = getSettings()

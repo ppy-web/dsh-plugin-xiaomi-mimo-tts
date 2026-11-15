@@ -1,3 +1,4 @@
+import { hasMp3Header, hasWavHeader } from './audio-format.js'
 import type { Response } from 'undici'
 import type { XiaomiAudioResponse } from './synthesis.js'
 import type { CompleteAudioFormat } from './validation.js'
@@ -44,9 +45,7 @@ export function decodeCompleteAudio(value: string, format: CompleteAudioFormat, 
 
   const audio = Buffer.from(value, 'base64')
   if (audio.byteLength !== expectedLength) throw new CompleteAudioResponseError('invalid-audio-base64')
-  const validFormat = format === 'wav'
-    ? audio.byteLength >= 12 && audio.toString('ascii', 0, 4) === 'RIFF' && audio.toString('ascii', 8, 12) === 'WAVE'
-    : audio.byteLength >= 2 && (audio.toString('ascii', 0, 3) === 'ID3' || (audio[0] === 0xFF && (audio[1]! & 0xE0) === 0xE0))
+  const validFormat = format === 'wav' ? hasWavHeader(audio) : hasMp3Header(audio)
   if (!validFormat) throw new CompleteAudioResponseError('invalid-audio-format')
   return audio
 }

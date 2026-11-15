@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { buildWhalePersona } from './host/whale-persona.js'
+import { cachedWhalePersona } from './host/whale-persona.js'
 import { QQBOT_FILE_TOOL, qqbotDeliverySignals } from './host/qqbot-delivery-signal.js'
 import type {} from './whale-girl.js'
 
@@ -14,13 +14,8 @@ export function apply(ctx: Context): void {
     if (exec.name.startsWith('qqbot_')) return 'QQ delivery tools are unavailable in DSH conversations.'
     return undefined
   })
-  let cached: { signature: string; text: string } | undefined
   ctx.systemPrompt.section({
     name: 'deployment:persona-prefix', order: 0, complete: true, interpolate: false,
-    text: () => {
-      const settings = ctx.whaleSettings.current(), signature = JSON.stringify(settings)
-      if (cached?.signature !== signature) cached = { signature, text: buildWhalePersona('dsh', settings) }
-      return cached.text
-    },
+    text: cachedWhalePersona('dsh', () => ctx.whaleSettings.current()),
   })
 }

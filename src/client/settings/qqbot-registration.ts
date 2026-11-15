@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { TtsSettings } from '../../types/settings.js'
+import { TTS_SETTINGS_NAMESPACE } from '../../constants.js'
 import { QqbotSpeechSettings } from './qqbot-settings.js'
 import type { WhaleSettings } from '../../types/whale.js'
 import { NS, type Translate } from '../localization.js'
@@ -19,6 +20,6 @@ export function registerWhalePersonaSettings(ctx: Context, t: Translate, changes
 export function registerQqbotSpeechSettings(ctx: Context, t: Translate, changes: SnapshotSource<boolean>): () => void {
   return ctx.slots.register({
     name: 'plugins.row.config', key: 'dsh-xiaomi-tts#speech-delivery-qqbot', locale: NS,
-    inject: () => ({ scope: ctx.configForms.get<TtsSettings>('xiaomi-mimo-tts'), personaScope: ctx.configForms.get<WhaleSettings>('speech-delivery-qqbot'), t, changes }),
+    inject: () => ({ scope: ctx.configForms.get<TtsSettings>(TTS_SETTINGS_NAMESPACE), personaScope: ctx.configForms.get<WhaleSettings>('speech-delivery-qqbot'), t, changes }),
   }, QqbotSpeechSettings)
 }

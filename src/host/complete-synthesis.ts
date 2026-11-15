@@ -1,3 +1,4 @@
+import { hasMp3Header } from './audio-format.js'
 import { BREEZE_MAX_TEXT_LENGTH, prepareProviderTtsText } from '../shared.js'
 import type { ResolvedTtsSettings } from '../shared.js'
 import { synthesizeDoubao, wrapPcmWav } from './doubao.js'
@@ -52,6 +53,6 @@ export async function synthesizeCompleteAudio(settings: ResolvedTtsSettings, tex
   })
   const bytes = Buffer.concat(chunks)
   const audio = format === 'wav' ? wrapPcmWav(bytes) : bytes
-  if (format === 'mp3' && !(audio.length >= 2 && (audio.toString('ascii', 0, 3) === 'ID3' || (audio[0] === 0xff && (audio[1]! & 0xe0) === 0xe0)))) throw new TtsProviderError('invalid-audio-format')
+  if (format === 'mp3' && !hasMp3Header(audio)) throw new TtsProviderError('invalid-audio-format')
   return audio
 }

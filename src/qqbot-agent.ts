@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { sendWhaleMeme } from './host/qqbot-media.js'
 import { TtsProviderError } from './host/provider-error.js'
 import type { QqMemoryInput } from './host/qqbot-companion.js'
-import { buildWhalePersona } from './host/whale-persona.js'
+import { cachedWhalePersona } from './host/whale-persona.js'
 import type {} from './qqbot.js'
 
 export { buildQqbotPersona, cleanupQqbotMemes, loadWhaleMemes } from './host/qqbot-media.js'
@@ -21,14 +21,9 @@ export function apply(ctx: Context): void {
 }
 
 function registerQqbotFeatures(ctx: Context): void {
-  let cached: { signature: string; text: string } | undefined
   ctx.systemPrompt.section({
     name: 'deployment:persona-prefix', order: 0, complete: true, interpolate: false,
-    text: () => {
-      const settings = ctx.qqbotSettings.current(), signature = JSON.stringify(settings)
-      if (cached?.signature !== signature) cached = { signature, text: buildWhalePersona('qq', settings) }
-      return cached.text
-    },
+    text: cachedWhalePersona('qq', () => ctx.qqbotSettings.current()),
   })
   ctx.systemPrompt.context({
     name: 'xiaomi:qqbot-memory', order: 300, required: true, interpolate: false,

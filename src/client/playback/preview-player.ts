@@ -1,3 +1,5 @@
+import { pcmDeltaFromSse } from '../../utils/pcm-delta.js'
+import { browserVoice } from '../browser-voice.js'
 import {
   TTS_ROUTE,
   TTS_STREAM_ROUTE,
@@ -75,29 +77,6 @@ interface PreviewRequestBody {
   format?: 'mp3' | 'wav'
   speechInstruction?: string
   voiceRate?: number
-}
-
-function browserVoice(value: string): SpeechSynthesisVoice | undefined {
-  if (typeof window === 'undefined' || window.speechSynthesis === undefined) return undefined
-  const voices = window.speechSynthesis.getVoices()
-  const language = typeof navigator === 'undefined' ? 'zh-CN' : navigator.language || 'zh-CN'
-  return voices.find((voice) => voice.voiceURI === value)
-    ?? voices.find((voice) => voice.lang.toLowerCase() === 'zh-cn')
-    ?? voices.find((voice) => voice.lang.toLowerCase().startsWith(language.toLowerCase().split('-')[0] ?? 'zh'))
-    ?? voices.find((voice) => voice.default)
-    ?? voices[0]
-}
-
-function pcmDelta(data: string): string | null {
-  if (data === '[DONE]') return null
-  const value = JSON.parse(data) as {
-    choices?: Array<{ delta?: { audio?: { data?: unknown } } }>
-    error?: string | { message?: string }
-  }
-  const error = typeof value.error === 'string' ? value.error : value.error?.message
-  if (error !== undefined) throw new Error(error)
-  const audio = value.choices?.[0]?.delta?.audio?.data
-  return typeof audio === 'string' && audio.length > 0 ? audio : null
 }
 
 class PreviewPlaybackError extends Error {
@@ -440,7 +419,7 @@ export class PreviewPlayer {
     const recording = new PcmRecording()
     const consume = async (events: string[]): Promise<void> => {
       for (const event of events) {
-        const delta = pcmDelta(event)
+        const delta = pcmDeltaFromSse(event)
         if (delta !== null) {
           if (generation !== this.generation || controller.signal.aborted) return
           received = true

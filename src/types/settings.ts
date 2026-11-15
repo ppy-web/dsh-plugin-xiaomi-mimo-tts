@@ -13,6 +13,8 @@ import { DEFAULT_SOUND_SETTINGS } from './sound.js'
 export const ANNOUNCEMENT_SOURCES = ['dsh-pet', 'dsh-whale-musume', 'question-titles', 'approvals', 'job-results', 'subagent-results'] as const
 export type AnnouncementSourceId = typeof ANNOUNCEMENT_SOURCES[number]
 
+export const QQBOT_SPEECH_LIMITS = { qqbotMaxAutoCharacters: 12000, qqbotMaxDurationSeconds: 6000 } as const
+
 export interface TtsSettings {
   showInSidebar?: boolean
   showInHostSettings?: boolean

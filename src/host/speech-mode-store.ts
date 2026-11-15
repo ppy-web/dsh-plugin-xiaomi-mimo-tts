@@ -1,7 +1,8 @@
-import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { SPEECH_DATA_ROOT } from './speech-files.js'
+import { writeAtomicJson } from './atomic-json.js'
 
 export type SpeechMode = 'manual' | 'auto'
 
@@ -24,12 +25,6 @@ export class SpeechModeStore {
   }
 
   async save(sessionId: string, mode: SpeechMode): Promise<void> {
-    await mkdir(this.directory, { recursive: true })
-    const path = this.path(sessionId)
-    const temporary = `${path}.${randomUUID()}.tmp`
-    try {
-      await writeFile(temporary, JSON.stringify({ mode }), { flag: 'wx', mode: 0o600 })
-      await rename(temporary, path)
-    } finally { await rm(temporary, { force: true }) }
+    await writeAtomicJson(this.directory, this.path(sessionId), { mode })
   }
 }

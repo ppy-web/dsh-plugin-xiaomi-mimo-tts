@@ -1,3 +1,4 @@
+import { hasWavHeader } from './audio-format.js'
 import type { MossVoice } from '../moss.js'
 import { normalizeMossBaseURL, parseMossDemoList } from '../moss.js'
 import { strictBase64DecodedLength } from '../utils/encoding.js'
@@ -189,7 +190,7 @@ export async function synthesizeMoss(baseURL: string, voice: string, text: strin
   if (decodedLength === null) throw new TtsProviderError('moss-invalid-response', 'MOSS returned invalid audio.', 502)
   if (decodedLength > audioLimit) throw new TtsProviderError('moss-audio-too-large', 'MOSS audio exceeds the configured limit.', 413)
   const audio = Buffer.from(audioBase64, 'base64')
-  if (audio.byteLength !== decodedLength || audio.byteLength < 44 || audio.toString('ascii', 0, 4) !== 'RIFF' || audio.toString('ascii', 8, 12) !== 'WAVE') {
+  if (audio.byteLength !== decodedLength || audio.byteLength < 44 || !hasWavHeader(audio)) {
     throw new TtsProviderError('moss-invalid-response', 'MOSS returned invalid audio.', 502)
   }
   return audio

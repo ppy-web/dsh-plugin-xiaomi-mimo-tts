@@ -1,3 +1,4 @@
+import { selectBrowserVoice } from '../../browser-voice.js'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -28,15 +29,6 @@ function availableVoices(): SpeechSynthesisVoice[] {
     }
     return rank(left) - rank(right) || left.name.localeCompare(right.name) || left.lang.localeCompare(right.lang)
   })
-}
-
-function pickVoice(voices: readonly SpeechSynthesisVoice[], value: string): SpeechSynthesisVoice | undefined {
-  const language = typeof navigator === 'undefined' ? 'zh-CN' : navigator.language || 'zh-CN'
-  return voices.find((voice) => voice.voiceURI === value)
-    ?? voices.find((voice) => voice.lang.toLowerCase() === 'zh-cn')
-    ?? voices.find((voice) => voice.lang.toLowerCase().startsWith(language.toLowerCase().split('-')[0] ?? 'zh'))
-    ?? voices.find((voice) => voice.default)
-    ?? voices[0]
 }
 
 export function LocalVoicePicker({ value, disabled = false, label, minimal = false, unavailableLabel, loadingLabel, offlineLabel, onlineLabel, onChange, onAvailabilityChange }: LocalVoicePickerProps): ReactElement {
@@ -72,7 +64,7 @@ export function LocalVoicePicker({ value, disabled = false, label, minimal = fal
 
   useEffect(() => { if (disabled) setOpen(false) }, [disabled])
 
-  const selected = useMemo(() => pickVoice(voices, value), [value, voices])
+  const selected = useMemo(() => selectBrowserVoice(voices, value), [value, voices])
   const selectedValue = selected?.voiceURI ?? value
   const choose = (voice: SpeechSynthesisVoice): void => {
     onChange(voice.voiceURI)
@@ -132,5 +124,5 @@ export function LocalVoicePicker({ value, disabled = false, label, minimal = fal
 }
 
 export function resolveLocalVoice(voices: readonly SpeechSynthesisVoice[], value: string): SpeechSynthesisVoice | undefined {
-  return pickVoice(voices, value)
+  return selectBrowserVoice(voices, value)
 }

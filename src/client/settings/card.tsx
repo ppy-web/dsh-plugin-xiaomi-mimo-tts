@@ -6,7 +6,6 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { GoHistory } from 'react-icons/go'
 import { RiSwitchFill } from 'react-icons/ri'
 import {
-  TTS_MIMO_LOGO_ASSET_ROUTE,
   getSoundEffectsModeFlags,
   isSupportedTtsApiKey,
   resolveSoundEffectsScope,
@@ -33,7 +32,6 @@ import { SidebarSettings } from './sidebar-settings.js'
 import { withSidebarLoading } from './sidebar-loading.js'
 import { SwitchModule } from './switch-module.js'
 import { readMinimalMode, writeMinimalMode } from './minimal-mode.js'
-import { hostRoute } from '../host-route.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 import type { AudioHistory } from '../history/audio-history.js'

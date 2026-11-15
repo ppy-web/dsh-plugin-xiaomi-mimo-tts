@@ -31,6 +31,7 @@ import {
   TTS_READ_SCOPES,
   SOUND_PACKS,
   DEFAULT_TTS_SETTINGS,
+  QQBOT_SPEECH_LIMITS,
   ANNOUNCEMENT_SOURCES,
   isSupportedTtsApiKey,
 } from './types/index.js'
@@ -62,8 +63,8 @@ export const Config = z.object({
   acceptExternalProviders: z.boolean().default(DEFAULT_TTS_SETTINGS.acceptExternalProviders).volatile(),
   voiceRecognitionService: z.boolean().default(DEFAULT_TTS_SETTINGS.voiceRecognitionService).volatile(),
   qqbotEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.qqbotEnabled).volatile(),
-  qqbotMaxAutoCharacters: z.number().step(1).min(0).max(12000).default(0).volatile(),
-  qqbotMaxDurationSeconds: z.number().step(1).min(0).max(6000).default(0).volatile(),
+  qqbotMaxAutoCharacters: z.number().step(1).min(0).max(QQBOT_SPEECH_LIMITS.qqbotMaxAutoCharacters).default(0).volatile(),
+  qqbotMaxDurationSeconds: z.number().step(1).min(0).max(QQBOT_SPEECH_LIMITS.qqbotMaxDurationSeconds).default(0).volatile(),
   announcementSources: z.array(z.union(ANNOUNCEMENT_SOURCES)).default(DEFAULT_TTS_SETTINGS.announcementSources).volatile(),
   provider: z.union(TTS_PROVIDERS).default(DEFAULT_TTS_SETTINGS.provider).volatile(),
   doubaoEnabled: z.boolean().default(true).volatile(),

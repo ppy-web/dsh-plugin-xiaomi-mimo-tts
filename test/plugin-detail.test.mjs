@@ -1,3 +1,4 @@
+import { snapshotSource as source } from './helpers/snapshot-source.mjs'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
@@ -8,16 +9,6 @@ const { ApiKeyStatusStore, apiKeyStatusStore, bindApiKeyStatus } = await loadCli
 const { PluginDetailActions, PluginDetailBadge } = await loadClientModule('src/client/settings/plugin-detail.tsx')
 const { MANUAL_URL, SOURCE_URL } = await loadClientModule('src/client/settings/plugin-links.ts')
 
-function source(initial) {
-  let value = initial
-  const listeners = new Set()
-  return {
-    getSnapshot: () => value,
-    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) },
-    set(next) { value = next; for (const listener of listeners) listener() },
-    get count() { return listeners.size },
-  }
-}
 
 function mockRequests(t) {
   const requests = []

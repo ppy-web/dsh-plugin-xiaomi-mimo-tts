@@ -25,3 +25,13 @@ export function loadWhaleMemes(root = whalePackageRoot()): WhaleMeme[] {
 export function buildWhalePersona(channel: 'dsh' | 'qq', settings: WhaleSettings = DEFAULT_WHALE_SETTINGS, root = whalePackageRoot()): string {
   return personaModule(root)(root, { channel, persona: settings.persona, memoryEnabled: settings.memory.enabled, memesEnabled: settings.memes?.enabled })
 }
+
+/** Keep each channel's prompt cache tied to its own current settings. */
+export function cachedWhalePersona(channel: 'dsh' | 'qq', current: () => WhaleSettings): () => string {
+  let cached: { signature: string; text: string } | undefined
+  return () => {
+    const settings = current(), signature = JSON.stringify(settings)
+    if (cached?.signature !== signature) cached = { signature, text: buildWhalePersona(channel, settings) }
+    return cached.text
+  }
+}

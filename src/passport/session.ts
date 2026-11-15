@@ -4,10 +4,11 @@ import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { SPEECH_DATA_ROOT } from '../host/speech-files.js'
+import { writeAtomicJson } from '../host/atomic-json.js'
 import { DEFAULT_PASSPORT_SETTINGS as defaults } from '../types/passport.js'
 
 interface SessionIdentity { sessionId: string; preset: string; revision?: string }
@@ -31,12 +32,7 @@ export class PassportSessionStore {
   }
 
   async save(value: SessionIdentity): Promise<void> {
-    await mkdir(this.directory, { recursive: true })
-    const temporary = `${this.path}.${randomUUID()}.tmp`
-    try {
-      await writeFile(temporary, JSON.stringify(value), { flag: 'wx', mode: 0o600 })
-      await rename(temporary, this.path)
-    } finally { await rm(temporary, { force: true }) }
+    await writeAtomicJson(this.directory, this.path, value)
   }
 }
 

@@ -6,10 +6,9 @@ import z from '@deepseek-ai/schemastery'
 import { readFileSync } from 'node:fs'
 import { PassportBridge } from './passport/bridge.js'
 import { PassportSession } from './passport/session.js'
-import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_ASR_TEST_ROUTE, PASSPORT_ASR_PROVIDERS, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from './types/passport.js'
+import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_ASR_TEST_ROUTE, PASSPORT_ASR_PROVIDERS, PASSPORT_NUMBER_FIELDS, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from './types/passport.js'
 import type { PassportSettings } from './types/passport.js'
-import { json, readJsonBody } from './host/http.js'
-import { TTS_DESKTOP_WRITE_HEADER } from './constants.js'
+import { json, readJsonBody, sameOriginRequest } from './host/http.js'
 import { passportAddresses } from './passport/network.js'
 import { hostRecognizer } from './passport/recognition.js'
 
@@ -26,21 +25,22 @@ const ASR_TEST_ERRORS = new Set(['passport-asr-unavailable', 'passport-asr-disab
 // Keep the configuration owner alive before ASR or the conversation services are ready.
 export const inject: string[] = []
 const messages = (language: string) => JSON.parse(readFileSync(new URL(`./locale/passport/${language}.json`, import.meta.resolve('dsh-xiaomi-tts/package.json')), 'utf8')).config
+const ranges = PASSPORT_NUMBER_FIELDS
 export const Config = z.object({
   asrProvider: z.union(PASSPORT_ASR_PROVIDERS).default('host').volatile(),
   host: z.string().default(defaults.host).volatile(),
-  port: z.number().step(1).min(1).max(65535).default(defaults.port).volatile(),
+  port: z.number().step(ranges.port.step).min(ranges.port.min).max(ranges.port.max).default(defaults.port).volatile(),
   accessToken: z.string().max(192).pattern(/^\S*$/u).role('secret').default(defaults.accessToken).volatile(),
   deviceId: z.string().default(defaults.deviceId).volatile(),
   agentPreset: z.string().default(defaults.agentPreset).volatile(),
   sessionRevision: z.string().max(128).default(defaults.sessionRevision).volatile(),
   cwd: z.string().default(defaults.cwd).volatile(),
-  silenceMs: z.number().step(20).min(200).max(3000).default(defaults.silenceMs).volatile(),
-  minSpeechMs: z.number().step(20).min(100).max(1000).default(defaults.minSpeechMs).volatile(),
-  speechThreshold: z.number().min(0.001).max(0.5).default(defaults.speechThreshold).volatile(),
-  maxRecordingSeconds: z.number().min(1).max(60).default(defaults.maxRecordingSeconds).volatile(),
-  maxReplySeconds: z.number().min(1).max(120).default(defaults.maxReplySeconds).volatile(),
-  requestTimeoutMs: z.number().min(10000).max(600000).default(defaults.requestTimeoutMs).volatile(),
+  silenceMs: z.number().step(ranges.silenceMs.step).min(ranges.silenceMs.min).max(ranges.silenceMs.max).default(defaults.silenceMs).volatile(),
+  minSpeechMs: z.number().step(ranges.minSpeechMs.step).min(ranges.minSpeechMs.min).max(ranges.minSpeechMs.max).default(defaults.minSpeechMs).volatile(),
+  speechThreshold: z.number().min(ranges.speechThreshold.min).max(ranges.speechThreshold.max).default(defaults.speechThreshold).volatile(),
+  maxRecordingSeconds: z.number().min(ranges.maxRecordingSeconds.min).max(ranges.maxRecordingSeconds.max).default(defaults.maxRecordingSeconds).volatile(),
+  maxReplySeconds: z.number().min(ranges.maxReplySeconds.min).max(ranges.maxReplySeconds.max).default(defaults.maxReplySeconds).volatile(),
+  requestTimeoutMs: z.number().min(ranges.requestTimeoutMs.min).max(ranges.requestTimeoutMs.max).default(defaults.requestTimeoutMs).volatile(),
 }).i18n({ zh: messages('zh'), en: messages('en') })
 export type Config = ReturnType<typeof Config>
 
@@ -55,12 +55,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.inject(['webServer'], child => {
     child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_ASR_TEST_ROUTE, async handler(req, res) {
       if (req.method !== 'POST') { res.setHeader('allow', 'POST'); json(res, 405, { error: 'method-not-allowed' }); return }
-      const origin = req.headers.origin
-      let allowed = origin === undefined && req.headers['sec-fetch-site'] === undefined && req.headers[TTS_DESKTOP_WRITE_HEADER] === '1'
-      if (origin !== undefined) {
-        try { const url = new URL(origin); allowed = ['http:', 'https:'].includes(url.protocol) && url.host === req.headers.host } catch { allowed = false }
-      }
-      if (!allowed || ['cross-site', 'same-site'].includes(String(req.headers['sec-fetch-site']))) { json(res, 403, { error: 'cross-origin-denied' }); return }
+      if (!sameOriginRequest(req, true)) { json(res, 403, { error: 'cross-origin-denied' }); return }
       if (!String(req.headers['content-type']).startsWith('application/json')) { json(res, 415, { error: 'invalid-content-type' }); return }
       let source: PassportSettings['asrProvider']
       try {
@@ -115,12 +110,7 @@ export function apply(ctx: Context, config: Config): void {
     } }))
     child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_STATUS_ROUTE, handler(req, res) {
       if (req.method !== 'GET') { res.setHeader('allow', 'GET'); json(res, 405, { error: 'method-not-allowed' }); return }
-      const origin = req.headers.origin
-      let allowed = origin === undefined
-      if (origin !== undefined) {
-        try { const url = new URL(origin); allowed = ['http:', 'https:'].includes(url.protocol) && url.host === req.headers.host } catch { allowed = false }
-      }
-      if (!allowed || ['cross-site', 'same-site'].includes(String(req.headers['sec-fetch-site']))) { json(res, 403, { error: 'cross-origin-denied' }); return }
+      if (!sameOriginRequest(req)) { json(res, 403, { error: 'cross-origin-denied' }); return }
       res.setHeader('cache-control', 'no-store')
       const asrProvider = config.asrProvider.get()
       const servicesReady = ['speechSynthesis', 'agents', 'agentPresets', 'agentDefaultModel', ...(asrProvider === 'host' ? ['speechToText'] : ['passportRecognition'])].every(name => !!ctx.get(name))

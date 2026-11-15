@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ToolRegistrationOptions, ToolRunContext } from '@deepseek-ai/dsh-tools'
-import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
+import type { Session } from '@deepseek-ai/dsh-session'
 import z from '@deepseek-ai/schemastery'
 import type { SpeechDeliveryResult, SpeechRequest } from './host-api.js'
 import { BREEZE_AUDIO_TAG_GUIDANCE, TTS_PROVIDERS, XIAOMI_AUDIO_TAG_GUIDANCE } from './shared.js'

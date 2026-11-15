@@ -2,7 +2,7 @@ import { useState, useSyncExternalStore, type ReactElement, type ReactNode } fro
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PluginConfigViewProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { DEFAULT_WHALE_SETTINGS } from '../../types/whale.js'
+import { DEFAULT_WHALE_SETTINGS, WHALE_PERSONA_LIMITS } from '../../types/whale.js'
 import type { WhaleSettings, WhalePersona } from '../../types/whale.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { LocaleKey, Translate } from '../localization.js'
@@ -20,15 +20,15 @@ interface Draft {
   base: WhaleSettings
   revision: number
 }
-const PERSONA_FIELDS: ReadonlyArray<{ field: keyof WhalePersona; label: LocaleKey; limit: number; multiline?: boolean }> = [
-  { field: 'name', label: 'whale.name', limit: 60 },
-  { field: 'selfReference', label: 'whale.selfReference', limit: 40 },
-  { field: 'userAddress', label: 'whale.userAddress', limit: 40 },
-  { field: 'relationship', label: 'whale.relationship', limit: 1000 },
-  { field: 'personality', label: 'whale.personality', limit: 1200, multiline: true },
-  { field: 'replyStyle', label: 'whale.replyStyle', limit: 1200, multiline: true },
-  { field: 'likes', label: 'whale.likes', limit: 1000, multiline: true },
-  { field: 'boundaries', label: 'whale.boundaries', limit: 1200, multiline: true },
+const PERSONA_FIELDS: ReadonlyArray<{ field: keyof WhalePersona; label: LocaleKey; multiline?: boolean }> = [
+  { field: 'name', label: 'whale.name' },
+  { field: 'selfReference', label: 'whale.selfReference' },
+  { field: 'userAddress', label: 'whale.userAddress' },
+  { field: 'relationship', label: 'whale.relationship' },
+  { field: 'personality', label: 'whale.personality', multiline: true },
+  { field: 'replyStyle', label: 'whale.replyStyle', multiline: true },
+  { field: 'likes', label: 'whale.likes', multiline: true },
+  { field: 'boundaries', label: 'whale.boundaries', multiline: true },
 ]
 const ERROR_KEYS: Record<NonNullable<ReturnType<typeof validateWhaleDraft>>, LocaleKey> = {
   persona: 'whale.errorPersona',
@@ -77,10 +77,10 @@ function WhaleSettingsPage({ scope, t, changes = IDLE_PLUGIN_CHANGES, channel = 
       <h4>{t(channel === 'qq' ? 'qq.persona' : 'whale.persona')}</h4>
       <p className="xmimo-qq-hint">{t(channel === 'qq' ? 'qq.personaHint' : 'whale.personaHint')}</p>
       <div className="xmimo-qq-grid">
-        {PERSONA_FIELDS.map(({ field, label, limit, multiline }) => <Field key={field} label={t(label)}>
-          {multiline ? <textarea rows={3} maxLength={limit} value={value.persona[field]} disabled={disabled}
+        {PERSONA_FIELDS.map(({ field, label, multiline }) => <Field key={field} label={t(label)}>
+          {multiline ? <textarea rows={3} maxLength={WHALE_PERSONA_LIMITS[field]} value={value.persona[field]} disabled={disabled}
             onChange={event => { const next = event.currentTarget.value; edit(current => ({ ...current, persona: { ...current.persona, [field]: next } })) }} />
-            : <input maxLength={limit} value={value.persona[field]} disabled={disabled} required={field === 'name' || field === 'selfReference'}
+            : <input maxLength={WHALE_PERSONA_LIMITS[field]} value={value.persona[field]} disabled={disabled} required={field === 'name' || field === 'selfReference'}
               onChange={event => { const next = event.currentTarget.value; edit(current => ({ ...current, persona: { ...current.persona, [field]: next } })) }} />}
         </Field>)}
       </div>

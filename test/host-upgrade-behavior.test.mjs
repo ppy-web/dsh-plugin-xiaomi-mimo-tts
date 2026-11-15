@@ -1,3 +1,4 @@
+import { snapshotSource as source } from './helpers/snapshot-source.mjs'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
@@ -10,16 +11,6 @@ const { PreviewPlayer } = await loadClientModule('src/client/playback/preview-pl
 const { HistoryReplay } = await loadClientModule('src/client/history/history-replay.ts')
 const { zh, en } = await loadClientModule('src/client/localization.ts')
 
-function source(initial) {
-  let value = initial
-  const listeners = new Set()
-  return {
-    getSnapshot: () => value,
-    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) },
-    set(next) { value = next; for (const listener of listeners) listener() },
-    get count() { return listeners.size },
-  }
-}
 
 test('bundle activity stops once, blocks new audio, refreshes on settlement and releases subscriptions', () => {
   const changes = source(false)

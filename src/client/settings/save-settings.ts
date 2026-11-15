@@ -7,6 +7,8 @@ import type { DraftChanges, SettingsValues, EditableSettingField } from './types
 
 export const EDITABLE_SETTING_FIELDS: readonly EditableSettingField[] = ['showInSidebar', 'showInHostSettings', 'showFeatureGuide', 'acceptExternalProviders', 'voiceRecognitionService', 'qqbotEnabled', 'announcementSources', 'provider', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'doubaoEnabled', 'deepseekEnabled', 'deepseekVoice', 'breezeEnabled', 'breezeVoice', 'breezeInstruction', 'instruction', 'enabled', 'autoPlay', 'showReadingCaptions', 'inputAvoidance', 'importantAnnouncementsFirst', 'voiceVolume', 'voiceRate', 'readScope', 'model', 'localSpeechMode', 'localVoiceURI', 'localVoiceEngine', 'mossEnabled', 'mossBaseURL', 'mossVoice', 'mossVoiceName', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
 
+const PROVIDER_KEY_FIELDS = [['xiaomi', 'apiKey'], ['doubao', 'doubaoApiKey'], ['breeze', 'breezeApiKey'], ['deepseek', 'deepseekApiKey']] as const
+
 export type SaveSettingsErrorCode = 'voice-required' | 'api-key-rejected' | 'host-rejected' | 'provider-count'
 
 export const BUILTIN_SETTING_FIELDS = new Set<string>(['provider', 'apiKey', 'doubaoEnabled', 'doubaoApiKey', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'deepseekEnabled', 'deepseekApiKey', 'deepseekVoice', 'breezeEnabled', 'breezeApiKey', 'breezeVoice', 'breezeInstruction', 'instruction', 'model', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt'])
@@ -29,7 +31,7 @@ export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: S
   if (external) changes = Object.fromEntries(Object.entries(changes).filter(([field]) => !BUILTIN_SETTING_FIELDS.has(field)))
   const invalid = external ? null : validateSettingsDraft(draft)
   if (invalid) throw new SaveSettingsError(invalid)
-  for (const [provider, field] of [['xiaomi', 'apiKey'], ['doubao', 'doubaoApiKey'], ['breeze', 'breezeApiKey'], ['deepseek', 'deepseekApiKey']] as const) {
+  for (const [provider, field] of PROVIDER_KEY_FIELDS) {
     if (changes[field]?.kind === 'set' && (keys[provider] ?? '').trim() && !isSupportedTtsApiKey(keys[provider] ?? '', provider)) throw new SaveSettingsError('api-key-rejected')
   }
   const snapshot = scope.getSnapshot()
@@ -66,7 +68,7 @@ export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: S
       if (!changes[field] && raw !== acceptedValues[field]) ops.push({ op: 'set', path: [field], value: acceptedValues[field] })
     }
   }
-  for (const [provider, field] of [['xiaomi', 'apiKey'], ['doubao', 'doubaoApiKey'], ['breeze', 'breezeApiKey'], ['deepseek', 'deepseekApiKey']] as const) {
+  for (const [provider, field] of PROVIDER_KEY_FIELDS) {
     if (changes[field]?.kind === 'set' && (keys[provider] ?? '').trim()) {
       ops.push({ op: 'set', path: [field], value: (keys[provider] ?? '').trim() })
     }

@@ -1,5 +1,4 @@
 import { useCallback, useSyncExternalStore } from 'react'
-import type { TtsSettings } from '../../shared.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

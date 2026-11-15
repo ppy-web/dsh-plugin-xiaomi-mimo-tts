@@ -1,20 +1,12 @@
-import type { SnapshotSource } from './plugin-activity.js'
+import { BooleanActivity } from './plugin-activity.js'
 
 /** Observe only the Host composer; plugin forms and unrelated editors never hold this gate. */
-export class ComposerInputActivity implements SnapshotSource<boolean> {
-  private blocked = false
+export class ComposerInputActivity extends BooleanActivity {
   private enabled = false
   private editor: Element | null = null
   private observer: MutationObserver | null = null
-  private readonly listeners = new Set<() => void>()
 
-  constructor(private readonly document: Document) {}
-
-  getSnapshot = (): boolean => this.blocked
-  subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener)
-    return () => { this.listeners.delete(listener) }
-  }
+  constructor(private readonly document: Document) { super() }
 
   configure(enabled: boolean): void {
     if (!enabled) { this.dispose(); return }
@@ -54,11 +46,5 @@ export class ComposerInputActivity implements SnapshotSource<boolean> {
     this.publish(this.document.hasFocus() && this.editor !== null && this.editor.isConnected
       && this.editor.getAttribute('contenteditable') !== 'false' && this.editor.getAttribute('aria-disabled') !== 'true'
       && (this.editor.textContent ?? '').trim().length > 0)
-  }
-
-  private publish(blocked: boolean): void {
-    if (this.blocked === blocked) return
-    this.blocked = blocked
-    for (const listener of this.listeners) listener()
   }
 }

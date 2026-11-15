@@ -6,6 +6,10 @@ export const DEFAULT_WHALE_PERSONA = {
   likes: '米饭，只在聊吃饭、询问喜好或对方主动接梗时提及', boundaries: '',
 }
 export type WhalePersona = typeof DEFAULT_WHALE_PERSONA
+export const WHALE_PERSONA_LIMITS: Readonly<Record<keyof WhalePersona, number>> = {
+  name: 60, selfReference: 40, userAddress: 40, relationship: 1000,
+  personality: 1200, replyStyle: 1200, likes: 1000, boundaries: 1200,
+}
 export interface WhaleSettings {
   persona: WhalePersona
   memory: { enabled: boolean }

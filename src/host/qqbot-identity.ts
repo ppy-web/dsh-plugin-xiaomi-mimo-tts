@@ -16,14 +16,19 @@ export type QqConversation = { kind: 'qqbot'; identity: QqIdentity } | { kind: '
 /** Read-only QQBot 0.5.x session mapping used for identity checks. */
 export class QqIdentityReader {
   constructor(readonly path = join(homedir(), '.dsh-qqbot', 'model-prefs.json')) {}
+  private async readMapping(signal?: AbortSignal): Promise<Record<string, unknown>> {
+    const data = await readFile(this.path, { encoding: 'utf8', signal })
+    signal?.throwIfAborted()
+    if (Buffer.byteLength(data) > 8 * 1024 * 1024) throw new Error('oversized mapping')
+    const value = JSON.parse(data) as { sessionIds?: Record<string, unknown> }
+    if (!value.sessionIds || typeof value.sessionIds !== 'object' || Array.isArray(value.sessionIds)) throw new Error('missing mapping')
+    return value.sessionIds
+  }
   async list(): Promise<QqIdentity[]> {
     try {
-      const data = await readFile(this.path, 'utf8')
-      if (Buffer.byteLength(data) > 8 * 1024 * 1024) return []
-      const value = JSON.parse(data) as { sessionIds?: Record<string, unknown> }
-      if (!value.sessionIds || typeof value.sessionIds !== 'object' || Array.isArray(value.sessionIds)) return []
+      const mapping = await this.readMapping()
       const result = new Map<string, QqIdentity>()
-      for (const [key, sessionId] of Object.entries(value.sessionIds)) {
+      for (const [key, sessionId] of Object.entries(mapping)) {
         if (typeof sessionId !== 'string' || !sessionId) continue
         const identity = parseQqIdentity(key)
         if (identity) result.set(identity.key, identity)
@@ -33,12 +38,8 @@ export class QqIdentityReader {
   }
   async inspect(sessionId: string, signal?: AbortSignal): Promise<QqConversation> {
     try {
-      const data = await readFile(this.path, { encoding: 'utf8', signal })
-      signal?.throwIfAborted()
-      if (Buffer.byteLength(data) > 8 * 1024 * 1024) throw new Error('oversized mapping')
-      const value = JSON.parse(data) as { sessionIds?: Record<string, unknown> }
-      if (!value.sessionIds || typeof value.sessionIds !== 'object' || Array.isArray(value.sessionIds)) throw new Error('missing mapping')
-      const matches = Object.entries(value.sessionIds).filter(([, id]) => id === sessionId)
+      const mapping = await this.readMapping(signal)
+      const matches = Object.entries(mapping).filter(([, id]) => id === sessionId)
       const identity = matches.length === 1 ? parseQqIdentity(matches[0]![0]) : undefined
       if (identity) return { kind: 'qqbot', identity }
       if (matches.length === 0) return { kind: 'dsh' }

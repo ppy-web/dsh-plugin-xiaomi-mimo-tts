@@ -211,6 +211,15 @@ test('invalid audio, excessive bytes and a mismatched format are rejected', asyn
   try { await assert.rejects(f.service.synthesize({ text: 'x' }), { code: 'invalid-audio-format' }) } finally { await f.service.dispose() }
 })
 
+test('external MP3 audio accepts ID3 and frame sync headers and rejects invalid data', () => {
+  for (const audio of [Buffer.from('ID3example'), Buffer.from([0xff, 0xfb, 0x00])]) {
+    assert.deepEqual(validateExternalAudio(audio, 'mp3', audio.length), audio)
+  }
+  for (const audio of [Buffer.alloc(0), Buffer.from([0xff]), Buffer.from('not audio')]) {
+    assert.throws(() => validateExternalAudio(audio, 'mp3', 1024), { code: 'invalid-audio-format' })
+  }
+})
+
 test('optional PCM streams stay aligned and stop after cancellation', async () => {
   const f = fixture({ async *streamPcm() { yield Uint8Array.of(1); yield Uint8Array.of(2, 3); yield Uint8Array.of(4) } })
   f.service.registerProvider(f.provider)

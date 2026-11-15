@@ -1,11 +1,11 @@
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import type { TtsSettings } from '../../types/settings.js'
+import { QQBOT_SPEECH_LIMITS, type TtsSettings } from '../../types/settings.js'
 
 export interface QqSpeechDraft { qqbotEnabled: boolean; qqbotMaxAutoCharacters: number; qqbotMaxDurationSeconds: number }
 export function validQqSpeechDraft(value: QqSpeechDraft): boolean {
   return typeof value.qqbotEnabled === 'boolean'
-    && Number.isInteger(value.qqbotMaxAutoCharacters) && value.qqbotMaxAutoCharacters >= 0 && value.qqbotMaxAutoCharacters <= 12000
-    && Number.isInteger(value.qqbotMaxDurationSeconds) && value.qqbotMaxDurationSeconds >= 0 && value.qqbotMaxDurationSeconds <= 6000
+    && Number.isInteger(value.qqbotMaxAutoCharacters) && value.qqbotMaxAutoCharacters >= 0 && value.qqbotMaxAutoCharacters <= QQBOT_SPEECH_LIMITS.qqbotMaxAutoCharacters
+    && Number.isInteger(value.qqbotMaxDurationSeconds) && value.qqbotMaxDurationSeconds >= 0 && value.qqbotMaxDurationSeconds <= QQBOT_SPEECH_LIMITS.qqbotMaxDurationSeconds
 }
 export async function saveQqSpeechDraft(scope: ConfigForm<TtsSettings>, base: QqSpeechDraft, value: QqSpeechDraft, revision: number): Promise<void> {
   const snapshot = scope.getSnapshot()

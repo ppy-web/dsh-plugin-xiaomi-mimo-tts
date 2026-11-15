@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactElement } from 're
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PluginConfigViewProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { resolveTtsSettings, type TtsSettings } from '../../shared.js'
+import { QQBOT_SPEECH_LIMITS, resolveTtsSettings, type TtsSettings } from '../../shared.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
 import { useSettingsSnapshot } from './scope.js'
@@ -72,7 +72,7 @@ function QqbotSpeechPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Props): Re
       <div className="xmimo-qq-grid">
         {(['qqbotMaxAutoCharacters', 'qqbotMaxDurationSeconds'] as const).map(field => <label className="xmimo-qq-field" key={field}>
           <span>{t(field === 'qqbotMaxAutoCharacters' ? 'qq.characters' : 'qq.duration')}</span>
-          <input type="number" min={0} max={field === 'qqbotMaxAutoCharacters' ? 12000 : 6000} step={1} disabled={disabled}
+          <input type="number" min={0} max={QQBOT_SPEECH_LIMITS[field]} step={1} disabled={disabled}
             value={Number.isNaN(value[field]) ? '' : value[field]} onChange={event => edit(field, event.currentTarget.value === '' ? Number.NaN : Number(event.currentTarget.value))} />
         </label>)}
       </div>

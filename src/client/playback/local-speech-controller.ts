@@ -1,3 +1,4 @@
+import { browserVoice } from '../browser-voice.js'
 import { prepareSpeechText } from './speech-text.js'
 import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, normalizeVoiceRate, splitCompletedTtsSentences, splitTtsSegments } from '../../shared.js'
 import type { LiveSpeechCursor, TtsLocalVoiceEngine } from '../../shared.js'
@@ -7,21 +8,6 @@ import { fetchMossAudio, MossRequestError } from '../moss-service.js'
 import { playMossAudio } from './moss-playback.js'
 import type { MossAudioHandle } from './moss-playback.js'
 import { mediaCaptionTiming, type ReadingCaptions } from './reading-captions.js'
-
-function browserVoices(): SpeechSynthesisVoice[] {
-  if (typeof window === 'undefined' || window.speechSynthesis === undefined) return []
-  return window.speechSynthesis.getVoices()
-}
-
-function chooseVoice(value: string): SpeechSynthesisVoice | undefined {
-  const voices = browserVoices()
-  const language = typeof navigator === 'undefined' ? 'zh-CN' : navigator.language || 'zh-CN'
-  return voices.find((voice) => voice.voiceURI === value)
-    ?? voices.find((voice) => voice.lang.toLowerCase() === 'zh-cn')
-    ?? voices.find((voice) => voice.lang.toLowerCase().startsWith(language.toLowerCase().split('-')[0] ?? 'zh'))
-    ?? voices.find((voice) => voice.default)
-    ?? voices[0]
-}
 
 export class LocalSpeechController {
   constructor(private readonly captions?: ReadingCaptions) {}
@@ -319,7 +305,7 @@ export class LocalSpeechController {
     if (generation !== this.generation || signal.aborted) return Promise.resolve()
     if (this.localVoiceEngine === 'moss') return this.speakMoss(text, signal, generation)
     if (typeof window === 'undefined' || window.speechSynthesis === undefined) return Promise.reject(new Error('local-speech-unavailable'))
-    const voice = chooseVoice(this.voiceURI)
+    const voice = browserVoice(this.voiceURI)
     if (voice === undefined) return Promise.reject(new Error('local-voice-unavailable'))
     return new Promise<void>((resolve, reject) => {
       const utterance = new SpeechSynthesisUtterance(text)
