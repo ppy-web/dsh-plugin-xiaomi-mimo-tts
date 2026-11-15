@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
@@ -15,6 +15,7 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import { createQqbotSpeechDelivery } from '../lib/qqbot.js'
 import * as qqbotSpeech from '../lib/qqbot.js'
+import { registerQqbotMemeTool } from '../lib/qqbot-agent.js'
 import * as speechAgent from '../lib/speech-agent.js'
 import * as whaleAgent from '../lib/whale-agent.js'
 import { randomUUID } from 'node:crypto'
@@ -72,6 +73,60 @@ test('QQ adapter passes the real Agent through the shared pipeline and cleans au
     await assert.rejects(readFile(sentPath), { code: 'ENOENT' })
     assert.deepEqual(await readdir(directory), [])
   })
+})
+
+test('QQ data directory is shared by identity lookup, voice delivery and cleanup', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-qq-data-'))
+  const previous = process.env.QQBOT_DATA_DIR
+  process.env.QQBOT_DATA_DIR = directory
+  const ctx = new Context()
+  ctx.provide('systemPrompt', { tools() {} })
+  try {
+    await mkdir(join(directory, 'media'))
+    await writeFile(join(directory, 'model-prefs.json'), JSON.stringify({ sessionIds: { 'qqbot:bot:c2c:peer': 'session-1' } }))
+    assert.equal((await new qqbotSpeech.QqIdentityReader().inspect('session-1')).kind, 'qqbot')
+    await ctx.plugin(ToolsService).await()
+    const agent = { id: 'session-1' }
+    const scope = createScope(ctx, agent)
+    agent.ctx = scope.ctx
+    let sentPath
+    registerSender(ctx, async args => {
+      sentPath = args.file_path
+      assert.ok(['voice', 'meme'].includes(await readFile(sentPath, 'utf8')))
+      return { messageId: 'sent', target: 'c2c:peer' }
+    })
+    const adapter = createQqbotSpeechDelivery(ctx)
+    await adapter.send({ data: Buffer.from('voice'), text: 'hello', format: 'silk', provider: 'xiaomi', contentType: 'audio/silk' }, { agent, signal: new AbortController().signal })
+    assert.equal(join(directory, 'media'), join(sentPath, '..'))
+    await assert.rejects(readFile(sentPath), { code: 'ENOENT' })
+    const meme = join(directory, 'source.webp')
+    await writeFile(meme, 'meme')
+    ctx.provide('qqbotMemes', [{ id: '1', path: meme }])
+    ctx.provide('qqbotSettings', { current: () => ({ memes: { enabled: true } }) })
+    registerQqbotMemeTool(ctx)
+    const pipeline = new ToolExecutionPipeline(ctx)
+    const signal = new AbortController().signal
+    const toolSet = await ctx.tools.resolve({ agent, modelSelection: {}, signal })
+    const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'qqbot_send_meme', arguments: { meme: '1' }, agent, signal, toolSet })
+    const result = await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+    toolSet.dispose()
+    assert.equal(result.isError, false)
+    assert.equal(join(directory, 'media'), join(sentPath, '..'))
+    await assert.rejects(readFile(sentPath), { code: 'ENOENT' })
+    await scope.dispose()
+    delete process.env.QQBOT_DATA_DIR
+    assert.equal(new qqbotSpeech.QqIdentityReader().path, join(homedir(), '.dsh-qqbot', 'model-prefs.json'))
+    process.env.QQBOT_DATA_DIR = '  '
+    assert.equal(new qqbotSpeech.QqIdentityReader().path, join(homedir(), '.dsh-qqbot', 'model-prefs.json'))
+    process.env.QQBOT_DATA_DIR = 'relative/path'
+    assert.throws(() => new qqbotSpeech.QqIdentityReader(), /QQBOT_DATA_DIR/)
+    assert.throws(() => createQqbotSpeechDelivery(ctx), /QQBOT_DATA_DIR/)
+  } finally {
+    if (previous === undefined) delete process.env.QQBOT_DATA_DIR
+    else process.env.QQBOT_DATA_DIR = previous
+    await ctx.fiber.dispose()
+    await rm(directory, { recursive: true, force: true })
+  }
 })
 
 test('a step-conditional QQ sender stays usable for out-of-band deliveries', async () => {

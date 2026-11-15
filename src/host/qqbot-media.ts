@@ -3,7 +3,6 @@ import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { SpeechDeliveryContext, SpeechDeliveryResult } from '../host-api.js'
 import { TtsProviderError } from './provider-error.js'
@@ -11,8 +10,8 @@ import { SPEECH_FILE_TTL_MS } from './speech-files.js'
 import { DEFAULT_WHALE_SETTINGS, type WhalePersona } from '../types/whale.js'
 import { buildWhalePersona, whalePackageRoot, type WhaleMeme } from './whale-persona.js'
 import { QQBOT_FILE_TOOL, qqbotDeliverySignals } from './qqbot-delivery-signal.js'
+import { qqbotMediaRoot } from './qqbot-paths.js'
 
-export const QQBOT_MEDIA_ROOT = join(homedir(), '.dsh-qqbot', 'media')
 export { loadWhaleMemes } from './whale-persona.js'
 
 declare module '@deepseek-ai/cordis' {
@@ -57,7 +56,7 @@ export async function sendQqbotFile(ctx: Context, path: string, context: SpeechD
 }
 
 /** Only a catalog entry chosen by ID is copied; callers never supply source paths or targets. */
-export async function sendWhaleMeme(ctx: Context, meme: WhaleMeme, context: SpeechDeliveryContext, directory = QQBOT_MEDIA_ROOT): Promise<SpeechDeliveryResult> {
+export async function sendWhaleMeme(ctx: Context, meme: WhaleMeme, context: SpeechDeliveryContext, directory = qqbotMediaRoot()): Promise<SpeechDeliveryResult> {
   context.signal.throwIfAborted()
   if (!ctx.tools.get('qqbot_send_file', context.agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending memes.', 409)
   const data = await readFile(meme.path)
@@ -74,7 +73,7 @@ export async function sendWhaleMeme(ctx: Context, meme: WhaleMeme, context: Spee
 }
 
 /** Recover only our own expired copies after a crash, without touching other QQBot media. */
-export async function cleanupQqbotMemes(directory = QQBOT_MEDIA_ROOT, now = Date.now()): Promise<void> {
+export async function cleanupQqbotMemes(directory = qqbotMediaRoot(), now = Date.now()): Promise<void> {
   const entries = await readdir(directory, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
     if (error.code === 'ENOENT') return []
     throw error

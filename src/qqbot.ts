@@ -16,7 +16,8 @@ import type { WhaleSettings } from './types/whale.js'
 import type { SpeechDeliveryAdapter } from './host-api.js'
 import { cleanupSpeechArtifacts, writeSpeechArtifact } from './host/speech-files.js'
 import { TtsProviderError } from './host/provider-error.js'
-import { cleanupQqbotMemes, loadWhaleMemes, QQBOT_MEDIA_ROOT, sendQqbotFile } from './host/qqbot-media.js'
+import { cleanupQqbotMemes, loadWhaleMemes, sendQqbotFile } from './host/qqbot-media.js'
+import { qqbotMediaRoot } from './host/qqbot-paths.js'
 import { QQ_PRESET_ID, registerQqbotSpeech } from './host/qqbot-speech.js'
 import { QQBOT_FILE_TOOL } from './host/qqbot-delivery-signal.js'
 
@@ -38,7 +39,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /** Reuse qqbot's registered tool and its routing, whitelist and reply limiter. */
-export function createQqbotSpeechDelivery(ctx: Context, directory = QQBOT_MEDIA_ROOT): SpeechDeliveryAdapter {
+export function createQqbotSpeechDelivery(ctx: Context, directory = qqbotMediaRoot()): SpeechDeliveryAdapter {
   return {
     id: 'qqbot', format: 'silk',
     conversation: {
@@ -101,7 +102,7 @@ export function apply(ctx: Context, config: Config): void {
     ],
   })
   ctx.effect(() => {
-    const clean = () => Promise.all([cleanupSpeechArtifacts(QQBOT_MEDIA_ROOT), cleanupQqbotMemes()])
+    const clean = () => Promise.all([cleanupSpeechArtifacts(qqbotMediaRoot()), cleanupQqbotMemes()])
       .catch(() => { ctx.logger.warn('QQ media cleanup failed.') })
     void clean()
     const timer = setInterval(() => { void clean() }, 60 * 60 * 1000)

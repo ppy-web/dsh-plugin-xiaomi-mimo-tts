@@ -1,9 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { readFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { parseQqIdentity, type QqIdentity } from './qqbot-memory.js'
+import { qqbotDataRoot } from './qqbot-paths.js'
 import { TtsProviderError } from './provider-error.js'
 
 export function qqCompanionNamespace(ctx: Context, owner?: string): string {
@@ -15,7 +15,7 @@ export type QqConversation = { kind: 'qqbot'; identity: QqIdentity } | { kind: '
 
 /** Read-only QQBot 0.5.x session mapping used for identity checks. */
 export class QqIdentityReader {
-  constructor(readonly path = join(homedir(), '.dsh-qqbot', 'model-prefs.json')) {}
+  constructor(readonly path = join(qqbotDataRoot(), 'model-prefs.json')) {}
   private async readMapping(signal?: AbortSignal): Promise<Record<string, unknown>> {
     const data = await readFile(this.path, { encoding: 'utf8', signal })
     signal?.throwIfAborted()
