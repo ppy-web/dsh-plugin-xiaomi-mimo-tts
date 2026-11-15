@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createElement } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { renderToPipeableStream } from 'react-dom/server'
+import { PassThrough } from 'node:stream'
 import { TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
@@ -12,8 +13,19 @@ const [{ BuiltInVoicePicker }, { VoiceDesignPresetPicker }, { VoiceAvatar }, { V
   loadClientModule('src/client/settings/voice-reading-select.tsx'),
 ])
 
-function avatarUrl(component, props) {
-  const html = renderToStaticMarkup(createElement(component, props))
+async function avatarUrl(component, props) {
+  const html = await new Promise((resolve, reject) => {
+    const output = new PassThrough()
+    let text = ''
+    output.setEncoding('utf8')
+    output.on('data', chunk => { text += chunk })
+    output.on('end', () => resolve(text))
+    output.on('error', reject)
+    const stream = renderToPipeableStream(createElement(component, props), {
+      onAllReady() { stream.pipe(output) },
+      onError: reject,
+    })
+  })
   const src = html.match(/<img\b[^>]*\bsrc="([^"]+)"/)?.[1]
   assert.ok(src, 'the selected voice renders an image')
   const comma = src.indexOf(',')
@@ -24,19 +36,19 @@ function avatarUrl(component, props) {
 
 const pickerProps = { label: 'Voice', disabled: false, onChange() {} }
 
-test('each MiMo preset renders an avatar without a packaged image URL', () => {
-  const builtIn = TTS_VOICE_PRESETS.map(preset => avatarUrl(BuiltInVoicePicker, { ...pickerProps, value: preset.value }))
-  const designed = TTS_VOICE_DESIGN_PRESETS.map(preset => avatarUrl(VoiceDesignPresetPicker, {
+test('each MiMo preset renders an avatar without a packaged image URL', async () => {
+  const builtIn = await Promise.all(TTS_VOICE_PRESETS.map(preset => avatarUrl(BuiltInVoicePicker, { ...pickerProps, value: preset.value })))
+  const designed = await Promise.all(TTS_VOICE_DESIGN_PRESETS.map(preset => avatarUrl(VoiceDesignPresetPicker, {
     ...pickerProps, value: preset.prompt, customLabel: 'Custom', customSummary: 'Describe a voice',
-  }))
+  })))
   assert.ok(new Set(builtIn).size > 1, 'built-in IDs affect the generated avatars')
   assert.ok(new Set(designed).size > 1, 'voice design preset IDs affect the generated avatars')
 })
 
-test('the voice reading selector shows the same avatar for the saved ID after a rename', () => {
+test('the voice reading selector shows the same avatar for the saved ID after a rename', async () => {
   const { value } = TTS_VOICE_PRESETS[0]
-  const workbenchAvatar = avatarUrl(BuiltInVoicePicker, { ...pickerProps, value })
-  const readingAvatar = avatarUrl(VoiceReadingSelect, {
+  const workbenchAvatar = await avatarUrl(BuiltInVoicePicker, { ...pickerProps, value })
+  const readingAvatar = await avatarUrl(VoiceReadingSelect, {
     label: 'Voice', value, disabled: false, onSelect() {},
     options: [{
       id: value,

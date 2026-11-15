@@ -21,7 +21,7 @@ async function compile(source) {
     target: ts.ScriptTarget.ES2022,
     jsx: ts.JsxEmit.ReactJSX,
   })
-  const imports = [...code.matchAll(/(?:from\s*|import\s*)['"]([^'"]+)['"]/g)]
+  const imports = [...code.matchAll(/(?:from\s*|import\s*(?:\(\s*)?)['"]([^'"]+)['"]/g)]
   for (const [, specifier] of imports) {
     let target
     if (specifier === '@deepseek-ai/dsh-client-ui-primitives') target = plainText

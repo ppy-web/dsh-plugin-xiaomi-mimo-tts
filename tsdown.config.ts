@@ -5,14 +5,14 @@ import { visualizer } from 'rollup-plugin-visualizer'
 
 const PACKAGE_ID = 'dsh-xiaomi-tts'
 
-function bundleVisualizer(target: 'client' | 'host') {
+function bundleVisualizer(target: 'client' | 'voice-avatar' | 'host') {
   return visualizer({
     filename: path.resolve('output/bundle-analysis', `${target}.html`),
     title: `${PACKAGE_ID} / ${target}`,
     template: 'treemap',
     gzipSize: true,
     brotliSize: true,
-    sourcemap: target === 'client',
+    sourcemap: target !== 'host',
     open: target === 'client' && process.env.DSH_BUNDLE_ANALYZE === '1',
   })
 }
@@ -55,10 +55,10 @@ function rawTextImports() {
   }
 }
 
-export function createClientConfig() {
+export function createClientConfig(avatar = false) {
   return defineConfig({
-    name: `${PACKAGE_ID}/client`,
-    entry: { client: 'src/client/index.tsx' },
+    name: `${PACKAGE_ID}/${avatar ? 'voice-avatar' : 'client'}`,
+    entry: avatar ? { client: 'src/client/settings/controls/generated-voice-avatar.tsx' } : { client: 'src/client/index.tsx' },
     outDir: 'lib',
     format: 'cjs',
     platform: 'browser',
@@ -69,6 +69,7 @@ export function createClientConfig() {
     external: [...CLIENT_EXTERNALS],
     noExternal: (id: string) => (CLIENT_EXTERNALS.includes(id) ? undefined : true),
     define: {
+      __DSH_CLIENT_BUNDLE__: 'true',
       'process.env.NODE_ENV': JSON.stringify('production'),
       'import.meta.env.MODE': JSON.stringify('production'),
       'import.meta.env': JSON.stringify({ MODE: 'production' }),
@@ -84,12 +85,13 @@ export function createClientConfig() {
           `client bundle purity: "${source}" is not an allowed DSH client external or inline-safe package`,
         )
       },
-    }, ...(process.env.DSH_BUNDLE_ANALYZE === '1' ? [bundleVisualizer('client')] : [])],
+    }, ...(process.env.DSH_BUNDLE_ANALYZE === '1' ? [bundleVisualizer(avatar ? 'voice-avatar' : 'client')] : [])],
     outputOptions: {
       keepNames: true,
       legalComments: 'inline',
-      entryFileNames: 'client.js',
-      banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(PACKAGE_ID)}, factory: (require) => {`,
+      exports: avatar ? 'named' : 'auto',
+      entryFileNames: avatar ? 'client.generated-voice-avatar.js' : 'client.js',
+      banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(PACKAGE_ID)}, ${avatar ? 'chunk: "client.generated-voice-avatar.js", ' : ''}factory: (require) => {`,
       footer: 'return module.exports; } });',
       intro: 'var module = { exports: {} }; var exports = module.exports;',
     },
@@ -123,4 +125,4 @@ export default defineConfig([{
   plugins: process.env.DSH_BUNDLE_ANALYZE === '1' ? [bundleVisualizer('host')] : [],
   outputOptions: { keepNames: true, legalComments: 'inline' },
   clean: true,
-}, createClientConfig()])
+}, createClientConfig(), createClientConfig(true)])

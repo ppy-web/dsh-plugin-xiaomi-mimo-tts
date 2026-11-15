@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { domAnimation, LazyMotion, m } from 'motion/react'
 import type { ReactElement, SVGAttributes } from 'react'
 
 const BARS = [
@@ -10,8 +10,8 @@ const BARS = [
 ] as const
 
 export function AnimatedAudioLines({ size = 16, ...props }: SVGAttributes<SVGSVGElement> & { size?: number }): ReactElement {
-  return <svg {...props} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-    {BARS.map(({ x, height, delay }) => <motion.line
+  return <LazyMotion features={domAnimation}><svg {...props} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+    {BARS.map(({ x, height, delay }) => <m.line
       key={x}
       x1={x}
       x2={x}
@@ -21,5 +21,5 @@ export function AnimatedAudioLines({ size = 16, ...props }: SVGAttributes<SVGSVG
       transition={{ duration: 0.88, delay, repeat: Infinity, ease: 'easeInOut' }}
       style={{ originY: '50%' }}
     />)}
-  </svg>
+  </svg></LazyMotion>
 }
