@@ -27,10 +27,15 @@
 
 /* Reserve one column for both actions, even inside a narrow host panel. */
 .xmimo-tts-card-action-buttons {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   flex: 0 0 auto;
   align-items: center;
   gap: inherit
+}
+
+.xmimo-tts-card-action-buttons:has([role="status"]) {
+  grid-template-columns: auto repeat(2, 1fr)
 }
 
 .xmimo-tts-card-actions > span {
@@ -86,6 +91,7 @@
 }
 
 .xmimo-tts-card-actions .xmimo-tts-save {
+  position: relative;
   border-color: var(--xmimo-ui-brand);
   color: var(--dsw-alias-label-primary-foreground, #fff);
   background: var(--dsw-alias-button-primary-fill, var(--xmimo-ui-brand));

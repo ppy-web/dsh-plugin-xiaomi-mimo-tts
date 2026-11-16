@@ -29,6 +29,7 @@ import {
   TTS_FORMATS,
   TTS_VOICE_DESIGN_PLAYBACK_MODES,
   TTS_READ_SCOPES,
+  TTS_AVATAR_STYLES,
   SOUND_PACKS,
   DEFAULT_TTS_SETTINGS,
   QQBOT_SPEECH_LIMITS,
@@ -97,6 +98,7 @@ export const Config = z.object({
   presetStylePrompt: z.string().default(DEFAULT_TTS_SETTINGS.presetStylePrompt).volatile(),
   format: z.union(TTS_FORMATS).default(DEFAULT_TTS_SETTINGS.format).volatile(),
   voiceDesignPlaybackMode: z.union(TTS_VOICE_DESIGN_PLAYBACK_MODES).default(DEFAULT_TTS_SETTINGS.voiceDesignPlaybackMode).volatile(),
+  avatarStyle: z.union([...TTS_AVATAR_STYLES, 'greyscale'] as const).default(DEFAULT_TTS_SETTINGS.avatarStyle).volatile(),
   readScope: z.union([...TTS_READ_SCOPES, 'first-segment'] as const).default(DEFAULT_TTS_SETTINGS.readScope).volatile(),
   autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay).volatile(),
   showReadingCaptions: z.boolean().default(DEFAULT_TTS_SETTINGS.showReadingCaptions).volatile(),
@@ -126,6 +128,7 @@ export function readConfig(config: Config): ResolvedTtsSettings {
   const values = Object.fromEntries(fields.map(key => [key, config[key].get()])) as ConfigValues
   return {
     ...values,
+    avatarStyle: values.avatarStyle === 'greyscale' ? 'default' : values.avatarStyle,
     readScope: values.readScope === 'first-segment' ? 'concise' : values.readScope,
     announcementSources: [...config.announcementSources.get()],
   }

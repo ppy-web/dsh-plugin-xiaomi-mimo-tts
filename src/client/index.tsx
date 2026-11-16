@@ -178,7 +178,6 @@ export function apply(ctx: Context): void {
       const settings = resolveTtsSettings(snapshot.value)
       const sources = settings.announcementSources.filter(source => source !== 'question-titles' || settings.autoPlay)
       collectors.update(sources, snapshot.status === 'ready' && settings.enabled && announcementAudioFocus.canPlay())
-      if (!settings.announcementSources.includes('dsh-whale-musume')) pcmService.stopExternal()
       if (snapshot.status !== 'ready' || !settings.enabled) pcmService.stop()
     }
     const offSettings = scope.subscribe(update)

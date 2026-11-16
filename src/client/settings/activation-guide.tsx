@@ -13,9 +13,10 @@ import { hostRoute } from '../host-route.js'
 import { SOURCE_URL } from './plugin-links.js'
 
 const HIGHLIGHTS = [
+  'onboarding.featureAvatarStyles',
+  'onboarding.featureNovelIntegration',
   'onboarding.featureDeepseekVoice',
   'onboarding.featureDeepseekRecognition',
-  'onboarding.featureStreamingCaptions',
 ] as const
 
 const CONFETTI = [-116, -90, -60, -28, 28, 60, 90, 116].map((x, index) => ({

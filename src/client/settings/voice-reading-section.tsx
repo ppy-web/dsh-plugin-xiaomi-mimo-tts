@@ -8,7 +8,7 @@ import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
-import { VoiceAvatar } from './controls/voice-avatar.js'
+import { AvatarStyleContext, VoiceAvatar } from './controls/voice-avatar.js'
 import { ReadScopeCards } from './controls/read-scope-cards.js'
 import { LensSlider } from './controls/lens-slider.js'
 import { readVoiceIdHistory, readVoiceIdNames, subscribeVoiceIds, voiceIdRevision } from './voice-id-history.js'
@@ -241,7 +241,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
       icon: <VoiceAvatar compact voice={{ provider: voiceProvider, id: choice.avatarId ?? choice.value }} label={choice.label} />,
     })),
   ]
-  return <div className="xmimo-voice-reading" style={minimalMode ? undefined : {
+  return <AvatarStyleContext.Provider value={settings.avatarStyle}><div className="xmimo-voice-reading" style={minimalMode ? undefined : {
     '--xmimo-voice-reading-background': `url(${hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)})`,
   } as CSSProperties}>
     <div className="xmimo-voice-reading-header">
@@ -329,5 +329,5 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
       </div>
     </div>
     {failed && <p className="xmimo-voice-reading-failure" role="status">{t('settings.voiceReadingSaveFailed')}</p>}
-  </div>
+  </div></AvatarStyleContext.Provider>
 }

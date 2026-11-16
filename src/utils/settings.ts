@@ -1,5 +1,5 @@
 import type { TtsSettings, ResolvedTtsSettings } from '../types/index.js'
-import { DEFAULT_TTS_SETTINGS, TTS_LOCAL_VOICE_ENGINES, TTS_READ_SCOPES, TTS_VOICE_DESIGN_PRESETS, SOUND_PACKS, DOUBAO_TTS_MODELS, ANNOUNCEMENT_SOURCES } from '../types/index.js'
+import { DEFAULT_TTS_SETTINGS, TTS_LOCAL_VOICE_ENGINES, TTS_READ_SCOPES, TTS_AVATAR_STYLES, TTS_VOICE_DESIGN_PRESETS, SOUND_PACKS, DOUBAO_TTS_MODELS, ANNOUNCEMENT_SOURCES } from '../types/index.js'
 import { DEEPSEEK_VOICES, OPTIONAL_TTS_PROVIDERS, TTS_PROVIDER_SWITCH } from '../types/providers.js'
 import { DEFAULT_MOSS_BASE_URL } from '../constants.js'
 import { normalizeVoiceRate } from './encoding.js'
@@ -71,6 +71,7 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     voiceVolume,
     voiceRate,
     readScope,
+    avatarStyle: resolved.avatarStyle !== 'greyscale' && TTS_AVATAR_STYLES.includes(resolved.avatarStyle) ? resolved.avatarStyle : DEFAULT_TTS_SETTINGS.avatarStyle,
     soundPack: SOUND_PACKS.includes(resolved.soundPack) ? resolved.soundPack : DEFAULT_TTS_SETTINGS.soundPack,
   }
 }

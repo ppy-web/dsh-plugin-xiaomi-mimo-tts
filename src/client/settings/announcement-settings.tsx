@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { Switch } from '@deepseek-ai/dsh-client-ui-primitives'
-import { RiArrowDownSLine } from 'react-icons/ri'
+import { RiArrowDownSLine, RiSettings3Line } from 'react-icons/ri'
 import { ANNOUNCEMENT_SOURCES, type AnnouncementSourceId } from '../../types/settings.js'
 import type { Translate } from '../localization.js'
 import { SettingFieldHeading } from './field-heading.js'
@@ -53,7 +53,6 @@ const HOST_SOURCE_OPTIONS = [
 
 const PLUGIN_SOURCE_OPTIONS = [
   { id: 'dsh-pet', label: 'settings.announcementsPet', hint: 'settings.announcementsPetHint', href: 'https://github.com/PC2005-cloud/dsh-pet' },
-  { id: 'dsh-whale-musume', label: 'settings.announcementsWhale', hint: 'settings.announcementsWhaleHint', href: 'https://github.com/Sutera-Diffusus/dsh-whale-musume' },
 ] as const
 
 export const ANNOUNCEMENT_SOURCE_OPTIONS = [...HOST_SOURCE_OPTIONS, ...PLUGIN_SOURCE_OPTIONS]
@@ -76,9 +75,12 @@ export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqb
     { label: 'settings.importantAnnouncementsFirst', hint: 'settings.importantAnnouncementsFirstHint', checked: importantAnnouncementsFirst, overridden: importantAnnouncementsFirstOverridden, onChange: onImportantAnnouncementsFirstChange, onReset: onImportantAnnouncementsFirstReset },
   ] as const
   return <details {...moreSettings} className="xmimo-tts-more-settings" hidden={search !== null && !showMore}>
-    <summary className="xmimo-tts-builtin-voice-trigger" hidden={showMore}>
-      <span>{t('settings.more')}</span>
-      <span className="xmimo-tts-more-settings-hint">{t('settings.announcementsMoreHint')}</span>
+    <summary className="xmimo-tts-more-settings-trigger" hidden={showMore}>
+      <RiSettings3Line className="xmimo-tts-more-settings-icon" size={20} aria-hidden="true" focusable="false" />
+      <span className="xmimo-tts-more-settings-copy">
+        <span>{t('settings.more')}</span>
+        <span className="xmimo-tts-more-settings-hint">{t('settings.announcementsMoreHint')}</span>
+      </span>
       <RiArrowDownSLine className="xmimo-tts-voice-picker-chevron" size={16} aria-hidden="true" focusable="false" />
     </summary>
     <div className="xmimo-tts-more-settings-body">
@@ -114,6 +116,12 @@ export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqb
             <small>{t('settings.qqbotIntegrationHint')}</small>
           </div>
           <Switch checked={qqbotEnabled} disabled={!writable} label={t('settings.qqbotIntegration')} onChange={onQqbotChange} />
+        </div>
+        <div className="xmimo-tts-announcement-source" hidden={hide('dsh-whale-musume')}>
+          <div>
+            <a href="https://github.com/Sutera-Diffusus/dsh-whale-musume" target="_blank" rel="noopener noreferrer">{t('settings.announcementsWhale')} ↗</a>
+            <small>{t('settings.announcementsWhaleHint')}</small>
+          </div>
         </div>
         <div className="xmimo-tts-announcement-source" hidden={hide('passport')}>
           <div>

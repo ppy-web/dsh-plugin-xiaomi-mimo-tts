@@ -38,6 +38,7 @@ const ENTRIES = {
   instruction: { group: 'mixer', terms: ['settings.speechInstruction', 'settings.speechInstructionLimitations'] },
   voiceVolume: { group: 'playback', terms: ['settings.voiceVolume'], aliases: '朗读音量' },
   voiceRate: { group: 'playback', terms: ['settings.voiceRate', 'settings.voiceRateHint'], aliases: '速度 倍速 speed' },
+  avatarStyle: { group: 'playback', terms: ['settings.avatarStyle'], aliases: '头像 avatar' },
   readScope: { group: 'playback', terms: ['settings.readScope'], aliases: '文本过滤 精简' },
   localSpeechMode: { group: 'local', terms: ['settings.localSpeechMode', 'settings.localSpeechAuto', 'settings.localSpeechFirst', 'settings.localSpeechDisabled'] },
   browserVoice: { group: 'local', terms: ['settings.localVoice', 'settings.localVoiceEngineBrowser'], aliases: 'Edge 浏览器音色' },

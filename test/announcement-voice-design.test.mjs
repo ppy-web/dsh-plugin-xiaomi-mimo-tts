@@ -15,7 +15,7 @@ function designSettings(overrides = {}) {
   return resolveTtsSettings({
     enabled: true, provider: 'xiaomi', model: 'mimo-v2.5-tts-voicedesign',
     voice: 'Mia', voiceDesignPrompt: '清亮的声音', instruction: '温柔地说',
-    voiceVolume: 0.7, voiceRate: 1.3, announcementSources: ['dsh-pet', 'dsh-whale-musume'],
+    voiceVolume: 0.7, voiceRate: 1.3, announcementSources: ['dsh-pet'],
     ...overrides,
   })
 }
@@ -70,6 +70,17 @@ for (const source of ['dsh-pet', 'dsh-whale-musume']) {
     })
   })
 }
+
+test('public playback works with all announcement sources disabled', async () => {
+  await withService(async ({ state, service }) => {
+    service.play('外部插件播放。')
+    await settle()
+    assert.equal(state.requests.length, 1)
+    assert.equal(state.media[0].paused, false)
+    service.stop()
+    assert.equal(state.media[0].paused, true)
+  }, { settings: { announcementSources: [] } })
+})
 
 test('a pet announcement sends the selected design and instruction to the Xiaomi transport', async () => {
   const previousDispatcher = getGlobalDispatcher()

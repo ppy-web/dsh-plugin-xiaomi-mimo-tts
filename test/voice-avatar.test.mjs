@@ -3,7 +3,7 @@ import test from 'node:test'
 import { createElement } from 'react'
 import { renderToPipeableStream } from 'react-dom/server'
 import { PassThrough } from 'node:stream'
-import { TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from '../lib/shared.js'
+import { resolveTtsSettings, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
 const [{ BuiltInVoicePicker }, { VoiceDesignPresetPicker }, { VoiceAvatar }, { VoiceReadingSelect }] = await Promise.all([
@@ -57,4 +57,19 @@ test('the voice reading selector shows the same avatar for the saved ID after a 
     }],
   })
   assert.equal(readingAvatar, workbenchAvatar)
+})
+
+test('avatar styles preserve the voice drawing and change its background', async () => {
+  const voice = { provider: 'xiaomi', id: 'sample' }
+  const styles = ['default', 'pastel', 'sunrise']
+  const urls = await Promise.all(styles.map(avatarStyle => avatarUrl(VoiceAvatar, { voice, label: 'Sample', avatarStyle })))
+  assert.equal(new Set(urls).size, styles.length)
+  const svg = urls.map(url => decodeURIComponent(url.slice(url.indexOf(',') + 1)))
+  const paths = value => [...value.matchAll(/<path\b[^>]*>/g)].map(match => match[0])
+  for (const variant of svg.slice(1)) assert.deepEqual(paths(variant), paths(svg[0]))
+  assert.match(svg[2], /linearGradient/)
+})
+
+test('a previously saved greyscale style falls back to the default', () => {
+  assert.equal(resolveTtsSettings({ avatarStyle: 'greyscale' }).avatarStyle, 'default')
 })

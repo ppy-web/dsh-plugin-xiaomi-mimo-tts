@@ -48,7 +48,7 @@ export function SpeechInstructionPicker({ provider, value, disabled, minimal = f
     <div className="xmimo-tts-instruction-editor">
       <textarea
         value={value}
-        rows={minimal ? 3 : 4}
+        rows={3}
         disabled={disabled}
         readOnly={provider === 'external' && options !== undefined}
         aria-label={t('settings.speechInstruction')}

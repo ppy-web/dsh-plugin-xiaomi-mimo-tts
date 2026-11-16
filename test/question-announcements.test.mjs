@@ -112,20 +112,17 @@ test('question titles fall back to local speech and stop on close without repeat
   }, { fetch: () => new Response('{}', { status: 401 }) })
 })
 
-test('disabling the public speech source leaves collector playback available and stops only public speech', async () => {
+test('public and collector playback have independent stop ownership', async () => {
   await withBrowserPlayback(async () => withDuplexBrowser(async sockets => {
-    let settings = resolveTtsSettings({ provider: 'doubao', announcementSources: ['dsh-pet'] })
+    const settings = resolveTtsSettings({ provider: 'doubao', announcementSources: ['dsh-pet'] })
     const service = new XiaomiMimoTtsPcmService(new Context(), { getSnapshot: () => ({ status: 'ready', value: settings }) }, () => {})
     try {
-      service.play('已关闭的接口。')
-      assert.equal(sockets.length, 0)
       const stop = service.tryPlay('桌宠收集器。', () => false)
       await settle()
       assert.equal(sockets.length, 1)
       service.stopExternal()
       assert.equal(service.isBusy(), true)
       stop()
-      settings = resolveTtsSettings({ provider: 'doubao' })
       service.play('默认开启的接口。')
       await settle()
       assert.equal(sockets.length, 2)

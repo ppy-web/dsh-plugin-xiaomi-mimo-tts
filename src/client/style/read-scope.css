@@ -1,4 +1,5 @@
-.xmimo-read-scope {
+.xmimo-read-scope,
+.xmimo-avatar-styles {
   container-type: inline-size;
   width: 100%;
   min-width: 0;
@@ -158,4 +159,16 @@
     gap: 4px;
   }
   .xmimo-read-scope-radio { grid-column: 2; grid-row: 1; }
+}
+
+.xmimo-avatar-style-samples {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.xmimo-avatar-style-samples .xmimo-tts-voice-avatar {
+  width: min(30%, 36px);
+  height: auto;
+  aspect-ratio: 1;
 }

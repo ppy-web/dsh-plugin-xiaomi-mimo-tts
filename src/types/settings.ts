@@ -10,6 +10,9 @@ import {
 } from '../constants.js'
 import { DEFAULT_SOUND_SETTINGS } from './sound.js'
 
+export const TTS_AVATAR_STYLES = ['default', 'pastel', 'sunrise'] as const
+export type TtsAvatarStyle = typeof TTS_AVATAR_STYLES[number]
+
 export const ANNOUNCEMENT_SOURCES = ['dsh-pet', 'dsh-whale-musume', 'question-titles', 'approvals', 'job-results', 'subagent-results'] as const
 export type AnnouncementSourceId = typeof ANNOUNCEMENT_SOURCES[number]
 
@@ -58,6 +61,7 @@ export interface TtsSettings {
   format?: TtsFormat
   /** @deprecated Retained for settings migration; use readScope for user-facing playback range. */
   voiceDesignPlaybackMode?: TtsVoiceDesignPlaybackMode
+  avatarStyle?: TtsAvatarStyle | 'greyscale'
   readScope?: TtsReadScope | 'first-segment'
   autoPlay?: boolean
   showReadingCaptions?: boolean
@@ -119,6 +123,7 @@ export interface ResolvedTtsSettings {
   presetStylePrompt: string
   format: TtsFormat
   voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
+  avatarStyle: TtsAvatarStyle
   readScope: TtsReadScope
   autoPlay: boolean
   showReadingCaptions: boolean
@@ -149,7 +154,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   qqbotEnabled: false,
   qqbotMaxAutoCharacters: 0,
   qqbotMaxDurationSeconds: 0,
-  announcementSources: ['dsh-whale-musume', 'question-titles'],
+  announcementSources: ['question-titles'],
   provider: 'xiaomi',
   doubaoEnabled: true,
   doubaoApiKey: '',
@@ -181,6 +186,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   presetStylePrompt: '',
   format: 'pcm',
   voiceDesignPlaybackMode: 'complete',
+  avatarStyle: 'default',
   readScope: 'smart',
   autoPlay: false,
   showReadingCaptions: true,

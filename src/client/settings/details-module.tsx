@@ -13,7 +13,7 @@ import {
   TTS_MODELS,
   TTS_VOICE_DESIGN_PRESETS,
 } from '../../shared.js'
-import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope } from '../../shared.js'
+import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope, TtsAvatarStyle } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { BuiltInVoicePicker } from './controls/built-in-voice-picker.js'
 import { LensSlider } from './controls/lens-slider.js'
@@ -36,6 +36,7 @@ import { useNestedDisclosure } from './use-nested-disclosure.js'
 import { useSettingsSearch } from './settings-search-context.js'
 import { SettingFieldHeading } from './field-heading.js'
 import { formatVoiceRate, readScopeLabelKey, VOICE_RATE_RANGE } from './voice-reading-options.js'
+import { AvatarStyleCards } from './controls/avatar-style-cards.js'
 import { ReadScopeCards } from './controls/read-scope-cards.js'
 import type { EditableSettingField, SettingField } from './types.js'
 
@@ -118,6 +119,7 @@ export interface DetailsModuleProps {
   autoPlay: boolean
   voiceVolume: number
   voiceRate: number
+  avatarStyle: TtsAvatarStyle
   readScope: TtsReadScope
   model: TtsModel
   localSpeechMode: TtsLocalSpeechMode
@@ -137,6 +139,7 @@ export interface DetailsModuleProps {
   onVoiceVolumeInteractionEnd: (value: number) => void
   onVoiceRateChange: (value: number) => void
   onVoiceRateInteractionEnd: (value: number) => void
+  onAvatarStyleChange: (value: TtsAvatarStyle) => void
   onReadScopeChange: (value: TtsReadScope) => void
   onModelChange: (value: TtsModel) => void
   onVoiceDesignPromptChange: (value: string) => void
@@ -148,7 +151,7 @@ export interface DetailsModuleProps {
   onLocalSpeechModeChange: (value: TtsLocalSpeechMode) => void
 }
 
-export function DetailsModule({ externalSelection, onExternalSelectionChange, t, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, breezeVoice, breezeInstruction, deepseekVoice = 'stella', onDeepseekVoiceChange, speechInstruction, onSpeechInstructionChange, onDoubaoModelChange, onDoubaoVoiceChange, onDoubaoClonedVoiceChange, onBreezeVoiceChange, onBreezeInstructionChange, open, minimal, writable, autoPlay, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalVoiceEngineChange, onMossBaseURLChange, onMossVoiceChange, onLocalSpeechModeChange }: DetailsModuleProps): ReactElement {
+export function DetailsModule({ externalSelection, onExternalSelectionChange, t, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, breezeVoice, breezeInstruction, deepseekVoice = 'stella', onDeepseekVoiceChange, speechInstruction, onSpeechInstructionChange, onDoubaoModelChange, onDoubaoVoiceChange, onDoubaoClonedVoiceChange, onBreezeVoiceChange, onBreezeInstructionChange, open, minimal, writable, autoPlay, voiceVolume, voiceRate, readScope, avatarStyle, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onAvatarStyleChange, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalVoiceEngineChange, onMossBaseURLChange, onMossVoiceChange, onLocalSpeechModeChange }: DetailsModuleProps): ReactElement {
   useEngineState()
   const external = externalEngine()
   const providerWritable = writable && !external
@@ -259,9 +262,12 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
       </div> : null}
       </>}
       <details {...moreSettings} className="xmimo-tts-more-settings" hidden={search !== null && !showMore}>
-        <summary className="xmimo-tts-builtin-voice-trigger" hidden={showMore}>
-          <span>{t('settings.more')}</span>
-          <span className="xmimo-tts-more-settings-hint">{t('settings.moreHint')}</span>
+        <summary className="xmimo-tts-more-settings-trigger" hidden={showMore}>
+          <RiEqualizerLine className="xmimo-tts-more-settings-icon" size={20} aria-hidden="true" focusable="false" />
+          <span className="xmimo-tts-more-settings-copy">
+            <span>{t('settings.more')}</span>
+            <span className="xmimo-tts-more-settings-hint">{t('settings.moreHint')}</span>
+          </span>
           <RiArrowDownSLine className="xmimo-tts-voice-picker-chevron" size={16} aria-hidden="true" focusable="false" />
         </summary>
         <div className="xmimo-tts-more-settings-body">
@@ -295,6 +301,10 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
             onBrowserAvailabilityChange={onLocalVoicesAvailabilityChange}
           /> : null}
           {readScopeControl}
+          <div className="xmimo-tts-format" hidden={hide('avatarStyle')}>
+            <SettingFieldHeading label={t('settings.avatarStyle')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('avatarStyle')} resettable disabled={!writable} onReset={() => { resetField('avatarStyle') }} />
+            <AvatarStyleCards value={avatarStyle} disabled={!writable} t={t} onChange={onAvatarStyleChange} />
+          </div>
           {!minimal || search?.visible.has('localSpeechMode') ? <div className="xmimo-tts-format" hidden={hide('localSpeechMode')}>
             <SettingFieldHeading label={t('settings.localSpeechMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localSpeechMode')} resettable disabled={!writable} onReset={() => { resetField('localSpeechMode') }} />
             <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">
@@ -309,7 +319,7 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
                 label={t('settings.localSpeechMode')}
                 disabled={!writable}
                 onChange={onLocalSpeechModeChange}
-                className="xmimo-tts-settings-segmented"
+                className="xmimo-tts-settings-segmented xmimo-tts-speech-policy"
               />
             </div>
             <small>{t(!localVoiceAvailable ? 'settings.localSpeechUnavailableHint' : localSpeechMode === 'auto' ? 'settings.localSpeechAutoHint' : localSpeechMode === 'local-first' ? 'settings.localSpeechFirstHint' : 'settings.localSpeechDisabledHint')}</small>

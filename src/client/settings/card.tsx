@@ -25,6 +25,7 @@ import { ToggleSoundPlayer } from '../sound-effects/toggle-sound-player.js'
 import type { SoundEffectsController } from '../sound-effects/types.js'
 import { ApiKeyModule } from './api-key-module.js'
 import { resolveApiKeyViewState } from './api-key-state.js'
+import { AvatarStyleContext } from './controls/voice-avatar.js'
 import { DetailsModule } from './details-module.js'
 import { PreviewModule } from './preview-module.js'
 import { SoundEffectsPanel } from './sound-effects-module.js'
@@ -141,6 +142,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [importantAnnouncementsFirst, setImportantAnnouncementsFirst] = useState(initial.importantAnnouncementsFirst)
   const [voiceVolume, setVoiceVolume] = useState(initial.voiceVolume)
   const [voiceRate, setVoiceRate] = useState(initial.voiceRate)
+  const [avatarStyle, setAvatarStyle] = useState(initial.avatarStyle)
   const [readScope, setReadScope] = useState(initial.readScope)
   const [model, setModel] = useState(initial.model)
   const [localSpeechMode, setLocalSpeechMode] = useState(initial.localSpeechMode)
@@ -188,7 +190,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { showInSidebar, showInHostSettings, showFeatureGuide, acceptExternalProviders, voiceRecognitionService, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, deepseekEnabled, deepseekVoice, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, showReadingCaptions, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { showInSidebar, showInHostSettings, showFeatureGuide, acceptExternalProviders, voiceRecognitionService, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, deepseekEnabled, deepseekVoice, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, showReadingCaptions, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, avatarStyle, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -256,6 +258,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
     setVoiceVolume(next.voiceVolume)
     setVoiceRate(next.voiceRate)
+    setAvatarStyle(next.avatarStyle)
     setReadScope(next.readScope)
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
@@ -328,6 +331,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'importantAnnouncementsFirst') setImportantAnnouncementsFirst(base.importantAnnouncementsFirst)
     if (field === 'voiceVolume') setVoiceVolume(base.voiceVolume)
     if (field === 'voiceRate') setVoiceRate(base.voiceRate)
+    if (field === 'avatarStyle') setAvatarStyle(base.avatarStyle)
     if (field === 'readScope') setReadScope(base.readScope)
     if (field === 'model') setModel(base.model)
     if (field === 'localSpeechMode') setLocalSpeechMode(base.localSpeechMode)
@@ -382,6 +386,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
     setVoiceVolume(next.voiceVolume)
     setVoiceRate(next.voiceRate)
+    setAvatarStyle(next.avatarStyle)
     setReadScope(next.readScope)
     setModel(next.model)
     setLocalSpeechMode(next.localSpeechMode)
@@ -528,7 +533,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       }} onBack={() => { setHistoryOpen(false) }} />}
   </>
 
-  return <>{renderHeader?.({ query, onQueryChange: setQuery })}
+  return <AvatarStyleContext.Provider value={avatarStyle}>{renderHeader?.({ query, onQueryChange: setQuery })}
     <SettingsSearchContext.Provider value={search}>
     <div data-settings-search={search !== null ? '' : undefined} className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
       {changing ? <p className="xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p> : null}
@@ -562,6 +567,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           value={apiKey}
           message={apiKeyMessage}
           invalid={apiKeyInvalid}
+          missing={apiKeyStatus === 'missing'}
           writable={writable}
           minimal={minimalMode}
           onChange={(next) => { setApiKey(next); markChange(apiKeyField) }}
@@ -595,6 +601,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           autoPlay={autoPlay}
           voiceVolume={voiceVolume}
           voiceRate={voiceRate}
+          avatarStyle={avatarStyle}
           readScope={readScope}
           model={model}
           localSpeechMode={localSpeechMode}
@@ -614,6 +621,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onVoiceVolumeInteractionEnd={(next) => { if (!audioFocus.canPlay()) return; if (minimalMode) controller.previewVolume(); else toggleSoundPlayer.previewVolume(next) }}
           onVoiceRateChange={(next) => { setVoiceRate(next); markChange('voiceRate') }}
           onVoiceRateInteractionEnd={(next) => { controller.play('success', { playbackRate: next }) }}
+          onAvatarStyleChange={(next) => { setAvatarStyle(next); markChange('avatarStyle') }}
           onReadScopeChange={(next) => { setReadScope(next); markChange('readScope') }}
           onModelChange={(nextModel) => { previewPlayer.stop(); setModel(nextModel); markChange('model') }}
           onVoiceDesignPromptChange={(next) => {
@@ -763,5 +771,5 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       </div>
     </div>
     </SettingsSearchContext.Provider>
-  </>
+  </AvatarStyleContext.Provider>
 }

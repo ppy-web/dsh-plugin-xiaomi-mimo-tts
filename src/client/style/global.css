@@ -214,6 +214,28 @@
   white-space: nowrap;
 }
 
+:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-sound-effects) .xmimo-ui-module-toggle,
+:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-sound-effects) .xmimo-ui-module-title-toggle {
+  padding-block: 12px;
+}
+
+:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-sound-effects) .xmimo-ui-summary {
+  height: auto;
+  min-height: 40px;
+}
+
+:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-sound-effects) .xmimo-ui-summary > span {
+  padding-block: 2px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.xmimo-tts-broadcast .xmimo-ui-summary > .xmimo-tts-preview-tag {
+  --xmimo-tactile-padding: 2px 7px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .xmimo-ui-module-body {
   box-sizing: border-box;
   min-width: 0;

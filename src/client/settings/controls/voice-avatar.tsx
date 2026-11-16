@@ -1,4 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { createContext, lazy, Suspense, useContext } from 'react'
+import type { TtsAvatarStyle } from '../../../shared.js'
+
+export const AvatarStyleContext = createContext<TtsAvatarStyle>('default')
 import type { ReactElement } from 'react'
 import type { VoiceAvatarProps } from './generated-voice-avatar.js'
 
@@ -17,6 +20,7 @@ const GeneratedVoiceAvatar = lazy(() => Promise.resolve().then(() => (
 )).catch(() => ({ default: FallbackAvatar })))
 
 export function VoiceAvatar(props: VoiceAvatarProps): ReactElement {
+  const style = useContext(AvatarStyleContext)
   if (!props.voice?.id.trim()) return <FallbackAvatar {...props} />
-  return <Suspense fallback={<FallbackAvatar {...props} />}><GeneratedVoiceAvatar {...props} /></Suspense>
+  return <Suspense fallback={<FallbackAvatar {...props} />}><GeneratedVoiceAvatar {...props} avatarStyle={props.avatarStyle ?? style} /></Suspense>
 }

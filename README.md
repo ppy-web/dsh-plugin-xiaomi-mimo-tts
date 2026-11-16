@@ -65,7 +65,10 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 
 ## 🔌 插件联动
 
-宿主合成、能力查询、音频下载 URL、Agent 工具与浏览器播放的接入方式见[开放能力接口文档](open-api.md)。
+- **浏览器插件**：通过 `ctx.xiaomiMimoTts.play(text)` 在当前页面播放，使用 `stop()` 停止。
+- **宿主插件**：注入 `speechSynthesis`，通过 `ctx.speechSynthesis` 查询能力、合成或导出音频，也可注册交付渠道或外部语音供应商。
+- **DSH Agent**：挂载 `dsh-xiaomi-tts/speech-agent`，使用 `speak`、`synthesize_speech` 和 `speech_mode` 工具。
+- **外部程序或设备**：配置 `openApiToken` 后，通过 HTTP 查询能力、导出音频并使用限时 URL 下载。
 
 第三方插件通过可选服务调用语音播报，新播放会中断当前朗读：
 
@@ -77,7 +80,9 @@ tts?.play('欢迎回来')
 // tts?.stop()
 ```
 
-使用 `ctx.get()` 动态获取，避免声明必需注入；插件未安装、未就绪或关闭时跳过。
+使用 `ctx.get()` 动态获取可选服务，避免声明必需注入；插件未安装或未就绪时跳过。
+
+完整接入方式见[开放能力接口文档](open-api.md)。
 
 ## 🔒 隐私
 
@@ -99,12 +104,13 @@ pnpm pack:check   # 检查打包内容
 
 ## 🤝 推荐
 
-- [WhaleTalk Passport · 鲸语通行证](https://github.com/ppy-web/whaletalk-passport#readme) · AI Passport 设备应用，和你的鲸鱼娘实时语音对话
+- [WhaleTalk Passport · 鲸语通行证](https://github.com/ppy-web/whaletalk-passport#readme) AI Passport 设备应用，和你的鲸鱼娘实时语音对话
 - [dsh-speech-provider-adapter · 供应商适配器](https://github.com/ppy-web/dsh-speech-provider-adapter#readme) 为音色工坊管理自定义语音供应商、模型与音色
 - [dsh-whale-musume · 元气鲸鱼娘桌宠](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) 支持互动气泡播报 `已联动`
 - [dsh-pet · 蓝色大肥鱼桌宠](https://github.com/PC2005-cloud/dsh-pet#readme) 支持播报碎碎念，闲聊消息 `已联动`
 - [dsh-qqbot · 腾讯官方QQ机器人](https://github.com/tencent-connect/dsh-qqbot#readme) 支持向 QQ 推送语音和表情包 `已联动`
 - [dsh-novel · 小说阅读与听书](https://github.com/xrn1997/dsh-novel#readme) 可使用本插件的宿主朗读服务朗读小说 `已联动`
+- [dsh-Go · dsh 移动端移植](https://github.com/ccch1mneyyy/dsh-Go) 在移动端也可使用本插件
 - [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy) · 科学上网
 
 <a href="https://www.star-history.com/?repos=ppy-web%2Fdsh-plugin-xiaomi-mimo-tts&type=timeline&logscale=&legend=bottom-right">

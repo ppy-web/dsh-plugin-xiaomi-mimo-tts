@@ -100,7 +100,6 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
   play(text: string): void {
     try {
       if (this.isBusy() && this.priorityGeneration === this.generation) return
-      if (!resolveTtsSettings(this.settings.getSnapshot().value).announcementSources.includes('dsh-whale-musume')) return
       const previous = this.generation
       this.start(text)
       if (previous !== this.generation) this.externalGeneration = this.generation

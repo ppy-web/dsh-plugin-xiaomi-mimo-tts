@@ -240,7 +240,6 @@ test('PCM idle playback skips other speech, reserves synthesis, protects audio t
 test('source settings normalize and save/reset without rewriting an unchanged list', async () => {
   const defaults = resolveTtsSettings().announcementSources
   assert.equal(defaults.includes('dsh-pet'), false)
-  assert.equal(defaults.includes('dsh-whale-musume'), true)
   assert.equal(defaults.includes('question-titles'), true)
   assert.deepEqual(resolveTtsSettings({ announcementSources: ['unknown', 'dsh-pet', 'dsh-pet'] }).announcementSources, ['dsh-pet'])
   const writes = []

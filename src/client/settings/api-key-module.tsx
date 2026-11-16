@@ -40,13 +40,14 @@ export interface ApiKeyModuleProps {
   value: string
   message: string
   invalid: boolean
+  missing: boolean
   writable: boolean
   minimal: boolean
   onChange: (value: string) => void
   onOpenProviderSettings?: ((bundle: string) => void) | undefined
 }
 
-export function ApiKeyModule({ t, provider, value, message, invalid, writable, minimal, onChange, onOpenProviderSettings }: ApiKeyModuleProps): ReactElement {
+export function ApiKeyModule({ t, provider, value, message, invalid, missing, writable, minimal, onChange, onOpenProviderSettings }: ApiKeyModuleProps): ReactElement {
   const { hide } = useSettingsSearch()
   const engineView = useEngineState()
   const external = externalEngine()
@@ -73,7 +74,7 @@ export function ApiKeyModule({ t, provider, value, message, invalid, writable, m
       resettable={false}
     />} action={minimal ? undefined : <span className="xmimo-tts-api-key-decoration" aria-hidden="true" />}>
     <form className="xmimo-tts-api-key-content" onSubmit={event => { event.preventDefault(); event.stopPropagation() }}>
-      <div className="xmimo-tts-api-key-input">
+      <div className={`xmimo-tts-api-key-input${missing && !external && writable ? ' xmimo-tts-api-key-input-missing' : ''}`}>
       {!minimal ? <span className="xmimo-tts-character-bubble xmimo-tts-api-key-bubble" aria-hidden="true">{t(bubbleKey)}</span> : null}
       {!minimal ? <span
         className="xmimo-tts-api-key-whale"
