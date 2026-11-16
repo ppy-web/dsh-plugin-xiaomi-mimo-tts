@@ -65,6 +65,7 @@ const ENTRIES = {
   'dsh-whale-musume': { group: 'integrations', terms: ['settings.announcementsWhale', 'settings.announcementsWhaleHint'] },
   qqbot: { group: 'integrations', terms: ['settings.qqbotIntegration', 'settings.qqbotIntegrationHint'] },
   passport: { group: 'integrations', terms: ['settings.passportIntegration', 'settings.passportIntegrationHint'] },
+  novel: { group: 'integrations', terms: ['settings.novelIntegration', 'settings.novelIntegrationHint'], aliases: 'dsh-novel 听书 audiobook' },
   soundScope: { group: 'sound', terms: ['settings.soundEffectsScope', 'settings.soundEffectsClickOnly', 'settings.soundEffectsTaskOnly'] },
   soundVolume: { group: 'sound', terms: ['settings.soundEffectsVolume'] },
   soundPack: { group: 'sound', terms: ['settings.soundEffectsPack'] },
