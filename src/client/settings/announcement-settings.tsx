@@ -120,6 +120,12 @@ export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqb
             <a href="https://github.com/ppy-web/whaletalk-passport#readme" target="_blank" rel="noopener noreferrer">{t('settings.passportIntegration')} ↗</a>
             <small>{t('settings.passportIntegrationHint')}</small>
           </div>
+        </div>
+        <div className="xmimo-tts-announcement-source" hidden={hide('novel')}>
+          <div>
+            <a href="https://github.com/xrn1997/dsh-novel#readme" target="_blank" rel="noopener noreferrer">{t('settings.novelIntegration')} ↗</a>
+            <small>{t('settings.novelIntegrationHint')}</small>
+          </div>
         </div></> : null}
       </section>)}
     </div>

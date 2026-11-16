@@ -99,15 +99,12 @@ pnpm pack:check   # 检查打包内容
 
 ## 🤝 推荐
 
-- [WhaleTalk Passport（鲸语通行证）](https://github.com/ppy-web/whaletalk-passport#readme) · AI Passport 设备应用，配合本插件连接器进行随身语音对话。
-- [dsh-speech-provider-adapter](https://github.com/ppy-web/dsh-speech-provider-adapter#readme) · 供应商适配器，为音色工坊管理自定义语音供应商、模型与音色。
-- [dsh-deep-whale](https://github.com/Small-tailqwq/dsh-deep-whale#readme) · 鲸鱼娘主题皮肤系列。
-- [dsh-whale-musume](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) · 元气鲸鱼娘桌宠。`已联动`
-- [dsh-pet](https://github.com/PC2005-cloud/dsh-pet#readme) · 蓝色大肥鱼桌宠，支持联动。`已联动`
-- [dsh-qqbot](https://github.com/tencent-connect/dsh-qqbot#readme) · 腾讯官方QQ机器人插件。`已联动`
-- [dsh-plugin-uisfx](https://github.com/XanthanL/dsh-plugin-uisfx#readme) · 语义化 UI 音效。`已内置`
-- [dsh-dream-skin](https://github.com/RevolutionLA/dsh-dream-skin#readme) · 原生换肤、背景壁纸、强调色和主题包。
-- [deepseek-chan-meme-pack](https://github.com/the-beating-light-of-the-nail/deepseek-chan-meme-pack) · 鲸鱼娘Agent预设 - 人设参考 
+- [WhaleTalk Passport · 鲸语通行证](https://github.com/ppy-web/whaletalk-passport#readme) · AI Passport 设备应用，和你的鲸鱼娘实时语音对话
+- [dsh-speech-provider-adapter · 供应商适配器](https://github.com/ppy-web/dsh-speech-provider-adapter#readme) 为音色工坊管理自定义语音供应商、模型与音色
+- [dsh-whale-musume · 元气鲸鱼娘桌宠](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) 支持互动气泡播报 `已联动`
+- [dsh-pet · 蓝色大肥鱼桌宠](https://github.com/PC2005-cloud/dsh-pet#readme) 支持播报碎碎念，闲聊消息 `已联动`
+- [dsh-qqbot · 腾讯官方QQ机器人](https://github.com/tencent-connect/dsh-qqbot#readme) 支持向 QQ 推送语音和表情包 `已联动`
+- [dsh-novel · 小说阅读与听书](https://github.com/xrn1997/dsh-novel#readme) 可使用本插件的宿主朗读服务朗读小说 `已联动`
 - [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy) · 科学上网
 
 <a href="https://www.star-history.com/?repos=ppy-web%2Fdsh-plugin-xiaomi-mimo-tts&type=timeline&logscale=&legend=bottom-right">
