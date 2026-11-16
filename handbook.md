@@ -2,7 +2,7 @@
 
 在线预览中的[用户手册](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#manual)、[小米 MiMo 接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#xiaomi)、[豆包语音接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#doubao)、[Breeze 接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#breeze)、[QQBot 接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#qqbot)与[AI Passport 接入](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport)为侧栏同级页面。供应商接入页顶部说明各自优点与限制，并附官方资料；教程提供准备条件、配置步骤、验收方法与故障排查，支持中文和英文。在线预览使用模拟配置和演示音频，真实接入请在 DSH、设备与对应服务控制台完成。
 
-Breeze 需要可访问海外服务的外网环境，运行 DSH 的机器或容器必须能连接 `https://api.breeze.blue`，仅浏览器能打开官网不足以验证合成连接。可通过 [CokeCloud](https://vip.ih004.com/#/register?code=UHKslrCy) 了解网络服务；网络服务和 Breeze 积分分别开通。[去注册Breeze](https://breezeblue.ai/zh?code=JHKLSJ)沿用插件 API Key 区域的入口；注册可获免费积分体验，每日也可手动领取免费积分。官方 [Free 方案](https://breezeblue.ai/pricing)目前列出每日可领取 400 积分，网页与 API 共用余额；注册赠送与领取条件以账户显示为准。注册后在 [API Key 管理](https://breezeblue.ai/app/developer/api-keys)创建密钥，在真实 DSH 启用 Breeze、保存密钥并选择音色，关闭本地兜底后用短句验证，再开启自动朗读。
+Breeze 需要可访问海外服务的外网环境，运行 DSH 的机器或容器必须能连接 `api.breeze.blue`，仅浏览器能打开官网不足以验证合成连接。可通过科学上网 [CokeCloud](https://vip.ih004.com/#/register?code=UHKslrCy) 了解网络服务；网络服务和 Breeze 积分分别开通。[去注册Breeze](https://breezeblue.ai/zh?code=JHKLSJ)沿用插件 API Key 区域的入口；注册可获免费积分体验，每日也可手动领取免费积分。官方 [Free 方案]每日可领取 400 积分，网页与 API 共用余额；注册赠送与领取条件以账户显示为准。注册后在 [API Key 管理]创建密钥，在真实 DSH 启用 Breeze、保存密钥并选择音色，关闭本地兜底后用短句验证，再开启自动朗读。
 
 ## 开始使用
 

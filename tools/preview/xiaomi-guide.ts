@@ -1,7 +1,7 @@
 import type { ManualCopy } from './document-page.js'
 import type { ManualLocale } from './user-manual.js'
 
-const API_KEYS = 'https://platform.xiaomimimo.com/console/api-keys'
+const API_KEYS = 'https://platform.xiaomimimo.com?ref=GQDDDU'
 const DOCS = 'https://mimo.mi.com/docs/zh-CN/quick-start/usage-guide/multimodal-understanding/speech-synthesis-v2.5'
 const PRICING = 'https://mimo.mi.com/docs/zh-CN/price/pay-as-you-go'
 
@@ -30,7 +30,7 @@ export const XIAOMI_GUIDE: Record<ManualLocale, ManualCopy> = {
           { title: '选择预置音色模型', detail: '展开调音台，选择 mimo-v2.5-tts 和一个预置音色。语音指令先留空、语速保持 1×；初次接入保留默认接口地址，不要填官网页面或 API Key 管理页地址。' },
           { title: '关闭本地兜底并验证短句', detail: '将本地语音策略设为“关闭本地语音”并保存，在播报台播放“你好，这是一条小米语音测试。”确认来源为小米，声音与音色匹配并完整播放。密钥格式被识别或 preview 有声音都不代表云端接入成功。' },
           { title: '保存并开启自动播放', detail: '试听满意后保存音色和语音设置，按需恢复本地兜底。启用语音播放与自动播放并保存，再发一条新消息；浏览器可能需要手动播放一次来允许音频。' },
-        ], items: [], links: [{ label: '小米 API Key 管理', href: API_KEYS }],
+        ], items: [], links: [{ label: '获取小米 API Key', href: API_KEYS }],
       },
       {
         id: 'xiaomi-expression', title: '语音指令与音色设计',
@@ -73,7 +73,7 @@ export const XIAOMI_GUIDE: Record<ManualLocale, ManualCopy> = {
           { title: 'Choose the preset model', detail: 'In Console select mimo-v2.5-tts and a preset voice. Leave instructions blank and speed at 1×. Keep the default API endpoint for the first test; a website or key-management URL is not an API endpoint.' },
           { title: 'Disable fallback and test', detail: 'Save Disable local speech and play a short sentence in Broadcast Desk. Verify the Xiaomi source, selected voice, and completed audio. Recognizing the key format or hearing this preview does not verify cloud access.' },
           { title: 'Save and enable automatic reading', detail: 'Save the voice settings and restore fallback if wanted. Enable and save speech playback and autoplay, then send a new message. The browser may require manual playback first.' },
-        ], items: [], links: [{ label: 'Xiaomi API keys', href: API_KEYS }],
+        ], items: [], links: [{ label: 'Get a Xiaomi API key', href: API_KEYS }],
       },
       {
         id: 'xiaomi-expression', title: 'Instructions and voice design', summary: 'Choose the voice first, then adjust its delivery.',

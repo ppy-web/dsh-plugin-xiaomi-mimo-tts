@@ -54,7 +54,7 @@ export function ApiKeyModule({ t, provider, value, message, invalid, writable, m
   const [bubbleKey, setBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const inputId = useId()
   const messageId = useId()
-  const keyUrl = provider === 'deepseek' ? 'https://platform.deepseek.com/api_keys' : provider === 'doubao' ? 'https://console.volcengine.com/speech/new/setting/apikeys?projectName=default' : provider === 'breeze' ? 'https://breezeblue.ai/zh?code=JHKLSJ' : 'https://platform.xiaomimimo.com/console/api-keys'
+  const keyUrl = provider === 'deepseek' ? 'https://platform.deepseek.com/api_keys' : provider === 'doubao' ? 'https://console.volcengine.com/speech/new/setting/apikeys?projectName=default' : provider === 'breeze' ? 'https://breezeblue.ai/zh?code=JHKLSJ' : 'https://platform.xiaomimimo.com?ref=GQDDDU'
 
   return <ModuleShell hidden={hide('apiKey')} className="xmimo-tts-settings-module xmimo-tts-api-key xmimo-ui-module-padded" title={<SettingFieldHeading
       label={<span className="xmimo-ui-module-title">
