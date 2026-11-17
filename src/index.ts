@@ -43,6 +43,7 @@ import { registerVoiceInputProviders } from './host/voice-input-providers.js'
 import { registerOpenApiRoutes } from './host/open-api-routes.js'
 import { registerEngineRoutes } from './host/engine-routes.js'
 import SpeechHost from './host/speech-service.js'
+import { registerDshGo } from './host/dsh-go.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, DEEPSEEK_VOICES, ttsApiKey } from './shared.js'
 import type { ResolvedTtsSettings } from './shared.js'
 
@@ -121,6 +122,62 @@ export const Config = z.object({
 
 export type Config = ReturnType<typeof Config>
 type ConfigValues = { [Key in keyof Config]: Config[Key] extends Volatile<infer Value> ? Value : Config[Key] }
+
+/**
+ * Form labels for hosts that draw this schema themselves (the dsh-go app's
+ * native plugin page). Short text reads as a title; the web page keeps its
+ * own copy.
+ */
+const FIELD_DESCRIPTIONS = {
+  provider: { zh: '语音服务商', en: 'Voice provider' },
+  model: { zh: '小米语音模型', en: 'Speech model' },
+  voice: { zh: '小米音色', en: 'Xiaomi voice' },
+  voiceDesignCustomPrompt: { zh: '小米音色描述', en: 'Custom description' },
+  instruction: { zh: '小米语音指令', en: 'Speech instruction' },
+  doubaoEnabled: { zh: '启用豆包', en: 'Enable Doubao' },
+  doubaoModel: { zh: '豆包模型', en: 'Doubao model' },
+  doubaoVoice: { zh: '豆包音色', en: 'Doubao voice' },
+  doubaoClonedVoice: { zh: '豆包复刻音色', en: 'Cloned voice ID' },
+  deepseekEnabled: { zh: '启用 DeepSeek', en: 'Enable DeepSeek' },
+  deepseekVoice: { zh: 'DeepSeek 音色', en: 'DeepSeek voice' },
+  breezeEnabled: { zh: '启用 Breeze', en: 'Enable Breeze' },
+  breezeVoice: { zh: 'Breeze 音色', en: 'Breeze voice' },
+  breezeInstruction: { zh: 'Breeze 语音指令', en: 'Breeze instruction' },
+  readScope: { zh: '朗读范围', en: 'Reading range' },
+  maxTextLength: { zh: '单次文本上限', en: 'Text limit' },
+  voiceVolume: { zh: '语音音量', en: 'Voice volume' },
+  voiceRate: { zh: '播放语速', en: 'Playback speed' },
+} satisfies Partial<Record<keyof Config, { zh: string, en: string }>>
+
+/** The settings a phone's native page keeps; everything else stays functional on the web. */
+const MOBILE_VISIBLE_FIELDS = new Set<keyof Config>([
+  'provider',
+  'model',
+  'voice',
+  'voiceDesignCustomPrompt',
+  'instruction',
+  'doubaoEnabled',
+  'doubaoModel',
+  'doubaoVoice',
+  'doubaoClonedVoice',
+  'deepseekEnabled',
+  'deepseekVoice',
+  'breezeEnabled',
+  'breezeVoice',
+  'breezeInstruction',
+  'readScope',
+  'maxTextLength',
+  'voiceRate',
+])
+
+for (const [key, schema] of Object.entries(Config.dict ?? {})) {
+  const field = key as keyof Config
+  const description = FIELD_DESCRIPTIONS[field as keyof typeof FIELD_DESCRIPTIONS]
+  if (description !== undefined) schema.meta.description = description
+  // Web-only integrations, sound effects, local browser voices and raw limits
+  // clutter the phone's native page and cannot be applied there.
+  if (!MOBILE_VISIBLE_FIELDS.has(field)) schema.meta.hidden = true
+}
 /** Read declared settings only; Schemastery preserves undeclared profile fields as plain values. */
 export function readConfig(config: Config): ResolvedTtsSettings {
   // Host snapshots are deeply readonly; own the array used by speech settings.
@@ -139,6 +196,10 @@ export function apply(ctx: Context, config: Config): void {
   const current = () => readConfig(config)
   ctx.inject(['webServer'], host => { host.plugin(SpeechHost, { current, updates: (listener: () => void) => ctx.on('loader/volatile-update', listener) }) })
   ctx.inject(['speechSynthesis'], host => { registerOpenApiRoutes(host, () => config.openApiToken.get()); registerEngineRoutes(host) })
+  // Native read-aloud in the dsh-go app; absent on hosts without its bridge.
+  ctx.inject(['dshGo', 'speechSynthesis'], host => {
+    host.effect(() => registerDshGo({ dshGo: host.dshGo, speech: host.speechSynthesis, current }), 'xiaomi-mimo-tts: dsh-go voice')
+  })
   ctx.inject(['speechToText', 'passportRecognition'], host => {
     registerVoiceInputProviders(host, () => config.voiceRecognitionService.get(), listener => ctx.on('loader/volatile-update', listener))
   })

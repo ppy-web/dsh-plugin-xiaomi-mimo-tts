@@ -110,7 +110,7 @@ pnpm pack:check   # 检查打包内容
 - [dsh-pet · 蓝色大肥鱼桌宠](https://github.com/PC2005-cloud/dsh-pet#readme) 支持播报碎碎念，闲聊消息 `已联动`
 - [dsh-qqbot · 腾讯官方QQ机器人](https://github.com/tencent-connect/dsh-qqbot#readme) 支持向 QQ 推送语音和表情包 `已联动`
 - [dsh-novel · 小说阅读与听书](https://github.com/xrn1997/dsh-novel#readme) 可使用本插件的宿主朗读服务朗读小说 `已联动`
-- [dsh-Go · dsh 移动端移植](https://github.com/ccch1mneyyy/dsh-Go) 在移动端也可使用本插件
+- [dsh-Go · dsh 移动端移植](https://github.com/ccch1mneyyy/dsh-Go) 在移动端也可使用本插件 `已适配`
 - [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy) · 科学上网
 
 <a href="https://www.star-history.com/?repos=ppy-web%2Fdsh-plugin-xiaomi-mimo-tts&type=timeline&logscale=&legend=bottom-right">
