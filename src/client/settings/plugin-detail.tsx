@@ -52,9 +52,9 @@ export function PluginDetailActions(props: DetailProps): ReactElement | null {
 function WorkbenchAction({ scope, t, onOpen }: { scope: ConfigForm<TtsSettings>; t: Translate; onOpen: (() => void) | undefined }): ReactElement | null {
   const snapshot = useSettingsSnapshot(scope)
   if (snapshot.status !== 'ready' || !resolveTtsSettings(snapshot.value).showInSidebar || !onOpen) return null
-  return <Button type="button" variant="outline" size="sm" onClick={onOpen}>
+  return <Button type="button" variant="outline" size="sm" aria-label={t('detail.workshop')} title={t('detail.workshop')} onClick={onOpen}>
     <LuAudioLines size={14} aria-hidden="true" focusable="false" />
-    <span>{t('detail.workshop')}</span>
+    <span className="xmimo-tts-detail-action-label">{t('detail.workshop')}</span>
   </Button>
 }
 

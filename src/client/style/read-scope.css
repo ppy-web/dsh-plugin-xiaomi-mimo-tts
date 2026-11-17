@@ -162,13 +162,16 @@
 }
 
 .xmimo-avatar-style-samples {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 36px));
   justify-content: center;
-  gap: 15px;
+  gap: clamp(2px, 2cqi, 15px);
+  min-width: 0;
 }
 
 .xmimo-avatar-style-samples .xmimo-tts-voice-avatar {
-  width: min(30%, 36px);
+  width: 100%;
+  min-width: 0;
   height: auto;
   aspect-ratio: 1;
 }

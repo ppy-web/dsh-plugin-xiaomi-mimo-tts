@@ -13,7 +13,7 @@ export interface SidebarSettingsProps {
 /** Save and move the workbench between plugin details and the sidebar. */
 export function SidebarSettings({ t, value, disabled, onToggle }: SidebarSettingsProps): ReactElement {
   const Icon = value ? LuPanelLeftClose : LuPanelLeftOpen
-  return <Tooltip label={t('settings.sidebarPlacementHint')} portal><Button type="button" variant="toolbar" size="sm" disabled={disabled} aria-pressed={value} onClick={onToggle}>
+  return <Tooltip label={t('settings.sidebarPlacementHint')} portal><Button type="button" variant="toolbar" size="sm" className="xmimo-tts-sidebar-toggle" disabled={disabled} aria-pressed={value} onClick={onToggle}>
     <Icon size={14} aria-hidden="true" focusable="false" />
     <span className="xmimo-tts-action-label">{t(value ? 'settings.unmountSidebar' : 'settings.mountSidebar')}</span>
   </Button></Tooltip>

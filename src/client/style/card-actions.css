@@ -109,12 +109,12 @@
 }
 
 @container xmimo-actions (max-width: 520px) {
-  .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle) {
+  .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle, .xmimo-tts-sidebar-toggle) {
     position: relative;
     padding-inline: 8px
   }
 
-  .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle) .xmimo-tts-action-label {
+  .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle, .xmimo-tts-sidebar-toggle) .xmimo-tts-action-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -132,7 +132,7 @@
     gap: 6px
   }
 
-  .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle) {
+  .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle, .xmimo-tts-sidebar-toggle) {
     padding-inline: 6px
   }
 }
