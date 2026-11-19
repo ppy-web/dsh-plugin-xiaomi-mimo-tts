@@ -32,3 +32,7 @@ See assets/licenses/dicebear-core-MIT.txt.
 Lorelei Neutral by Lisa Wischofsky, licensed under CC0 1.0.
 Style definition from @dicebear/styles 10.6.0.
 https://www.dicebear.com/styles/lorelei-neutral/
+
+Aura Field, Siri Wave Line and Siri Sheet visuals adapted from VoiceOrbs by Alexis Munoz.
+https://github.com/amunozdev/voiceorbs (revision 8b2799917734f52c9293a489e08982ca5b0187e9)
+Licensed under MIT; see assets/licenses/voiceorbs-MIT.txt.

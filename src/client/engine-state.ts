@@ -65,18 +65,18 @@ function externalAudioTags(selection?: ExternalSpeechSelection) {
   return engine?.models?.find(model => model.id === (selection?.model ?? engine.selection?.model))?.audioTags ?? []
 }
 export const externalText = (text: string, selection?: ExternalSpeechSelection): string => prepareExternalTtsText(text, externalAudioTags(selection).map(tag => tag.value))
-export const externalFallbackText = (text: string, selection?: ExternalSpeechSelection): string => {
+export const externalFallbackText = (text: string, selection?: ExternalSpeechSelection, prepared = false): string => {
   for (const tag of externalAudioTags(selection)) text = text.split(tag.value).join(' ')
-  return prepareExternalTtsText(text)
+  return prepared ? text.replace(/\s+/gu, ' ').trim() : prepareExternalTtsText(text)
 }
 export const engineText = (text: string, builtin: () => string): string => externalEngine() ? externalText(text) : builtin()
 export const engineMaxTextLength = (fallback = 12000): number => externalEngine()?.maxTextLength ?? fallback
 export const engineCanRequest = (): boolean => ['inactive', 'ready'].includes(engineStateStore.getSnapshot().status)
 
 /** The built-in sentence grouper allows long sentences; external limits are strict UTF-16 limits. */
-export function splitExternalText(text: string, maximum = engineMaxTextLength(), selection?: ExternalSpeechSelection): string[] {
+export function splitExternalText(text: string, maximum = engineMaxTextLength(), selection?: ExternalSpeechSelection, prepared = false): string[] {
   const result: string[] = []
-  for (const sentence of splitTtsSegments(text, Math.min(180, maximum), maximum, value => externalText(value, selection))) {
+  for (const sentence of splitTtsSegments(text, Math.min(180, maximum), maximum, value => prepared ? value : externalText(value, selection))) {
     let part = ''
     for (const character of sentence.match(/<[^>]*>|\([^()]*\)|./gu) ?? []) {
       if (character.length > maximum) throw new Error('text-too-long')

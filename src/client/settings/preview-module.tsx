@@ -12,12 +12,19 @@ import { TactileButton } from './controls/tactile-button.js'
 import { ProviderSettings } from './provider-settings.js'
 import type { ProviderSettingsProps } from './provider-settings.js'
 import type { ExternalSpeechSelection } from '../../host-api.js'
+import type { AudioResponseStyle } from '../../types/settings.js'
+import { CaptionVisualPicker } from '../conversation/caption-visual.js'
 import { PREVIEW_PRESETS } from './preview-presets.js'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
+import { SettingFieldHeading } from './field-heading.js'
 import { HistoryDownloads } from '../history/history-list.js'
 
 export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<ProviderSettingsProps, 't' | 'writable' | 'visibleSettings'> {
+  audioResponseStyle: AudioResponseStyle
+  audioResponseStyleOverridden: boolean
+  onAudioResponseStyleChange: (value: AudioResponseStyle) => void
+  onAudioResponseStyleReset: () => void
   enabled: boolean
   status: PreviewStatus
   source: PreviewSource
@@ -35,7 +42,8 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<Prov
 export function PreviewModule({
   t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, externalSelection,
   doubaoEnabled, breezeEnabled, deepseekEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange,
-  acceptExternalProviders, onAcceptExternalProvidersChange, ...settings
+  acceptExternalProviders, onAcceptExternalProvidersChange,
+  audioResponseStyle, audioResponseStyleOverridden, onAudioResponseStyleChange, onAudioResponseStyleReset, ...settings
 }: PreviewModuleProps): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   useEngineState()
@@ -157,12 +165,17 @@ export function PreviewModule({
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
         {downloadFailed ? <small className="xmimo-tts-failed" role="alert">{t('settings.previewDownloadFailed')}</small> : null}
       </div>
+      {settings.showAudioResponse && !hide('settings.audioResponse') ? <div className="xmimo-tts-format">
+        <SettingFieldHeading label={t('settings.audioResponseEffects')} disabled={!settings.writable} overridden={audioResponseStyleOverridden}
+          resettable overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} onReset={onAudioResponseStyleReset} />
+        <CaptionVisualPicker label={t('settings.audioResponseEffects')} hideLabel value={audioResponseStyle}
+          disabled={!settings.writable} onChange={onAudioResponseStyleChange} />
+      </div> : null}
       <ProviderSettings t={t} writable={settings.writable} providerLocked={external !== null} visibleSettings={search?.visible}
         doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} deepseekEnabled={deepseekEnabled ?? false}
         mossEnabled={mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange}
         acceptExternalProviders={acceptExternalProviders} onAcceptExternalProvidersChange={onAcceptExternalProvidersChange} />
-      <AnnouncementSettings t={t} {...settings} parentOpen={open}>
-      </AnnouncementSettings>
+      <AnnouncementSettings t={t} {...settings} parentOpen={open} />
     </div>
   </CollapsibleModule>
 }

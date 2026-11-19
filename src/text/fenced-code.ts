@@ -176,7 +176,7 @@ export function removeFencedCode(value: string): string {
  * continuations. A real indented code block needs four columns beyond the
  * current list container and cannot interrupt a paragraph.
  */
-export function removeIndentedCode(value: string): string {
+export function removeIndentedCode(value: string, preserveOffsets = false): string {
   const output: string[] = []
   const lists = new ListContext()
   let inCode = false
@@ -184,20 +184,22 @@ export function removeIndentedCode(value: string): string {
   let previousBlank = true
 
   for (const line of sourceLines(value)) {
+    const original = preserveOffsets ? value.slice(line.start, line.end) : line.text
+    const blank = preserveOffsets ? original.replace(/[^\r]/gu, character => ' '.repeat(character.length)) : ''
     const stripped = stripBlockquote(line.text)
     if (inCode) {
       if (stripped.content.trim() === '') {
-        output.push('')
+        output.push(blank)
         continue
       }
       if (indentWidth(stripped.content) >= codeIndent) {
-        output.push('')
+        output.push(blank)
         continue
       }
       inCode = false
     }
     if (stripped.content.trim() === '') {
-      output.push('')
+      output.push(blank)
       previousBlank = true
       continue
     }
@@ -207,12 +209,12 @@ export function removeIndentedCode(value: string): string {
     if (previousBlank && indent >= lists.contentIndent + 4) {
       inCode = true
       codeIndent = lists.contentIndent + 4
-      output.push('')
+      output.push(blank)
       continue
     }
     const item = listItem(stripped.content)
     if (item !== null) lists.open(item.indent, item.contentIndent)
-    output.push(line.text)
+    output.push(original)
     // A heading or thematic break ends any paragraph, so indented code may
     // start on the next line without a blank separator.
     previousBlank = ATX_HEADING.test(stripped.content) || THEMATIC_BREAK.test(stripped.content)

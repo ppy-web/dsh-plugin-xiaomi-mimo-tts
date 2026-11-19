@@ -28,28 +28,14 @@
   pointer-events: none;
 }
 
-/**
- * Title row. The heading takes the free space; the 32px shortcut sits on its
- * right, vertically centered on the 26px title line so the 18px label and the
- * 16px glyph share one optical row.
- */
 .xmimo-voice-reading-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 2px 12px;
-}
-
-.xmimo-voice-reading-title {
-  margin: 0;
-  min-width: 0;
-  font-size: 18px;
-  line-height: 26px;
-  font-weight: 600;
+  gap: 12px;
 }
 
 .xmimo-voice-reading-description {
-  grid-column: 1 / -1;
   margin: 0;
   font-size: 13px;
   line-height: 20px;

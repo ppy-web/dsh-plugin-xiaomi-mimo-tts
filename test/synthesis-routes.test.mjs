@@ -128,13 +128,14 @@ for (const desktop of [false, true]) test(`${desktop ? 'desktop' : 'browser'} du
       const first = new Promise(resolve => { received = resolve })
       const chunks = []
       const stream = new DuplexPcmStream({ provider: 'doubao', model: 'seed-tts-2.0', voice: 'test-voice', voiceRate: 1.4, speechInstruction: '原始指令' }, new AbortController().signal, bytes => { chunks.push(...bytes); received() })
-      stream.append('第一句。')
+      stream.append(' First [表情: ******] ')
       await first
       // A running session retains the original credentials and voice snapshot.
       change({ doubaoVoice: 'changed-voice', doubaoApiKey: 'changed-key', voiceRate: 0.5, doubaoInstruction: '后续指令' })
-      stream.append('第二句。')
+      stream.append('second. ')
       await stream.finish()
       assert.deepEqual(chunks, [0, 0, 1, 0, 0, 0, 1, 0])
+      assert.deepEqual(frames.filter(frame => frame.event === 200).map(frame => frame.payload.req_params.text), [' First ', 'second. '])
       assert.equal(frames.filter(frame => frame.event === 100).length, 1)
       assert.equal(frames.find(frame => frame.event === 100).payload.req_params.speaker, 'test-voice')
       assert.equal(frames.find(frame => frame.event === 100).payload.req_params.audio_params.speech_rate, 40)

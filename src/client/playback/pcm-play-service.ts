@@ -108,6 +108,10 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
     }
   }
 
+  getPcmPlaybackSource(): AudioNode | null {
+    return PcmAudioQueue.getPlaybackSource()
+  }
+
   stopExternal(): void {
     if (this.externalGeneration === this.generation) this.stop()
   }

@@ -1,4 +1,5 @@
 import type { SoundCue } from './types.js'
+import { isComposerRecordingControl } from '../voice-input-activity.js'
 
 export function classifyClick(target: EventTarget | null): SoundCue | null {
   if (!(target instanceof Element)) return null
@@ -14,6 +15,7 @@ export function classifyClick(target: EventTarget | null): SoundCue | null {
   }
   const element = target.closest<HTMLElement>("button, a, [role='button'], [role='switch'], [role='checkbox'], [aria-checked], [aria-pressed]")
   if (element === null || element instanceof HTMLButtonElement && element.disabled || element.getAttribute('aria-disabled') === 'true') return null
+  if (isComposerRecordingControl(element)) return null
 
   const label = `${element.getAttribute('aria-label') ?? ''} ${element.getAttribute('title') ?? ''} ${element.textContent ?? ''}`.toLowerCase()
   const className = typeof element.className === 'string' ? element.className.toLowerCase() : ''

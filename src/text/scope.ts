@@ -29,15 +29,16 @@ export const TTS_SMART_TRUNCATION_OUTROS = [
 const TTS_OUTRO_PAUSE_END = /[,.;:!?，。！？；、：…]$/u
 
 /** Append one Smart-mode closing cue when the unread text is at least as long as the spoken segment. */
-export function appendTtsSmartTruncationOutro(fullText: string, spokenText: string, random: () => number = Math.random): string {
+export function appendTtsSmartTruncationOutro(fullText: string, spokenText: string, random: () => number = Math.random, prepared = false): string {
   const spokenLength = countTtsSpeechCharacters(spokenText)
   const unreadLength = Math.max(0, countTtsSpeechCharacters(fullText) - spokenLength)
   if (spokenLength === 0 || unreadLength < spokenLength) return spokenText
 
   const trimmed = spokenText.trimEnd()
   const index = Math.min(TTS_SMART_TRUNCATION_OUTROS.length - 1, Math.max(0, Math.floor(random() * TTS_SMART_TRUNCATION_OUTROS.length)))
-  const separator = TTS_OUTRO_PAUSE_END.test(trimmed) ? '' : '。'
-  return `${trimmed}${separator}${TTS_SMART_TRUNCATION_OUTROS[index]}`
+  const separator = TTS_OUTRO_PAUSE_END.test(trimmed) ? '' : prepared ? '.' : '。'
+  const outro = TTS_SMART_TRUNCATION_OUTROS[index]!
+  return `${trimmed}${separator}${prepared ? prepareTtsText(outro) : outro}`
 }
 
 /** Apply the configured playback range to a completed reply. */
@@ -46,7 +47,7 @@ export function applyTtsPlaybackScope(value: string, scope: TtsReadScope, automa
   if (prepare !== prepareTtsText) {
     const text = prepare(value)
     if (resolveTtsReadScope(scope, automatic) === 'full') return text
-    const scoped = splitTtsSegments(text, undefined, undefined, prepare)[0] ?? ''
+    const scoped = splitTtsSegments(text, undefined, undefined, value => value)[0] ?? ''
     return scope === 'smart' && automatic ? appendTtsSmartTruncationOutro(text, scoped, random) : scoped
   }
   const scoped = applyTtsReadScope(value, resolveTtsReadScope(scope, automatic))
@@ -76,13 +77,13 @@ export function applyTtsLivePlaybackScope(
   limiter: TtsFirstSegmentLimiter,
   final = false,
   random: () => number = Math.random,
-  prepare = prepareTtsText,
+  prepare: typeof prepareTtsText | false = prepareTtsText,
 ): string {
   if (scope === 'concise') return ''
   if (resolveTtsReadScope(scope, true) === 'full') return value
-  const text = prepare(value)
-  const scoped = limiter.limit(text, final)
+  const text = prepare ? prepare(value) : value
+  const scoped = limiter.limitPrepared(text, final)
   return final && scope === 'smart'
-    ? appendTtsSmartTruncationOutro(text, scoped, random)
+    ? appendTtsSmartTruncationOutro(text, scoped, random, prepare === false)
     : scoped
 }

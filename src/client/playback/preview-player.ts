@@ -9,6 +9,7 @@ import {
   stripBreezeAudioTags, stripXiaomiAudioTags,
 } from '../../shared.js'
 import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel } from '../../shared.js'
+import { removeEmoteMarkup } from '../../text/markup.js'
 import { hostRoute } from '../host-route.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 import { applyMediaVoiceRate, applySpeechVoiceRate } from './voice-rate.js'
@@ -166,13 +167,13 @@ export class PreviewPlayer {
     this.setVolume(settings.voiceVolume)
     this.voiceRate = normalizeVoiceRate(settings.voiceRate)
     this.pcm.setPlaybackRate(this.voiceRate)
-    const normalized = text.trim()
+    const normalized = removeEmoteMarkup(text).trim()
     if (normalized.length === 0) {
       this.publish('error', null, 'request-failed')
       return
     }
     const generation = this.generation
-    const localText = externalEngine() ? externalFallbackText(normalized, settings.externalSelection) : engineText(normalized, () => settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : (settings.provider ?? 'xiaomi') === 'xiaomi' ? stripXiaomiAudioTags(normalized) : normalized)
+    const localText = externalEngine() ? externalFallbackText(normalized, settings.externalSelection) : engineText(normalized, () => settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : (settings.provider ?? 'xiaomi') === 'xiaomi' ? stripXiaomiAudioTags(normalized, settings.model === 'mimo-v2.5-tts-voicedesign') : normalized)
     try {
       if (settings.localSpeechMode === 'local-first') {
         try {
@@ -215,7 +216,7 @@ export class PreviewPlayer {
     this.voiceRate = normalizeVoiceRate(settings.voiceRate)
     const generation = this.generation
     try {
-      await this.playLocal(text, {
+      await this.playLocal(removeEmoteMarkup(text).trim(), {
         localVoiceURI: settings.localVoiceURI,
         localVoiceEngine: 'browser',
         mossBaseURL: '',

@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { DEFAULT_TTS_SEGMENT_CHARACTERS, resolveTtsSettings } from '../lib/shared.js'
+import { createRecipe, renderRecipe } from '../src/client/sound-effects/runtime.js'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { pcmEvent, withBrowserPlayback } from './helpers/browser-playback.mjs'
 
-const { VoiceInputActivity } = await loadClientModule('src/client/voice-input-activity.ts')
+const { readComposerRecordingLevel, readComposerVoiceInput, VoiceInputActivity } = await loadClientModule('src/client/voice-input-activity.ts')
 const { PluginAudioFocus } = await loadClientModule('src/client/plugin-activity.ts')
 const { LiveSpeechController } = await loadClientModule('src/client/playback/live-speech-controller.ts')
+const { createSoundEffectsController } = await loadClientModule('src/client/sound-effects/index.ts')
 
 // Model the browser boundary, including queued callbacks after disconnect.
 function voiceDocument(t, initial = []) {
@@ -91,6 +93,103 @@ test('all visible composers participate and unloading releases observation witho
   assert.equal(focus.canPlay(), false, 'voice input ending must not steal audio from another tab')
   activity.dispose()
   assert.ok(dom.observers.every(observer => !observer.connected))
+})
+
+test('the response orb resolves the current composer microphone and never treats cancellation as stop', () => {
+  const control = (label, disabled = false) => ({ getAttribute: () => label, matches: () => disabled, closest: () => null })
+  const start = control('Начать запись')
+  const stop = control('停止并识别')
+  const retry = control('Record again')
+  let phase = null
+  let microphone = start
+  const row = {
+    getAttribute: () => phase,
+    querySelector: selector => phase === 'recording' && selector.includes('stop-fill') ? stop
+      : phase === 'feedback' && selector.includes('microphone-outline') ? microphone : null,
+  }
+  const slot = { querySelector: selector => selector.includes('data-voice-activity') ? phase && row
+    : !phase && selector.includes('microphone-outline') ? microphone : null }
+  const seat = { querySelector: selector => selector.includes('conversation.input.activity') ? slot : null }
+
+  assert.deepEqual(readComposerVoiceInput(seat), { phase: 'idle', button: start, label: 'Начать запись', disabled: false })
+  microphone = control('Start recording', true)
+  assert.equal(readComposerVoiceInput(seat).disabled, true)
+  phase = 'recording'
+  assert.equal(readComposerVoiceInput(seat).button, stop)
+  for (phase of ['requesting', 'transcribing']) assert.equal(readComposerVoiceInput(seat).disabled, true)
+  phase = 'feedback'
+  microphone = retry
+  assert.equal(readComposerVoiceInput(seat).button, retry)
+  microphone = null
+  assert.equal(readComposerVoiceInput(seat).disabled, true)
+  assert.equal(readComposerVoiceInput(null).button, null)
+})
+
+test('the response orb follows the host waveform from silence to full amplitude and handles a missing meter', () => {
+  let attributes = { y1: '19', y2: '21' }
+  const line = { getAttribute: name => attributes[name] ?? null }
+  const seat = { querySelector: () => attributes ? line : null }
+
+  assert.equal(readComposerRecordingLevel(seat), 0)
+  attributes = { y1: '10.5', y2: '29.5' }
+  assert.equal(readComposerRecordingLevel(seat), 0.5)
+  attributes = { y1: '2', y2: '38' }
+  assert.equal(readComposerRecordingLevel(seat), 1)
+  attributes = { y1: 'invalid', y2: '38' }
+  assert.equal(readComposerRecordingLevel(seat), undefined)
+  attributes = null
+  assert.equal(readComposerRecordingLevel(seat), undefined)
+})
+
+test('confirmed microphone transitions play the selected pack and respect click mute and tab audio focus', async t => {
+  const dom = voiceDocument(t)
+  const activity = new VoiceInputActivity(dom.document)
+  const sampleRate = 24_000
+  let tabOwnsAudio = true
+  await withBrowserPlayback(async state => {
+    window.AudioContext = AudioContext
+    AudioContext.prototype.sampleRate = sampleRate
+    const sounds = createSoundEffectsController(() => tabOwnsAudio && !activity.getSnapshot(), () => tabOwnsAudio)
+    const settings = { enabled: true, clickSounds: true, taskSounds: true, volume: 0.7, pack: 'minimal' }
+    const played = () => state.contexts.flatMap(context => context.sources.map(source => source.buffer.duration))
+    const duration = (pack, cue) => renderRecipe(createRecipe(pack, cue), sampleRate).duration
+    sounds.update(settings)
+    activity.start(sounds.playMicrophoneCue)
+    try {
+      dom.change(['requesting'], 'insert')
+      sounds.play('notification')
+      dom.change(['feedback'])
+      assert.deepEqual(played(), [], 'requesting or a failed permission grant must not sound like live recording')
+
+      dom.change(['recording'])
+      dom.change(['recording', 'feedback'])
+      sounds.update({ ...settings, pack: 'scifi' })
+      dom.change(['transcribing'])
+      dom.change([], 'remove')
+      const recordingSounds = [duration('minimal', 'toggle-on'), duration('scifi', 'toggle-off')]
+      assert.deepEqual(played(), recordingSounds)
+
+      sounds.update({ ...settings, clickSounds: false })
+      dom.change(['recording'], 'insert')
+      dom.change([], 'remove')
+      sounds.update({ ...settings, enabled: false })
+      dom.change(['recording'], 'insert')
+      dom.change([], 'remove')
+      sounds.update(settings)
+      tabOwnsAudio = false
+      dom.change(['recording'], 'insert')
+      dom.change([], 'remove')
+      assert.deepEqual(played(), recordingSounds)
+
+      tabOwnsAudio = true
+      dom.change(['recording'], 'insert')
+      dom.change([], 'remove')
+      assert.deepEqual(played().slice(2), [duration('minimal', 'toggle-on'), duration('minimal', 'toggle-off')], 'cancelling live capture closes the microphone once')
+    } finally {
+      activity.dispose()
+      await sounds.dispose()
+    }
+  })
 })
 
 test('voice input interrupts a pending synthesis, rejects late audio and does not resume the interrupted turn', async t => {

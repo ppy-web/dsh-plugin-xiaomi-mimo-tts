@@ -1,5 +1,5 @@
 import type { TtsSettings, ResolvedTtsSettings } from '../types/index.js'
-import { DEFAULT_TTS_SETTINGS, TTS_LOCAL_VOICE_ENGINES, TTS_READ_SCOPES, TTS_AVATAR_STYLES, TTS_VOICE_DESIGN_PRESETS, SOUND_PACKS, DOUBAO_TTS_MODELS, ANNOUNCEMENT_SOURCES } from '../types/index.js'
+import { AUDIO_RESPONSE_STYLES, DEFAULT_TTS_SETTINGS, TTS_LOCAL_VOICE_ENGINES, TTS_READ_SCOPES, TTS_AVATAR_STYLES, TTS_VOICE_DESIGN_PRESETS, SOUND_PACKS, DOUBAO_TTS_MODELS, ANNOUNCEMENT_SOURCES } from '../types/index.js'
 import { DEEPSEEK_VOICES, OPTIONAL_TTS_PROVIDERS, TTS_PROVIDER_SWITCH } from '../types/providers.js'
 import { DEFAULT_MOSS_BASE_URL } from '../constants.js'
 import { normalizeVoiceRate } from './encoding.js'
@@ -64,7 +64,9 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     mossVoice: typeof resolved.mossVoice === 'string' ? resolved.mossVoice : '',
     mossVoiceName: typeof resolved.mossVoiceName === 'string' ? resolved.mossVoiceName : '',
     autoPlay: resolved.enabled ? resolved.autoPlay : false,
-    showReadingCaptions: resolved.showReadingCaptions !== false,
+    showReadingCaptions: resolved.showReadingCaptions === true,
+    showAudioResponse: resolved.showAudioResponse === true,
+    audioResponseStyle: AUDIO_RESPONSE_STYLES.includes(resolved.audioResponseStyle) ? resolved.audioResponseStyle : DEFAULT_TTS_SETTINGS.audioResponseStyle,
     inputAvoidance: resolved.inputAvoidance === true,
     importantAnnouncementsFirst: resolved.importantAnnouncementsFirst === true,
     soundVolume,

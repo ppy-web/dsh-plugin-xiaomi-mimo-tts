@@ -209,8 +209,10 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
               }).catch(fail)
               void session.done.then(() => { if (state !== 'ended') { state = 'ended'; send({ type: 'done' }); close() } }).catch(fail)
             } else if (command.type === 'text' && state === 'ready' && typeof command.text === 'string') {
-              // The UI prepares DeepSeek text before segmenting it. Preserve segment boundaries.
-              session!.append(settings.provider === 'deepseek' ? command.text : prepareTtsText(command.text))
+              // Preserve word boundaries between adjacent duplex text commands.
+              const text = settings.provider === 'deepseek' ? command.text : prepareTtsText(command.text)
+              if (text) session!.append(settings.provider === 'deepseek' ? text
+                : (/^\s/u.test(command.text) ? ' ' : '') + text + (/\s$/u.test(command.text) ? ' ' : ''))
             } else if (command.type === 'finish' && state === 'ready') {
               state = 'finishing'
               void session!.finish().catch(fail)

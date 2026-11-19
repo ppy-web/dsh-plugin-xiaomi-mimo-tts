@@ -18,6 +18,9 @@ export type AnnouncementSourceId = typeof ANNOUNCEMENT_SOURCES[number]
 
 export const QQBOT_SPEECH_LIMITS = { qqbotMaxAutoCharacters: 12000, qqbotMaxDurationSeconds: 6000 } as const
 
+export const AUDIO_RESPONSE_STYLES = ['aura-field', 'siri-wave-line', 'siri-sheet'] as const
+export type AudioResponseStyle = typeof AUDIO_RESPONSE_STYLES[number]
+
 export interface TtsSettings {
   showInSidebar?: boolean
   showInHostSettings?: boolean
@@ -65,6 +68,8 @@ export interface TtsSettings {
   readScope?: TtsReadScope | 'first-segment'
   autoPlay?: boolean
   showReadingCaptions?: boolean
+  showAudioResponse?: boolean
+  audioResponseStyle?: AudioResponseStyle
   inputAvoidance?: boolean
   importantAnnouncementsFirst?: boolean
   instruction?: string
@@ -127,6 +132,8 @@ export interface ResolvedTtsSettings {
   readScope: TtsReadScope
   autoPlay: boolean
   showReadingCaptions: boolean
+  showAudioResponse: boolean
+  audioResponseStyle: AudioResponseStyle
   inputAvoidance: boolean
   importantAnnouncementsFirst: boolean
   instruction: string
@@ -189,7 +196,9 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   avatarStyle: 'default',
   readScope: 'smart',
   autoPlay: false,
-  showReadingCaptions: true,
+  showReadingCaptions: false,
+  showAudioResponse: false,
+  audioResponseStyle: 'aura-field',
   inputAvoidance: false,
   importantAnnouncementsFirst: false,
   instruction: '',

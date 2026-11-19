@@ -16,6 +16,7 @@ export interface SoundEffectsPlayOptions {
 
 export interface SoundEffectsController {
   play(cue: SoundCue, options?: SoundEffectsPlayOptions): void
+  playMicrophoneCue(recording: boolean): void
   preview(cue: SoundCue): void
   setVolume(value: number): void
   previewVolume(): void

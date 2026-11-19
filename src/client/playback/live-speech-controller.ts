@@ -1,4 +1,3 @@
-import { prepareSpeechText } from './speech-text.js'
 import {
   AbortableSentenceQueue,
   batchTtsStreamSegments,
@@ -75,6 +74,7 @@ export class LiveSpeechController {
   private queue = this.createQueue()
   private active: LiveSpeechCursor | null = null
   private observed = ''
+  private prepared = false
   private consumed = 0
   private pendingText = ''
   private handled = new Set<string>()
@@ -116,7 +116,7 @@ export class LiveSpeechController {
     this.audio.setMaxPausedPcmBytes(settings.maxPausedPcmBytes)
   }
 
-  prepareText(value: string): string { if (externalEngine()) return externalText(value); return prepareSpeechText(value, supportsXiaomiAudioTags(this.selection) ? 'xiaomi' : this.selection.provider === 'breeze') }
+  prepareText(value: string): string { return externalEngine() ? externalText(value) : prepareProviderTtsText(value, this.selection, true) }
 
   isDuplex(): boolean { return !externalEngine() && supportsDuplexTts(this.selection.provider) }
 
@@ -194,29 +194,32 @@ export class LiveSpeechController {
     this.sessionId = null
   }
 
-  observe(sessionId: string, turn: number, step: number, text: string): void {
+  observe(sessionId: string, turn: number, step: number, text: string, prepared = false): void {
     if (this.sessionId !== sessionId) return
     const next = { sessionId, turn, step }
     const turnKey = `${sessionId}:${turn}`
     if (this.blockedTurn === turnKey || this.manuallyStoppedTurns.has(turnKey)) return
     if (this.blockedTurn !== null && this.blockedTurn !== turnKey) this.blockedTurn = null
-    if (this.checkpointed && this.active !== null && this.cursorKey(this.active) === this.cursorKey(next) && !text.startsWith(this.observed)) {
-      this.prime(sessionId, turn, step, text)
+    const previous = prepared ? this.observed.slice(0, this.consumed) : this.observed
+    if (this.checkpointed && this.active !== null && this.cursorKey(this.active) === this.cursorKey(next) && !text.startsWith(previous)) {
+      this.prime(sessionId, turn, step, text, prepared)
       return
     }
     this.beforePlayback?.()
     const transition = classifyLiveSpeechTransition(this.active, next)
-    if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(this.observed))) this.reset(next)
+    if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(previous))) this.reset(next)
     else if (transition === 'same-turn') this.advanceSegment(next)
     this.observed = text
+    this.prepared = prepared
     this.drain(false)
   }
 
   /** Skip text already present when attaching to a running conversation. */
-  prime(sessionId: string, turn: number, step: number, text: string): void {
+  prime(sessionId: string, turn: number, step: number, text: string, prepared = false): void {
     if (this.sessionId !== sessionId || this.manuallyStoppedTurns.has(`${sessionId}:${turn}`)) return
     this.reset({ sessionId, turn, step })
     this.observed = text
+    this.prepared = prepared
     this.consumed = text.length
     this.checkpointed = true
   }
@@ -253,7 +256,7 @@ export class LiveSpeechController {
       this.cancelSession(sessionId)
       return
     }
-    if (final.text.startsWith(this.observed)) this.observed = final.text
+    if (final.text.startsWith(this.prepared ? this.observed.slice(0, this.consumed) : this.observed)) this.observed = final.text
     this.messageId = final.messageId
     this.reportStatus()
     this.drain(true)
@@ -347,7 +350,8 @@ export class LiveSpeechController {
   }
 
   private drain(flush: boolean): void {
-    const { sentences, remainder, consumed, inCode } = splitCompletedTtsSentences(this.observed.slice(this.consumed))
+    const source = this.observed.slice(this.consumed)
+    const { sentences, remainder, consumed, inCode } = splitCompletedTtsSentences(source, this.prepared)
     // Never read an unclosed code block aloud, even on flush.
     const ready = flush && !inCode && remainder.trim().length > 0 ? [...sentences, remainder] : sentences
     this.consumed += consumed
@@ -358,7 +362,7 @@ export class LiveSpeechController {
     // the emitted prefix consumed to keep subsequent partial updates from
     // synthesizing the same prefix again.
     if (!flush && !inCode && remainder.trim().length > 0) {
-      const preparedRemainder = this.prepareText(remainder)
+      const preparedRemainder = this.prepared ? remainder : this.prepareText(remainder)
       const needed = DEFAULT_TTS_SEGMENT_CHARACTERS - countTtsSpeechCharacters(this.pendingText)
       if (countTtsSpeechCharacters(preparedRemainder) >= needed) {
         const provisional = takeStreamChunk(remainder, needed, !externalEngine() && (this.selection.provider === 'breeze' || supportsXiaomiAudioTags(this.selection)))
@@ -375,7 +379,7 @@ export class LiveSpeechController {
   private stageSentences(sentences: readonly string[], flush: boolean): void {
     const duplex = this.isDuplex()
     const prepared = sentences.map(sentence => {
-      const text = this.prepareText(sentence)
+      const text = this.prepared ? sentence.trim() : this.prepareText(sentence)
       if (!text || !duplex) return text
       return (/^\s/u.test(sentence) ? ' ' : '') + text + (/\s$/u.test(sentence) ? ' ' : '')
     }).filter(text => countTtsSpeechCharacters(text) > 0)
@@ -393,7 +397,8 @@ export class LiveSpeechController {
     // Claim streamed replies before final settlement so completed autoplay cannot restart them.
     if (batch.requests.length > 0 && this.active !== null) this.handled.add(this.cursorKey(this.active))
     for (const request of batch.requests) {
-      const segments = externalEngine() ? splitExternalText(request, this.maxTextLength) : this.selection.provider === 'breeze' ? splitBreezeTtsSegments(request) : [request]
+      const segments = externalEngine() ? splitExternalText(request, this.maxTextLength, undefined, true)
+        : this.selection.provider === 'breeze' ? splitBreezeTtsSegments(request, undefined, true) : [request]
       for (const segment of segments) this.queue.enqueue(segment)
     }
   }
@@ -452,6 +457,7 @@ export class LiveSpeechController {
         pcmBytes += Math.floor(pcm.length * 3 / 4) - (pcm.endsWith('==') ? 2 : pcm.endsWith('=') ? 1 : 0)
         const onStart = firstChunk && this.captions !== undefined ? () => {
           if (this.isCurrentStream(generation, signal)) this.captions?.show(this, sessionId, caption, {
+            analyser: () => this.audio.getAnalyser(),
             rate: captionRate,
             duration: () => complete ? pcmBytes / 48000 / playbackRate : Number.NaN,
           })
@@ -589,7 +595,7 @@ export class LiveSpeechController {
           const onStart = firstChunk && this.captions ? () => {
             if (!this.isCurrentStream(generation, signal)) return
             captionStarted = true
-            this.captions?.show(this, job.batch.sessionId, caption(), { source: captionSource, rate, elapsed, duration: () => job.audioComplete ? totalDuration : Number.NaN })
+            this.captions?.show(this, job.batch.sessionId, caption(), { source: captionSource, analyser: () => this.audio.getAnalyser(), rate, elapsed, duration: () => job.audioComplete ? totalDuration : Number.NaN })
           } : undefined
           firstChunk = false
           await this.audio.enqueueBytes(bytes, onStart, this.captions ? (elapsed, duration) => {

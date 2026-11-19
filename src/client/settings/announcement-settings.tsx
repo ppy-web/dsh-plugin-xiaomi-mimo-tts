@@ -13,10 +13,6 @@ export interface AnnouncementSettingsProps {
   t: Translate
   sources: AnnouncementSourceId[]
   qqbotEnabled: boolean
-  showReadingCaptions: boolean
-  onShowReadingCaptionsChange: (enabled: boolean) => void
-  showReadingCaptionsOverridden: boolean
-  onShowReadingCaptionsReset: () => void
   showInHostSettings: boolean
   showFeatureGuide: boolean
   onShowFeatureGuideChange: (enabled: boolean) => void
@@ -29,6 +25,14 @@ export interface AnnouncementSettingsProps {
   onShowInHostSettingsChange: (enabled: boolean) => void
   showInHostSettingsOverridden: boolean
   onShowInHostSettingsReset: () => void
+  showReadingCaptions: boolean
+  onShowReadingCaptionsChange: (enabled: boolean) => void
+  showReadingCaptionsOverridden: boolean
+  onShowReadingCaptionsReset: () => void
+  showAudioResponse: boolean
+  onShowAudioResponseChange: (enabled: boolean) => void
+  showAudioResponseOverridden: boolean
+  onShowAudioResponseReset: () => void
   inputAvoidance: boolean
   onInputAvoidanceChange: (enabled: boolean) => void
   inputAvoidanceOverridden: boolean
@@ -62,17 +66,27 @@ const SOURCE_GROUPS = [
   { label: 'settings.announcementsPlugins', hint: 'settings.announcementsPluginsHint', options: PLUGIN_SOURCE_OPTIONS },
 ] as const
 
-export function AnnouncementSettings({ children, t, sources, qqbotEnabled, onQqbotChange, showReadingCaptions, onShowReadingCaptionsChange, showReadingCaptionsOverridden, onShowReadingCaptionsReset, showInHostSettings, onShowInHostSettingsChange, showInHostSettingsOverridden, onShowInHostSettingsReset, showFeatureGuide, onShowFeatureGuideChange, showFeatureGuideOverridden, onShowFeatureGuideReset, voiceRecognitionService, onVoiceRecognitionServiceChange, voiceRecognitionServiceOverridden, onVoiceRecognitionServiceReset, inputAvoidance, onInputAvoidanceChange, inputAvoidanceOverridden, onInputAvoidanceReset, importantAnnouncementsFirst, onImportantAnnouncementsFirstChange, importantAnnouncementsFirstOverridden, onImportantAnnouncementsFirstReset, writable, overridden, onChange, onReset, parentOpen = true }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
+export function AnnouncementSettings({
+  children, t, sources, qqbotEnabled, onQqbotChange, writable, overridden, onChange, onReset, parentOpen = true,
+  showInHostSettings, onShowInHostSettingsChange, showInHostSettingsOverridden, onShowInHostSettingsReset,
+  showFeatureGuide, onShowFeatureGuideChange, showFeatureGuideOverridden, onShowFeatureGuideReset,
+  voiceRecognitionService, onVoiceRecognitionServiceChange, voiceRecognitionServiceOverridden, onVoiceRecognitionServiceReset,
+  showReadingCaptions, onShowReadingCaptionsChange, showReadingCaptionsOverridden, onShowReadingCaptionsReset,
+  showAudioResponse, onShowAudioResponseChange, showAudioResponseOverridden, onShowAudioResponseReset,
+  inputAvoidance, onInputAvoidanceChange, inputAvoidanceOverridden, onInputAvoidanceReset,
+  importantAnnouncementsFirst, onImportantAnnouncementsFirstChange, importantAnnouncementsFirstOverridden, onImportantAnnouncementsFirstReset,
+}: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   const showMore = search !== null && (search.groups.has('host') || search.groups.has('sources') || search.groups.has('integrations'))
   const moreSettings = useNestedDisclosure(parentOpen, showMore)
   const hostOptions = [
-    { label: 'settings.readingCaptions', hint: 'settings.readingCaptionsHint', checked: showReadingCaptions, overridden: showReadingCaptionsOverridden, onChange: onShowReadingCaptionsChange, onReset: onShowReadingCaptionsReset },
     { label: 'settings.voiceRecognitionService', hint: 'settings.voiceRecognitionServiceHint', checked: voiceRecognitionService, overridden: voiceRecognitionServiceOverridden, onChange: onVoiceRecognitionServiceChange, onReset: onVoiceRecognitionServiceReset },
     { label: 'settings.showInHostSettings', hint: 'settings.showInHostSettingsHint', checked: showInHostSettings, overridden: showInHostSettingsOverridden, onChange: onShowInHostSettingsChange, onReset: onShowInHostSettingsReset },
     { label: 'settings.showFeatureGuide', hint: 'settings.showFeatureGuideHint', checked: showFeatureGuide, overridden: showFeatureGuideOverridden, onChange: onShowFeatureGuideChange, onReset: onShowFeatureGuideReset },
     { label: 'settings.inputAvoidance', hint: 'settings.inputAvoidanceHint', checked: inputAvoidance, overridden: inputAvoidanceOverridden, onChange: onInputAvoidanceChange, onReset: onInputAvoidanceReset },
     { label: 'settings.importantAnnouncementsFirst', hint: 'settings.importantAnnouncementsFirstHint', checked: importantAnnouncementsFirst, overridden: importantAnnouncementsFirstOverridden, onChange: onImportantAnnouncementsFirstChange, onReset: onImportantAnnouncementsFirstReset },
+    { label: 'settings.readingCaptions', hint: 'settings.readingCaptionsHint', checked: showReadingCaptions, overridden: showReadingCaptionsOverridden, onChange: onShowReadingCaptionsChange, onReset: onShowReadingCaptionsReset },
+    { label: 'settings.audioResponse', hint: 'settings.audioResponseHint', checked: showAudioResponse, overridden: showAudioResponseOverridden, onChange: onShowAudioResponseChange, onReset: onShowAudioResponseReset },
   ] as const
   return <details {...moreSettings} className="xmimo-tts-more-settings" hidden={search !== null && !showMore}>
     <summary className="xmimo-tts-more-settings-trigger" hidden={showMore}>

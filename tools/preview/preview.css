@@ -201,3 +201,14 @@
   .preview-detail-controls label { width: 100%; }
   .preview-detail-controls select { min-height: 44px; }
 }
+
+.preview-orb-demo { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--dsw-alias-border-default, #d8dce4) }
+.preview-orb-demo-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+.preview-orb-demo-header span { font-size: 12px; color: var(--preview-muted) }
+.preview-orb-demo-states { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px }
+.preview-orb-demo-states button, .preview-orb-composer-footer button { border: 1px solid var(--dsw-alias-border-default, #d8dce4); background: transparent; color: inherit; border-radius: 8px; padding: 6px 11px; cursor: pointer }
+.preview-orb-demo-states button[aria-pressed="true"] { color: var(--dsw-alias-brand-primary, #4f6ef7); border-color: currentColor }
+.preview-orb-composer { border: 1px solid var(--dsw-alias-border-default, #d8dce4); border-radius: 16px; padding: 8px; background: var(--dsw-alias-bg-layer-2, #fff) }
+.preview-orb-composer textarea { display: block; box-sizing: border-box; width: 100%; resize: vertical; border: 0; outline: 0; padding: 10px 12px; color: inherit; background: transparent; font: inherit }
+.preview-orb-composer textarea:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7); border-radius: 8px }
+.preview-orb-composer-footer { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; font-size: 12px; color: var(--preview-muted) }

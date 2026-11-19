@@ -165,7 +165,7 @@ function PreviewApp() {
       </header>
       <main key={activeView} ref={mainRef} className="preview-canvas" id="preview-main" tabIndex={-1}>
         <div className="preview-page">
-          {activeView !== 'workbench' ? <header className="preview-page-heading">
+          {activeView !== 'workbench' && activeView !== 'voice' ? <header className="preview-page-heading">
             <h1 ref={headingRef} tabIndex={-1}>{page.title}</h1><p>{page.description}</p>
           </header> : null}
           <div className="preview-page-body">
@@ -176,7 +176,7 @@ function PreviewApp() {
             </div>
               : activeView === 'workbench' ? <VoiceSettingsPage {...settingsPageProps} onOpenPluginSettings={() => { window.location.hash = 'detail' }} />
               : activeView === 'voice' ? <div className="preview-voice-surface"><VoiceReadingPreview scope={scope} t={t} onOpenPluginSettings={() => { window.location.hash = 'settings' }} /></div>
-              : activeView === 'conversation' ? <ConversationPreview scope={scope} />
+              : activeView === 'conversation' ? <ConversationPreview scope={scope} soundEffects={soundEffects} />
               : activeView === 'detail' ? <PluginDetailPreview scope={scope} t={t} settingsProps={settingsPageProps} onOpenWorkbench={openWorkbench}
                 externalTakeover={externalTakeover} externalTakeoverLabel={copy.externalTakeover} />
               : activeView === 'components' ? <BundleComponents locale={locale} ttsScope={scope} />

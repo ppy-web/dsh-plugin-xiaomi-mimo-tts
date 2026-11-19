@@ -1,5 +1,7 @@
 import { findFencedCodeRegions, removeFencedCode, removeIndentedCode } from './fenced-code.js'
-import { XIAOMI_AUDIO_TAG_PATTERN } from './xiaomi-audio-tags.js'
+import { isKnownXiaomiAudioTag, stripXiaomiAudioTags, XIAOMI_AUDIO_TAG_PATTERN } from './xiaomi-audio-tags.js'
+import { findSpeechMarkup, removeCitationMarkup, removeEmoteMarkup } from './markup.js'
+import type { SpeechTag } from './markup.js'
 
 const TTS_PUNCTUATION: Record<string, string> = {
   '，': ',',
@@ -19,36 +21,32 @@ const TTS_NON_SPEECH_PUNCTUATION = /[()\[\]【】［］〔〕〖〗{}｛｝「�
 /** Keep apostrophes inside words; remove quote marks around them. */
 const TTS_APOSTROPHE_QUOTE = /(?<![\p{L}\p{N}])['’‘]|['’‘](?![\p{L}\p{N}])/gu
 /** Comparison signs carry meaning that plain symbol removal would erase. */
-const TTS_COMPARISON_OPERATOR = /(?<=[\p{L}\p{N}])\s*([<>])\s*(?=[\p{L}\p{N}])/gu
+const TTS_COMPARISON_OPERATOR = /[ \t]*(<=|>=|!=|=>|->|[≤≥≠→])[ \t]*|(?<=[\p{L}\p{N}])[ \t]*([<>])[ \t]*(?=[\p{L}\p{N}])/gu
+const TTS_OPERATORS: Record<string, [string, string]> = {
+  '<': ['小于', 'less than'], '>': ['大于', 'greater than'],
+  '<=': ['小于等于', 'less than or equal to'], '≤': ['小于等于', 'less than or equal to'],
+  '>=': ['大于等于', 'greater than or equal to'], '≥': ['大于等于', 'greater than or equal to'],
+  '!=': ['不等于', 'not equal to'], '≠': ['不等于', 'not equal to'],
+  '=>': ['指向', 'points to'], '->': ['指向', 'points to'], '→': ['指向', 'points to'],
+}
 /** Ellipses and wave dashes carry a sentence-level pause, so keep that cue as a period. */
 const TTS_SENTENCE_PAUSE_PUNCTUATION = /[…⋯〜～]+/gu
 const TTS_PAUSE_MARKER = ''
 
-const TTS_URL_PATTERN = /\b(?:https?|ftp):\/\/[^\s<>()]+|\bwww\.[^\s<>()]+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|cn|net|org|io|ai|dev|me|co|edu|gov|xyz|tech|info|app|site|link)(?:[/:?#][^\s<>()]*)?/giu
-const TTS_WINDOWS_PATH_PATTERN = /(?:\b[A-Za-z]:[\\/]|\\\\)(?:[A-Za-z0-9._ -]+[\\/])+(?:[A-Za-z0-9._ -]+)/gu
-const TTS_UNIX_PATH_PATTERN = /\/(?:[A-Za-z0-9._-]+\/)+(?:[A-Za-z0-9._-]+)/gu
+const TTS_URL_PATTERN = /\b(?:https?|ftp):\/\/[^\s<>()[\]，。！？；：、]+|\bwww\.[^\s<>()[\]，。！？；：、]+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|cn|net|org|io|ai|dev|me|co|edu|gov|xyz|tech|info|app|site|link)\b(?:[/:?#][^\s<>()[\]，。！？；：、]*)?/giu
+const TTS_WINDOWS_PATH_PATTERN = /(?<=["'])(?:[A-Za-z]:[\\/]|\\\\)[^"'<>\r\n]+(?=["'])|\b[A-Za-z]:[\\/][\w.~%+-]+(?:[\\/][\w.~%+-]+)*|\\\\[\w.~%+-]+(?:[\\/][\w.~%+-]+)+/gu
+const TTS_UNIX_PATH_PATTERN = /(?<=^|[\s([（【:：，、；。！？,;!?=*_'"`])~?\/(?!(?:\d+\/)+\d+(?![\w./-]))(?:[\w.~-]+\/)+[\w.~-]+/gu
 const TTS_RELATIVE_PATH_PATTERN = /(?:\.\.?[\\/])(?:[A-Za-z0-9._-]+[\\/])*(?:[A-Za-z0-9._-]+(?:\.[A-Za-z0-9_-]+)?)/gu
-const TTS_PROJECT_PATH_PATTERN = /\b(?:[A-Za-z0-9_-]+[\\/])+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gu
+const TTS_PROJECT_PATH_PATTERN = /\b(?:[\w.~-]+[\\/])+[\w~-]+(?:\.[\w~-]+)+\b/gu
 
-/** Combined Markdown syntax and path removal in a single pass. */
 const MARKDOWN_REFERENCE_DEFINITION_RE = /(^|\n)(?:[ \t]*>[ \t]?)*[ \t]*\[[^\]\r\n]+\]:[^\r\n]*(?=\r?\n|$)/g
-const MARKDOWN_HTML_COMMENT_RE = /<!--[\s\S]*?-->/g
-const MARKDOWN_UNCLOSED_HTML_COMMENT_RE = /(^|\n)[ \t]{0,3}<!--[\s\S]*$/g
-const MARKDOWN_RAW_HTML_RE = /<(script|style|pre)\b[^>]*>[\s\S]*?<\/\1\s*>/gi
-const MARKDOWN_IMAGE_REFERENCE_RE = /!\[[^\]\r\n]*\]\[[^\]\r\n]*\]/g
-const MARKDOWN_LINK_REFERENCE_RE = /\[([^\]\r\n]*)\]\[[^\]\r\n]*\]/g
-const MARKDOWN_FOOTNOTE_REFERENCE_RE = /\[\^[^\]\r\n]+\]/g
-const MARKDOWN_IMAGE_RE = /!\[([^\]\r\n]*)\]\([^\)\r\n]*\)/g
-const MARKDOWN_LINK_RE = /\[([^\]\r\n]*)\]\([^\)\r\n]*\)/g
-/** Only tag-shaped angle brackets are markup; comparisons such as 3<4 survive. */
-const MARKDOWN_HTML_TAG_RE = /<\/?[A-Za-z][^<>]*>/g
 const MARKDOWN_HEADING_RE = /(^|\n)[ \t]{0,3}#+/g
 const MARKDOWN_LIST_RE = /(^|\n)\s*(?:[-*+]|\d+[.)])\s+/g
 const MARKDOWN_BLOCKQUOTE_RE = /(^|\n)\s*>\s?/g
 const MARKDOWN_TASK_MARKER_RE = /(^|\s)\[[ xX]\](?=\s|$)/g
 const MARKDOWN_RULE_RE = /(^|\n)[ \t]{0,3}(?:(?:=[ \t]*)+|(?:-[ \t]*)+|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})[ \t]*(?=\r?\n|$)/g
 const MARKDOWN_TABLE_DELIMITER_RE = /(^|\n)[ \t]{0,3}(?=[^\r\n]*\|)[|:\- \t]+(?=\r?\n|$)/g
-const MARKDOWN_INLINE_FORMAT_RE = /`+|[*_~]{1,3}/g
+const MARKDOWN_INLINE_FORMAT_RE = /`+|[*_]+|~{2,}/g
 const MARKDOWN_TABLE_SEP_RE = /[|]/g
 const WORD_CHARACTER = /[\p{L}\p{N}]/u
 
@@ -80,52 +78,61 @@ function stripMarkdownInlineFormat(value: string): string {
   })
 }
 
-function removeTtsPaths(value: string): string {
-  return value
-    .replace(TTS_WINDOWS_PATH_PATTERN, ' ')
-    .replace(TTS_RELATIVE_PATH_PATTERN, ' ')
-    .replace(TTS_PROJECT_PATH_PATTERN, ' ')
-    .replace(TTS_UNIX_PATH_PATTERN, ' ')
+const ADDRESS_PATTERNS = [TTS_URL_PATTERN, TTS_WINDOWS_PATH_PATTERN, TTS_RELATIVE_PATH_PATTERN, TTS_UNIX_PATH_PATTERN, TTS_PROJECT_PATH_PATTERN]
+
+function addressEnd(address: string): number {
+  return address.replace(/[.,!?;:]+$/u, '').length
 }
 
-function removeTtsMarkup(value: string, protect?: (text: string) => string): string {
-  let text = removeFencedCode(value)
-    .replace(MARKDOWN_REFERENCE_DEFINITION_RE, '$1')
-  text = decodeHtmlEntities(removeIndentedCode(text))
-    .replace(MARKDOWN_HTML_COMMENT_RE, ' ')
-    .replace(MARKDOWN_UNCLOSED_HTML_COMMENT_RE, '$1')
-    .replace(MARKDOWN_RAW_HTML_RE, ' ')
-    .replace(MARKDOWN_IMAGE_REFERENCE_RE, ' ')
-    .replace(MARKDOWN_LINK_REFERENCE_RE, '$1')
-    .replace(MARKDOWN_FOOTNOTE_REFERENCE_RE, ' ')
-    .replace(MARKDOWN_IMAGE_RE, ' ')
-    .replace(MARKDOWN_LINK_RE, '$1')
-    .replace(MARKDOWN_HTML_TAG_RE, ' ')
-  text = (protect?.(text) ?? text)
+function removeAddresses(value: string): string {
+  for (const pattern of ADDRESS_PATTERNS) value = value.replace(pattern, address => ` ${address.slice(addressEnd(address))}`)
+  return value
+}
+
+function projectMarkup(value: string, isTag?: SpeechTag, decode = true): string {
+  const { spans } = findSpeechMarkup(value, false, isTag)
+  const prose = (text: string): string => {
+    if (!decode) return text
+    const decoded = decodeHtmlEntities(text)
+    return decoded === text ? text : projectMarkup(decoded, isTag, false)
+  }
+  let result = ''
+  let from = 0
+  for (const { start, end, kind, text } of spans) {
+    result += prose(value.slice(from, start))
+    if (kind === 'inlineCode') result += removeAddresses(text!).replace(/(?<=\w)<([\w$][\w$,. ?\[\]]*)>/gu, ' $1 ')
+    else if (kind === 'link') result += projectMarkup(text!, isTag, decode)
+    else result += ' '
+    from = end
+  }
+  return result + prose(value.slice(from))
+}
+
+function removeTtsMarkup(value: string, protect?: (text: string) => string, isTag?: SpeechTag): string {
+  const source = removeIndentedCode(removeFencedCode(value)).replace(MARKDOWN_REFERENCE_DEFINITION_RE, '$1')
+  let text = projectMarkup(removeEmoteMarkup(source), isTag)
     .replace(MARKDOWN_BLOCKQUOTE_RE, '$1')
     .replace(MARKDOWN_RULE_RE, '$1')
     .replace(MARKDOWN_HEADING_RE, '$1')
     .replace(MARKDOWN_LIST_RE, '$1')
     .replace(MARKDOWN_TASK_MARKER_RE, '$1')
     .replace(MARKDOWN_TABLE_DELIMITER_RE, '$1')
-  text = stripMarkdownInlineFormat(text).replace(MARKDOWN_TABLE_SEP_RE, ' ')
-
-  text = text.replace(TTS_URL_PATTERN, ' ')
-  return removeTtsPaths(text)
+  text = removeCitationMarkup(removeEmoteMarkup(text))
+  return stripMarkdownInlineFormat(removeAddresses(protect?.(text) ?? text)).replace(MARKDOWN_TABLE_SEP_RE, ' ')
 }
 
 function removeTtsSymbols(value: string): string {
   return value
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F​-‏‪-‮⁠-⁤⁦-⁯﻿]/g, ' ')
-    .replace(/(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Emoji_Modifier}|\p{So}|︎|️|‍|⃣)/gu, ' ')
+    .replace(/(?![℃℉°㎡㎥])(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Emoji_Modifier}|\p{So}|︎|️|‍|⃣)/gu, ' ')
 }
 
 function normalizeTtsComparisons(value: string): string {
-  if (!/[<>]/u.test(value)) return value
-  const chinese = /\p{Script=Han}/u.test(value)
-  return value.replace(TTS_COMPARISON_OPERATOR, (_match, operator: string) => {
-    if (operator === '<') return chinese ? ' 小于 ' : ' less than '
-    return chinese ? ' 大于 ' : ' greater than '
+  return value.replace(TTS_COMPARISON_OPERATOR, (match, compound: string | undefined, single: string | undefined, offset: number) => {
+    // Use only the current clause's preceding text, which is stable as a reply grows.
+    const before = value.slice(Math.max(0, offset - 80), offset).match(/[^\r\n。！？!?；;:：.]*$/u)?.[0] ?? ''
+    const chinese = /\p{Script=Han}/u.test(before + value.slice(offset + match.length, offset + match.length + 2))
+    return ` ${TTS_OPERATORS[(compound ?? single)!]![chinese ? 0 : 1]} `
   })
 }
 
@@ -141,6 +148,7 @@ function normalizeTtsPunctuation(value: string): string {
     .replace(/[，。！？；：、（）　]/gu, (character) => TTS_PUNCTUATION[character] ?? character)
     .replace(/(^|\s)[,;:!?]+(?=\s|$)/g, '$1')
     .replace(/([,;:])\s*([.!?])/g, '$2')
+    .replace(/([.!?])[,;:]+(?=\s|$)/g, '$1')
     .replace(new RegExp(TTS_PAUSE_MARKER, 'g'), ',')
     .replace(/\s+([,.;:!?])/g, '$1')
     // Filtering Markdown, paths, and line breaks can leave sentence-ending
@@ -157,45 +165,39 @@ function normalizeTtsPunctuation(value: string): string {
  * @returns Text with non-speech content removed and punctuation normalized.
  */
 export function prepareTtsText(value: string): string {
-  if (value.length === 0) return ''
-
-  const text = normalizeTtsPunctuation(
-    removeTtsSymbols(
-      stripBreezeAudioTags(
-        removeTtsMarkup(value)
-          .replace(/\\[rn]|\/n/gi, ' ')
-          .replace(/\r\n?|\n/g, '.'),
-      ),
-    ),
-  )
-
-  return text.replace(/\s+/g, ' ').trim()
+  return normalizeSpeech(value, undefined, tag => BREEZE_AUDIO_TAGS.has(tag))
 }
 
 /** Generic external cleanup preserves only tags explicitly declared by the selected model. */
 export function prepareExternalTtsText(value: string, allowedTags: readonly string[] = []): string {
-  let text = removeFencedCode(value.replace(/[\uE000-\uE002]/gu, ' '))
-  const protectedTags: string[] = []
-  for (const tag of [...allowedTags].sort((a, b) => b.length - a.length)) {
-    if (!tag) continue
-    const marker = `\uE001${protectedTags.length}\uE002`
-    protectedTags.push(tag)
-    text = text.split(tag).join(marker)
-  }
-  text = normalizeTtsPunctuation(removeTtsSymbols(removeTtsMarkup(text).replace(/\\[rn]|\/n/gi, ' ').replace(/\r\n?|\n/g, '.')))
-    .replace(/\s+/gu, ' ').trim()
-  return text.replace(/\uE001(\d+)\uE002/gu, (_match, index: string) => protectedTags[Number(index)] ?? '')
+  const tags = new Set(allowedTags.filter(Boolean))
+  return normalizeSpeech(value, (text, save) => {
+    for (const tag of [...tags].sort((a, b) => b.length - a.length)) text = text.split(tag).join(save(tag))
+    return text
+  }, tag => tags.has(tag))
 }
 
 /** Preserve MiMo's open tag vocabulary after removing code, links and paths. */
-export function prepareXiaomiTtsText(value: string): string {
+export function prepareXiaomiTtsText(value: string, isTag: SpeechTag = () => true): string {
+  return normalizeSpeech(value, (text, save) => text.replace(XIAOMI_AUDIO_TAG_PATTERN, tag => isTag(tag) ? save(tag) : tag),
+    isKnownXiaomiAudioTag, false)
+}
+
+export function prepareXiaomiVoiceDesignText(value: string): string {
+  return normalizeSpeech(value, text => stripXiaomiAudioTags(text, true), isKnownXiaomiAudioTag)
+}
+
+function normalizeSpeech(value: string, protect?: (text: string, save: (tag: string) => string) => string, isTag?: SpeechTag, stripBreeze = true): string {
   const tags: string[] = []
-  const protectedText = removeTtsMarkup(value.replace(/[\uE000-\uE002]/gu, ' '), text =>
-    text.replace(XIAOMI_AUDIO_TAG_PATTERN, tag => {
-      tags.push(tag)
-      return `${tags.length - 1}`
-    }))
-  return prepareTtsText(protectedText).replace(/(\d+)/gu, (_match, index: string) => tags[Number(index)] ?? '')
+  const cleaned = removeTtsMarkup(value.replace(/[\uE000-\uE002]/gu, ' '), text => {
+    const prose = text.replace(/[\uE000-\uE002]/gu, ' ')
+    const protectedText = protect?.(prose, tag => `\uE001${tags.push(tag) - 1}\uE002`) ?? prose
+    return stripBreeze ? stripBreezeAudioTags(protectedText) : protectedText
+  }, isTag)
+  const text = normalizeTtsPunctuation(removeTtsSymbols(cleaned
+    .replace(/\\\\|\\[rn]/gu, escape => escape === '\\\\' ? escape : ' ')
+    .replace(/\r\n?|\n/g, '.')))
+  return text.replace(/\s+/gu, ' ').trim().replace(/\uE001(\d+)\uE002/gu, (_match, index: string) => tags[Number(index)] ?? '')
 }
 
 /** Documented Breeze audio events, grouped for the model-facing tag reference. */
@@ -230,17 +232,8 @@ export const BREEZE_AUDIO_TAG_GUIDANCE = ' Breeze audio tags (use only when the 
 
 /** Prepare Breeze text while preserving only the documented audio-tag vocabulary. */
 export function prepareBreezeTtsText(value: string): string {
-  const tags: string[] = []
-  // User text must never forge the private markers used to protect tags.
-  const protectedText = value.replace(/[\uE000-\uE002]/gu, ' ').replace(/\[[^\]\r\n]+\]|\([^()\r\n]+\)/gu, tag => {
-    if (!BREEZE_AUDIO_TAGS.has(tag)) return tag
-    const token = `${tags.length}`
-    tags.push(tag)
-    return token
-  })
-  // An unsupported tag would otherwise be spoken as literal words.
-  const cleaned = prepareTtsText(protectedText.replace(/\[[^\]\r\n]+\]/gu, ' '))
-  return cleaned.replace(/(\d+)/gu, (_match, index: string) => tags[Number(index)] ?? '')
+  return normalizeSpeech(value, (text, save) => text.replace(/\[[^\]\r\n]+\]|\([^()\r\n]+\)/gu, tag =>
+    BREEZE_AUDIO_TAGS.has(tag) ? save(tag) : tag.startsWith('[') ? ' ' : tag), tag => BREEZE_AUDIO_TAGS.has(tag))
 }
 
 /** Remove documented Breeze audio tags for surfaces that cannot synthesize them, such as browser speech. */
@@ -257,12 +250,55 @@ export interface TtsSentenceSplit {
   inCode: boolean
 }
 
-/** Split an accumulated model delta at completed sentence-ending punctuation, skipping fenced code blocks whole. */
-export function splitCompletedTtsSentences(value: string): TtsSentenceSplit {
+function blankMarkup(value: string): string {
+  return value.replace(/[^\r\n]/gu, character => ' '.repeat(character.length))
+}
+
+export function maskCode(value: string, regions: readonly [number, number][]): string {
+  let result = ''
+  let offset = 0
+  for (const [start, end] of regions) {
+    result += value.slice(offset, start) + blankMarkup(value.slice(start, end))
+    offset = end
+  }
+  return removeIndentedCode(result + value.slice(offset), true)
+}
+
+/** Hold unfinished syntax in raw deltas so subsequent tokens cannot retract spoken text. */
+export function stableSpeechMarkdown(value: string): string {
   const { regions, pendingStart } = findFencedCodeRegions(value)
+  const source = maskCode(value.slice(0, pendingStart ?? value.length), regions)
+    .replace(MARKDOWN_REFERENCE_DEFINITION_RE, blankMarkup)
+  let end = findSpeechMarkup(source, true, tag => isKnownXiaomiAudioTag(tag) || BREEZE_AUDIO_TAGS.has(tag)).pending
+  const lineStart = source.lastIndexOf('\n', end - 1) + 1
+  if (/^[ \t]{0,3}(?:[~`*_=-][ \t]*)+$/u.test(source.slice(lineStart, end))) end = lineStart
+  // A trailing bang can still become the first character of `![` or `!=`.
+  if (source[end - 1] === '!' && end === value.length
+    && (end === 1 || /[\s\w]/u.test(source[end - 2]!))) end -= 1
+  return value.slice(0, end)
+}
+
+/** Split an accumulated model delta at completed sentence-ending punctuation, skipping fenced code blocks whole. */
+export function splitCompletedTtsSentences(value: string, prepared = false): TtsSentenceSplit {
+  const { regions, pendingStart } = prepared ? { regions: [], pendingStart: null } : findFencedCodeRegions(value)
   const limit = pendingStart ?? value.length
-  const tags = [...value.matchAll(XIAOMI_AUDIO_TAG_PATTERN)]
-  const boundary = /[。！？!?；;.\n]+(?:[”’）】》〕\]}'"]*\s*)/gu
+  const source = prepared ? value : maskCode(value, regions)
+  const masked = source.split('')
+  const hide = (start: number, end: number): void => { masked.fill('\u0000', start, end) }
+  for (const tag of source.matchAll(XIAOMI_AUDIO_TAG_PATTERN)) hide(tag.index, tag.index + tag[0].length)
+  for (const entity of source.matchAll(HTML_ENTITY)) hide(entity.index, entity.index + entity[0].length)
+  if (!prepared) {
+    const { spans } = findSpeechMarkup(source.slice(0, limit), false, tag => isKnownXiaomiAudioTag(tag) || BREEZE_AUDIO_TAGS.has(tag))
+    for (const { start, end } of spans) hide(start, end)
+    for (const pattern of [MARKDOWN_REFERENCE_DEFINITION_RE, ...ADDRESS_PATTERNS]) {
+      for (const match of source.matchAll(pattern)) {
+        const start = match.index + (pattern === MARKDOWN_REFERENCE_DEFINITION_RE ? match[1]!.length : 0)
+        hide(start, match.index + (pattern === MARKDOWN_REFERENCE_DEFINITION_RE ? match[0].length : addressEnd(match[0])))
+      }
+    }
+  }
+  const boundaryText = masked.join('').replace(/!(?==)/gu, '\u0000')
+  const boundary = /[。！？!?；;.\r\n]+[”’）】》〕\]}'"]*(?:[ \t]*\r?\n)*(?:(?<![\r\n])[ \t]*)?/gu
   const sentences: string[] = []
   let sentenceStart = 0
   let consumed = 0
@@ -270,15 +306,14 @@ export function splitCompletedTtsSentences(value: string): TtsSentenceSplit {
   const splitSegment = (from: number, to: number): void => {
     boundary.lastIndex = from
     let match: RegExpExecArray | null
-    while ((match = boundary.exec(value)) !== null) {
-      if (tags.some(tag => match!.index >= tag.index && match!.index < tag.index + tag[0].length)) continue
+    while ((match = boundary.exec(boundaryText)) !== null) {
       const end = match.index + match[0].length
       if (end > to) {
         // Trailing whitespace in the boundary can reach into the indentation of
         // a following code block. Keep the text up to the block instead of
         // dropping the sentence because the match crossed the region start.
         if (match.index < to) {
-          const sentence = value.slice(sentenceStart, to)
+          const sentence = source.slice(sentenceStart, to)
           if (sentence.trim().length > 0) sentences.push(sentence)
           sentenceStart = to
           consumed = to
@@ -290,7 +325,7 @@ export function splitCompletedTtsSentences(value: string): TtsSentenceSplit {
         && (/\d/u.test(value[end] ?? '') || end === value.length)) continue
       // A boundary match that is only whitespace (e.g. a lone newline after a code
       // fence) must not become a sentence of its own, or TTS would read a stray dot.
-      const sentence = value.slice(sentenceStart, end)
+      const sentence = source.slice(sentenceStart, end)
       if (sentence.trim().length > 0) sentences.push(sentence)
       sentenceStart = end
       consumed = end
@@ -311,5 +346,5 @@ export function splitCompletedTtsSentences(value: string): TtsSentenceSplit {
     // An unclosed fence must stay buffered until it closes; never read it aloud.
     return { sentences, remainder: value.slice(pendingStart), consumed: pendingStart, inCode: true }
   }
-  return { sentences, remainder: value.slice(consumed), consumed, inCode: false }
+  return { sentences, remainder: source.slice(consumed), consumed, inCode: false }
 }

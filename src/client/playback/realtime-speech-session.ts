@@ -1,9 +1,8 @@
-import { applyTtsLivePlaybackScope, TtsFirstSegmentLimiter, countTtsSpeechCharacters, stripXiaomiAudioTags, stripBreezeAudioTags } from '../../shared.js'
+import { applyTtsLivePlaybackScope, TtsFirstSegmentLimiter, countTtsSpeechCharacters, stableSpeechMarkdown, stripXiaomiAudioTags, stripBreezeAudioTags } from '../../shared.js'
 import type { LiveSpeechCursor, TtsLocalSpeechMode, TtsReadScope } from '../../shared.js'
 import type { LiveSpeechController } from './live-speech-controller.js'
 import type { LocalSpeechController } from './local-speech-controller.js'
 import type { LiveMessageIdentity } from './types.js'
-import { prepareSpeechText } from './speech-text.js'
 import { externalEngine, externalFallbackText } from '../engine-state.js'
 
 interface SpeechOptions {
@@ -77,25 +76,26 @@ export class RealtimeSpeechSession {
     if (message === undefined) {
       message = {
         cursor: { sessionId, turn, step },
-        limiter: new TtsFirstSegmentLimiter(1, value => this.live.prepareText(value)),
+        limiter: new TtsFirstSegmentLimiter(),
         text: '', checkpoint: null, final: null, inputFinished: false,
       }
       current.steps.set(step, message)
     }
     if (message.inputFinished) return
-    message.text = this.scopeText(markdown, message)
+    const prepared = this.live.prepareText(stableSpeechMarkdown(markdown))
+    message.text = this.scopeText(prepared, message)
     const controller = this.controller(current.backend)
+    const backendText = this.backendText(current.backend, message.text)
     if (prime) {
       message.checkpoint = message.text
-      controller.prime(sessionId, turn, step, this.backendText(current.backend, message.text))
+      controller.prime(sessionId, turn, step, backendText, true)
     }
-    controller.observe(sessionId, turn, step, this.backendText(current.backend, message.text))
+    controller.observe(sessionId, turn, step, backendText, true)
     if (current.backend === 'live' && this.live.isDuplex() && message.limiter.complete && current.scope !== 'full') {
-      const prepared = prepareSpeechText(markdown)
       const spoken = countTtsSpeechCharacters(message.text)
       if (countTtsSpeechCharacters(prepared) >= spoken * 2) {
-        message.text = this.scopeText(markdown, message, true)
-        controller.observe(sessionId, turn, step, this.backendText(current.backend, message.text))
+        message.text = this.scopeText(prepared, message, true)
+        controller.observe(sessionId, turn, step, this.backendText(current.backend, message.text), true)
         message.inputFinished = true
         this.live.finishInput(sessionId, turn, step)
       }
@@ -112,7 +112,7 @@ export class RealtimeSpeechSession {
       this.local.blockTurn(sessionId, final.turn)
       return
     }
-    if (!message.inputFinished) message.text = this.scopeText(final.text, message, true)
+    if (!message.inputFinished) message.text = this.scopeText(this.live.prepareText(final.text), message, true)
     message.final = { ...final, text: message.text }
     this.controller(this.turn.backend).finish(sessionId, { ...message.final, text: this.backendText(this.turn.backend, message.final.text) })
   }
@@ -130,15 +130,15 @@ export class RealtimeSpeechSession {
   }
 
   private backendText(backend: SpeechBackend, text: string): string {
-    return backend === 'system' ? externalEngine() ? externalFallbackText(text) : stripXiaomiAudioTags(stripBreezeAudioTags(text)) : text
+    return backend === 'system' ? externalEngine() ? externalFallbackText(text, undefined, true) : stripXiaomiAudioTags(stripBreezeAudioTags(text), true) : text
   }
 
   private controller(backend: SpeechBackend): LiveSpeechController | LocalSpeechController {
     return backend === 'live' ? this.live : this.local
   }
 
-  private scopeText(markdown: string, message: SpeechStep, final = false): string {
-    return applyTtsLivePlaybackScope(this.live.prepareText(markdown), this.turn!.scope, message.limiter, final, Math.random, value => this.live.prepareText(value))
+  private scopeText(prepared: string, message: SpeechStep, final = false): string {
+    return applyTtsLivePlaybackScope(prepared, this.turn!.scope, message.limiter, final, Math.random, false)
   }
 
   private installFallback(): void {
@@ -155,8 +155,8 @@ export class RealtimeSpeechSession {
       const target = this.controller(current.backend)
       for (const message of current.steps.values()) {
         const { sessionId, turn, step } = message.cursor
-        if (message.checkpoint !== null) target.prime(sessionId, turn, step, this.backendText(current.backend, message.checkpoint))
-        target.observe(sessionId, turn, step, this.backendText(current.backend, message.text))
+        if (message.checkpoint !== null) target.prime(sessionId, turn, step, this.backendText(current.backend, message.checkpoint), true)
+        target.observe(sessionId, turn, step, this.backendText(current.backend, message.text), true)
         if (message.final !== null) target.finish(sessionId, { ...message.final, text: this.backendText(current.backend, message.final.text) })
       }
     })

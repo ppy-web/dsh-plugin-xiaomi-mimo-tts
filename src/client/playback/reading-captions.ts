@@ -17,6 +17,7 @@ export interface CaptionTiming {
   rate?: number
   /** Identifies a media instance whose pause/resume retains its playback position. */
   source?: object
+  analyser?: () => AnalyserNode | null
 }
 
 interface CaptionScheduler {
@@ -51,6 +52,7 @@ export class ReadingCaptions {
 
   constructor(private readonly scheduler: CaptionScheduler = DEFAULT_SCHEDULER) {}
 
+  getAnalyser = (): AnalyserNode | null => this.timing.analyser?.() ?? null
   getSnapshot = (): ReadingCaptionView => this.view
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
@@ -166,6 +168,6 @@ export class ReadingCaptions {
 export function readingCaptionText(text: string, selection?: TtsSelection): string {
   const value = externalEngine() ? externalFallbackText(text)
     : selection?.provider === 'breeze' ? stripBreezeAudioTags(text)
-      : selection && supportsXiaomiAudioTags(selection) ? stripXiaomiAudioTags(text) : text
+      : selection && supportsXiaomiAudioTags(selection) ? stripXiaomiAudioTags(text, true) : text
   return value.replace(/\s+/gu, ' ').trim()
 }

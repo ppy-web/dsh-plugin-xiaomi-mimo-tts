@@ -16,6 +16,7 @@ const { LocalSpeechController } = await loadClientModule('src/client/playback/lo
 const { PcmAudioQueue } = await loadClientModule('src/client/playback/pcm-audio-queue.ts')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
 const { AnnouncementSettings } = await loadClientModule('src/client/settings/announcement-settings.tsx')
+const { PreviewModule } = await loadClientModule('src/client/settings/preview-module.tsx')
 const { VoiceReadingSection } = await loadClientModule('src/client/settings/voice-reading-section.tsx')
 
 function captionClock() {
@@ -202,22 +203,25 @@ test('estimated caption timing stops while paused and does not restart after own
   assert.equal(clock.pending(), 0)
 })
 
-test('floating captions default on and can be disabled', () => {
+test('the composer dock only renders when there is a visible caption or audio response', () => {
   const captions = new ReadingCaptions()
   const owner = {}
   captions.show(owner, 'first', '<unsafe> 正在读')
-  const render = (sessionId, enabled) => renderToStaticMarkup(createElement(ReadingCaptionBar, {
+  const render = (sessionId, value = {}) => renderToStaticMarkup(createElement(ReadingCaptionBar, {
     sessionId, captions, t: () => 'Reading captions',
-    settings: { getSnapshot: () => ({ status: 'ready', value: { showReadingCaptions: enabled } }), subscribe: () => () => {} },
+    useSession: selector => selector({ running: false }),
+    playback: { getSnapshot: () => ({ sessionId: null, status: 'idle' }), subscribe: () => () => {} },
+    settings: { getSnapshot: () => ({ status: 'ready', value }), subscribe: () => () => {} },
   }))
-  assert.equal(resolveTtsSettings({}).showReadingCaptions, true)
-  assert.equal(resolveTtsSettings({ showReadingCaptions: false }).showReadingCaptions, false)
-  assert.equal(render('first', false), '')
-  // The visual portal is mounted only in a browser, after the composer is measured.
-  assert.doesNotMatch(render('first', true), /unsafe/u)
+  assert.equal(render('first'), '')
+  assert.equal(render('other', { showReadingCaptions: true }), '')
+  assert.match(render('first', { showReadingCaptions: true }), /&lt;unsafe&gt; 正在读/u)
+  const audioOnly = render('first', { showAudioResponse: true })
+  assert.notEqual(audioOnly, '')
+  assert.doesNotMatch(audioOnly, /正在读/u)
 })
 
-test('caption settings save and reset without changing unrelated preferences', async () => {
+test('captions and audio response styles save and reset independently', async () => {
   const user = { voiceRate: 1.3 }
   const scope = {
     getSnapshot: () => ({ user, value: user }),
@@ -230,38 +234,59 @@ test('caption settings save and reset without changing unrelated preferences', a
     },
   }
   const keys = { xiaomi: '', doubao: '', breeze: '' }
-  await saveSettingsDraft(scope, resolveTtsSettings({ ...user, showReadingCaptions: false }), { showReadingCaptions: { kind: 'set' } }, keys)
-  assert.equal(resolveTtsSettings(user).showReadingCaptions, false)
-  await saveSettingsDraft(scope, resolveTtsSettings(user), { showReadingCaptions: { kind: 'clear' } }, keys)
+  await saveSettingsDraft(scope, resolveTtsSettings({
+    ...user, showReadingCaptions: true, showAudioResponse: true, audioResponseStyle: 'siri-sheet',
+  }), {
+    showReadingCaptions: { kind: 'set' }, showAudioResponse: { kind: 'set' }, audioResponseStyle: { kind: 'set' },
+  }, keys)
   assert.equal(resolveTtsSettings(user).showReadingCaptions, true)
+  assert.equal(resolveTtsSettings(user).showAudioResponse, true)
+  assert.equal(resolveTtsSettings(user).audioResponseStyle, 'siri-sheet')
+  await saveSettingsDraft(scope, resolveTtsSettings(user), { showReadingCaptions: { kind: 'clear' } }, keys)
+  assert.equal(resolveTtsSettings(user).showReadingCaptions, false)
+  assert.equal(resolveTtsSettings(user).showAudioResponse, true)
+  await saveSettingsDraft(scope, resolveTtsSettings(user), { showAudioResponse: { kind: 'clear' } }, keys)
+  assert.equal(resolveTtsSettings(user).showAudioResponse, false)
+  assert.equal(resolveTtsSettings(user).audioResponseStyle, 'siri-sheet')
   assert.equal(user.voiceRate, 1.3)
 })
 
-test('caption setting is available in Host integration and Voice reading with the same state', context => {
+test('both settings surfaces expose independent interaction switches and show examples only for audio response', context => {
   const report = console.error
   context.mock.method(console, 'error', (...args) => {
     if (typeof args[0] === 'string' && args[0].startsWith('Warning: useLayoutEffect does nothing on the server')) return
     report(...args)
   })
   const t = key => key
-  for (const enabled of [false, true]) for (const writable of [false, true]) {
-    const html = renderToStaticMarkup(createElement(AnnouncementSettings, {
-      t, sources: [], writable, showReadingCaptions: enabled, overridden: false,
-      onChange() {}, onReset() {},
-    }))
-    const host = html.match(/<section\b[^>]*aria-label="settings\.hostIntegration"[^>]*>([\s\S]*?)<\/section>/u)?.[1]
-    assert.ok(host)
-    const control = host.match(/<input\b[^>]*>/gu)?.find(input => input.includes('aria-label="settings.readingCaptions"'))
-    assert.ok(control)
-    assert.equal(control.includes('checked=""'), enabled)
-    assert.equal(control.includes('disabled=""'), !writable)
-    const snapshot = { status: 'ready', writable, value: { showReadingCaptions: enabled } }
+  const defaults = resolveTtsSettings({})
+  assert.equal(defaults.showReadingCaptions, false)
+  assert.equal(defaults.showAudioResponse, false)
+  for (const showReadingCaptions of [false, true]) for (const showAudioResponse of [false, true]) {
+    const value = { showReadingCaptions, showAudioResponse, audioResponseStyle: 'siri-wave-line' }
+    const snapshot = { status: 'ready', writable: true, value }
     const scope = { getSnapshot: () => snapshot, subscribe: () => () => {}, mutate: async () => true }
-    const reading = renderToStaticMarkup(createElement(VoiceReadingSection, { scope, t, close() {}, openPluginSettings() {} }))
-    const readingControl = reading.match(/<input\b[^>]*>/gu)?.find(input => input.includes('aria-label="settings.readingCaptions"'))
-    assert.ok(readingControl)
-    assert.equal(readingControl.includes('checked=""'), enabled)
-    assert.equal(readingControl.includes('disabled=""'), !writable)
+    const plugin = renderToStaticMarkup(createElement(PreviewModule, {
+      t, ...value, writable: true, enabled: true, open: true, text: '', sources: [], status: 'idle', source: null, recording: null,
+      onShowReadingCaptionsChange() {}, onShowAudioResponseChange() {}, onAudioResponseStyleChange() {},
+    }))
+    const voiceReading = renderToStaticMarkup(createElement(VoiceReadingSection, { scope, t, close() {}, openPluginSettings() {} }))
+    const hostSettings = plugin.match(/<section\b[^>]*aria-label="settings\.hostIntegration"[^>]*>([\s\S]*?)<\/section>/u)?.[1]
+    assert.ok(hostSettings)
+    for (const page of [hostSettings, voiceReading]) {
+      const inputs = page.match(/<input\b[^>]*>/gu) ?? []
+      const captions = inputs.find(input => input.includes('aria-label="settings.readingCaptions"'))
+      const response = inputs.find(input => input.includes('aria-label="settings.audioResponse"'))
+      assert.ok(captions)
+      assert.ok(response)
+      assert.equal(captions.includes('checked=""'), showReadingCaptions)
+      assert.equal(response.includes('checked=""'), showAudioResponse)
+    }
+    assert.doesNotMatch(hostSettings, /<input\b[^>]*type="radio"/u)
+    for (const page of [plugin, voiceReading]) {
+      const style = (page.match(/<input\b[^>]*>/gu) ?? []).find(input => input.includes('type="radio"') && input.includes('value="siri-wave-line"'))
+      if (showAudioResponse) assert.ok(style?.includes('checked=""'))
+      else assert.equal(style, undefined)
+    }
   }
 })
 
@@ -269,14 +294,14 @@ test('Host integration presents one shared override action for multiple overridd
   const html = renderToStaticMarkup(createElement(AnnouncementSettings, {
     t: key => key, sources: [], writable: true, overridden: false, onChange() {}, onReset() {},
     voiceRecognitionService: false, voiceRecognitionServiceOverridden: true, onVoiceRecognitionServiceReset() {},
-    showReadingCaptions: false, showReadingCaptionsOverridden: true, onShowReadingCaptionsReset() {},
+    inputAvoidance: false, inputAvoidanceOverridden: true, onInputAvoidanceReset() {},
   }))
   const host = html.match(/<section\b[^>]*aria-label="settings\.hostIntegration"[^>]*>([\s\S]*?)<\/section>/u)?.[1]
   assert.ok(host)
   assert.equal((host.match(/settings\.overridden/gu) ?? []).length, 1)
   assert.equal((host.match(/settings\.reset/gu) ?? []).length, 1)
   assert.match(host, /aria-label="settings\.voiceRecognitionService"/u)
-  assert.match(host, /aria-label="settings\.readingCaptions"/u)
+  assert.match(host, /aria-label="settings\.inputAvoidance"/u)
 })
 
 test('caption history follows one playback and session across pauses', () => {
@@ -502,6 +527,33 @@ test('a one-sample PCM chunk can still publish its caption at playback start', a
       assert.equal(started, false)
       state.contexts[0].advanceTo(0.03)
       assert.equal(started, true)
+    } finally { await queue.dispose() }
+  })
+})
+
+test('the optional PCM analysis source follows audible playback and clears on pause, end and stop', async () => {
+  await withBrowserPlayback(async state => {
+    const queue = new PcmAudioQueue({ onBusyChange() {}, onPlaybackStart() {} })
+    try {
+      await queue.enqueueBytes(new Uint8Array(48000))
+      const context = state.contexts[0]
+      const analysis = { context, disconnect() {} }
+      context.createAnalyser = () => analysis
+      assert.equal(PcmAudioQueue.getPlaybackSource(), null)
+      context.advanceTo(0.1)
+      assert.equal(PcmAudioQueue.getPlaybackSource(), analysis)
+      await queue.pause()
+      assert.equal(PcmAudioQueue.getPlaybackSource(), null)
+      await queue.resume()
+      assert.equal(PcmAudioQueue.getPlaybackSource(), analysis)
+      context.advanceTo(1.1)
+      assert.equal(PcmAudioQueue.getPlaybackSource(), null)
+
+      await queue.enqueueBytes(new Uint8Array(48000))
+      context.advanceTo(1.2)
+      assert.equal(PcmAudioQueue.getPlaybackSource(), analysis)
+      queue.stop()
+      assert.equal(PcmAudioQueue.getPlaybackSource(), null)
     } finally { await queue.dispose() }
   })
 })

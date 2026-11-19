@@ -7,11 +7,25 @@ export interface PcmAudioQueueCallbacks {
 }
 
 export class PcmAudioQueue {
+  private static readonly activeQueues = new Set<PcmAudioQueue>()
+
+  static getPlaybackSource(): AudioNode | null {
+    let playing: PcmAudioQueue | undefined
+    for (const queue of PcmAudioQueue.activeQueues) {
+      const context = queue.context
+      if (!queue.userPaused && context?.state === 'running'
+        && context.currentTime >= queue.firstSampleAt && context.currentTime < queue.scheduledAt) playing = queue
+    }
+    return playing?.getAnalyser() ?? null
+  }
+
   private context: AudioContext | null = null
   private gain: GainNode | null = null
+  private analyser: AnalyserNode | null = null
   private volume = 1
   private playbackRate = 1
   private scheduledAt = 0
+  private firstSampleAt = 0
   private readonly sources = new Set<AudioBufferSourceNode>()
   private readonly sourceBytes = new Map<AudioBufferSourceNode, number>()
   private readonly markers = new Set<AudioBufferSourceNode>()
@@ -24,6 +38,18 @@ export class PcmAudioQueue {
   private maxPausedPcmBytes = 32 * 1024 * 1024
 
   constructor(private readonly callbacks: PcmAudioQueueCallbacks) {}
+
+  getAnalyser(): AnalyserNode | null {
+    if (!this.context || !this.gain) return null
+    if (!this.analyser) {
+      try {
+        this.analyser = this.context.createAnalyser()
+        this.analyser.fftSize = 256
+        this.gain.connect(this.analyser)
+      } catch { this.analyser = null }
+    }
+    return this.analyser
+  }
 
   setMaxPausedPcmBytes(value: number): void { this.maxPausedPcmBytes = Number.isFinite(value) && value > 0 ? value : 32 * 1024 * 1024 }
 
@@ -102,6 +128,8 @@ export class PcmAudioQueue {
     this.stop()
     const context = this.context
     this.context = null
+    this.analyser?.disconnect()
+    this.analyser = null
     this.gain?.disconnect()
     this.gain = null
     if (context !== null && context.state !== 'closed') await context.close()
@@ -153,6 +181,7 @@ export class PcmAudioQueue {
       this.sourceBytes.delete(source)
       throw error
     }
+    if (!this.busy) this.firstSampleAt = startAt
     onSchedule?.(() => Math.min(duration, Math.max(0, context.currentTime - startAt)), duration)
     if (onStart !== undefined) this.scheduleMarker(context, startAt, revision, onStart)
     this.setBusy(true)
@@ -184,6 +213,8 @@ export class PcmAudioQueue {
   private setBusy(busy: boolean): void {
     if (this.busy === busy) return
     this.busy = busy
+    if (busy) PcmAudioQueue.activeQueues.add(this)
+    else PcmAudioQueue.activeQueues.delete(this)
     this.callbacks.onBusyChange(busy)
   }
 

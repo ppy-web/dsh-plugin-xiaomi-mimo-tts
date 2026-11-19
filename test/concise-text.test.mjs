@@ -60,6 +60,22 @@ test('Concise keeps prices that share a paragraph and omits inline formulas', ()
   assert.doesNotMatch(text, /2 \+ 3/u)
 })
 
+test('Concise skips sentences and dependent actions that would lose a formula condition', () => {
+  for (const math of ['$status = 0$', String.raw`\(status = 0\)`]) {
+    const text = concise(`建议清理旧缓存。但只有在 ${math} 时才能清理。因此可以删除副本。下一步核对备份。`)
+    assert.match(text, /下一步核对备份/u)
+    assert.doesNotMatch(text, /清理|删除|status/u)
+  }
+  assert.match(concise('条件 a != b。'), /不等于/u)
+})
+
+test('Concise falls back to a readable heading or short lead clause within its budget', () => {
+  assert.match(concise('### 问题已修复\n\n```sh\ncommand\n```'), /问题已修复/u)
+  const detail = '导出的文件列表已写到任务记录中'.repeat(14)
+  assert.match(concise(`建议查看导出结果，${detail}。`), /建议查看导出结果/u)
+  assert.doesNotMatch(concise(`建议清理目录，但请先检查${detail}。`), /清理目录/u)
+})
+
 test('Concise retains an opening recommendation and a useful tail before the references', () => {
   const lead = '优先看北湾图书室。'
   const condition = '如果北湾已经约满，先确认东桥有没有空位。'

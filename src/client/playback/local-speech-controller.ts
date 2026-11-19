@@ -1,6 +1,5 @@
 import { browserVoice } from '../browser-voice.js'
-import { prepareSpeechText } from './speech-text.js'
-import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, normalizeVoiceRate, splitCompletedTtsSentences, splitTtsSegments } from '../../shared.js'
+import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, normalizeVoiceRate, prepareTtsText, splitCompletedTtsSentences, splitTtsSegments } from '../../shared.js'
 import type { LiveSpeechCursor, TtsLocalVoiceEngine } from '../../shared.js'
 import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
 import { applySpeechVoiceRate } from './voice-rate.js'
@@ -16,6 +15,7 @@ export class LocalSpeechController {
   private generation = 0
   private active: LiveSpeechCursor | null = null
   private observed = ''
+  private prepared = false
   private consumed = 0
   private pendingText = ''
   private handled = new Set<string>()
@@ -77,29 +77,32 @@ export class LocalSpeechController {
     this.sessionId = null
   }
 
-  observe(sessionId: string, turn: number, step: number, text: string): void {
+  observe(sessionId: string, turn: number, step: number, text: string, prepared = false): void {
     if (this.sessionId !== sessionId) return
     const next = { sessionId, turn, step }
     const turnKey = `${sessionId}:${turn}`
     if (this.blockedTurn === turnKey || this.manuallyStoppedTurns.has(turnKey)) return
     if (this.blockedTurn !== null && this.blockedTurn !== turnKey) this.blockedTurn = null
-    if (this.checkpointed && this.active !== null && this.active.sessionId === sessionId && this.active.turn === turn && this.active.step === step && !text.startsWith(this.observed)) {
-      this.prime(sessionId, turn, step, text)
+    const previous = prepared ? this.observed.slice(0, this.consumed) : this.observed
+    if (this.checkpointed && this.active !== null && this.active.sessionId === sessionId && this.active.turn === turn && this.active.step === step && !text.startsWith(previous)) {
+      this.prime(sessionId, turn, step, text, prepared)
       return
     }
     this.beforePlayback?.()
     const transition = classifyLiveSpeechTransition(this.active, next)
-    if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(this.observed))) this.reset(next)
+    if (transition === 'new-turn' || (transition === 'same-step' && !text.startsWith(previous))) this.reset(next)
     else if (transition === 'same-turn') this.advance(next)
     this.observed = text
+    this.prepared = prepared
     this.drain(false)
   }
 
   /** Skip text already present when attaching to a running conversation. */
-  prime(sessionId: string, turn: number, step: number, text: string): void {
+  prime(sessionId: string, turn: number, step: number, text: string, prepared = false): void {
     if (this.sessionId !== sessionId || this.manuallyStoppedTurns.has(`${sessionId}:${turn}`)) return
     this.reset({ sessionId, turn, step })
     this.observed = text
+    this.prepared = prepared
     this.consumed = text.length
     this.checkpointed = true
   }
@@ -115,7 +118,7 @@ export class LocalSpeechController {
     }
     if (this.sessionId !== sessionId || this.active === null || `${this.active.sessionId}:${this.active.turn}:${this.active.step}` !== key) return
     if (final.interrupted) { this.cancel(); return }
-    if (final.text.startsWith(this.observed)) this.observed = final.text
+    if (final.text.startsWith(this.prepared ? this.observed.slice(0, this.consumed) : this.observed)) this.observed = final.text
     this.messageId = final.messageId
     this.reportStatus()
     this.drain(true)
@@ -239,18 +242,18 @@ export class LocalSpeechController {
   }
 
   private drain(flush: boolean): void {
-    const { sentences, remainder, consumed, inCode } = splitCompletedTtsSentences(this.observed.slice(this.consumed))
+    const { sentences, remainder, consumed, inCode } = splitCompletedTtsSentences(this.observed.slice(this.consumed), this.prepared)
     const ready = flush && !inCode && remainder.trim().length > 0 ? [...sentences, remainder] : sentences
     this.consumed += consumed
     if (flush) this.consumed = this.observed.length
     for (const sentence of ready) {
-      const text = prepareSpeechText(sentence)
+      const text = this.prepared ? sentence.trim() : prepareTtsText(sentence)
       const batch = batchTtsStreamText(this.pendingText, text, false)
       this.pendingText = batch.pending
       if (batch.request !== null) this.enqueueLive(batch.request)
     }
     if (flush) {
-      const text = prepareSpeechText(this.pendingText)
+      const text = this.prepared ? this.pendingText : prepareTtsText(this.pendingText)
       this.pendingText = ''
       if (text.length > 0) this.enqueueLive(text)
     }

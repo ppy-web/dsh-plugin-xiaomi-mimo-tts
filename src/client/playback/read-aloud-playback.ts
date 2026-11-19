@@ -22,13 +22,13 @@ function readAloudText(text: string, settings: ResolvedTtsSettings, automatic: b
   if (settings.readScope === 'concise') return applyTtsReadScope(text, 'concise', settings.voiceRate)
   return externalEngine() ? applyTtsPlaybackScope(text, settings.readScope, automatic, undefined, externalText) : settings.provider === 'breeze'
     ? applyBreezeTtsPlaybackScope(text, settings.readScope, automatic)
-    : applyTtsPlaybackScope(text, settings.readScope, automatic, undefined, value => prepareProviderTtsText(value, settings))
+    : applyTtsPlaybackScope(text, settings.readScope, automatic, undefined, value => prepareProviderTtsText(value, settings, true))
 }
 
 /** Browser speech cannot synthesize provider audio tags, so strip them instead of reading tag words aloud. */
 function fallbackText(text: string, settings: ResolvedTtsSettings): string {
   if (settings.readScope === 'concise') return text
-  return externalEngine() ? externalFallbackText(text) : settings.provider === 'breeze' ? stripBreezeAudioTags(text) : settings.provider === 'xiaomi' ? stripXiaomiAudioTags(text) : text
+  return externalEngine() ? externalFallbackText(text) : settings.provider === 'breeze' ? stripBreezeAudioTags(text) : settings.provider === 'xiaomi' ? stripXiaomiAudioTags(text, true) : text
 }
 
 /** Start a completed reply with one directed fallback, using the selected playback range. */
@@ -84,7 +84,7 @@ export function handleReadAloudClick(request: ReadAloudRequest, view: PlaybackVi
   }
   if (mine && view.source === 'complete') {
     if (view.status === 'error' && settings.readScope === 'concise') playCompletedReply(request, false)
-    else void playback.toggle(sessionId, messageId, settings.readScope === 'concise' ? readAloudText(text, settings, false) : text, false)
+    else void playback.toggle(sessionId, messageId, readAloudText(text, settings, false), false)
     return
   }
   if (mine && view.source === 'segmented') {

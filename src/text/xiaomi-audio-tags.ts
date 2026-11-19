@@ -20,7 +20,21 @@ export const XIAOMI_AUDIO_TAG_GUIDANCE = ' Xiaomi MiMo audio tags (only for Xiao
 /** Match whole controls, including free-form and combined descriptions. */
 export const XIAOMI_AUDIO_TAG_PATTERN = /\([^()\r\n]+\)|（[^（）\r\n]+）|\[[^\]\r\n]+\]/gu
 
+const KNOWN_CUES = new Set<string>([
+  ...XIAOMI_AUDIO_TAG_GROUPS.flatMap(group => [...group.tags, ...group.english]),
+  'laughs', 'chuckles', 'giggles', '声音变轻',
+])
+
+/** In conversation prose, recognize documented cues and combinations of those cues. */
+export function isKnownXiaomiAudioTag(tag: string): boolean {
+  const cue = tag.slice(1, -1).trim().toLowerCase()
+  return cue.length > 0 && cue.split(/\s*[,，;；|、]\s*/u).every(part => {
+    const value = part.replace(/^(?:略微|稍微|有点)/u, '')
+    return KNOWN_CUES.has(value) || value.split(/\s+/u).every(word => KNOWN_CUES.has(word))
+  })
+}
+
 /** Browser speech must never pronounce inline sound descriptions. */
-export function stripXiaomiAudioTags(value: string): string {
-  return value.replace(XIAOMI_AUDIO_TAG_PATTERN, ' ')
+export function stripXiaomiAudioTags(value: string, knownOnly = false): string {
+  return value.replace(XIAOMI_AUDIO_TAG_PATTERN, tag => !knownOnly || isKnownXiaomiAudioTag(tag) ? ' ' : tag)
 }

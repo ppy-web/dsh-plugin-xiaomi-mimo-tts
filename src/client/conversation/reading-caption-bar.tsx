@@ -1,73 +1,82 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactElement } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactElement } from 'react'
+import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { PlaybackController } from '../playback/playback-controller.js'
+import { readComposerRecordingLevel, readComposerVoiceInput } from '../voice-input-activity.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { resolveTtsSettings, type TtsSettings } from '../../shared.js'
 import type { Translate } from '../localization.js'
+import { CaptionVisual } from './caption-visual.js'
 import type { ReadingCaptions } from '../playback/reading-captions.js'
 import { useSettingsSnapshot } from '../settings/scope.js'
 
-const useClientLayoutEffect = typeof document === 'undefined' ? useEffect : useLayoutEffect
-
 interface ReadingCaptionBarProps {
   sessionId: string
+  useSession: <T>(selector: (snapshot: SessionSnapshot) => T) => T
+  playback: PlaybackController
   captions: ReadingCaptions
   settings: ConfigForm<TtsSettings>
   t: Translate
 }
-interface Position { left: number; bottom: number; width: number }
+
 
 /** The previous segment provides context without being announced a second time. */
 export function ReadingCaptionLines({ text, previousText, label }: { text: string; previousText: string; label: string }): ReactElement {
   return <section className="xmimo-reading-caption" role="region" aria-label={label} tabIndex={0}>
-    {previousText && <div className="xmimo-reading-caption-previous" aria-hidden="true" title={previousText}>{previousText}</div>}
+    {previousText && <div className="xmimo-reading-caption-previous" key={previousText} aria-hidden="true" title={previousText}>{previousText}</div>}
     <div className="xmimo-reading-caption-current" title={text} key={text}>{text}</div>
   </section>
 }
 
-/** Mounts only an absolute anchor in the slot; the visible UI is portaled out of the composer. */
-export function ReadingCaptionBar({ sessionId, captions, settings, t }: ReadingCaptionBarProps): ReactElement | null {
+/** Adds a caption row to the host composer while the reader follows the bottom. */
+export function ReadingCaptionBar({ sessionId, useSession, playback, captions, settings, t }: ReadingCaptionBarProps): ReactElement | null {
   const snapshot = useSettingsSnapshot(settings)
-  const enabled = resolveTtsSettings(snapshot.value).showReadingCaptions
-  const subscribe = useCallback((listener: () => void) => enabled ? captions.subscribe(listener) : () => {}, [captions, enabled])
+  const { showReadingCaptions, showAudioResponse, audioResponseStyle } = resolveTtsSettings(snapshot.value)
+  const subscribe = useCallback((listener: () => void) => showReadingCaptions ? captions.subscribe(listener) : () => {}, [captions, showReadingCaptions])
   const view = useSyncExternalStore(subscribe, captions.getSnapshot, captions.getSnapshot)
-  const anchor = useRef<HTMLSpanElement>(null)
-  const [position, setPosition] = useState<Position | null>(null)
-  const visible = enabled && view.sessionId === sessionId && !view.paused && !!view.text
-
-  useClientLayoutEffect(() => {
-    if (!visible || !anchor.current) { setPosition(null); return }
-    const seat = anchor.current.closest('[data-composer-seat]')
-    if (!seat) { setPosition(null); return }
-    let card: Element | null = null
-    const measure = (): void => {
-      const nextCard = seat.querySelector('[data-composer-card]')
-      if (nextCard !== card) { if (card) resize.unobserve(card); card = nextCard; if (card) resize.observe(card) }
-      if (!card) { setPosition(null); return }
-      const rect = card.getBoundingClientRect()
-      const visible = rect.width > 0 && rect.height > 0 && rect.top < window.innerHeight && rect.bottom > 0 && rect.right > 0 && rect.left < window.innerWidth
-      const width = Math.max(0, Math.min(rect.width, window.innerWidth - 24, 520))
-      const left = Math.max(width / 2 + 12, Math.min(window.innerWidth - width / 2 - 12, rect.left + rect.width / 2))
-      const next = visible ? { left, bottom: window.innerHeight - rect.top + 10, width } : null
-      setPosition(previous => previous?.left === next?.left && previous?.bottom === next?.bottom && previous?.width === next?.width ? previous : next)
+  const running = useSession(snapshot => snapshot.running)
+  const anchor = useRef<HTMLDivElement>(null)
+  const readRecordingLevel = useCallback(() => readComposerRecordingLevel(anchor.current?.closest('[data-composer-seat]') ?? null), [])
+  const [input, setInput] = useState(() => readComposerVoiceInput(null))
+  useEffect(() => {
+    const seat = anchor.current?.closest('[data-composer-seat]')
+    if (!showAudioResponse || !seat) { setInput(readComposerVoiceInput(null)); return }
+    const update = (): void => {
+      const next = readComposerVoiceInput(seat)
+      setInput(current => current.phase === next.phase && current.button === next.button
+        && current.label === next.label && current.disabled === next.disabled ? current : next)
     }
-    const resize = new ResizeObserver(measure)
-    resize.observe(seat)
-    const mutations = new MutationObserver(measure)
-    mutations.observe(seat, { childList: true, subtree: true })
-    window.addEventListener('resize', measure)
-    window.addEventListener('scroll', measure, true)
-    window.visualViewport?.addEventListener('resize', measure)
-    window.visualViewport?.addEventListener('scroll', measure)
-    measure()
-    return () => { resize.disconnect(); mutations.disconnect(); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure, true); window.visualViewport?.removeEventListener('resize', measure); window.visualViewport?.removeEventListener('scroll', measure) }
-  }, [visible, sessionId])
-
-  if (!enabled) return null
-  return <>
-    <span ref={anchor} className="xmimo-reading-caption-anchor" aria-hidden="true" />
-    {position && visible && typeof document !== 'undefined' && createPortal(
-      <div className="xmimo-reading-caption-overlay" style={{ left: position.left, bottom: position.bottom, width: position.width }}>
-        <ReadingCaptionLines text={view.text} previousText={view.previousText} label={t('settings.readingCaptions')} />
-      </div>, document.body)}
-  </>
+    const observer = new MutationObserver(update)
+    observer.observe(seat, { subtree: true, childList: true, attributes: true,
+      attributeFilter: ['data-voice-activity', 'disabled', 'aria-disabled', 'aria-label', 'hidden', 'inert'] })
+    update()
+    return () => observer.disconnect()
+  }, [showAudioResponse, sessionId])
+  const toggleVoiceInput = (): void => {
+    const current = readComposerVoiceInput(anchor.current?.closest('[data-composer-seat]') ?? null)
+    if (!current.disabled) current.button?.click()
+  }
+  const playbackView = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
+  const status = input.phase === 'transcribing' ? 'thinking' : input.phase === 'requesting' || input.phase === 'recording' ? 'listening' : playbackView.sessionId === sessionId && playbackView.status === 'playing' ? 'speaking' : playbackView.sessionId === sessionId && playbackView.status === 'loading' ? 'connecting' : playbackView.sessionId === sessionId && playbackView.status === 'error' ? 'error' : running ? 'thinking' : 'idle'
+  const control = input.button !== null || input.phase !== 'idle' ? {
+    label: input.label ?? t('conversation.voiceInput'), disabled: input.disabled, onClick: toggleVoiceInput,
+  } : undefined
+  const showText = showReadingCaptions && view.sessionId === sessionId && !view.paused && !!view.text
+  const [retained, setRetained] = useState<{ sessionId: string; text: string; previousText: string } | null>(null)
+  useEffect(() => {
+    if (showText) {
+      setRetained({ sessionId, text: view.text, previousText: view.previousText })
+      return
+    }
+    const timer = window.setTimeout(() => setRetained(null), 500)
+    return () => window.clearTimeout(timer)
+  }, [showText, sessionId, view.text, view.previousText])
+  const visibleText = showText ? view : showReadingCaptions && retained?.sessionId === sessionId ? retained : null
+  if (!showAudioResponse && visibleText === null) return null
+  return <div ref={anchor} className="xmimo-reading-caption-integrated">
+    {showAudioResponse && <CaptionVisual variant={audioResponseStyle} captions={captions} state={status} control={control} hoverable
+      readRecordingLevel={input.phase === 'recording' ? readRecordingLevel : undefined} />}
+    {visibleText && <div className={showText ? 'xmimo-caption-text' : 'xmimo-caption-text xmimo-caption-text-exiting'}>
+      <ReadingCaptionLines text={visibleText.text} previousText={visibleText.previousText} label={t('settings.readingCaptions')} />
+    </div>}
+  </div>
 }

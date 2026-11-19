@@ -52,6 +52,7 @@ const ENTRIES = {
   breezeEnabled: { group: 'providers', terms: ['settings.breezeEnabled'] },
   mossEnabled: { group: 'providers', terms: ['settings.mossProvider'] },
   'settings.acceptExternalProviders': { group: 'providers', terms: ['settings.acceptExternalProviders', 'settings.acceptExternalProvidersHint'] },
+  'settings.audioResponse': { group: 'host', terms: ['settings.audioResponse', 'settings.audioResponseHint', 'settings.audioResponseEffects'], aliases: '响应球 Aura Field Siri Wave Line Siri Sheet' },
   'settings.readingCaptions': { group: 'host', terms: ['settings.readingCaptions', 'settings.readingCaptionsHint'], aliases: '字幕 captions subtitles' },
   'settings.voiceRecognitionService': { group: 'host', terms: ['settings.voiceRecognitionService', 'settings.voiceRecognitionServiceHint'], aliases: '语音识别 听写 asr speech recognition' },
   'settings.showInHostSettings': { group: 'host', terms: ['settings.showInHostSettings', 'settings.showInHostSettingsHint'] },

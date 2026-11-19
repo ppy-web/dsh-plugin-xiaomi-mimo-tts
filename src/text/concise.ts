@@ -1,9 +1,9 @@
 import { fromMarkdown } from 'mdast-util-from-markdown'
 import { gfmFromMarkdown } from 'mdast-util-gfm'
-import { mathFromMarkdown } from 'mdast-util-math'
 import { gfm } from 'micromark-extension-gfm'
-import { math } from 'micromark-extension-math'
-import { prepareTtsText } from './normalize.js'
+import { findFencedCodeRegions } from './fenced-code.js'
+import { findSpeechMarkup, removeCitationMarkup, removeEmoteMarkup } from './markup.js'
+import { maskCode, prepareTtsText } from './normalize.js'
 
 type MarkdownBlock = ReturnType<typeof fromMarkdown>['children'][number]
 type MarkdownParagraph = Extract<MarkdownBlock, { type: 'paragraph' }>
@@ -12,8 +12,8 @@ type MarkdownPhrase = MarkdownParagraph['children'][number]
 const MAX_CHARACTERS = 150
 const SENTENCE_SEGMENTER = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh', { granularity: 'sentence' }) : null
 const MARKDOWN_OPTIONS = {
-  extensions: [gfm({ singleTilde: false }), math()],
-  mdastExtensions: [gfmFromMarkdown(), mathFromMarkdown()],
+  extensions: [gfm({ singleTilde: false })],
+  mdastExtensions: [gfmFromMarkdown()],
 }
 
 const REFERENCE_LABEL = '参考(?:资料|文献|链接|来源)|资料来源|引用来源|来源|references?|sources?|bibliography|citations?'
@@ -33,52 +33,38 @@ const LOG_LINE = /^(?:(?:\d{4}-\d{2}-\d{2}[T ][\d:.]+(?:Z|[+-]\d{2}:\d{2})?\s+)?
 const FILE_LABEL = /^(?:[\w.-]+\.)+(?:md|mjs|js|ts|tsx|py|sh|json|csv|txt|wav|yml|yaml|log)$/iu
 const URL_LABEL = /^(?:[a-z][\w+.-]*:\/\/|www\.|\S+@\S+\.\S+$)/iu
 const TERMINAL_PUNCTUATION = /[.?!;。！？；]$/u
-const DOLLAR_AMOUNT = /(?<![\\$])\$-?\d+(?:,\d{3})*(?:\.\d+)?(?![.,]\d)(?=[\s,.!?;:，。！？；：、）)]|$)/gu
-const BRACKET_MARKUP = /\[(?:!NOTE|!TIP|!IMPORTANT|!WARNING|!CAUTION|\d+(?:\s*[,–-]\s*\d+)*)\]/giu
 const SPEECH_CONTENT = /[\p{L}\p{N}]/u
-// CommonMark replaces input NULs with U+FFFD, so this marks only code we omit.
-const OMITTED_INLINE_CODE = '\u0000'
+// CommonMark replaces input NULs with U+FFFD, so a NUL in a phrase represents an omission.
+const OMITTED_EXPRESSION = '\u0000'
+const INLINE_MATH_PLACEHOLDER = '\uE003'
 
 function inlineCodeText(value: string): string {
   const term = /^[\p{L}\p{N}]{1,12}$/u.test(value)
     || (value.length <= 32 && /^(?:[a-z\d]+(?:-[a-z\d]+){1,3}|v?\d+(?:\.\d+){1,3}(?:-[a-z\d]+(?:[.-][a-z\d]+)*)?)$/iu.test(value))
   const quantity = /^[+-]?\d+(?:\.\d+)?(?:\s?(?:%|[\p{L}°℃℉/]{1,8}))?$/u.test(value)
-  return term || quantity ? value : OMITTED_INLINE_CODE
+  return term || quantity ? value : OMITTED_EXPRESSION
 }
 
-/** CommonMark unescapes these TeX delimiters before they can be distinguished from prose. */
-function removeBackslashMath(value: string): string {
-  let open: { start: number; close: string } | undefined
+/** Decide what the formula replaces before CommonMark unescapes TeX delimiters. */
+function replaceMath(value: string): string {
+  const { regions, pendingStart } = findFencedCodeRegions(value)
+  const source = maskCode(value.slice(0, pendingStart ?? value.length), regions)
   let offset = 0
   const parts: string[] = []
-  for (const token of value.matchAll(/\\\\|\\[()[\]]|\r?\n[ \t]*(?=\r?\n)/gu)) {
-    const delimiter = token[0]
-    if (delimiter === '\\\\') continue
-    if (delimiter === '\\(' || delimiter === '\\[') {
-      open = { start: token.index, close: delimiter === '\\(' ? '\\)' : '\\]' }
-    } else if (open !== undefined && delimiter === open.close) {
-      const end = token.index + delimiter.length
-      parts.push(value.slice(offset, open.start), value.slice(open.start, end).replace(/[^\r\n]+/gu, ' '))
-      offset = end
-      open = undefined
-    } else if (delimiter.startsWith('\n') || delimiter.startsWith('\r')) {
-      open = undefined
-    }
+  for (const { start, end, kind } of findSpeechMarkup(source).spans) {
+    if (kind !== 'inlineMath' && kind !== 'displayMath') continue
+    const formula = value.slice(start, end)
+    const standalone = kind === 'displayMath' && /^[ \t]*$/u.test(value.slice(value.lastIndexOf('\n', start - 1) + 1, start))
+      && /^[ \t]*(?:\r?\n|$)/u.test(value.slice(end))
+    parts.push(value.slice(offset, start), standalone ? formula.replace(/[^\r\n]+/gu, ' ') : INLINE_MATH_PLACEHOLDER)
+    offset = end
   }
   return parts.join('') + value.slice(offset)
 }
 
-/** A pair of prices in one paragraph can otherwise look like a single inline formula. */
-function escapeDollarAmounts(value: string): string {
-  return value.replace(DOLLAR_AMOUNT, (amount, offset: number) => {
-    const following = value.slice(offset + amount.length)
-    return /^[ \t]*(?:[+*/=\\^_<>−-]|\$(?!\d))/u.test(following) ? amount : '\\' + amount
-  })
-}
-
 function phraseText(node: MarkdownPhrase): string {
   switch (node.type) {
-    case 'text': return node.value
+    case 'text': return node.value.replaceAll(INLINE_MATH_PLACEHOLDER, OMITTED_EXPRESSION)
     case 'break': return ' '
     case 'emphasis':
     case 'strong': return node.children.map(phraseText).join('')
@@ -112,9 +98,8 @@ function isReferenceParagraph(node: MarkdownParagraph): boolean {
 
 function clean(value: string): string {
   const chinese = /\p{Script=Han}/u.test(value)
-  return prepareTtsText(value
+  return prepareTtsText(removeCitationMarkup(value)
     .replace(/^(?:你好|您好|当然可以|没问题|好的|of course|sure)[,，!！]\s*/iu, '')
-    .replace(BRACKET_MARKUP, ' ')
     .replace(/°[CF]|[℃℉]/gu, unit => {
       const celsius = unit === '℃' || unit === '°C'
       return chinese ? (celsius ? '摄氏度' : '华氏度') : (celsius ? ' degrees Celsius' : ' degrees Fahrenheit')
@@ -144,22 +129,22 @@ function joinSpeech(parts: readonly string[]): string {
   }, '')
 }
 
-function readMarkdown(markdown: string): { blocks: Sentence[][]; table: string } {
+function readMarkdown(markdown: string): { blocks: Sentence[][]; table: string; headings: string[] } {
   const blocks: Sentence[][] = []
+  const headings: string[] = []
   let table = ''
   let previous: Sentence | undefined
   const addParagraph = (value: string, keyHeading: boolean): void => {
-    const prose = value.split(/\r?\n/u)
+    const prose = removeCitationMarkup(value.replaceAll('!=', '≠').split(/\r?\n/u)
       .map(line => line.trim())
       .filter(line => !LOG_LINE.test(line))
-      .join(' ')
-      .replace(BRACKET_MARKUP, ' ')
+      .join(' '))
     const block: Sentence[] = []
     for (const part of sentences(prose)) {
       const raw = part.trim()
       if (FILLER.test(raw) || EMPTY_INTRO.test(raw) || FOLLOW_UP.test(raw)) continue
       const text = clean(raw)
-      const unsafe = raw.includes(OMITTED_INLINE_CODE)
+      const unsafe = raw.includes(OMITTED_EXPRESSION)
       if (!unsafe && !SPEECH_CONTENT.test(text)) continue
       // Adjacent restrictions stay with their action even across paragraphs or list items.
       if (previous !== undefined && (QUALIFICATION.test(text) || NEGATIVE_CAVEAT.test(text))) {
@@ -191,6 +176,10 @@ function readMarkdown(markdown: string): { blocks: Sentence[][]; table: string }
         keyHeading = key !== null
         previous = undefined
         if (key?.[1]) addParagraph(key[1], true)
+        else if (key === null && referenceDepth === 0 && !heading.includes(OMITTED_EXPRESSION)) {
+          const text = clean(heading)
+          if (SPEECH_CONTENT.test(text)) headings.push(text)
+        }
       } else if (referenceDepth !== 0) continue
       else if (node.type === 'paragraph') {
         if (isReferenceParagraph(node)) {
@@ -209,10 +198,10 @@ function readMarkdown(markdown: string): { blocks: Sentence[][]; table: string }
         previous = undefined
         const [header, ...rows] = node.children
         const rawLabels = header?.children.map(cell => cell.children.map(phraseText).join('')) ?? []
-        if (rawLabels.some(label => label.includes(OMITTED_INLINE_CODE))) continue
+        if (rawLabels.some(label => label.includes(OMITTED_EXPRESSION))) continue
         const labels = rawLabels.map(clean)
         for (const row of rows) {
-          if (row.children.some(cell => cell.children.map(phraseText).join('').includes(OMITTED_INLINE_CODE))) continue
+          if (row.children.some(cell => cell.children.map(phraseText).join('').includes(OMITTED_EXPRESSION))) continue
           const cells = labels.flatMap((label, index) => {
             const value = clean(row.children[index]?.children.map(phraseText).join('') ?? '')
             return SPEECH_CONTENT.test(value) ? [label === '' ? value : label + '：' + value] : []
@@ -226,16 +215,17 @@ function readMarkdown(markdown: string): { blocks: Sentence[][]; table: string }
     }
   }
 
-  visit(fromMarkdown(escapeDollarAmounts(removeBackslashMath(markdown)), MARKDOWN_OPTIONS).children)
-  return { blocks: blocks.map(block => block.filter(sentence => !sentence.unsafe)).filter(block => block.length > 0), table }
+  visit(fromMarkdown(replaceMath(removeEmoteMarkup(markdown.replaceAll(INLINE_MATH_PLACEHOLDER, ' '))), MARKDOWN_OPTIONS).children)
+  return { blocks: blocks.map(block => block.filter(sentence => !sentence.unsafe)).filter(block => block.length > 0), table, headings }
 }
 
 /** Select complete, speakable excerpts from raw assistant Markdown before synthesis. */
 export function prepareConciseTtsText(markdown: string): string {
-  const { blocks, table } = readMarkdown(markdown)
+  const { blocks, table, headings } = readMarkdown(markdown)
   const fits = (text: string): boolean => text.length <= MAX_CHARACTERS * 2
     && [...text].length <= MAX_CHARACTERS
-  if (blocks.length === 0) return fits(table) ? table : ''
+  const heading = headings.findLast(fits) ?? ''
+  if (blocks.length === 0) return table && fits(table) ? table : heading
 
   const full = joinSpeech(blocks.flatMap(block => block.map(sentence => sentence.text)))
   if (fits(full)) return full
@@ -264,7 +254,17 @@ export function prepareConciseTtsText(markdown: string): string {
     if (!sentence.key && frequency.get(sentence.text)! > 1 && block !== 0 && block !== blocks.length - 1) return []
     return [{ sentence, position, block, group: valid }]
   })
-  if (candidates.length === 0) return ''
+  if (candidates.length === 0) {
+    for (const sentence of all) {
+      if (sentence.dependsOnPrevious || !sentence.key) continue
+      const clauses = sentence.text.split(/[,;]/u).map(clause => clause.trim())
+      if (clauses.length < 2 || clauses.slice(1).some(clause => QUALIFICATION.test(clause) || NEGATIVE_CAVEAT.test(clause)
+        || CONTINUATION.test(clause) || /^(?:只有|才|就能|即可|再|然后|以免|须|必须|需要|if\b|when\b|until\b|before\b|after\b)/iu.test(clause))) continue
+      const excerpt = clauses[0]!
+      if (SPEECH_CONTENT.test(excerpt) && fits(excerpt + '.')) return excerpt + '.'
+    }
+    return heading
+  }
 
   const keyPositions = new Set(candidates.filter(item => item.sentence.key).map(item => item.position))
   const distances = all.map(() => Infinity)

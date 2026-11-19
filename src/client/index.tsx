@@ -109,10 +109,11 @@ export function apply(ctx: Context): void {
     return () => { window.removeEventListener('online', apiKeyStatusStore.invalidate); off() }
   }, 'xiaomi-mimo-tts: API key status')
   const voiceInput = new VoiceInputActivity(document)
-  const audioFocus = new PluginAudioFocus(new PluginAudioFocus(focusOwner, changes), voiceInput)
+  const tabAudioFocus = new PluginAudioFocus(focusOwner, changes)
+  const audioFocus = new PluginAudioFocus(tabAudioFocus, voiceInput)
   const composerInput = new ComposerInputActivity(document)
   const announcementAudioFocus = new PluginAudioFocus(audioFocus, composerInput)
-  const soundEffects = createSoundEffectsController(audioFocus.canPlay)
+  const soundEffects = createSoundEffectsController(audioFocus.canPlay, tabAudioFocus.canPlay)
   const getSoundSettings = () => {
     const resolved = resolveTtsSettings(scope.getSnapshot().value)
     return {
@@ -128,7 +129,8 @@ export function apply(ctx: Context): void {
     const offClick = installClickSounds(ctx, soundEffects, getSoundSettings)
     const offTask = installTaskSoundWatcher(ctx, soundEffects, getSoundSettings)
     const offSettings = scope.subscribe(() => { soundEffects.update(getSoundSettings()) })
-    return () => { offClick(); offTask(); offSettings(); void soundEffects.dispose() }
+    const offTabAudio = tabAudioFocus.subscribe(() => { if (!tabAudioFocus.canPlay()) void soundEffects.dispose() })
+    return () => { offClick(); offTask(); offSettings(); offTabAudio(); void soundEffects.dispose() }
   }, 'xiaomi-mimo-tts: sound effects')
   const history = new AudioHistory()
   ctx.effect(() => () => history.dispose(), 'xiaomi-mimo-tts: audio history')
@@ -201,7 +203,7 @@ export function apply(ctx: Context): void {
     return () => { deactivate(); off() }
   }, 'xiaomi-mimo-tts: tab audio focus')
   ctx.effect(() => {
-    voiceInput.start()
+    voiceInput.start(soundEffects.playMicrophoneCue)
     return () => voiceInput.dispose()
   }, 'xiaomi-mimo-tts: voice input activity')
   ctx.effect(() => {
@@ -291,7 +293,7 @@ export function apply(ctx: Context): void {
     id: 'xiaomi-mimo-tts-reading-captions',
     order: 997,
     locale: NS,
-    inject: (_sessionId: string) => ({ captions, settings: scope, t }),
+    inject: (_sessionId: string) => ({ captions, playback, settings: scope, t }),
   }, ReadingCaptionBar))
 
   registerSlotContribution(ctx, 'conversation.chat.assistant-actions', () => ctx.slots.register({

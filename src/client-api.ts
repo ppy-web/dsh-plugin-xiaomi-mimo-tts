@@ -7,6 +7,9 @@ export interface XiaomiMimoTtsService {
 
   /** Idempotently stop playback started through this service. */
   stop(): void
+
+  /** Browser-local PCM analysis branch, or null when PCM is not playing. Do not route it to speakers. */
+  getPcmPlaybackSource?(): AudioNode | null
 }
 
 declare module '@deepseek-ai/cordis' {

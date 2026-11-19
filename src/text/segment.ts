@@ -13,7 +13,7 @@ export { MIN_TTS_STREAM_CHARACTERS }
 
 /** Count text-bearing characters only, excluding punctuation and whitespace. */
 export function countTtsSpeechCharacters(value: string): number {
-  return (stripXiaomiAudioTags(value).match(/[\p{L}\p{N}]/gu) ?? []).length
+  return (stripXiaomiAudioTags(value, true).match(/[\p{L}\p{N}]/gu) ?? []).length
 }
 
 /** Find sentence ends after markup removal and punctuation normalization. */
@@ -84,8 +84,8 @@ export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHA
 }
 
 /** Split Breeze text without deleting or separating documented audio tags for provider-sized requests. */
-export function splitBreezeTtsSegments(value: string, maximum = BREEZE_MAX_TEXT_LENGTH): string[] {
-  const text = prepareBreezeTtsText(value)
+export function splitBreezeTtsSegments(value: string, maximum = BREEZE_MAX_TEXT_LENGTH, prepared = false): string[] {
+  const text = prepared ? value : prepareBreezeTtsText(value)
   if (text.length === 0) return []
   const tokens = text.match(/\[[^\]\r\n]+\]|\([^()\r\n]+\)|./gu) ?? []
   const segments: string[] = []
@@ -127,8 +127,11 @@ export class TtsFirstSegmentLimiter {
   constructor(private readonly segmentCount = 1, private readonly prepare = prepareTtsText) {}
 
   limit(value: string, final = false): string {
+    return this.locked ?? this.limitPrepared(this.prepare(value), final)
+  }
+
+  limitPrepared(text: string, final = false): string {
     if (this.locked !== null) return this.locked
-    const text = this.prepare(value)
     if (final) {
       this.locked = segmentsFromPreparedText(text, DEFAULT_TTS_SEGMENT_CHARACTERS, MAX_TTS_SEGMENT_CHARACTERS).slice(0, this.segmentCount).join('')
       return this.locked

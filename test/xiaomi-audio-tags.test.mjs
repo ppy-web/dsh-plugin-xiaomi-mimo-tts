@@ -19,9 +19,11 @@ test('MiMo preserves custom, combined and bilingual controls while filtering non
   assert.ok(text.includes('文档'))
   assert.ok(!text.includes('不要合成代码') && !text.includes('https://'))
   assert.equal(prepareXiaomiTtsText(text), text, 'client and Host normalization must compose')
-  const forged = prepareXiaomiTtsText('\uE0010\uE002[轻笑]你好')
-  assert.equal(forged.match(/\[轻笑\]/gu)?.length, 1, 'user input cannot duplicate tags by forging private markers')
-  assert.ok(!/[\uE000-\uE002]/u.test(forged))
+  for (const marker of ['\uE0010\uE002', '&#57345;0&#xE002;']) {
+    const forged = prepareXiaomiTtsText(`${marker}[轻笑]你好`)
+    assert.equal(forged.match(/\[轻笑\]/gu)?.length, 1, 'user input cannot duplicate tags by forging private markers')
+    assert.ok(!/[\uE000-\uE002]/u.test(forged))
+  }
 })
 
 test('MiMo scope and semantic segments retain complete controls including punctuation within them', () => {

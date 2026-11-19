@@ -1,17 +1,36 @@
-.xmimo-reading-caption-anchor {
-  position: absolute;
-  width: 0;
-  height: 0;
+.xmimo-reading-caption-integrated {
+  --xmimo-caption-row-size: 60px;
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  max-width: 520px;
+  min-width: 0;
+  height: 40px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-inline: auto;
+  padding-inline: 8px;
   pointer-events: none;
 }
 
-.xmimo-reading-caption-overlay {
-  position: fixed;
-  z-index: 900;
+.xmimo-reading-caption-integrated:has(> .xmimo-caption-siri) { height: var(--xmimo-caption-row-size) }
+
+/* Reserve a row only while ChatView follows the bottom. */
+[data-conversation-scroll] > [data-composer-seat] [data-slot="conversation.input.dock"] > .xmimo-reading-caption-integrated {
+  display: none;
+}
+
+/* ChatView hides its return-to-bottom button while this flag is present. */
+[data-content-phase="active"] [data-conversation-scroll]:has(> [data-slot="conversation.session"] [data-chat-following-tail])
+  > [data-composer-seat] [data-slot="conversation.input.dock"] > .xmimo-reading-caption-integrated {
   display: flex;
-  justify-content: center;
-  transform: translateX(-50%);
-  pointer-events: none;
+}
+
+/* Close the host stack gap only when this row sits immediately above the input card. */
+[data-slot="conversation.input.dock"]:has(+ [data-slot="conversation.composer.bar"]) > .xmimo-reading-caption-integrated:last-child {
+  margin-block-end: calc(-1 * var(--dsh-composer-stack-gap, 0px));
 }
 
 .xmimo-reading-caption {
@@ -21,31 +40,27 @@
   max-width: 100%;
   min-width: 0;
   flex-direction: column;
-  align-items: center;
-  gap: 3px;
+  align-items: flex-start;
+  gap: 2px;
   color: var(--dsw-alias-label-primary, #1f2328);
-  text-align: center;
-  font: 13px/1.55 system-ui, sans-serif;
+  text-align: left;
+  font: 13px/17px system-ui, sans-serif;
 }
 
 .xmimo-reading-caption-previous, .xmimo-reading-caption-current {
   box-sizing: border-box;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
-  padding: 5px 12px;
   overflow: hidden;
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2, #f3f4f6) 88%, transparent);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .12);
   text-overflow: ellipsis;
   white-space: nowrap;
-  pointer-events: auto;
 }
 
 .xmimo-reading-caption-previous {
   color: var(--dsw-alias-label-secondary, #5f6875);
   font-size: 12px;
-  animation: xmimo-caption-previous 280ms ease-out both;
+  animation: xmimo-caption-fade-previous 650ms ease-out both;
 }
 
 .xmimo-reading-caption-current {
@@ -60,9 +75,9 @@
   border-radius: 2px;
 }
 
-@keyframes xmimo-caption-previous {
-  from { opacity: .55; transform: translateY(5px) }
-  to { opacity: 1; transform: translateY(0) }
+@keyframes xmimo-caption-fade-previous {
+  from { opacity: 1; transform: translateY(4px) }
+  to { opacity: .48; transform: translateY(0) }
 }
 
 @keyframes xmimo-caption-current {
@@ -72,4 +87,58 @@
 
 @media (prefers-reduced-motion: reduce) {
   .xmimo-reading-caption-previous, .xmimo-reading-caption-current { animation: none }
+  .xmimo-reading-caption-previous { opacity: .48 }
 }
+.xmimo-caption-picker { border: 0; padding: 8px 0 12px; margin: 0; min-width: 0 }
+.xmimo-caption-picker legend { font-size: 13px; color: var(--dsw-alias-label-secondary, #5f6875); padding: 0 0 8px }
+.xmimo-caption-picker-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
+.xmimo-caption-choice { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; padding: 8px 4px; border: 1px solid var(--dsw-alias-border-l2, #d7dbe2); border-radius: 12px; background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 65%, transparent); font-size: 11px; cursor: pointer }
+.xmimo-caption-choice:hover:has(input:not(:disabled)), .xmimo-caption-choice:has(input:checked) { border-color: var(--dsw-alias-brand-primary, #4f6ef7) }
+.xmimo-caption-choice:has(input:focus-visible) { outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7); outline-offset: 3px }
+.xmimo-caption-choice input { position: absolute; opacity: 0; width: 1px; height: 1px }
+.xmimo-caption-choice span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100% }
+
+.xmimo-caption-siri { position: relative; width: 88px; height: 76px; flex: none; display: grid; place-items: center }
+.xmimo-reading-caption-integrated > .xmimo-caption-siri {
+  width: var(--xmimo-caption-row-size);
+  height: 100%;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+.xmimo-reading-caption-integrated > .xmimo-caption-siri > div { scale: .56 }
+.xmimo-caption-voice-button { position: absolute; inset: 0; z-index: 1; padding: 0; border: 0; border-radius: 12px; background: transparent; pointer-events: auto; cursor: pointer }
+.xmimo-caption-voice-button[aria-disabled="true"] { pointer-events: none; cursor: default }
+.xmimo-caption-voice-button:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7); outline-offset: 2px }
+
+.xmimo-caption-text {
+  flex: 0 1 248px;
+  min-width: 0;
+  max-width: 100%;
+  opacity: 1;
+  transition: opacity 450ms ease;
+}
+.xmimo-caption-text:not(.xmimo-caption-text-exiting) .xmimo-reading-caption { pointer-events: auto }
+.xmimo-caption-text-exiting { opacity: 0 }
+@media (prefers-reduced-motion: reduce) { .xmimo-caption-text { transition: none } }
+
+.xmimo-caption-siri > div {
+  transform: scale(min(1.4, calc(var(--xmimo-orb-state-scale, 1) * var(--xmimo-orb-hover-scale, 1))));
+  transition: transform 260ms cubic-bezier(.2, .8, .2, 1);
+}
+.xmimo-caption-siri[data-state="listening"] > div {
+  --xmimo-orb-state-scale: calc(1.22 + var(--xmimo-recording-level, .55) * .18);
+  transition-duration: 120ms;
+}
+@media (any-hover: hover) and (any-pointer: fine) {
+  .xmimo-caption-siri[data-hoverable] { pointer-events: auto }
+  .xmimo-caption-siri[data-hovered] { --xmimo-orb-hover-scale: 1.08 }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-caption-siri > div {
+    --xmimo-orb-hover-scale: 1;
+    transition: none;
+  }
+  .xmimo-caption-siri[data-state="listening"] > div { --xmimo-orb-state-scale: 1.32 }
+}
+
+.xmimo-caption-choice:has(input:disabled) { opacity: .55; cursor: default }
+.xmimo-caption-choice span { white-space: normal; text-align: center; overflow-wrap: anywhere }

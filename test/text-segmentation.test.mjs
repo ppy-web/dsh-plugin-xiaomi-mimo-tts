@@ -12,6 +12,9 @@ import {
   MAX_TTS_SEGMENT_CHARACTERS,
   prepareTtsText,
   prepareBreezeTtsText,
+  prepareExternalTtsText,
+  prepareProviderTtsText,
+  prepareXiaomiTtsText,
   splitBreezeTtsSegments,
   splitBreezeTtsSentences,
   splitCompletedTtsSentences,
@@ -109,6 +112,55 @@ test('keeps comparison meaning, contractions and word boundaries', () => {
   assert.doesNotMatch(math, /23|maxretrycount/u)
   assert.match(math, /2 3/u)
   assert.match(math, /max retry count/u)
+})
+
+test('filters bracketed emote metadata across reading scopes and providers', () => {
+  const body = '开头。[表情: ******]中间。[表情：动画\n编号 123]结尾。'
+  for (const prepare of [prepareTtsText, prepareXiaomiTtsText, prepareBreezeTtsText,
+    input => prepareExternalTtsText(input, ['[表情: ******]']),
+    input => applyTtsPlaybackScope(input, 'smart', true, () => 0, prepareTtsText),
+    input => applyTtsPlaybackScope(input, 'concise', true)]) {
+    const speech = prepare(body)
+    assert.match(speech, /开头.*中间.*结尾/u)
+    assert.doesNotMatch(speech, /表情|动画|编号|\*/u)
+    assert.equal(prepare('[表情: 整条消息的动画描述!]'), '')
+  }
+  assert.match(prepareTtsText('只朗读 [表情设置] 的说明。'), /表情设置/u)
+  assert.equal(prepareBreezeTtsText('[轻笑][表情: ******]再见。'), '[轻笑] 再见.')
+})
+
+test('cleans whole URLs and paths while retaining slash words, dates and units', () => {
+  const text = prepareTtsText(String.raw`详见 https://example.com/quick_start/~pricing，打开 src/my_module/file_name.ts、/usr/local/my_app/bin/start_server、C:\note.txt 或 C:\right.txt。日期 2026/11/18，支持 TCP/IP/HTTP，信噪比 S/N，选择 yes/no。10~20 秒，~50ms，36.5℃，90°，10㎡。`)
+  assert.doesNotMatch(text, /quick|pricing|file.name|start.server|note|right|https/u)
+  for (const term of ['2026/11/18', 'TCP/IP/HTTP', 'S/N', 'yes/no', '10~20', '~50ms', '36.5℃', '90°', '10㎡']) assert.ok(text.includes(term), text)
+  assert.match(prepareTtsText(String.raw`First\nsecond and escaped \\n.`), /First second and escaped \\\\n/u)
+})
+
+test('speech normalization preserves comparison meaning and keeps math distinct from prices', () => {
+  const text = prepareTtsText(String.raw`Check a <= b and c >= d. 条件 a != b，映射 a => b，路径 a -> b。$12.50 和 $20。忽略 $a + b$、$$\sqrt{2}$$、\(c ^ d\)、\[e ^ f\]。`)
+  assert.match(text, /less than or equal to.*greater than or equal to.*不等于.*指向.*指向/u)
+  assert.match(text, /\$12\.50.*\$20/u)
+  assert.doesNotMatch(text, /\$\$|sqrt|[a-z] \^ [a-z]|a \+ b/u)
+  assert.match(prepareTtsText('查看 [词条](https://example.com/Foo_(bar)) 和 `Array<string>`。'), /词条.*Array string/u)
+  assert.equal(prepareTtsText('> [!NOTE]\n读这里 [1]。'), '读这里.')
+})
+
+test('raw sentence splitting does not expose hidden blocks or break links before cleanup', () => {
+  const markdown = '前文。\n\n    privateCode();\n\n<!-- privateComment!\n隐藏 -->\n<script>\nprivateScript();\n</script>\n后文见 [说明](https://example.com/Foo_(bar))。'
+  const result = splitCompletedTtsSentences(markdown)
+  const speech = result.sentences.map(prepareTtsText).join('')
+  assert.match(speech, /前文.*后文见 说明/u)
+  assert.doesNotMatch(speech, /private|隐藏|example|Foo/u)
+})
+
+test('MiMo conversation preparation preserves parenthetical prose on both models', () => {
+  const markdown = '支持（MP3 和 WAV）。(注意：操作不可逆。) [参考文档](https://example.com) [轻笑](laughs)再见。'
+  const preset = prepareProviderTtsText(markdown, { provider: 'xiaomi' }, true)
+  assert.match(preset, /MP3 和 WAV.*操作不可逆.*参考文档.*\[轻笑\]\(laughs\).*再见/u)
+  const design = prepareProviderTtsText(markdown, { provider: 'xiaomi', model: 'mimo-v2.5-tts-voicedesign' }, true)
+  assert.match(design, /MP3 和 WAV.*操作不可逆.*参考文档.*再见/u)
+  assert.doesNotMatch(design, /轻笑|laughs/u)
+  assert.equal(prepareBreezeTtsText('[轻笑](laughs)再见。'), '[轻笑](laughs)再见.')
 })
 
 test('decodes entities and removes HTML comments, scripts, rules and setext underlines', () => {

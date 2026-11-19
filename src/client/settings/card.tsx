@@ -138,6 +138,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
   const [enabled, setEnabled] = useState(initial.enabled)
   const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
   const [showReadingCaptions, setShowReadingCaptions] = useState(initial.showReadingCaptions)
+  const [showAudioResponse, setShowAudioResponse] = useState(initial.showAudioResponse)
+  const [audioResponseStyle, setAudioResponseStyle] = useState(initial.audioResponseStyle)
   const [inputAvoidance, setInputAvoidance] = useState(initial.inputAvoidance)
   const [importantAnnouncementsFirst, setImportantAnnouncementsFirst] = useState(initial.importantAnnouncementsFirst)
   const [voiceVolume, setVoiceVolume] = useState(initial.voiceVolume)
@@ -190,7 +192,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
 
   const accepted = resolveTtsSettings(value)
   const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { showInSidebar, showInHostSettings, showFeatureGuide, acceptExternalProviders, voiceRecognitionService, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, deepseekEnabled, deepseekVoice, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, showReadingCaptions, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, avatarStyle, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
+  const draft: DraftSettings = { showInSidebar, showInHostSettings, showFeatureGuide, acceptExternalProviders, voiceRecognitionService, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, deepseekEnabled, deepseekVoice, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, showReadingCaptions, showAudioResponse, audioResponseStyle, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, avatarStyle, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
   const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
     const raw = value?.[field]
     return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
@@ -254,6 +256,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
     setShowReadingCaptions(next.showReadingCaptions)
+    setShowAudioResponse(next.showAudioResponse)
+    setAudioResponseStyle(next.audioResponseStyle)
     setInputAvoidance(next.inputAvoidance)
     setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
     setVoiceVolume(next.voiceVolume)
@@ -327,6 +331,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     if (field === 'enabled') setEnabled(base.enabled)
     if (field === 'autoPlay') setAutoPlay(base.autoPlay)
     if (field === 'showReadingCaptions') setShowReadingCaptions(base.showReadingCaptions)
+    if (field === 'showAudioResponse') setShowAudioResponse(base.showAudioResponse)
+    if (field === 'audioResponseStyle') setAudioResponseStyle(base.audioResponseStyle)
     if (field === 'inputAvoidance') setInputAvoidance(base.inputAvoidance)
     if (field === 'importantAnnouncementsFirst') setImportantAnnouncementsFirst(base.importantAnnouncementsFirst)
     if (field === 'voiceVolume') setVoiceVolume(base.voiceVolume)
@@ -382,6 +388,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     setEnabled(next.enabled)
     setAutoPlay(next.autoPlay)
     setShowReadingCaptions(next.showReadingCaptions)
+    setShowAudioResponse(next.showAudioResponse)
+    setAudioResponseStyle(next.audioResponseStyle)
     setInputAvoidance(next.inputAvoidance)
     setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
     setVoiceVolume(next.voiceVolume)
@@ -698,6 +706,14 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           onShowReadingCaptionsChange={next => { setShowReadingCaptions(next); markChange('showReadingCaptions') }}
           showReadingCaptionsOverridden={fieldOverridden('showReadingCaptions')}
           onShowReadingCaptionsReset={() => resetField('showReadingCaptions')}
+          showAudioResponse={showAudioResponse}
+          onShowAudioResponseChange={next => { setShowAudioResponse(next); markChange('showAudioResponse') }}
+          showAudioResponseOverridden={fieldOverridden('showAudioResponse')}
+          onShowAudioResponseReset={() => resetField('showAudioResponse')}
+          audioResponseStyle={audioResponseStyle}
+          onAudioResponseStyleChange={next => { setAudioResponseStyle(next); markChange('audioResponseStyle') }}
+          audioResponseStyleOverridden={fieldOverridden('audioResponseStyle')}
+          onAudioResponseStyleReset={() => resetField('audioResponseStyle')}
           inputAvoidance={inputAvoidance}
           onInputAvoidanceChange={next => { setInputAvoidance(next); markChange('inputAvoidance') }}
           inputAvoidanceOverridden={fieldOverridden('inputAvoidance')}

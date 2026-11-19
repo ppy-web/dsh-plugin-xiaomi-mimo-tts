@@ -194,3 +194,40 @@ test('raw unclosed code never reaches either speech backend and closing it prese
     }, { endPcm: true }, mode)
   }
 })
+
+test('completed speech is sent once while Markdown links, images, HTML and emotes grow', async () => {
+  for (const mode of ['disabled', 'local-first']) {
+    await withSpeech(async state => {
+      const opening = 'Check a < 5. ' + '甲'.repeat(DEFAULT_TTS_SEGMENT_CHARACTERS) + '。'
+      state.speech.observe('session', 1, 0, opening)
+      await settle()
+      const originalRequest = state.requests[0]
+      let text = opening
+      for (const [partial, rest] of [
+        ['详见 [使用手册](ht', 'tps://example.com/foo_(bar))。'],
+        ['![不朗读封面!](https://example.com/', 'cover.png)'],
+        ['<!-- 隐藏注释！', '\n隐藏 -->'],
+        ['<script>hidden();', '</script>'],
+        ['&nb', 'sp;'],
+        ['$$hidden + 1', '$$'],
+        ['[表情: 动画!', ' ******]'],
+      ]) {
+        state.speech.observe('session', 1, 0, text + partial)
+        await settle()
+        text += partial + rest
+        state.speech.observe('session', 1, 0, text)
+        await settle()
+      }
+      text += '后文保留 &amp;lt; 内容。'
+      state.speech.finish('session', final(text))
+      await settle()
+      await finishUtterances(state)
+      const audio = mode === 'disabled' ? state.requests : state.utterances
+      const spoken = audio.map(value => value.text).join(' ')
+      assert.equal(spoken.match(/Check a less than 5/gu)?.length, 1, spoken)
+      assert.match(spoken, /使用手册.*后文保留 &lt; 内容/u)
+      assert.doesNotMatch(spoken, /不朗读封面|隐藏|hidden|表情|动画|https|nbsp/u)
+      if (originalRequest) assert.equal(originalRequest.signal.aborted, false)
+    }, { endPcm: true }, mode)
+  }
+})
