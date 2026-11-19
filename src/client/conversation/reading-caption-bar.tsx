@@ -22,8 +22,8 @@ interface ReadingCaptionBarProps {
 /** The previous segment provides context without being announced a second time. */
 export function ReadingCaptionLines({ text, previousText, label }: { text: string; previousText: string; label: string }): ReactElement {
   return <section className="xmimo-reading-caption" role="region" aria-label={label} tabIndex={0}>
-    {previousText && <div className="xmimo-reading-caption-previous" key={previousText} aria-hidden="true" title={previousText}>{previousText}</div>}
-    <div className="xmimo-reading-caption-current" title={text} key={text}>{text}</div>
+    {previousText && <div className="xmimo-reading-caption-previous" key={`previous:${previousText}`} aria-hidden="true" title={previousText}>{previousText}</div>}
+    <div className="xmimo-reading-caption-current" title={text} key={`current:${text}`}>{text}</div>
   </section>
 }
 

@@ -118,6 +118,7 @@
 }
 .xmimo-caption-text:not(.xmimo-caption-text-exiting) .xmimo-reading-caption { pointer-events: auto }
 .xmimo-caption-text-exiting { opacity: 0 }
+.xmimo-caption-text-exiting :is(.xmimo-reading-caption-previous, .xmimo-reading-caption-current) { animation-play-state: paused }
 @media (prefers-reduced-motion: reduce) { .xmimo-caption-text { transition: none } }
 
 .xmimo-caption-siri > div {

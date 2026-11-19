@@ -12,6 +12,7 @@ const { splitCaptionLines } = await loadClientModule('src/client/playback/captio
 const { ReadingCaptionBar, ReadingCaptionLines } = await loadClientModule('src/client/conversation/reading-caption-bar.tsx')
 const { PlaybackController } = await loadClientModule('src/client/playback/playback-controller.ts')
 const { LiveSpeechController } = await loadClientModule('src/client/playback/live-speech-controller.ts')
+const { handleReadAloudClick } = await loadClientModule('src/client/playback/read-aloud-playback.ts')
 const { LocalSpeechController } = await loadClientModule('src/client/playback/local-speech-controller.ts')
 const { PcmAudioQueue } = await loadClientModule('src/client/playback/pcm-audio-queue.ts')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
@@ -52,7 +53,15 @@ for (const provider of ['doubao', 'deepseek']) {
         await settle()
         const context = state.contexts[0]
         assert.equal(captions.getSnapshot().text, '')
+        let finishSuspend
+        context.suspendResult = new Promise(resolve => { finishSuspend = resolve })
+        const pause = live.pause('session')
         context.advanceTo(.04)
+        finishSuspend()
+        assert.equal(await pause, true)
+        assert.equal(captions.getSnapshot().text, '')
+        assert.equal(clock.pending(), 0)
+        assert.equal(await live.resume('session'), true)
         assert.equal(captions.getSnapshot().text, prepareTtsText('第一句。'))
         live.observe('session', 1, 0, '第一句。第二句。')
         await settle()
@@ -406,6 +415,52 @@ test('streaming captions follow the audio clock across queued segments and pause
   }, { fetch: () => new Response(event) })
 })
 
+for (const atSegmentBoundary of [false, true]) {
+  const when = atSegmentBoundary ? 'at a segment boundary' : 'before the first caption'
+  test(`a delayed PCM cue cannot advance captions while paused ${when}`, async () => {
+    const pcm = Buffer.alloc(48000).toString('base64')
+    const event = new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: pcm } } }] })}\n\n`)
+    await withBrowserPlayback(async state => {
+      const clock = captionClock(), captions = new ReadingCaptions(clock)
+      const unsubscribe = captions.subscribe(() => {})
+      const live = new LiveSpeechController(undefined, captions)
+      const playback = new PlaybackController()
+      const request = { sessionId: 'session', messageId: 'message', live, playback }
+      live.activateSession('session')
+      playback.activateSession('session')
+      live.setStateChangeListener((s, m, status) => playback.updateLivePlayback(s, m, status))
+      let finishSuspend
+      try {
+        live.playCompleted('session', 'message', `${'甲'.repeat(160)}。${'乙'.repeat(160)}。`)
+        for (let i = 0; i < 8 && state.requests.length < 2; i += 1) await settle()
+        await settle()
+        const audio = state.contexts[0]
+        if (atSegmentBoundary) {
+          audio.advanceTo(.05)
+          assert.match(captions.getSnapshot().text, /^甲/u)
+        } else assert.equal(captions.getSnapshot().text, '')
+
+        audio.suspendResult = new Promise(resolve => { finishSuspend = resolve })
+        handleReadAloudClick(request, playback.getSnapshot())
+        const pausedCaption = captions.getSnapshot()
+        audio.advanceTo(atSegmentBoundary ? 1.05 : .05)
+        clock.advance(5)
+        assert.equal(playback.getSnapshot().status, 'paused')
+        assert.deepEqual(captions.getSnapshot(), pausedCaption)
+        assert.equal(clock.pending(), 0)
+
+        finishSuspend()
+        await settle()
+        handleReadAloudClick(request, playback.getSnapshot())
+        await settle()
+        assert.equal(playback.getSnapshot().status, 'playing')
+        assert.equal(captions.getSnapshot().paused, false)
+        assert.match(captions.getSnapshot().text, atSegmentBoundary ? /^乙/u : /^甲/u)
+      } finally { finishSuspend?.(); unsubscribe(); await live.dispose(); playback.dispose() }
+    }, { fetch: () => new Response(event) })
+  })
+}
+
 test('an old streaming pause failure cannot resume captions of a newer paused playback', async () => {
   const pcm = Buffer.alloc(48000).toString('base64')
   const event = new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: pcm } } }] })}\n\n`)
@@ -505,12 +560,14 @@ test('a PCM segment displays its sentences one line at a time over the audio dur
       audio.advanceTo(.05)
       assert.match(captions.getSnapshot().text, /^第一句/u)
       assert.doesNotMatch(captions.getSnapshot().text, /第二句/u)
+      clock.advance(30)
+      assert.match(captions.getSnapshot().text, /^第一句/u)
       audio.advanceTo(3.3)
-      clock.advance(3.25)
+      clock.advance(.1)
       assert.match(captions.getSnapshot().text, /^第二句/u)
       assert.match(captions.getSnapshot().previousText, /^第一句/u)
       audio.advanceTo(6.4)
-      clock.advance(3.1)
+      clock.advance(.1)
       assert.match(captions.getSnapshot().text, /^第三句/u)
       audio.advanceTo(10)
       assert.equal(captions.getSnapshot().text, '')

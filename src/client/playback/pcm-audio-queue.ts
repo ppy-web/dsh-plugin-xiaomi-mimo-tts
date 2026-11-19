@@ -55,13 +55,18 @@ export class PcmAudioQueue {
 
   setVolume(value: number): void {
     this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
+    if (!this.userPaused) this.applyOutputVolume(true)
+  }
+
+  private applyOutputVolume(ramp = false): void {
     const context = this.context
     const gain = this.gain
     if (context === null || gain === null) return
     const now = context.currentTime
+    const volume = this.userPaused ? 0 : this.volume
     gain.gain.cancelScheduledValues(now)
-    gain.gain.setValueAtTime(gain.gain.value, now)
-    gain.gain.linearRampToValueAtTime(this.volume, now + .02)
+    gain.gain.setValueAtTime(ramp ? gain.gain.value : volume, now)
+    if (ramp) gain.gain.linearRampToValueAtTime(volume, now + .02)
   }
 
   setPlaybackRate(value: number): void { this.playbackRate = normalizeVoiceRate(value) }
@@ -71,10 +76,15 @@ export class PcmAudioQueue {
     const control = ++this.controlRevision
     const context = this.context
     this.userPaused = true
+    // Silence the output while the browser is still suspending the audio clock.
+    this.applyOutputVolume()
     try {
       if (context !== null && context.state === 'running') await context.suspend()
     } catch (error) {
-      if (control === this.controlRevision) this.userPaused = false
+      if (control === this.controlRevision) {
+        this.userPaused = false
+        this.applyOutputVolume()
+      }
       throw error
     }
     if (context === this.context && context !== null
@@ -82,16 +92,18 @@ export class PcmAudioQueue {
   }
 
   async resume(): Promise<void> {
-    this.controlRevision += 1
+    const control = ++this.controlRevision
     const revision = this.revision
     const context = this.context
     if (context !== null && context.state !== 'running') await context.resume()
-    if (revision === this.revision) this.userPaused = false
-    else if (context === this.context && context !== null && this.userPaused && context.state === 'running') await context.suspend()
+    if (revision === this.revision && control === this.controlRevision) {
+      this.userPaused = false
+      this.applyOutputVolume()
+    } else if (context === this.context && context !== null && this.userPaused && context.state === 'running') await context.suspend()
   }
 
-  enqueue(base64: string, onStart?: () => void): Promise<void> {
-    return this.enqueueBytes(Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)), onStart)
+  enqueue(base64: string, onStart?: () => void, onSchedule?: (elapsed: () => number, duration: number) => void): Promise<void> {
+    return this.enqueueBytes(Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)), onStart, onSchedule)
   }
 
   enqueueBytes(bytes: Uint8Array, onStart?: () => void, onSchedule?: (elapsed: () => number, duration: number) => void): Promise<void> {
@@ -106,7 +118,6 @@ export class PcmAudioQueue {
     this.controlRevision += 1
     this.scheduledAt = 0
     this.chain = Promise.resolve()
-    this.userPaused = false
     this.queuedBytes = 0
     for (const source of this.sources) {
       try {
@@ -121,6 +132,10 @@ export class PcmAudioQueue {
       try { marker.stop() } catch { /* A marker may already have ended. */ }
     }
     this.markers.clear()
+    if (this.userPaused) {
+      this.userPaused = false
+      this.applyOutputVolume()
+    }
     this.setBusy(false)
   }
 
@@ -146,6 +161,7 @@ export class PcmAudioQueue {
     const context = this.getContext()
     if (context.state !== 'running' && !this.userPaused) {
       await context.resume()
+      if (context === this.context && this.userPaused && (context.state as AudioContextState) === 'running') await context.suspend()
     }
     if (revision !== this.revision) return
 
@@ -228,7 +244,7 @@ export class PcmAudioQueue {
   private getGain(context: AudioContext): GainNode {
     if (this.gain === null) {
       this.gain = context.createGain()
-      this.gain.gain.value = this.volume
+      this.gain.gain.value = this.userPaused ? 0 : this.volume
       this.gain.connect(context.destination)
     }
     return this.gain

@@ -11,8 +11,18 @@ export async function withBrowserPlayback(run, options = {}) {
     currentTime = 0
     destination = {}
     sources = []
+    gains = []
     constructor() { state.contexts.push(this) }
-    createGain() { return { gain: { value: 1, cancelScheduledValues() {}, setValueAtTime() {}, linearRampToValueAtTime() {} }, connect() {}, disconnect() {} } }
+    createGain() {
+      const node = { gain: {
+        value: 1,
+        cancelScheduledValues() {},
+        setValueAtTime(value) { this.value = value },
+        linearRampToValueAtTime(value) { this.value = value },
+      }, connect() {}, disconnect() {} }
+      this.gains.push(node)
+      return node
+    }
     createBuffer(channels, length, sampleRate) { return { duration: length / sampleRate, getChannelData: () => new Float32Array(length) } }
     createBufferSource() {
       const source = new EventTarget()
