@@ -8,7 +8,6 @@ import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
-import { CaptionVisualPicker } from '../conversation/caption-visual.js'
 import { AvatarStyleContext, VoiceAvatar } from './controls/voice-avatar.js'
 import { ReadScopeCards } from './controls/read-scope-cards.js'
 import { LensSlider } from './controls/lens-slider.js'
@@ -66,7 +65,6 @@ type ReadingRangeValues = Partial<Record<ReadingRange, number | undefined>>
 const RANGE_SAVE_DELAY = 250
 const INTERACTION_SWITCHES = [
   { field: 'showReadingCaptions', label: 'settings.readingCaptions', hint: 'settings.readingCaptionsHint' },
-  { field: 'showAudioResponse', label: 'settings.audioResponse', hint: 'settings.audioResponseHint' },
 ] as const
 
 interface VoiceReadingRangesProps {
@@ -309,7 +307,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
           }}
         />
       </div>
-      <div className="xmimo-voice-reading-row">
+      <div className="xmimo-voice-reading-row xmimo-voice-reading-before-interaction">
         <div className="xmimo-voice-reading-copy">
           <div className="xmimo-voice-reading-row-title">{t('settings.voiceReadingSound')}</div>
           <div className="xmimo-voice-reading-row-hint">{t('settings.voiceReadingSoundHint')}</div>
@@ -323,7 +321,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
           }}
         />
       </div>
-      {INTERACTION_SWITCHES.map(({ field, label, hint }) => <div className="xmimo-voice-reading-row" key={field}>
+      {INTERACTION_SWITCHES.map(({ field, label, hint }) => <div className="xmimo-voice-reading-row xmimo-voice-reading-interaction-row" key={field}>
         <div className="xmimo-voice-reading-copy">
           <div className="xmimo-voice-reading-row-title">{t(label)}</div>
           <div className="xmimo-voice-reading-row-hint">{t(hint)}</div>
@@ -331,9 +329,6 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
         <Switch checked={settings[field]} disabled={disabled} label={t(label)}
           onChange={value => { void write([{ op: 'set', path: [field], value }]) }} />
       </div>)}
-      {settings.showAudioResponse ? <CaptionVisualPicker label={t('settings.audioResponseEffects')} hideLabel
-        value={settings.audioResponseStyle} disabled={disabled}
-        onChange={value => { void write([{ op: 'set', path: ['audioResponseStyle'], value }]) }} /> : null}
     </div>
     {failed && <p className="xmimo-voice-reading-failure" role="status">{t('settings.voiceReadingSaveFailed')}</p>}
   </div></AvatarStyleContext.Provider>

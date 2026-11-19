@@ -148,6 +148,12 @@ export function AnnouncementSettings({
             <a href="https://github.com/xrn1997/dsh-novel#readme" target="_blank" rel="noopener noreferrer">{t('settings.novelIntegration')} ↗</a>
             <small>{t('settings.novelIntegrationHint')}</small>
           </div>
+        </div>
+        <div className="xmimo-tts-announcement-source" hidden={hide('audio-reactive')}>
+          <div>
+            <a href="https://github.com/ppy-web/dsh-audio-reactive" target="_blank" rel="noopener noreferrer">{t('settings.audioReactiveIntegration')} ↗</a>
+            <small>{t('settings.audioReactiveIntegrationHint')}</small>
+          </div>
         </div></> : null}
       </section>)}
     </div>

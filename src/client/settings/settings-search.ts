@@ -68,6 +68,7 @@ const ENTRIES = {
   qqbot: { group: 'integrations', terms: ['settings.qqbotIntegration', 'settings.qqbotIntegrationHint'] },
   passport: { group: 'integrations', terms: ['settings.passportIntegration', 'settings.passportIntegrationHint'] },
   novel: { group: 'integrations', terms: ['settings.novelIntegration', 'settings.novelIntegrationHint'], aliases: 'dsh-novel 听书 audiobook' },
+  'audio-reactive': { group: 'integrations', terms: ['settings.audioReactiveIntegration', 'settings.audioReactiveIntegrationHint'], aliases: 'dsh-audio-reactive 音频响应 频谱' },
   soundScope: { group: 'sound', terms: ['settings.soundEffectsScope', 'settings.soundEffectsClickOnly', 'settings.soundEffectsTaskOnly'] },
   soundVolume: { group: 'sound', terms: ['settings.soundEffectsVolume'] },
   soundPack: { group: 'sound', terms: ['settings.soundEffectsPack'] },

@@ -260,7 +260,7 @@ test('captions and audio response styles save and reset independently', async ()
   assert.equal(user.voiceRate, 1.3)
 })
 
-test('both settings surfaces expose independent interaction switches and show examples only for audio response', context => {
+test('audio response controls appear in plugin settings and not on the voice reading page', context => {
   const report = console.error
   context.mock.method(console, 'error', (...args) => {
     if (typeof args[0] === 'string' && args[0].startsWith('Warning: useLayoutEffect does nothing on the server')) return
@@ -281,21 +281,24 @@ test('both settings surfaces expose independent interaction switches and show ex
     const voiceReading = renderToStaticMarkup(createElement(VoiceReadingSection, { scope, t, close() {}, openPluginSettings() {} }))
     const hostSettings = plugin.match(/<section\b[^>]*aria-label="settings\.hostIntegration"[^>]*>([\s\S]*?)<\/section>/u)?.[1]
     assert.ok(hostSettings)
-    for (const page of [hostSettings, voiceReading]) {
-      const inputs = page.match(/<input\b[^>]*>/gu) ?? []
-      const captions = inputs.find(input => input.includes('aria-label="settings.readingCaptions"'))
-      const response = inputs.find(input => input.includes('aria-label="settings.audioResponse"'))
-      assert.ok(captions)
-      assert.ok(response)
-      assert.equal(captions.includes('checked=""'), showReadingCaptions)
-      assert.equal(response.includes('checked=""'), showAudioResponse)
-    }
+    const hostInputs = hostSettings.match(/<input\b[^>]*>/gu) ?? []
+    const hostCaptions = hostInputs.find(input => input.includes('aria-label="settings.readingCaptions"'))
+    const hostResponse = hostInputs.find(input => input.includes('aria-label="settings.audioResponse"'))
+    const voiceInputs = voiceReading.match(/<input\b[^>]*>/gu) ?? []
+    const voiceCaptions = voiceInputs.find(input => input.includes('aria-label="settings.readingCaptions"'))
+    assert.ok(hostCaptions)
+    assert.ok(hostResponse)
+    assert.ok(voiceCaptions)
+    assert.equal(hostCaptions.includes('checked=""'), showReadingCaptions)
+    assert.equal(hostResponse.includes('checked=""'), showAudioResponse)
+    assert.equal(voiceCaptions.includes('checked=""'), showReadingCaptions)
+    assert.doesNotMatch(voiceReading, /settings\.audioResponse/u)
     assert.doesNotMatch(hostSettings, /<input\b[^>]*type="radio"/u)
-    for (const page of [plugin, voiceReading]) {
-      const style = (page.match(/<input\b[^>]*>/gu) ?? []).find(input => input.includes('type="radio"') && input.includes('value="siri-wave-line"'))
-      if (showAudioResponse) assert.ok(style?.includes('checked=""'))
-      else assert.equal(style, undefined)
-    }
+    const pluginStyle = (plugin.match(/<input\b[^>]*>/gu) ?? []).find(input => input.includes('type="radio"') && input.includes('value="siri-wave-line"'))
+    const voiceStyle = (voiceReading.match(/<input\b[^>]*>/gu) ?? []).find(input => input.includes('type="radio"') && input.includes('value="siri-wave-line"'))
+    if (showAudioResponse) assert.ok(pluginStyle?.includes('checked=""'))
+    else assert.equal(pluginStyle, undefined)
+    assert.equal(voiceStyle, undefined)
   }
 })
 

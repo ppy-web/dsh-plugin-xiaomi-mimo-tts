@@ -297,6 +297,14 @@
   border-bottom: 0;
 }
 
+.xmimo-voice-reading-before-interaction {
+  border-bottom: 0;
+}
+
+.xmimo-voice-reading-interaction-row {
+  border-top: 0.5px solid var(--dsw-alias-border-l2, #d7dbe2);
+}
+
 .xmimo-voice-reading-range-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) min(54%, 220px);

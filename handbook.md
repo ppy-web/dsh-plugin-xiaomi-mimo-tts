@@ -30,7 +30,7 @@ Breeze 需要可访问海外服务的外网环境，运行 DSH 的机器或容�
 
 「插件联动」中的「Ai Passport 应用」是不带开关的项目链接，点击可查看 [WhaleTalk Passport（鲸语通行证）](https://github.com/ppy-web/whaletalk-passport#readme)的设备应用与接入说明。
 
-安装独立的 `dsh-audio-reactive` 主题插件后，宿主设置「音频响应」可以把当前网页的流式朗读显示为聊天正文背后的频谱。它读取本插件的 PCM 播放信号，不需要打开本插件的实时字幕或响应球。浏览器内置语音和历史音频文件当前不向该主题提供分析信号。
+安装独立的 [dsh-audio-reactive](https://github.com/ppy-web/dsh-audio-reactive) 主题插件后，宿主设置「音频响应」可以把当前网页的流式朗读显示为聊天正文背后的频谱。它读取本插件的 PCM 播放信号，不需要打开本插件的实时字幕或响应球。浏览器内置语音和历史音频文件当前不向该主题提供分析信号。
 
 「小说插件」 [dsh-novel](https://github.com/xrn1997/dsh-novel#readme)。安装并启用两个插件、配置好语音供应商后，可在小说插件的听书设置中选择「宿主朗读服务」使用本插件的语音合成；听书位置与播放控制由小说插件管理。
 
