@@ -39,7 +39,7 @@ const TTS_UNIX_PATH_PATTERN = /(?<=^|[\s([（【:：，、；。！？,;!?=*_'"`
 const TTS_RELATIVE_PATH_PATTERN = /(?:\.\.?[\\/])(?:[A-Za-z0-9._-]+[\\/])*(?:[A-Za-z0-9._-]+(?:\.[A-Za-z0-9_-]+)?)/gu
 const TTS_PROJECT_PATH_PATTERN = /\b(?:[\w.~-]+[\\/])+[\w~-]+(?:\.[\w~-]+)+\b/gu
 
-const MARKDOWN_REFERENCE_DEFINITION_RE = /(^|\n)(?:[ \t]*>[ \t]?)*[ \t]*\[[^\]\r\n]+\]:[^\r\n]*(?=\r?\n|$)/g
+const MARKDOWN_REFERENCE_DEFINITION_RE = /(^|\n)[ \t>]*\[[^\]\r\n]+\]:[^\r\n]*(?=\r?\n|$)/g
 const MARKDOWN_HEADING_RE = /(^|\n)[ \t]{0,3}#+/g
 const MARKDOWN_LIST_RE = /(^|\n)\s*(?:[-*+]|\d+[.)])\s+/g
 const MARKDOWN_BLOCKQUOTE_RE = /(^|\n)\s*>\s?/g

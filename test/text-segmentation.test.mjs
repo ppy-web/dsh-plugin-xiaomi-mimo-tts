@@ -101,6 +101,8 @@ test('reference links, footnotes and definitions never reach speech', () => {
     const prepared = prepareTtsText(text)
     assert.doesNotMatch(prepared, /report|pic\b|https?:|\^1|隐藏脚注/u)
   }
+  assert.equal(prepareTtsText('正文。\n> \t> [来源]: https://example.com/x\n后文。'), '正文.后文.')
+  assert.ok(prepareTtsText(`正文。\n>${'\t>'.repeat(20000)}尾声。`).includes('尾声'))
 })
 
 test('keeps comparison meaning, contractions and word boundaries', () => {

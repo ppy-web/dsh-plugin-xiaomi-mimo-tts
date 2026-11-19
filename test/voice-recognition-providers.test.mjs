@@ -221,7 +221,8 @@ test('the shared switch withdraws Host providers and stops active Passport cloud
   })
   for (const name of ['agents', 'agentPresets', 'agentDefaultModel']) ctx.provide(name, {})
   const web = createHttpServer((req, res) => {
-    const route = routes.get(req.url)
+    const path = '/plugins/xiaomi-mimo-tts/passport-status'
+    const route = req.url === path ? routes.get(path) : undefined
     if (route) void route(req, res)
     else { res.writeHead(404); res.end() }
   }).listen(0, '127.0.0.1')
