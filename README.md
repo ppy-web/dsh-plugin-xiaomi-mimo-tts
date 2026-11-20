@@ -1,6 +1,6 @@
 ![dsh-xiaomi-tts](assets/social.webp)
 
-<h1 align="center">dsh-xiaomi-tts</h1>
+<h1 align="center">音色工坊 · dsh-xiaomi-tts</h1>
 
 <p align="center">
   <a href="https://awesome-dsh-plugin.com"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="awesome · DSH plugin"></a>
@@ -27,40 +27,39 @@
 
 ## ✨ 功能
 
-- 一键朗读与自动播报，过滤网址、代码等内容。
-- 小米 MiMo、豆包与 Breeze 语音，支持内置、自定义与复刻音色；浏览器或 MOSS 本地语音可优先使用或兜底。
-- 支持通过外部适配器接入更多语音供应商和本地语音模型。
-- 语速、音量、暂停与停止控制，音频历史试听和下载。
-- 可选 UI 音效、宿主事件播报、桌宠及 QQ Bot 联动、AI Passport 语音对话与鲸鱼娘 Agent 预设。
+- 一键朗读、自动播报；
+- 自动过滤网址、代码等内容，减少资源消耗，体验更好；
+- 内置 小米 MiMo `免费`、豆包语音、BreezeBlue、DeepSeek。自由选择和定义音色；
+- 支持 浏览器、MOSS本地模型兜底。还能通过外部适配器接入供应商...
+- 可选 UI 音效、宿主事件播报；
+- 语速、音量、朗读范围调节，音频历史试听和下载；
+- 支持多种插件联动，dsh-pet桌宠、 QQ Bot、AI Passport...
 
 ## 🚀 安装与使用
 
 需要 DSH `0.2.2` 以上、Node.js 24.9+，当前适配目标为 DSH `0.2.2-rc.5`。
 
-AI Passport 连接器还依赖宿主已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 与识别 provider；该识别组件由 DSH 宿主提供，本插件不代为安装，缺少时设备无法连接（详见用户手册的 AI Passport 章节）。
+- 直接在 DSH 插件管理面板搜索 `dsh-xiaomi-tts` 安装；
 
-在 DSH 插件管理面板搜索 `dsh-xiaomi-tts` 安装；
+- 安装[插件市场](https://awesome-dsh-plugin.com)后搜索 `xiaomi-mimo-tts`。
 
-或使用 Web 端命令：
+-  Web 端可使用命令：
 
-```bash
-dsh plugin --profile web add dsh-xiaomi-tts@latest
-```
+    ```bash
+    dsh plugin --profile web add dsh-xiaomi-tts@latest
+    ```
 
-卸载：
+- 卸载：
 
-```bash
-dsh plugin --profile web remove dsh-xiaomi-tts
-```
+  ```bash
+  dsh plugin --profile web remove dsh-xiaomi-tts
+  ```
 
-[社区插件市场](https://awesome-dsh-plugin.com)中搜索 `xiaomi-mimo-tts`。
+快速设置：
 
-首次安装默认使用浏览器语音，推荐配置：
-
-1. 打开插件设置，在右上角切换你想用的供应商：默认小米 MiMo，可切换豆包、 Breeze或DeepSeek（在播报台开启），填写并保存 [小米 Key](https://platform.xiaomimimo.com?ref=GQDDDU)、[豆包 Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default) 或 [Breeze Key](https://breezeblue.ai/zh?code=JHKLSJ)。
-2. 在“调音台”选择模型、音色，在“播报台”试听；三家服务商的密钥、音色与模型各自独立保存，密钥须先保存，模型和音色支持草稿试听。
-3. 在「设置 → 语音朗读」调整音量、语速、朗读范围及自动播报、音效，与插件设置共用配置。
-4. 稳定使用 Breeze 需要科学上网，推荐 [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy)
+1. 侧边栏插件-已安装插件-音色工坊-进入设置页，默认使用[小米 MiMo](https://platform.xiaomimimo.com?ref=GQDDDU)，可在右上角卡片切换[豆包 Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default)、 [Breeze Key](https://breezeblue.ai/zh?code=JHKLSJ)或DeepSeek（在播报台开启）
+2. 在“调音台”选择模型、音色，在“播报台”试听；服务商的密钥、音色与模型自独立保存，先保存，后试听。
+3. 稳定使用 Breeze 需要科学上网，推荐 [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy)
 
 ## 📖 用户手册
 
@@ -78,12 +77,12 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 - [dsh-whale-musume · 元气鲸鱼娘桌宠](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) 支持互动气泡播报 `已联动`
 - [dsh-pet · 蓝色大肥鱼桌宠](https://github.com/PC2005-cloud/dsh-pet#readme) 支持播报碎碎念，闲聊消息 `已联动`
 - [dsh-qqbot · 腾讯官方QQ机器人](https://github.com/tencent-connect/dsh-qqbot#readme) 支持向 QQ 推送语音和表情包 `已联动`
-- [dsh-novel · 小说阅读与听书](https://github.com/xrn1997/dsh-novel#readme) 可使用本插件的宿主朗读服务朗读小说 `已联动`
+- [dsh-novel · 小说阅读与听书](https://github.com/xrn1997/dsh-novel#readme) 使用本插件朗读里面的小说 `已联动`
 - [dsh-music-panel · 音乐播放器](https://github.com/Aliboder/dsh-music-panel) 播报时可以自动降低播放器的音量 `已适配`
 - [dsh-Go · dsh 移动端移植](https://github.com/ccch1mneyyy/dsh-Go) 在移动端也可使用本插件 `已适配`
 - [dsh-audio-reactive · 音频响应](https://github.com/ppy-web/dsh-audio-reactive) 随流式播报显示跳动的频谱背景 `已适配`
-- [dsh-speech-provider-adapter · 供应商适配器](https://github.com/ppy-web/dsh-speech-provider-adapter#readme) 为音色工坊管理自定义语音供应商、模型与音色
-- [WhaleTalk Passport · 鲸语通行证](https://github.com/ppy-web/whaletalk-passport#readme) AI Passport 设备应用，和你的鲸鱼娘实时语音对话
+- [dsh-speech-provider-adapter · 供应商适配器](https://github.com/ppy-web/dsh-speech-provider-adapter#readme) 接入你想要的语音供应商  `已适配`
+- [WhaleTalk Passport · 鲸语通行证](https://github.com/ppy-web/whaletalk-passport#readme) AI Passport 硬件连接，和你的鲸鱼娘实时语音对话
 
 一个简单的调用示例：
 
