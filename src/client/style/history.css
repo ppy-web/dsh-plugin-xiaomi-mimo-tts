@@ -17,12 +17,10 @@
   line-height: 1.5;
 }
 
-.xmimo-tts-history-header,
+.xmimo-tts-history-header { display: flex; min-width: 0; align-items: center; flex: none; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--xmimo-ui-border); }
 .xmimo-tts-history-toolbar,
 .xmimo-tts-history-storage,
-.xmimo-tts-history-actions,
-.xmimo-tts-history-player-controls { display: flex; min-width: 0; align-items: center; gap: 8px; }
-.xmimo-tts-history-header { flex: none; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--xmimo-ui-border); }
+.xmimo-tts-history-actions { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .xmimo-tts-history-header h2 { flex: none; margin: 0; font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 6px; }
 .xmimo-tts-history-title-back { flex: none; }
 .xmimo-tts-history-title-back > svg { flex: none; }
@@ -35,13 +33,21 @@
 .xmimo-tts-history-action, .xmimo-tts-history-back { flex: none; white-space: nowrap; }
 .xmimo-tts-history-action > svg { flex: none; width: 16px; height: 16px; }
 .xmimo-tts-history-footer { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 10px; border-top: 1px solid var(--xmimo-ui-border); padding-top: 10px; }
-.xmimo-tts-history-storage { flex: 1; min-width: 0; color: var(--xmimo-ui-text-muted); font-size: 12px; }
+.xmimo-tts-history-storage { flex: 1; color: var(--xmimo-ui-text-muted); font-size: 12px; }
 .xmimo-tts-history-storage > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-inline-end: 10px; font-weight: 500; }
 .xmimo-tts-history-limit { white-space: nowrap; }
 .xmimo-tts-history-warning { flex: none; margin: 0 0 8px; color: var(--xmimo-ui-text); background: var(--xmimo-ui-control-surface); border-inline-start: 3px solid var(--xmimo-ui-brand); padding: 6px 8px; font-size: 12px; }
 .xmimo-tts-history-results { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .xmimo-tts-history-list { list-style: none; margin: 0; padding: 0; }
-.xmimo-tts-history-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; border-top: 1px solid var(--xmimo-ui-border-soft); padding: 5px; }
+.xmimo-tts-history-row {
+  --xmimo-history-play-size: 28px;
+  display: grid;
+  grid-template-columns: var(--xmimo-history-play-size) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--xmimo-ui-border-soft);
+  padding: 5px;
+}
 .xmimo-tts-history-row-selected { background: var(--xmimo-ui-control-surface); border-inline-start: 2px solid var(--xmimo-ui-brand); padding-inline-start: 2px; }
 .xmimo-tts-history-copy { min-width: 0; }
 .xmimo-tts-history-page .xmimo-tts-history-text-toggle { width: 100%; min-width: 0; height: auto; justify-content: flex-start; text-align: start; }
@@ -53,8 +59,8 @@
 .xmimo-tts-history-empty-whale { display: block; width: 144px; height: 144px; max-width: 100%; object-fit: contain; margin: 0 auto 12px; }
 .xmimo-tts-history-empty p { margin: 0; }
 .xmimo-tts-history-player { display: flex; flex-direction: column; min-width: 0; margin-top: 4px; gap: 4px; }
-.xmimo-tts-history-page .xmimo-tts-history-player-toggle { flex: none; width: 28px; padding: 0; }
-.xmimo-tts-history-player-controls { gap: 6px; flex: none; width: 100%; }
+.xmimo-tts-history-page .xmimo-tts-history-player-toggle { width: var(--xmimo-history-play-size); min-width: var(--xmimo-history-play-size); padding: 0; }
+.xmimo-tts-history-player-controls { display: flex; min-width: 0; align-items: center; gap: 6px; flex: none; width: 100%; }
 .xmimo-tts-history-player-controls input[type='range'] { appearance: none; -webkit-appearance: none; flex: 1 1 auto; min-width: 30px; width: 100%; height: 20px; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .xmimo-tts-history-player-controls input[type='range']::-webkit-slider-runnable-track { height: 3px; border-radius: 8px; background: linear-gradient(to right, var(--xmimo-ui-brand) 0% var(--xmimo-history-progress), var(--xmimo-ui-border) var(--xmimo-history-progress) 100%); }
 .xmimo-tts-history-player-controls input[type='range']::-moz-range-track { height: 3px; border-radius: 8px; background: var(--xmimo-ui-border); }
@@ -74,18 +80,31 @@
   box-shadow: none;
 }
 
+@media (max-width: 520px) {
+  .xmimo-tts-history-page { padding: 8px; }
+}
+
 @container xmimo-audio-history (max-width: 520px) {
   .xmimo-tts-history-search, .xmimo-tts-history-limit { display: none; }
   .xmimo-tts-history-toolbar { flex: 1 1 auto; }
   .xmimo-tts-history-source .xmimo-voice-reading-button-selector { max-width: 100%; }
   .xmimo-tts-history-page .xmimo-tts-history-action { width: 44px; min-width: 44px; padding: 0; }
   .xmimo-tts-history-action > span { display: none; }
-  .xmimo-tts-history-page button,
-  .xmimo-tts-history-search input { min-height: 44px; }
-  .xmimo-tts-history-page .xmimo-tts-history-row { grid-template-columns: 44px minmax(0, 1fr) auto; align-items: start; padding-block: 10px; }
-  .xmimo-tts-history-page .xmimo-tts-history-player-toggle { width: 44px; height: 44px; min-width: 44px; }
-  .xmimo-tts-history-actions { gap: 4px; }
-  .xmimo-tts-history-player-controls { flex-wrap: wrap; }
+  .xmimo-tts-history-page button { min-height: 44px; }
+  .xmimo-tts-history-row {
+    --xmimo-history-play-size: 44px;
+    grid-template-columns: var(--xmimo-history-play-size) minmax(0, 1fr);
+    align-items: start;
+    padding-block: 10px;
+  }
+  .xmimo-tts-history-actions { grid-column: 2; justify-content: flex-end; gap: 4px; }
+  .xmimo-tts-history-player-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
   .xmimo-tts-history-player-controls input[type='range'] { min-height: 44px; }
+  .xmimo-tts-history-time { justify-self: end; }
   .xmimo-tts-history-storage > span:first-child { margin-inline-end: 0; }
+}
+
+@media (pointer: coarse) {
+  .xmimo-tts-history-row { --xmimo-history-play-size: 44px; }
+  .xmimo-tts-history-page :is(button, select, input) { min-height: 44px; }
 }

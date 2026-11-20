@@ -6,11 +6,9 @@
  * tsdown.config.ts; Vite preview supports ?raw natively) and concatenated
  * below, so CASCADE ORDER == the order of this list:
  *
- *   1. component modules (action → volume, voice-reading, history),
- *   2. responsive.css (max-width) then motion.css (prefers-reduced-motion)
- *      last — they intentionally override the base modules,
- *   3. global.css at the very end: design tokens + shared module chrome
- *      (see the header comment in style/global.css).
+ *   1. component modules,
+ *   2. shared responsive and reduced-motion overrides,
+ *   3. design tokens and shared module styles, then compact-mode overrides.
  *
  * When adding styles: put them in the module file that owns the UI (create a
  * new one if needed) and add its import here in cascade order.

@@ -14,7 +14,6 @@
 .xmimo-tts-details-body {
   min-height: 0;
   overflow: hidden;
-  grid-template-columns: minmax(0, 1fr);
   column-gap: 12px
 }
 

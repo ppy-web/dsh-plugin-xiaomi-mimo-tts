@@ -44,8 +44,7 @@
   text-align: end
 }
 
-.xmimo-tts-card-actions :is(button, a),
-.xmimo-ui-scope .xmimo-tts-action-button {
+.xmimo-tts-card-actions :is(button, a) {
   box-sizing: border-box;
   display: inline-flex;
   flex: 0 0 auto;
@@ -68,21 +67,18 @@
   transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease
 }
 
-.xmimo-tts-card-actions :is(button, a):where(:hover, :focus-visible):not(:disabled),
-.xmimo-ui-scope .xmimo-tts-action-button:where(:hover, :focus-visible):not(:disabled) {
+.xmimo-tts-card-actions :is(button, a):where(:hover, :focus-visible):not(:disabled) {
   border-color: var(--xmimo-ui-brand);
   background: var(--xmimo-ui-hover);
   text-decoration: none
 }
 
-.xmimo-tts-card-actions :is(button, a):focus-visible,
-.xmimo-ui-scope .xmimo-tts-action-button:focus-visible {
+.xmimo-tts-card-actions :is(button, a):focus-visible {
   outline: var(--xmimo-ui-focus);
   outline-offset: 3px
 }
 
-.xmimo-tts-card-actions button:disabled,
-.xmimo-ui-scope .xmimo-tts-action-button:disabled {
+.xmimo-tts-card-actions button:disabled {
   border-color: var(--xmimo-ui-border);
   color: var(--xmimo-ui-text-muted);
   background: var(--xmimo-ui-control-surface);
@@ -134,11 +130,5 @@
 
   .xmimo-tts-card-actions :is(.xmimo-tts-history-link, .xmimo-tts-mode-toggle, .xmimo-tts-sidebar-toggle) {
     padding-inline: 6px
-  }
-}
-
-@media (pointer: coarse) {
-  .xmimo-ui-scope .xmimo-tts-action-button {
-    min-height: 44px
   }
 }

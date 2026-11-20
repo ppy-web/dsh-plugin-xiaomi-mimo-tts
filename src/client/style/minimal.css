@@ -129,12 +129,6 @@
   line-height: 1;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-details-body {
-  grid-template-columns: minmax(0, 1fr);
-  column-gap: 12px;
-}
-
-
 .xmimo-tts-card-minimal
   .xmimo-tts-details-body
   > :not(.xmimo-tts-volume):not(.xmimo-tts-external-catalog):not(.xmimo-tts-doubao-voice):not(.xmimo-tts-speech-instruction)
@@ -152,8 +146,7 @@
 
 
 
-.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-menu:not(.xmimo-tts-external-catalog *),
-.xmimo-tts-card-minimal .xmimo-tts-voice-picker-menu {
+.xmimo-tts-card-minimal .xmimo-tts-builtin-voice-menu:not(.xmimo-tts-external-catalog *) {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   background: none;
   box-shadow: none;
@@ -200,18 +193,7 @@
   clip-path: inset(50%);
 }
 
-.xmimo-tts-card-minimal
-  .xmimo-tts-api-key-input:focus-within
-  + .xmimo-tts-api-key-message {
-  position: static;
-  width: auto;
-  height: auto;
-  overflow: visible;
-  clip: auto;
-  clip-path: none;
-  white-space: normal;
-}
-
+.xmimo-tts-card-minimal .xmimo-tts-api-key-input:focus-within + .xmimo-tts-api-key-message,
 .xmimo-tts-card-minimal .xmimo-tts-api-key-message.xmimo-tts-api-key-warning {
   position: static;
   width: auto;
@@ -223,8 +205,6 @@
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-preview-input {
-    display: grid;
-    align-items: stretch;
   gap: 6px;
 }
 
@@ -232,17 +212,7 @@
   gap: 6px;
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-preview-input > textarea {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-
-
-
-
 .xmimo-tts-card-minimal .xmimo-tts-sound-body {
-  gap: 8px;
   padding: 6px 10px 10px;
 }
 
@@ -292,10 +262,6 @@
 .xmimo-tts-card-minimal .xmimo-tts-sound-previews button {
   min-height: 28px;
   padding: 5px;
-}
-
-.xmimo-tts-card-minimal .xmimo-ui-module-padded {
-  padding: 8px !important;
 }
 
 .xmimo-tts-card-minimal .xmimo-ui-summary {

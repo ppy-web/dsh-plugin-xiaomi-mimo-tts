@@ -3,15 +3,6 @@
   background: var(--xmimo-ui-surface) !important;
   outline: none !important;
 }
-.my-plugin-card[data-dsh-dream-skin-composer="1"]::before,
-.my-plugin-card[data-dsh-dream-skin-composer="1"]::after {
-  content: none !important;
-  background: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
-}
-.xmimo-tts-broadcast + .xmimo-tts-card-actions { border-top: 0; }
 .xmimo-tts-broadcast { padding: 0 !important; }
 .xmimo-tts-broadcast .xmimo-ui-summary { flex-wrap: wrap; }
 
@@ -19,15 +10,15 @@
   --xmimo-tactile-surface: var(--xmimo-ui-chip-surface);
   --xmimo-tactile-depth: 2px;
   --xmimo-tactile-gap: 3px;
-  --xmimo-tactile-padding: 1px 7px;
+  --xmimo-tactile-padding: 2px 7px;
   position: relative;
   z-index: 2;
   flex: none;
   min-height: 20px;
   color: var(--xmimo-ui-brand);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 16px;
+  line-height: 18px;
   white-space: nowrap;
 }
 .xmimo-tts-preview-tag svg { width: 12px; height: 12px; }
@@ -139,6 +130,11 @@
 .xmimo-tts-breeze-audio-tags-toggle:hover:not(:disabled) { color: var(--xmimo-ui-text); background: var(--xmimo-ui-hover); }
 .xmimo-tts-breeze-audio-tags-toggle:focus-visible { outline: var(--xmimo-ui-focus); outline-offset: 1px; }
 .xmimo-tts-breeze-audio-tags-toggle:disabled { opacity: .5; cursor: not-allowed; }
+.xmimo-tts-breeze-audio-tags-toggle .xmimo-tts-chevron {
+  flex: none;
+  color: var(--xmimo-ui-text-subtle);
+  transition: transform 160ms ease;
+}
 .xmimo-tts-breeze-audio-tags-open .xmimo-tts-breeze-audio-tags-toggle .xmimo-tts-chevron { transform: rotate(180deg); }
 .xmimo-tts-breeze-audio-tags-panel {
   position: fixed;

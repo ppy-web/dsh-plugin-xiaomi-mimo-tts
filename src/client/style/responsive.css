@@ -1,25 +1,12 @@
 /*
- * Responsive overrides (@media max-width). Intentionally kept last: these rules override the base modules.
+ * Shared viewport and pointer overrides, loaded after the component styles.
  */
 
 @media (max-width: 520px) {
   .xmimo-tts-switch-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .xmimo-tts-history-page { padding: 8px; }
-  .xmimo-tts-history-row { grid-template-columns: 32px minmax(0, 1fr); }
-  .xmimo-tts-history-actions { grid-column: 2; justify-content: flex-end; }
-  .xmimo-tts-history-toolbar { flex-basis: 100%; }
-  .xmimo-tts-history-player-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .xmimo-tts-history-time { justify-self: end; }
 }
 
 @media (pointer: coarse) {
-  .xmimo-tts-history-page button,
-  .xmimo-tts-history-page select,
-  .xmimo-tts-history-page input { min-height: 44px; }
-  .xmimo-tts-history-row { grid-template-columns: 44px minmax(0, 1fr); }
-  .xmimo-tts-history-actions { grid-column: 2; justify-content: flex-end; }
-  .xmimo-tts-history-page .xmimo-tts-history-player-toggle { width: 44px; height: 44px; min-width: 44px; }
-
   .xmimo-tts-sound-previews button {
     min-height: 54px;
     padding: 12px 5px 10px;
@@ -56,17 +43,9 @@
     width: 76px;
     height: 69px
   }
-  .xmimo-tts-api-key {
-    padding: 12px !important
-  }
   .xmimo-tts-api-key .xmimo-tts-field-heading {
     min-height: 20px;
     padding-right: 0
-  }
-  .xmimo-tts-details-summary>span {
-    max-width: 100px;
-    padding-right: 6px;
-    padding-left: 6px
   }
   .xmimo-tts-character-bubble {
     right: 58px;
@@ -76,18 +55,6 @@
   /* Narrow screens: drop the API key idle/focus copy bubble to keep the row clean. */
   .xmimo-tts-api-key .xmimo-tts-api-key-bubble {
     display: none;
-  }
-  .xmimo-tts-sound-summary {
-    padding-right: 64px
-  }
-  .xmimo-tts-sound-summary>span {
-    max-width: 94px;
-    padding-right: 5px;
-    padding-left: 5px
-  }
-  .xmimo-tts-sound-body {
-    padding-right: 12px;
-    padding-left: 12px
   }
   .xmimo-tts-sound-pack-grid {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr));

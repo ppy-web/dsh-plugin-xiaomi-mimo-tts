@@ -2,8 +2,7 @@
  * Shared state styles: warning/error tints and failed state.
  */
 
-.xmimo-tts-api-key-warning,
-.xmimo-tts-ai-generate-error {
+.xmimo-tts-api-key-warning {
   color: var(--dsw-alias-state-error-primary, #dc2626) !important
 }
 

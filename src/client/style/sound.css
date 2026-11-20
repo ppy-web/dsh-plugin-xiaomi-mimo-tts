@@ -6,10 +6,6 @@
   padding: 0 !important
 }
 
-.xmimo-tts-sound-summary {
-  height: 30px;
-}
-
 .xmimo-tts-sound-body {
   box-sizing: border-box;
   display: grid;
@@ -17,20 +13,17 @@
   align-items: start;
   min-height: 0;
   overflow: hidden;
-  gap: 12px;
-  padding: 0 16px 16px
+  gap: var(--xmimo-ui-space-3);
+  padding: 6px var(--xmimo-ui-module-padding) var(--xmimo-ui-module-padding);
 }
 
 .xmimo-tts-sound-body > * {
   min-width: 0;
 }
 
-.xmimo-tts-sound-body > small {
-  grid-column: 1 / -1;
-}
-
 .xmimo-tts-sound-scope-section,
-.xmimo-tts-sound-pack {
+.xmimo-tts-sound-pack,
+.xmimo-tts-sound-preview-section {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -148,24 +141,6 @@
   transform: translateY(-50%) scale(1)
 }
 
-.xmimo-tts-sound-pack-option-pending {
-  cursor: progress
-}
-
-.xmimo-tts-sound-pack-option-pending::after {
-  border: 2px solid color-mix(in srgb, var(--xmimo-sound-pack-accent) 35%, transparent);
-  border-top-color: var(--xmimo-sound-pack-accent);
-  background: transparent;
-  content: "";
-  opacity: 1;
-  transform: translateY(-50%);
-  animation: xmimo-tts-sound-pack-spin 700ms linear infinite
-}
-
-@keyframes xmimo-tts-sound-pack-spin {
-  to { transform: translateY(-50%) rotate(360deg) }
-}
-
 .xmimo-tts-sound-pack-option:focus-visible,
 .xmimo-tts-sound-previews button:focus-visible {
   outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
@@ -175,15 +150,6 @@
 .xmimo-tts-sound-pack-option:disabled {
   cursor: not-allowed;
   opacity: .5
-}
-
-.xmimo-tts-sound-preview-section {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 5px;
-  color: var(--dsw-alias-label-primary, #1f2328);
-  font-size: 13px;
 }
 
 .xmimo-tts-sound-previews {
@@ -246,26 +212,4 @@
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap
-}
-
-.xmimo-tts-sound-description {
-  color: var(--dsw-alias-label-tertiary, #8b93a1);
-  font-size: 12px;
-  line-height: 18px
-}
-
-.xmimo-tts-sound-supported {
-  text-align: center;
-  display: inline-block;
-  max-width: 100%;
-  box-sizing: border-box;
-  margin-top: 3px;
-  padding: 5px;
-  border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2, #d7dbe2) 70%, transparent);
-  border-radius: 999px;
-  color: var(--dsw-alias-label-tertiary, #8b93a1);
-  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2, #f7f8fa) 72%, transparent);
-  font-size: 12px;
-  line-height: 14px;
-  overflow-wrap: anywhere
 }

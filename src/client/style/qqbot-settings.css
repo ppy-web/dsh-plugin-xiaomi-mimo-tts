@@ -87,8 +87,6 @@
 .xmimo-passport-status[data-tone="warning"] { background: color-mix(in srgb, #c08a28 12%, var(--xmimo-ui-surface)); }
 .xmimo-passport-status[data-tone="warning"] .xmimo-passport-status-dot { background: #c08a28; }
 .xmimo-passport-status > span:nth-child(2) { flex: 1 1 220px; }
-.xmimo-passport-port { font-size: 12px; color: var(--xmimo-ui-text-muted); }
-.xmimo-passport-port strong { margin-inline-start: 4px; color: var(--xmimo-ui-text); font-variant-numeric: tabular-nums; }
 .xmimo-passport-transfer { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 28px; }
 .xmimo-passport-transfer .xmimo-qq-hint { font-size: 12px; line-height: 1.7; }
 .xmimo-passport-addresses { display: flex; flex-direction: column; gap: 10px; padding: 0; margin: 16px 0 0; list-style: none; }

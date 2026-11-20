@@ -11,7 +11,6 @@
   --xmimo-ui-space-2: 6px;
   --xmimo-ui-space-3: 8px;
   --xmimo-ui-space-4: 10px;
-  --xmimo-ui-space-5: 12px;
 
   --xmimo-ui-module-gap: var(--xmimo-ui-space-3);
   --xmimo-ui-module-padding: var(--xmimo-ui-space-4);
@@ -45,12 +44,6 @@
 .xmimo-ui-grid {
   display: grid;
   min-width: 0;
-}
-
-.xmimo-ui-row {
-  display: flex;
-  min-width: 0;
-  gap: var(--xmimo-ui-module-gap);
 }
 
 /* The stack owns vertical rhythm; modules no longer negotiate margins. */
@@ -140,7 +133,8 @@
   background: var(--xmimo-ui-hover);
 }
 
-.xmimo-ui-module-toggle:focus-visible {
+.xmimo-ui-module-toggle:focus-visible,
+.xmimo-ui-module-title-toggle:focus-visible {
   outline: var(--xmimo-ui-focus);
   outline-offset: -2px;
 }
@@ -166,11 +160,6 @@
   display: flex;
   align-items: flex-start;
   cursor: pointer;
-}
-
-.xmimo-ui-module-title-toggle:focus-visible {
-  outline: var(--xmimo-ui-focus);
-  outline-offset: -2px;
 }
 
 .xmimo-ui-module-head {
@@ -230,12 +219,6 @@
   line-height: 18px;
 }
 
-.xmimo-tts-broadcast .xmimo-ui-summary > .xmimo-tts-preview-tag {
-  --xmimo-tactile-padding: 2px 7px;
-  font-size: 12px;
-  line-height: 18px;
-}
-
 .xmimo-ui-module-body {
   box-sizing: border-box;
   min-width: 0;
@@ -263,19 +246,9 @@
   outline-offset: 1px;
 }
 /* ---------- Module-specific placement using shared dimensions ---------- */
-.xmimo-ui-module .xmimo-tts-api-key-whale {
-  width: var(--xmimo-ui-mascot-size);
-  height: var(--xmimo-ui-mascot-size);
-}
-
 .xmimo-ui-module .xmimo-tts-details-body > * {
   padding-right: var(--xmimo-ui-module-padding);
   padding-left: var(--xmimo-ui-module-padding);
-}
-
-.xmimo-ui-module .xmimo-tts-sound-body {
-  gap: var(--xmimo-ui-space-3);
-  padding: 6px var(--xmimo-ui-module-padding) var(--xmimo-ui-module-padding);
 }
 
 @media (max-width: 480px) {

@@ -2,6 +2,17 @@
  * API key input row: the input, the whale mascot and its speech bubble.
  */
 
+.xmimo-tts-api-key-logo {
+  display: block;
+  width: 88px;
+  height: 12px;
+  max-width: 100%;
+  color: var(--dsw-alias-label-primary, #1f2328);
+  background-color: currentColor;
+  -webkit-mask: var(--xmimo-tts-api-key-logo-image) center / 100% 100% no-repeat;
+  mask: var(--xmimo-tts-api-key-logo-image) center / 100% 100% no-repeat;
+}
+
 .xmimo-tts-api-key-input {
   --xmimo-ui-control-height: 40px;
   position: relative;
@@ -61,8 +72,8 @@
   top: auto;
   right: 8px;
   bottom: calc(100% - 6px);
-  width: 56px;
-  height: 56px;
+  width: var(--xmimo-ui-mascot-size);
+  height: var(--xmimo-ui-mascot-size);
   position: absolute;
   z-index: 2;
   display: block;
@@ -98,7 +109,7 @@
   white-space: nowrap
 }
 
-.xmimo-tts-api-key-bubble, .xmimo-tts-api-key-whale { pointer-events: none; }
+.xmimo-tts-api-key-bubble { pointer-events: none; }
 
 .xmimo-tts-api-key-link[aria-disabled="true"] {
   color: var(--xmimo-ui-text-subtle);

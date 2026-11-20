@@ -96,7 +96,8 @@
 .xmimo-caption-choice:hover:has(input:not(:disabled)), .xmimo-caption-choice:has(input:checked) { border-color: var(--dsw-alias-brand-primary, #4f6ef7) }
 .xmimo-caption-choice:has(input:focus-visible) { outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7); outline-offset: 3px }
 .xmimo-caption-choice input { position: absolute; opacity: 0; width: 1px; height: 1px }
-.xmimo-caption-choice span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100% }
+.xmimo-caption-choice:has(input:disabled) { opacity: .55; cursor: default }
+.xmimo-caption-choice span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: normal; text-align: center; overflow-wrap: anywhere }
 
 .xmimo-caption-siri { position: relative; width: 88px; height: 76px; flex: none; display: grid; place-items: center }
 .xmimo-reading-caption-integrated > .xmimo-caption-siri {
@@ -140,6 +141,3 @@
   }
   .xmimo-caption-siri[data-state="listening"] > div { --xmimo-orb-state-scale: 1.32 }
 }
-
-.xmimo-caption-choice:has(input:disabled) { opacity: .55; cursor: default }
-.xmimo-caption-choice span { white-space: normal; text-align: center; overflow-wrap: anywhere }
