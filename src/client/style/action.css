@@ -34,6 +34,25 @@
   animation: xmimo-pulse 1.2s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .xmimo-tts-audio-line {
+    transform-box: view-box;
+    transform-origin: center;
+    animation: xmimo-tts-audio-wave 880ms ease-in-out infinite backwards;
+  }
+}
+
+@keyframes xmimo-tts-audio-wave {
+  0%,
+  100% {
+    transform: scaleY(0.44);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
 @keyframes xmimo-pulse {
   0%,
   100% {
