@@ -23,6 +23,7 @@ import type { ResolvedTtsSettings } from '../../types/settings.js'
 import { engineMaxTextLength, externalEngine, externalText, splitExternalText } from '../engine-state.js'
 import { readingCaptionText } from './reading-captions.js'
 import type { ReadingCaptions } from './reading-captions.js'
+import { MusicAudioFocus } from './music-audio-focus.js'
 
 interface DuplexJob {
   text: string[]
@@ -77,6 +78,7 @@ function trackPcmProgress() {
 export class LiveSpeechController {
   isBusy = (): boolean => this.requestBusy || this.audioBusy || ['loading', 'playing', 'paused'].includes(this.status)
   constructor(private readonly history?: AudioHistory, private readonly captions?: ReadingCaptions) {}
+  private readonly musicFocus = new MusicAudioFocus()
   private readonly audio = new PcmAudioQueue({
     onBusyChange: (busy) => {
       this.audioBusy = busy
@@ -88,6 +90,7 @@ export class LiveSpeechController {
       this.maybeFinishPlayback()
     },
     onPlaybackStart: () => {
+      this.musicFocus.acquire()
       this.setStatus('playing')
       this.resumeCaptions()
     },
@@ -179,6 +182,7 @@ export class LiveSpeechController {
       return this.sessionId === sessionId && generation === this.streamGeneration && transition === this.pauseTransition
     } catch {
       if (this.sessionId === sessionId && generation === this.streamGeneration && transition === this.pauseTransition) {
+        if (this.audioBusy) this.musicFocus.acquire()
         this.setStatus('playing')
         if (this.audioBusy) this.resumeCaptions()
         this.maybeFinishPlayback()
@@ -192,6 +196,7 @@ export class LiveSpeechController {
     const generation = this.streamGeneration
     const transition = ++this.pauseTransition
     try {
+      if (this.audioBusy) this.musicFocus.acquire()
       await this.audio.resume()
       if (this.sessionId !== sessionId || generation !== this.streamGeneration || transition !== this.pauseTransition) return false
       this.setStatus('playing')
@@ -664,6 +669,7 @@ export class LiveSpeechController {
   }
 
   private setStatus(status: PlaybackStatus): void {
+    if (status === 'paused' || status === 'idle' || status === 'error') this.musicFocus.release()
     if (status === 'idle' || status === 'error') {
       this.pendingCaption = null
       this.captions?.clear(this)

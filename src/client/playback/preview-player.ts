@@ -27,6 +27,7 @@ import { fetchMossAudio } from '../moss-service.js'
 import { playMossAudio } from './moss-playback.js'
 import type { MossAudioHandle } from './moss-playback.js'
 import type { ExternalSpeechSelection } from '../../host-api.js'
+import { MusicAudioFocus } from './music-audio-focus.js'
 
 export type PreviewStatus = 'idle' | 'loading' | 'playing' | 'error'
 export type PreviewSource = 'mimo' | 'doubao' | 'breeze' | 'deepseek' | 'external' | 'local' | null
@@ -118,9 +119,11 @@ async function responseError(response: Response): Promise<PreviewPlaybackError> 
 }
 
 export class PreviewPlayer {
+  private readonly musicFocus = new MusicAudioFocus()
   private readonly pcm = new PcmAudioQueue({
     onBusyChange: (busy) => {
       this.pcmBusy = busy
+      if (!busy && !this.playPending) this.musicFocus.release()
       this.maybeFinishPcm()
     },
     onPlaybackStart: () => { this.remoteStarted = true; this.publish('playing') },
@@ -135,6 +138,7 @@ export class PreviewPlayer {
   private mossHandle: MossAudioHandle | null = null
   private requestBusy = false
   private pcmBusy = false
+  private playPending = false
   private status: PreviewStatus = 'idle'
   private source: PreviewSource = null
   private error: PreviewError | null = null
@@ -174,6 +178,7 @@ export class PreviewPlayer {
     }
     const generation = this.generation
     const localText = externalEngine() ? externalFallbackText(normalized, settings.externalSelection) : engineText(normalized, () => settings.provider === 'breeze' ? stripBreezeAudioTags(normalized) : (settings.provider ?? 'xiaomi') === 'xiaomi' ? stripXiaomiAudioTags(normalized, settings.model === 'mimo-v2.5-tts-voicedesign') : normalized)
+    this.playPending = true
     try {
       if (settings.localSpeechMode === 'local-first') {
         try {
@@ -206,6 +211,11 @@ export class PreviewPlayer {
         this.pcm.stop()
         this.publish('error', this.source, previewError(error))
       }
+    } finally {
+      if (generation === this.generation) {
+        this.playPending = false
+        if (!this.pcmBusy) this.musicFocus.release()
+      }
     }
   }
 
@@ -227,6 +237,8 @@ export class PreviewPlayer {
       if (generation === this.generation) this.publish('idle', 'local')
     } catch (error) {
       if (generation === this.generation) this.publish('error', 'local', previewError(error))
+    } finally {
+      if (generation === this.generation) this.musicFocus.release()
     }
   }
 
@@ -237,6 +249,7 @@ export class PreviewPlayer {
     this.request = null
     this.requestBusy = false
     this.pcmBusy = false
+    this.playPending = false
     this.pcm.stop()
     this.finishAudio?.()
     this.finishAudio = null
@@ -259,6 +272,7 @@ export class PreviewPlayer {
       window.speechSynthesis.cancel()
       this.utterance = null
     }
+    this.musicFocus.release()
     this.publish('idle', null)
     if (this.recording !== null) this.setRecording(null)
   }
@@ -386,7 +400,7 @@ export class PreviewPlayer {
       audio.onended = () => finish()
       audio.onerror = () => finish(new PreviewPlaybackError('request-failed', 'preview-audio-failed'))
       void audio.play().then(() => {
-        if (generation === this.generation) { this.remoteStarted = true; this.publish('playing', source) }
+        if (!settled && generation === this.generation) { this.remoteStarted = true; this.publish('playing', source) }
       }).catch(() => finish(new PreviewPlaybackError('autoplay-blocked', 'preview-audio-blocked')))
     })
   }
@@ -545,6 +559,7 @@ export class PreviewPlayer {
   }
 
   private publish(status: PreviewStatus, source: PreviewSource = this.source, error: PreviewError | null = null): void {
+    if (status === 'playing') this.musicFocus.acquire()
     const nextError = status === 'error' ? error : null
     if (this.status === status && this.source === source && this.error === nextError) return
     this.status = status

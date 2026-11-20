@@ -50,7 +50,7 @@ export function playMossAudio(blob: Blob, options: MossAudioOptions): MossAudioH
     else rejectDone(error)
   }
   const markStarted = (): void => {
-    if (started) return
+    if (settled || started) return
     started = true
     options.onStart?.(audio)
   }

@@ -13,6 +13,7 @@ import { DuplexPcmStream } from './duplex-pcm.js'
 import type { SnapshotSource } from '../plugin-activity.js'
 import { engineCanRequest, engineMaxTextLength, engineText, externalEngine, splitExternalText } from '../engine-state.js'
 import { playSegmentAudio, prefetchSegmentAudio } from './segmented-audio.js'
+import { MusicAudioFocus } from './music-audio-focus.js'
 
 /** VoiceDesign requires complete audio; keep long requests within the configured text limit. */
 function splitVoiceDesignText(text: string, maximum: number): string[] {
@@ -41,9 +42,10 @@ function splitVoiceDesignText(text: string, maximum: number): string[] {
 }
 
 export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsService {
+  private readonly musicFocus = new MusicAudioFocus()
   private readonly audio = new PcmAudioQueue({
-    onBusyChange: (busy) => { this.audioBusy = busy; this.refreshPriority() },
-    onPlaybackStart: () => {},
+    onBusyChange: (busy) => { this.audioBusy = busy; this.refreshActivity() },
+    onPlaybackStart: () => this.musicFocus.acquire(),
   })
   private request: AbortController | null = null
   private generation = 0
@@ -64,10 +66,12 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
     },
   }
 
-  private refreshPriority(): void {
-    const busy = this.priorityGeneration === this.generation && this.isBusy()
-    if (busy === this.priorityBusy) return
-    this.priorityBusy = busy
+  private refreshActivity(): void {
+    const busy = this.isBusy()
+    if (!busy) this.musicFocus.release()
+    const priorityBusy = this.priorityGeneration === this.generation && busy
+    if (priorityBusy === this.priorityBusy) return
+    this.priorityBusy = priorityBusy
     for (const listener of this.priorityListeners) listener()
   }
 
@@ -83,7 +87,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
     if (this.generation === previous) return null
     const generation = this.generation
     if (interrupt !== undefined) this.priorityGeneration = generation
-    this.refreshPriority()
+    this.refreshActivity()
     return () => { if (this.generation === generation) this.stop() }
   }
 
@@ -175,7 +179,10 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
             controller.signal.throwIfAborted()
             void this.history?.add({ blob: result.blob, text: segment, format: 'wav', source: 'service', voiceRateApplied: false })
             await playSegmentAudio(result.blob, { signal: controller.signal, volume: this.volume, voiceRate: settings.voiceRate, automatic: false,
-              onCreated: audio => { this.media = audio }, onReleased: audio => { if (this.media === audio) this.media = null }, onStarted: () => {} })
+              onCreated: audio => { this.media = audio },
+              onReleased: audio => { if (this.media === audio) this.media = null },
+              onStarted: () => this.musicFocus.acquire(),
+            })
           }
           return
         }
@@ -207,7 +214,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
         this.audio.stop()
       }).finally(() => {
         if (this.request === controller) this.request = null
-        this.refreshPriority()
+        this.refreshActivity()
       })
     } catch (error) {
       this.ctx.logger.warn(`xiaomi-mimo-tts: optional PCM playback could not start: ${error instanceof Error ? error.message : String(error)}`)
@@ -221,7 +228,7 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
       this.request?.abort()
       this.request = null
       this.audio.stop()
-      this.refreshPriority()
+      this.refreshActivity()
     } catch (error) {
       this.ctx.logger.warn(`xiaomi-mimo-tts: optional PCM playback could not stop cleanly: ${error instanceof Error ? error.message : String(error)}`)
     }

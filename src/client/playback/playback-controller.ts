@@ -10,6 +10,7 @@ import type { ResolvedTtsSettings } from '../../types/settings.js'
 import { externalEngine, speechRequestBody, splitExternalText } from '../engine-state.js'
 import { mediaCaptionTiming, readingCaptionText } from './reading-captions.js'
 import type { ReadingCaptions } from './reading-captions.js'
+import { MusicAudioFocus } from './music-audio-focus.js'
 
 interface SynthesizedAudio {
   url: string
@@ -24,6 +25,7 @@ export class PlaybackController {
   autoPlayArmedAt = Date.now()
   private view: PlaybackView = { sessionId: null, messageId: null, source: null, status: 'idle', error: null }
   private readonly listeners = new Set<() => void>()
+  private readonly musicFocus = new MusicAudioFocus()
   private readonly automaticallyPlayed = new Set<string>()
   private readonly liveSessions = new Set<string>()
   private readonly completedSessions = new Set<string>()
@@ -203,6 +205,7 @@ export class PlaybackController {
           onReleased: audio => { this.segmentQueue.delete(audio) },
           onStarted: audio => {
             if (generation !== this.generation || this.activeSessionId !== sessionId) return
+            this.musicFocus.acquire()
             audioStarted = true
             this.captions?.show(this, sessionId, readingCaptionText(segments[index]!, this.selection), mediaCaptionTiming(audio))
             this.publish({ sessionId, messageId, source: 'segmented', status: 'playing', error: null })
@@ -213,6 +216,7 @@ export class PlaybackController {
         state.index = index + 1
       }
       if (generation === this.generation && this.activeSessionId === sessionId) {
+        this.musicFocus.release()
         this.segmentedState = null
         this.captions?.clear(this)
         this.publish(this.emptyView())
@@ -220,6 +224,7 @@ export class PlaybackController {
     } catch (error) {
       if (!controller.signal.aborted && generation === this.generation && this.activeSessionId === sessionId) {
         controller.abort()
+        this.musicFocus.release()
         this.captions?.clear(this)
         if (!audioStarted && fallback !== undefined) {
           this.segmentedState = null
@@ -244,6 +249,7 @@ export class PlaybackController {
         try {
           await audio.play()
           if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+          if (!audio.paused) this.musicFocus.acquire()
           this.captions?.show(this, sessionId, this.current.caption, mediaCaptionTiming(audio))
           this.publish({ sessionId, messageId, source: 'complete', status: 'playing', error: null })
         } catch {
@@ -252,6 +258,7 @@ export class PlaybackController {
         }
       } else {
         audio.pause()
+        this.musicFocus.release()
         this.captions?.setPaused(this, true)
         this.publish({ sessionId, messageId, source: 'complete', status: 'paused', error: null })
       }
@@ -327,6 +334,7 @@ export class PlaybackController {
       try {
         await audio.play()
         if (generation !== this.generation || this.activeSessionId !== sessionId || this.current?.audio !== audio) return
+        if (!audio.paused) this.musicFocus.acquire()
         this.captions?.show(this, sessionId, current.caption, mediaCaptionTiming(audio))
         this.publish({ sessionId, messageId, source: 'complete', status: 'playing', error: null })
       } catch {
@@ -370,6 +378,7 @@ export class PlaybackController {
     this.request = null
     this.segmentQueue.clear()
     if (this.current !== null) this.releaseCurrentAudio(this.current.audio)
+    this.musicFocus.release()
   }
 
   private releaseCurrentAudio(audio: HTMLAudioElement): void {
@@ -379,6 +388,7 @@ export class PlaybackController {
     audio.removeEventListener('ended', current.onEnded)
     audio.removeEventListener('error', current.onError)
     audio.pause()
+    this.musicFocus.release()
     audio.removeAttribute('src')
     audio.load()
     URL.revokeObjectURL(current.url)

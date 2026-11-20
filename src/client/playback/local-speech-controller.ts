@@ -7,10 +7,12 @@ import { fetchMossAudio, MossRequestError } from '../moss-service.js'
 import { playMossAudio } from './moss-playback.js'
 import type { MossAudioHandle } from './moss-playback.js'
 import { mediaCaptionTiming, type ReadingCaptions } from './reading-captions.js'
+import { MusicAudioFocus } from './music-audio-focus.js'
 
 export class LocalSpeechController {
   constructor(private readonly captions?: ReadingCaptions) {}
   isBusy = (): boolean => ['loading', 'playing', 'paused'].includes(this.status)
+  private readonly musicFocus = new MusicAudioFocus()
   private queue = this.createQueue()
   private generation = 0
   private active: LiveSpeechCursor | null = null
@@ -396,6 +398,8 @@ export class LocalSpeechController {
   }
 
   private setStatus(status: PlaybackStatus, error: string | null = null): void {
+    if (status === 'playing') this.musicFocus.acquire()
+    else if (status === 'idle' || status === 'error' || status === 'paused') this.musicFocus.release()
     if (status === 'idle' || status === 'error') this.captions?.clear(this)
     if (status === 'paused' || status === 'playing') this.captions?.setPaused(this, status === 'paused')
     if (this.status === status && this.error === error) return

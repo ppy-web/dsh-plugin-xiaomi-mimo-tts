@@ -79,6 +79,7 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 - [dsh-pet · 蓝色大肥鱼桌宠](https://github.com/PC2005-cloud/dsh-pet#readme) 支持播报碎碎念，闲聊消息 `已联动`
 - [dsh-qqbot · 腾讯官方QQ机器人](https://github.com/tencent-connect/dsh-qqbot#readme) 支持向 QQ 推送语音和表情包 `已联动`
 - [dsh-novel · 小说阅读与听书](https://github.com/xrn1997/dsh-novel#readme) 可使用本插件的宿主朗读服务朗读小说 `已联动`
+- [dsh-music-panel · 音乐播放器](https://github.com/Aliboder/dsh-music-panel) 播报时可以自动降低播放器的音量 `已适配`
 - [dsh-Go · dsh 移动端移植](https://github.com/ccch1mneyyy/dsh-Go) 在移动端也可使用本插件 `已适配`
 - [dsh-audio-reactive · 音频响应](https://github.com/ppy-web/dsh-audio-reactive) 随流式播报显示跳动的频谱背景 `已适配`
 - [dsh-speech-provider-adapter · 供应商适配器](https://github.com/ppy-web/dsh-speech-provider-adapter#readme) 为音色工坊管理自定义语音供应商、模型与音色
