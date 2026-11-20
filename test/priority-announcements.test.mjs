@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
+import { Config, readConfig } from '../lib/index.js'
 import { resolveTtsSettings } from '../lib/shared.js'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { withBrowserPlayback } from './helpers/browser-playback.mjs'
@@ -8,6 +9,7 @@ import { withDuplexBrowser } from './helpers/duplex-browser.mjs'
 
 const { AnnouncementPlayback } = await loadClientModule('src/client/announcements/playback.ts')
 const { SpeechActivity } = await loadClientModule('src/client/announcements/speech-activity.ts')
+const { AutomaticReading } = await loadClientModule('src/client/conversation/automatic-reading.ts')
 const { LocalSpeechController } = await loadClientModule('src/client/playback/local-speech-controller.ts')
 const { XiaomiMimoTtsPcmService } = await loadClientModule('src/client/playback/pcm-play-service.ts')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
@@ -27,6 +29,10 @@ async function withService(run, browserOptions = {}, duplexOptions = {}) {
 test('only enabled important alerts interrupt ordinary speech; blocked or cancelled alerts leave it intact', async () => {
   await withService(async ({ service, sockets, state, allow }) => {
     const automaticFocus = new PluginAudioFocus({ canPlay: () => true, claim: () => {}, subscribe: () => () => {} }, service.priorityActivity)
+    const automaticReading = new AutomaticReading()
+    const offPriority = service.priorityActivity.subscribe(() => {
+      if (service.priorityActivity.getSnapshot()) automaticReading.interruptAutomatic()
+    })
     const local = new LocalSpeechController()
     local.activateSession('session')
     const activity = new SpeechActivity()
@@ -35,6 +41,8 @@ test('only enabled important alerts interrupt ordinary speech; blocked or cancel
     const playback = new AnnouncementPlayback(service, activity, undefined, () => priority)
     const important = { source: 'approvals', id: 'approval', text: '请处理审批。', important: true }
     try {
+      automaticReading.observe('session', true)
+      automaticReading.markAutomatic()
       local.playCompleted('session', 'reply', '这是普通朗读。')
       await settle()
       assert.equal(local.isBusy(), true)
@@ -44,7 +52,7 @@ test('only enabled important alerts interrupt ordinary speech; blocked or cancel
       priority = true
       allow(false)
       playback.play(important)
-      assert.equal(local.isBusy(), true, 'voice input, composing or lost audio permission must prevent preemption')
+      assert.equal(local.isBusy(), true, 'voice input or lost audio permission must prevent preemption')
       allow(true)
       const controller = new AbortController()
       controller.abort()
@@ -70,7 +78,11 @@ test('only enabled important alerts interrupt ordinary speech; blocked or cancel
       assert.equal(service.isBusy(), false)
       assert.equal(automaticFocus.canPlay(), true)
       assert.equal(state.utterances.length, 1, 'the interrupted reply must not resume automatically')
-    } finally { off(); local.dispose() }
+      automaticReading.observe('session', false)
+      assert.equal(automaticReading.allowed('session'), false, 'the interrupted turn must stay silent after the alert ends')
+      automaticReading.observe('session', true)
+      assert.equal(automaticReading.allowed('session'), true, 'the next turn may be read automatically')
+    } finally { offPriority(); off(); local.dispose() }
   })
 })
 
@@ -110,16 +122,17 @@ test('priority can replace ordinary PCM while stale cancellation cannot stop its
   })
 })
 
-test('composer input avoidance and priority announcements default off and persist independently', async () => {
-  const user = {}
+test('profiles with the old typing preference can load and save priority announcements', async () => {
+  const user = { inputAvoidance: true, showReadingCaptions: true }
   const scope = {
-    getSnapshot: () => ({ user, value: user }),
+    getSnapshot: () => ({ user, value: readConfig(Config({ ...user })) }),
     async mutate(ops) { for (const op of ops) { if (op.op === 'set') user[op.path[0]] = op.value; else delete user[op.path[0]] } return true },
   }
-  assert.equal(resolveTtsSettings().inputAvoidance, false)
-  assert.equal(resolveTtsSettings().importantAnnouncementsFirst, false)
-  const changes = { inputAvoidance: { kind: 'set' }, importantAnnouncementsFirst: { kind: 'set' } }
-  await saveSettingsDraft(scope, resolveTtsSettings({ inputAvoidance: true, importantAnnouncementsFirst: true }), changes, { xiaomi: '', doubao: '', breeze: '' })
-  assert.deepEqual(user, { inputAvoidance: true, importantAnnouncementsFirst: true })
-  assert.equal(resolveTtsSettings(user).showInHostSettings, true)
+  const { value } = scope.getSnapshot()
+  assert.equal(value.importantAnnouncementsFirst, false)
+  await saveSettingsDraft(scope, { ...value, importantAnnouncementsFirst: true },
+    { importantAnnouncementsFirst: { kind: 'set' } }, { xiaomi: '', doubao: '', breeze: '' })
+  const saved = scope.getSnapshot().value
+  assert.equal(saved.importantAnnouncementsFirst, true)
+  assert.equal(saved.showReadingCaptions, true)
 })

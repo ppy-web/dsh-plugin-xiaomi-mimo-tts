@@ -8,7 +8,7 @@ import { FieldInfo } from './controls/field-info.js'
 import { useNestedDisclosure } from './use-nested-disclosure.js'
 import { useSettingsSearch } from './settings-search-context.js'
 
-export type AnnouncementToggleField = 'voiceRecognitionService' | 'showInHostSettings' | 'showFeatureGuide' | 'inputAvoidance' | 'importantAnnouncementsFirst' | 'showReadingCaptions' | 'showAudioResponse'
+export type AnnouncementToggleField = 'voiceRecognitionService' | 'showInHostSettings' | 'showFeatureGuide' | 'importantAnnouncementsFirst' | 'showReadingCaptions' | 'showAudioResponse'
 
 /** One boolean setting and the actions the heading needs to show and clear its override. */
 export interface AnnouncementToggle {
@@ -53,7 +53,6 @@ const HOST_TOGGLE_ROWS = [
   { field: 'voiceRecognitionService', label: 'settings.voiceRecognitionService', hint: 'settings.voiceRecognitionServiceHint' },
   { field: 'showInHostSettings', label: 'settings.showInHostSettings', hint: 'settings.showInHostSettingsHint' },
   { field: 'showFeatureGuide', label: 'settings.showFeatureGuide', hint: 'settings.showFeatureGuideHint' },
-  { field: 'inputAvoidance', label: 'settings.inputAvoidance', hint: 'settings.inputAvoidanceHint' },
   { field: 'importantAnnouncementsFirst', label: 'settings.importantAnnouncementsFirst', hint: 'settings.importantAnnouncementsFirstHint' },
   { field: 'showReadingCaptions', label: 'settings.readingCaptions', hint: 'settings.readingCaptionsHint' },
   { field: 'showAudioResponse', label: 'settings.audioResponse', hint: 'settings.audioResponseHint' },

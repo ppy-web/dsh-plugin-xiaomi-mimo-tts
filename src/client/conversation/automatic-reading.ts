@@ -43,9 +43,9 @@ export class AutomaticReading implements SnapshotSource<FoldedReplies> {
     if (this.automatic) stop()
     this.automatic = false
   }
-  interruptAutomatic(stop: () => void): void {
+  interruptAutomatic(): void {
     for (const [id, running] of this.running) if (running) this.blocked.add(id)
-    this.stopAutomatic(stop)
+    this.automatic = false
   }
   markAutomatic(): void { this.automatic = true }
   markManual(): void { this.automatic = false }

@@ -102,7 +102,6 @@ export const Config = z.object({
   showReadingCaptions: z.boolean().default(DEFAULT_TTS_SETTINGS.showReadingCaptions).volatile(),
   showAudioResponse: z.boolean().default(DEFAULT_TTS_SETTINGS.showAudioResponse).volatile(),
   audioResponseStyle: z.union(AUDIO_RESPONSE_STYLES).default(DEFAULT_TTS_SETTINGS.audioResponseStyle).volatile(),
-  inputAvoidance: z.boolean().default(DEFAULT_TTS_SETTINGS.inputAvoidance).volatile(),
   importantAnnouncementsFirst: z.boolean().default(DEFAULT_TTS_SETTINGS.importantAnnouncementsFirst).volatile(),
   instruction: z.string().default(DEFAULT_TTS_SETTINGS.instruction).volatile(),
   maxTextLength: z.number().step(1).min(1).default(DEFAULT_TTS_SETTINGS.maxTextLength).volatile(),

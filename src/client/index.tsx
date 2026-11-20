@@ -29,7 +29,6 @@ import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail
 import { ActivationGuide } from './settings/activation-guide.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
 import { VoiceInputActivity } from './voice-input-activity.js'
-import { ComposerInputActivity } from './composer-input-activity.js'
 import { registerVoiceReadingNavIcon } from './settings/nav-icon.js'
 import { observeHostSettingsEntry } from './settings/host-settings-entry.js'
 import { openVoiceWorkbench, registerVoiceSettingsSidebar, VOICE_SETTINGS_PANEL_ID } from './settings/sidebar-action.js'
@@ -114,8 +113,6 @@ export function apply(ctx: Context): void {
   const voiceInput = new VoiceInputActivity(document)
   const tabAudioFocus = new PluginAudioFocus(focusOwner, changes)
   const audioFocus = new PluginAudioFocus(tabAudioFocus, voiceInput)
-  const composerInput = new ComposerInputActivity(document)
-  const announcementAudioFocus = new PluginAudioFocus(audioFocus, composerInput)
   const soundEffects = createSoundEffectsController(audioFocus.canPlay, tabAudioFocus.canPlay)
   const selectSoundSettings = (snapshot: ReturnType<typeof scope.getSnapshot>) => {
     const resolved = resolvedSettingsSnapshot(snapshot)
@@ -151,13 +148,13 @@ export function apply(ctx: Context): void {
     live.interrupt()
     local.interrupt()
     playback.interrupt()
-  }, history, announcementAudioFocus.canPlay)
-  const automaticAudioFocus = new PluginAudioFocus(announcementAudioFocus, pcmService.priorityActivity)
+  }, history, audioFocus.canPlay)
+  const automaticAudioFocus = new PluginAudioFocus(audioFocus, pcmService.priorityActivity)
   questionPlayback = new QuestionTitlePlayback(speechActivity, () => resolveTtsSettings(scope.getSnapshot().value), pcmService.isBusy)
   const automaticReading = new AutomaticReading()
   ctx.effect(() => pcmService.priorityActivity.subscribe(() => {
     playback.resetAutomaticPlayback()
-    if (pcmService.priorityActivity.getSnapshot()) automaticReading.interruptAutomatic(() => {})
+    if (pcmService.priorityActivity.getSnapshot()) automaticReading.interruptAutomatic()
   }), 'xiaomi-mimo-tts: important announcement focus')
   const hostChatSettings = ctx.configForms.get<{ foldedReplies?: 'all' | 'final' }>('ui-chat')
   const updateAutomaticReading = () => automaticReading.update(hostChatSettings.getSnapshot().value?.foldedReplies, () => {
@@ -183,11 +180,11 @@ export function apply(ctx: Context): void {
       return { enabled: snapshot.status === 'ready' && enabled, sources: autoPlay ? announcementSources : announcementSources.filter(source => source !== 'question-titles') }
     }
     const update = ({ enabled, sources }: ReturnType<typeof select>) => {
-      collectors.update(sources, enabled && announcementAudioFocus.canPlay())
+      collectors.update(sources, enabled && audioFocus.canPlay())
       if (!enabled) pcmService.stop()
     }
     const offSettings = observeSettingsSlice(scope, select, update)
-    const offFocus = announcementAudioFocus.subscribe(() => update(select(scope.getSnapshot())))
+    const offFocus = audioFocus.subscribe(() => update(select(scope.getSnapshot())))
     return () => { offSettings(); offFocus(); collectors.dispose() }
   }, 'xiaomi-mimo-tts: announcement collectors')
   ctx.effect(() => {
@@ -209,16 +206,6 @@ export function apply(ctx: Context): void {
     voiceInput.start(soundEffects.playMicrophoneCue)
     return () => voiceInput.dispose()
   }, 'xiaomi-mimo-tts: voice input activity')
-  ctx.effect(() => {
-    const offActivity = composerInput.subscribe(() => {
-      playback.resetAutomaticPlayback()
-      if (!composerInput.getSnapshot()) return
-      automaticReading.interruptAutomatic(() => { live.interrupt(); local.interrupt(); playback.interrupt() })
-      pcmService.stop(); questionPlayback?.stop()
-    })
-    const offSettings = observeSettingsSlice(scope, snapshot => resolvedSettingsSnapshot(snapshot).inputAvoidance, enabled => composerInput.configure(enabled))
-    return () => { offSettings(); offActivity(); composerInput.dispose() }
-  }, 'xiaomi-mimo-tts: composer input avoidance')
   let providerSelectionKey: string | null = null
   ctx.effect(() => observeSettingsSlice(scope, snapshot => {
     const settings = resolvedSettingsSnapshot(snapshot)

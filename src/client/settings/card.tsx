@@ -521,9 +521,9 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
             {state === 'failed' ? <span className="xmimo-tts-failed" role="status">{t(saveError === 'api-key-rejected' ? 'settings.apiKeyUnsupported' : saveError === 'host-rejected' ? 'settings.saveRejected' : saveError === 'provider-count' ? 'settings.providerMinimum' : 'settings.failed')}</span> : null}
             <div className="xmimo-tts-card-action-buttons">
               {state === 'saved' && !dirty ? <span role="status">{t('settings.saved')}</span> : null}
-              <Button type="button" variant="outline" size="sm" className="xmimo-tts-discard" disabled={!writable || !dirty || state === 'saving'} onClick={discard}>
+              {dirty ? <Button type="button" variant="outline" size="sm" className="xmimo-tts-discard" disabled={!writable || state === 'saving'} onClick={discard}>
                 {t('settings.discard')}
-              </Button>
+              </Button> : null}
               <Button type="button" variant="primary" size="sm" className="xmimo-tts-save" disabled={!writable || !saveableDirty || state === 'saving' || validationError !== null} onClick={() => { void save() }}>
                 {state === 'saving' ? t('settings.saving') : t('settings.save')}
               </Button>

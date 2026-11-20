@@ -57,7 +57,6 @@ const ENTRIES = {
   'settings.voiceRecognitionService': { group: 'host', terms: ['settings.voiceRecognitionService', 'settings.voiceRecognitionServiceHint'], aliases: '语音识别 听写 asr speech recognition' },
   'settings.showInHostSettings': { group: 'host', terms: ['settings.showInHostSettings', 'settings.showInHostSettingsHint'] },
   'settings.showFeatureGuide': { group: 'host', terms: ['settings.showFeatureGuide', 'settings.showFeatureGuideHint'] },
-  'settings.inputAvoidance': { group: 'host', terms: ['settings.inputAvoidance', 'settings.inputAvoidanceHint'] },
   'settings.importantAnnouncementsFirst': { group: 'host', terms: ['settings.importantAnnouncementsFirst', 'settings.importantAnnouncementsFirstHint'] },
   'question-titles': { group: 'sources', terms: ['settings.announcementsQuestions', 'settings.announcementsQuestionsHint'] },
   approvals: { group: 'sources', terms: ['settings.announcementsApprovals', 'settings.announcementsApprovalsHint'] },

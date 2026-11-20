@@ -25,17 +25,18 @@
   gap: inherit
 }
 
-/* Reserve one column for both actions, even inside a narrow host panel. */
+/* Keep the rendered actions together, even inside a narrow host panel. */
 .xmimo-tts-card-action-buttons {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   flex: 0 0 auto;
   align-items: center;
   gap: inherit
 }
 
-.xmimo-tts-card-action-buttons:has([role="status"]) {
-  grid-template-columns: auto repeat(2, 1fr)
+.xmimo-tts-card-action-buttons:has(> [role="status"]) {
+  grid-template-columns: auto
 }
 
 .xmimo-tts-card-actions > span {

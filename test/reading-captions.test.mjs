@@ -300,7 +300,7 @@ test('host integration keeps captions and audio response controls off the voice 
 
 test('Host integration presents one shared override action for multiple overridden switches', () => {
   const toggles = Object.fromEntries(ANNOUNCEMENT_TOGGLE_FIELDS.map(field => [field, {
-    value: false, overridden: field === 'inputAvoidance' || field === 'voiceRecognitionService', onChange() {}, onReset() {},
+    value: false, overridden: field === 'importantAnnouncementsFirst' || field === 'voiceRecognitionService', onChange() {}, onReset() {},
   }]))
   const html = renderToStaticMarkup(createElement(AnnouncementSettings, {
     t: key => key, sources: [], writable: true, sourcesOverridden: false, toggles,
@@ -310,7 +310,7 @@ test('Host integration presents one shared override action for multiple overridd
   assert.equal((host.match(/settings\.overridden/gu) ?? []).length, 1)
   assert.equal((host.match(/settings\.reset/gu) ?? []).length, 1)
   assert.match(host, /aria-label="settings\.voiceRecognitionService"/u)
-  assert.match(host, /aria-label="settings\.inputAvoidance"/u)
+  assert.match(host, /aria-label="settings\.importantAnnouncementsFirst"/u)
 })
 
 test('caption history follows one playback and session across pauses', () => {

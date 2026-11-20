@@ -70,7 +70,6 @@ export interface TtsSettings {
   showReadingCaptions?: boolean
   showAudioResponse?: boolean
   audioResponseStyle?: AudioResponseStyle
-  inputAvoidance?: boolean
   importantAnnouncementsFirst?: boolean
   instruction?: string
   maxTextLength?: number
@@ -134,7 +133,6 @@ export interface ResolvedTtsSettings {
   showReadingCaptions: boolean
   showAudioResponse: boolean
   audioResponseStyle: AudioResponseStyle
-  inputAvoidance: boolean
   importantAnnouncementsFirst: boolean
   instruction: string
   maxTextLength: number
@@ -199,7 +197,6 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   showReadingCaptions: false,
   showAudioResponse: false,
   audioResponseStyle: 'aura-field',
-  inputAvoidance: false,
   importantAnnouncementsFirst: false,
   instruction: '',
   maxTextLength: 12000,

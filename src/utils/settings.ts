@@ -67,7 +67,6 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     showReadingCaptions: resolved.showReadingCaptions === true,
     showAudioResponse: resolved.showAudioResponse === true,
     audioResponseStyle: AUDIO_RESPONSE_STYLES.includes(resolved.audioResponseStyle) ? resolved.audioResponseStyle : DEFAULT_TTS_SETTINGS.audioResponseStyle,
-    inputAvoidance: resolved.inputAvoidance === true,
     importantAnnouncementsFirst: resolved.importantAnnouncementsFirst === true,
     soundVolume,
     voiceVolume,
