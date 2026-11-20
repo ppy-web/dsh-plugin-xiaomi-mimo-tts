@@ -26,6 +26,7 @@ import details from './details.css?raw'
 import preview from './preview.css?raw'
 import sections from './sections.css?raw'
 import sound from './sound.css?raw'
+import portrait from './portrait.css?raw'
 import volume from './volume.css?raw'
 import voiceReading from './voice-reading.css?raw'
 import readScope from './read-scope.css?raw'
@@ -54,6 +55,7 @@ export const CLIENT_STYLES = [
   preview,
   sections,
   sound,
+  portrait,
   volume,
   voiceReading,
   readScope,

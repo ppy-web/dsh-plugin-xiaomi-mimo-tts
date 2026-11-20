@@ -13,9 +13,10 @@ import { hostRoute } from '../host-route.js'
 import { SOURCE_URL } from './plugin-links.js'
 
 const HIGHLIGHTS = [
+  'onboarding.featurePortraitCards',
+  'onboarding.featureResponseOrb',
+  'onboarding.featureMusicDucking',
   'onboarding.featureDshGo',
-  'onboarding.featureAvatarStyles',
-  'onboarding.featureNovelIntegration',
   'onboarding.featureDeepseekVoice',
 ] as const
 

@@ -286,10 +286,6 @@
   .xmimo-tts-card-minimal .xmimo-tts-switch-row {
     gap: 5px;
   }
-
-  .xmimo-tts-card-minimal .xmimo-tts-character-copy strong {
-    font-size: 12px;
-  }
 }
 
 @media (pointer: coarse) {

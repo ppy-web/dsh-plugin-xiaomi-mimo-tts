@@ -477,7 +477,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           onMossEnabledChange={actions.changeMossEnabled}
           onProviderEnabledChange={actions.changeProviderEnabled}
         />
-        {soundEnabled ? <SettingsSounds
+        {!minimalMode || soundEnabled ? <SettingsSounds
           t={t}
           controller={controller}
           enabled={soundEnabled}
@@ -487,6 +487,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           clickSounds={draft.clickSounds}
           writable={writable}
           minimal={minimalMode}
+          provider={provider}
           open={openPanel === 'sound'}
           onToggle={actions.toggleSound}
           onScopeChange={actions.changeSoundScope}

@@ -140,28 +140,19 @@
   background-position: right center
 }
 
-.xmimo-tts-character-copy {
-  position: relative;
-  z-index: 2;
-  display: flex !important;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px
+/* A user-uploaded portrait fills the card instead of the packed sprite cell. */
+.xmimo-tts-character-portrait-custom {
+  overflow: hidden;
+  background: none
 }
 
-.xmimo-tts-character-copy strong {
-  color: var(--dsw-alias-label-primary, #1f2328);
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 20px
-}
-
-.xmimo-tts-character-copy small {
-  min-height: 17px;
-  color: var(--dsw-alias-label-tertiary, #8b93a1);
-  font-size: 11px;
-  line-height: 17px
+.xmimo-tts-character-portrait-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: center;
+  transition: transform 140ms ease
 }
 
 .xmimo-tts-character-state {
@@ -283,15 +274,15 @@
   transform: rotateY(180deg)
 }
 
+/* Custom provider portrait doubles the same image on both sides so the flip keeps working. */
+.xmimo-tts-provider-face-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden
+}
+
 .xmimo-tts-provider-state svg {
   width: 12px;
   height: 12px
-}
-
-.xmimo-tts-provider-toggle .xmimo-tts-character-copy,
-.xmimo-tts-provider-toggle .xmimo-tts-character-copy strong {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap
 }

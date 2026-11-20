@@ -2,7 +2,7 @@
 export const TTS_SETTINGS_NAMESPACE = 'xiaomi-mimo-tts'
 
 /** Keep the UI version visible without making the browser bundle load package.json. */
-export const TTS_VERSION = '5.5.2'
+export const TTS_VERSION = '5.6.0'
 
 /** Breeze accepts at most 1000 characters in one synthesis request. */
 export const BREEZE_MAX_TEXT_LENGTH = 1000
@@ -85,6 +85,12 @@ export const TTS_UPDATE_CELEBRATION_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/upda
 
 /** Same-origin QR code for the plugin's QQ discussion group. */
 export const TTS_QQ_GROUP_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/qq-group.webp'
+
+/** Custom portrait library: GET returns the manifest, POST uploads one slot, DELETE resets one slot. */
+export const TTS_PORTRAITS_ROUTE = '/plugins/xiaomi-mimo-tts/portraits'
+
+/** Serves one uploaded custom portrait image for a slot. */
+export const TTS_PORTRAIT_IMAGE_ROUTE = '/plugins/xiaomi-mimo-tts/portrait-image'
 
 /** Public QQ discussion group the plugin links to. */
 export const TTS_QQ_GROUP_NUMBER = '1104616387'

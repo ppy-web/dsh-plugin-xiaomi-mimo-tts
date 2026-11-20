@@ -1,5 +1,6 @@
 export * from './models.js'
 export * from './settings.js'
 export * from './sound.js'
+export * from './portrait.js'
 export * from './playback.js'
 export * from './providers.js'

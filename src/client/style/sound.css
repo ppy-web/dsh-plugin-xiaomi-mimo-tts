@@ -8,9 +8,9 @@
 
 .xmimo-tts-sound-body {
   box-sizing: border-box;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(280px, calc(50% - 6px))), 1fr));
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   min-height: 0;
   overflow: hidden;
   gap: var(--xmimo-ui-space-3);
@@ -19,6 +19,62 @@
 
 .xmimo-tts-sound-body > * {
   min-width: 0;
+}
+
+/* Sound pack on the left; scope, volume and previews stacked on the right. */
+.xmimo-tts-sound-layout {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  align-items: stretch;
+  gap: var(--xmimo-ui-space-3);
+}
+
+.xmimo-tts-sound-layout > .xmimo-tts-sound-scope-section {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.xmimo-tts-sound-layout > .xmimo-tts-sound-volume {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.xmimo-tts-sound-layout > .xmimo-tts-sound-pack {
+  height: 100%;
+  grid-column: 1;
+  grid-row: 1 / span 3;
+}
+
+.xmimo-tts-sound-layout > .xmimo-tts-sound-preview-section {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.xmimo-tts-sound-layout .xmimo-tts-sound-pack-grid {
+  flex: 1 1 auto;
+  grid-auto-rows: 1fr;
+}
+
+@media (max-width: 760px) {
+  .xmimo-tts-sound-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .xmimo-tts-sound-layout > .xmimo-tts-sound-scope-section,
+  .xmimo-tts-sound-layout > .xmimo-tts-sound-volume,
+  .xmimo-tts-sound-layout > .xmimo-tts-sound-pack,
+  .xmimo-tts-sound-layout > .xmimo-tts-sound-preview-section {
+    height: auto;
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .xmimo-tts-sound-layout > .xmimo-tts-sound-pack {
+    order: -1;
+  }
 }
 
 .xmimo-tts-sound-scope-section,
@@ -62,7 +118,7 @@
   align-items: center;
   justify-content: space-between;
   min-width: 0;
-  min-height: 52px;
+  min-height: 48px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--xmimo-sound-pack-accent) 26%, var(--dsw-alias-border-l2, #d7dbe2));
   border-radius: 14px;
@@ -155,8 +211,8 @@
 .xmimo-tts-sound-previews {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
-  gap: 5px;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 4px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding: 0 1px 4px
@@ -168,10 +224,10 @@
   min-width: 0;
   align-items: center;
   flex-direction: column;
-  gap: 5px;
+  gap: 2px;
   border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 10px 5px 8px;
+  border-radius: 8px;
+  padding: 5px 3px 4px;
   color: var(--dsw-alias-label-secondary, #5f6875);
   background: transparent;
   font: inherit;
@@ -181,6 +237,8 @@
 }
 
 .xmimo-tts-sound-previews button>svg {
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
   transition: transform 160ms ease
 }

@@ -1,7 +1,7 @@
 import type { LocaleKey, Translate } from '../localization.js'
 import type { TtsProvider } from '../../types/providers.js'
 
-export type SearchGroup = 'switches' | 'credentials' | 'mixer' | 'playback' | 'local' | 'preview' | 'providers' | 'host' | 'sources' | 'integrations' | 'sound' | 'footer'
+export type SearchGroup = 'switches' | 'credentials' | 'mixer' | 'playback' | 'local' | 'preview' | 'providers' | 'host' | 'sources' | 'integrations' | 'sound' | 'portraits' | 'footer'
 
 const GROUPS: Record<SearchGroup, readonly LocaleKey[]> = {
   switches: [],
@@ -15,6 +15,7 @@ const GROUPS: Record<SearchGroup, readonly LocaleKey[]> = {
   sources: ['settings.previewTitle', 'settings.announcementsTitle'],
   integrations: ['settings.previewTitle', 'settings.announcementsPlugins'],
   sound: ['settings.soundEffectsTitle'],
+  portraits: ['settings.personalizationTitle', 'settings.portraitCardsTitle'],
   footer: [],
 }
 
@@ -72,6 +73,7 @@ const ENTRIES = {
   soundVolume: { group: 'sound', terms: ['settings.soundEffectsVolume'] },
   soundPack: { group: 'sound', terms: ['settings.soundEffectsPack'] },
   soundPreview: { group: 'sound', terms: ['settings.soundEffectsPreviewLabel'] },
+  portraitCards: { group: 'portraits', terms: ['settings.portraitCardsTitle', 'settings.personalizationTitle', 'settings.portraitCardsHint', 'settings.portraitUpload', 'settings.portraitReplace', 'settings.portraitReset'], aliases: '立绘 形象 自定义头像 图片 portrait avatar image' },
   sidebar: { group: 'footer', terms: ['settings.mountSidebar', 'settings.unmountSidebar', 'settings.sidebarPlacementHint'] },
   minimalMode: { group: 'footer', terms: ['settings.minimalMode', 'settings.defaultModeShort'] },
 } satisfies Record<string, SearchEntry>

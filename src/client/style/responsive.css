@@ -31,9 +31,6 @@
     padding-right: 6px;
     padding-left: 6px
   }
-  .xmimo-tts-character-copy small {
-    max-width: 120px
-  }
   .xmimo-tts-character-state {
     top: 6px;
     right: 6px;
@@ -42,6 +39,9 @@
   .xmimo-tts-switch-module .xmimo-tts-character-portrait {
     width: 76px;
     height: 69px
+  }
+  .xmimo-tts-switch-module .xmimo-tts-character-control {
+    min-height: 96px
   }
   .xmimo-tts-api-key .xmimo-tts-field-heading {
     min-height: 20px;

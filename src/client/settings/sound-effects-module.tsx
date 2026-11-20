@@ -5,9 +5,11 @@ import { RiDiscLine } from 'react-icons/ri'
 import { resolveSoundEffectsMode, resolveSoundEffectsScope, SOUND_PACKS, SOUND_EFFECTS_SCOPES } from '../../shared.js'
 import type { SoundEffectsMode, SoundEffectsScope, SoundPack } from '../../shared.js'
 import type { Translate } from '../localization.js'
+import type { TtsProvider } from '../../types/providers.js'
 import { LensSlider } from './controls/lens-slider.js'
 import type { SoundEffectsController, SoundCue } from '../sound-effects/types.js'
 import { CollapsibleModule } from './collapsible-module.js'
+import { PortraitCards } from './portrait-cards.js'
 import { SoundEffectIcon } from '../sound-effects/sound-effect-icon.js'
 import { SoundPackIcon } from '../sound-effects/sound-pack-icon.js'
 import { useSettingsSearch } from './settings-search-context.js'
@@ -22,6 +24,7 @@ interface SoundEffectsPanelProps {
   clickSounds: boolean
   writable: boolean
   minimal: boolean
+  provider: TtsProvider
   open: boolean
   onToggle: () => void
   onScopeChange: (scope: SoundEffectsScope) => void
@@ -47,7 +50,7 @@ const SOUND_PACK_COLORS: Record<SoundPack, string> = {
 }
 
 /** Collapsible sound library, followed by the Broadcast Desk. */
-export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, minimal, open, onToggle, onScopeChange, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
+export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, minimal, provider, open, onToggle, onScopeChange, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
   const { hide } = useSettingsSearch()
   const packOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const mode: SoundEffectsMode = resolveSoundEffectsMode(enabled, taskSounds, clickSounds)
@@ -95,9 +98,9 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
   const previewLabel = (cue: SoundCue): string => t(`settings.soundEffectsPreview.${cue}` as Parameters<Translate>[0])
   return <CollapsibleModule
     className="xmimo-tts-settings-module xmimo-tts-sound-effects xmimo-ui-module"
-    title={<span className="xmimo-ui-module-title"><RiDiscLine size={14} aria-hidden="true" focusable="false" />{t('settings.soundEffectsTitle')}</span>}
-    ariaLabel={t('settings.soundEffectsTitle')}
-    searchGroups={['sound']}
+    title={<span className="xmimo-ui-module-title"><RiDiscLine size={14} aria-hidden="true" focusable="false" />{t(minimal ? 'settings.soundEffectsTitle' : 'settings.personalizationTitle')}</span>}
+    ariaLabel={t(minimal ? 'settings.soundEffectsTitle' : 'settings.personalizationTitle')}
+    searchGroups={minimal ? ['sound'] : ['sound', 'portraits']}
     summary={<span className="xmimo-tts-sound-summary xmimo-ui-summary">
       <span>{modeLabel}</span>
       <span>{t('settings.soundEffectsVolume')} {Math.round(volume * 100)}%</span>
@@ -107,6 +110,8 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     onToggle={onToggle}
   >
     <div className="xmimo-tts-sound-body xmimo-ui-module-body">
+      {minimal ? null : <PortraitCards t={t} provider={provider} writable={writable} />}
+      {enabled ? <div className="xmimo-tts-sound-layout">
       <div className="xmimo-tts-sound-scope-section" hidden={hide('soundScope')}>
         <span>{t('settings.soundEffectsScope')}</span>
         <SegmentedControl
@@ -174,6 +179,7 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
           </button>)}
         </div>
       </div>
+      </div> : null}
       {!writable ? <small>{t('settings.readOnly')}</small> : null}
     </div>
   </CollapsibleModule>
