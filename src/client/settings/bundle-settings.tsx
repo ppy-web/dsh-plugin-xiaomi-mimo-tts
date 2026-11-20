@@ -4,14 +4,17 @@ import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { resolveTtsSettings } from '../../shared.js'
 import { NS } from '../localization.js'
-import { SettingsCard } from './card.js'
+import { lazyPanel } from '../lazy-panel.js'
 import type { SettingsCardProps } from './card.js'
 import { useSettingsSnapshot } from './scope.js'
+
+const SettingsCard = lazyPanel(() => import('./voice-settings-page.js').then(module => module.SettingsCard))
 
 /** Mounted workbenches are configured in their own panel instead of twice. */
 export function BundleSettingsCard(props: SettingsCardProps): ReactElement | null {
   const snapshot = useSettingsSnapshot(props.scope)
-  if (props.view === 'page' && snapshot.status === 'ready' && resolveTtsSettings(snapshot.value).showInSidebar) return null
+  if (props.view === 'summary') return <>{props.t('settings.description')}</>
+  if (snapshot.status === 'ready' && resolveTtsSettings(snapshot.value).showInSidebar) return null
   return <SettingsCard {...props} />
 }
 

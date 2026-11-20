@@ -1,12 +1,25 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, globSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const packagePath = fileURLToPath(new URL('../../package.json', import.meta.url))
-const backupPath = fileURLToPath(new URL('../../.package-scripts-backup.json', import.meta.url))
-const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
+const root = fileURLToPath(new URL('../../', import.meta.url))
+const { files, scripts: _scripts, publishConfig, ...manifest } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+const { directory, linkDirectory: _linkDirectory, ...publishedConfig } = publishConfig
+const destination = join(root, directory)
 
-if (packageJson.scripts !== undefined) {
-  writeFileSync(backupPath, `${JSON.stringify(packageJson.scripts, null, 2)}\n`)
-  delete packageJson.scripts
-  writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`)
+const include = files.filter(pattern => !pattern.startsWith('!')).flatMap(pattern => [pattern, `${pattern}/**`])
+const exclude = files.filter(pattern => pattern.startsWith('!')).map(pattern => pattern.slice(1))
+const includedFiles = globSync(include, { cwd: root, exclude })
+  .filter(path => lstatSync(join(root, path)).isFile())
+  .map(path => path.split(sep).join('/'))
+  .sort()
+
+// Explicit paths keep stale build output from a previous pack out of the next one.
+for (const path of includedFiles) {
+  const dest = join(destination, path)
+  mkdirSync(dirname(dest), { recursive: true })
+  copyFileSync(join(root, path === 'README.md' ? 'intro.md' : path), dest)
 }
+
+const published = { ...manifest, files: includedFiles, publishConfig: publishedConfig }
+writeFileSync(join(destination, 'package.json'), `${JSON.stringify(published, null, 2)}\n`)

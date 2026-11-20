@@ -112,13 +112,11 @@
   .xmimo-tts-switch-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .xmimo-tts-provider-settings > small { grid-column: 1 / -1; display: block; color: var(--xmimo-ui-text-muted); }
-.xmimo-tts-announcement-source > .xmimo-tts-more-provider-brand { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
 .xmimo-tts-provider-settings-brand { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; line-height: 24px; }
 .xmimo-tts-provider-settings-brand img { flex: none; width: 24px; height: 24px; object-fit: contain; }
 .xmimo-tts-provider-settings-local { flex-wrap: wrap; }
 .xmimo-tts-provider-plug { flex: none; color: var(--xmimo-ui-brand); }
 .xmimo-tts-external-provider-copy { flex: 1; }
-.xmimo-tts-breeze-wordmark { display: block; flex: none; width: 156px; height: 24px; background: var(--dsw-alias-label-primary, #1f2328); mask: var(--xmimo-breeze-wordmark) left center / 100% 100% no-repeat; -webkit-mask: var(--xmimo-breeze-wordmark) left center / 100% 100% no-repeat; }
 .xmimo-tts-preview-input > textarea:focus-visible { outline: var(--xmimo-ui-focus); }
 /* The tag palette is body-portaled so the broadcast frame cannot clip it. */
 .xmimo-tts-breeze-audio-tags { display: flex; min-width: 0; }

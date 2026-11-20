@@ -10,6 +10,8 @@ import { TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../../shared.js'
 import { hostRoute } from '../host-route.js'
 import { SettingsSearchInput } from './settings-search-input.js'
 
+export { SettingsCard }
+
 export type VoiceSettingsPageProps = Omit<SettingsCardProps, 'view' | 'renderHeader'> & { onOpenPluginSettings: () => void }
 
 /** Shared settings and playback services inside the host's independent main panel. */

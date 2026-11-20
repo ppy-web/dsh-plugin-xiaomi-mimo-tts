@@ -10,14 +10,13 @@ function FallbackAvatar({ label, fallback, compact = false }: VoiceAvatarProps):
   return <span className={`${className} xmimo-tts-voice-avatar-fallback`} aria-hidden="true">{fallback ?? Array.from(label.trim())[0]}</span>
 }
 
-// The Host supplies this package-local loader; standalone Vite uses native imports.
-declare const __DSH_CLIENT_BUNDLE__: boolean | undefined
-declare const require: { async(id: string): Promise<typeof import('./generated-voice-avatar.js')> }
-const GeneratedVoiceAvatar = lazy(() => Promise.resolve().then(() => (
-  typeof __DSH_CLIENT_BUNDLE__ !== 'undefined' && __DSH_CLIENT_BUNDLE__
-    ? require.async('./client.generated-voice-avatar.js')
-    : import('./generated-voice-avatar.js')
-)).catch(() => ({ default: FallbackAvatar })))
+const GeneratedVoiceAvatar = lazy(async () => {
+  try {
+    return await import('./generated-voice-avatar.js')
+  } catch {
+    return { default: FallbackAvatar }
+  }
+})
 
 export function VoiceAvatar(props: VoiceAvatarProps): ReactElement {
   const style = useContext(AvatarStyleContext)

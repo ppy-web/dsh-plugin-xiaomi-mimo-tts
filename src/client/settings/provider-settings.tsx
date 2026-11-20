@@ -1,7 +1,7 @@
-import type { CSSProperties, ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { Switch, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import { RiPlugLine } from 'react-icons/ri'
-import { TTS_BREEZE_WORDMARK_ASSET_ROUTE, TTS_MOSS_LOGO_ASSET_ROUTE, TTS_PROVIDER_LOGO_ASSET_ROUTES } from '../../shared.js'
+import { TTS_MOSS_LOGO_ASSET_ROUTE, TTS_PROVIDER_LOGO_ASSET_ROUTES } from '../../shared.js'
 import { availableTtsProviders } from '../../types/providers.js'
 import type { OptionalTtsProvider } from '../../types/providers.js'
 import type { Translate } from '../localization.js'
@@ -50,8 +50,8 @@ export function ProviderSettings({
       <Switch checked={doubaoEnabled} disabled={locked(doubaoEnabled)} label="DouBao Seed" onChange={next => onProviderEnabledChange('doubao', next)} />
     </div>
     <div className="xmimo-tts-announcement-source" hidden={hide('breezeEnabled')}>
-      <span className="xmimo-tts-more-provider-brand">
-        <span className="xmimo-tts-breeze-wordmark" role="img" aria-label="Breeze Blue" style={{ '--xmimo-breeze-wordmark': `url(${hostRoute(TTS_BREEZE_WORDMARK_ASSET_ROUTE)})` } as CSSProperties} />
+      <span className="xmimo-tts-provider-settings-brand">
+        <img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES.breeze)} alt="" /><span>Breeze Blue</span>
         <Tag tone="info" className="xmimo-tts-experimental-tag">{t('settings.experimental')}</Tag>
       </span>
       <Switch checked={breezeEnabled} disabled={locked(breezeEnabled)} label={t('settings.breezeEnabled')} onChange={next => onProviderEnabledChange('breeze', next)} />

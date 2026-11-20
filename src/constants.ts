@@ -70,7 +70,6 @@ export const TTS_PROVIDER_LOGO_ASSET_ROUTES = {
 } as const
 
 /** Breeze Blue wordmark used by the optional provider setting. */
-export const TTS_BREEZE_WORDMARK_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/provider-breeze-logo-light.png'
 
 /** MOSS-Nano logo supplied for the optional local voice provider. */
 export const TTS_MOSS_LOGO_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/provider-moss-logo.svg'

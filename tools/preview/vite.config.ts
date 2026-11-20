@@ -37,7 +37,6 @@ const assetFiles = new Map([
   ['provider-doubao-logo.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-doubao-logo.png')],
   ['provider-deepseek-logo.svg', path.join(repositoryRoot, 'assets', 'ui', 'provider-deepseek-logo.svg')],
   ['provider-breeze-logo.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-breeze-logo.png')],
-  ['provider-breeze-logo-light.png', path.join(repositoryRoot, 'assets', 'ui', 'provider-breeze-logo-light.png')],
 ])
 
 function resolvePreviewAsset(url: string | undefined): string | undefined {

@@ -36,13 +36,15 @@ import { readMinimalMode, writeMinimalMode } from './minimal-mode.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
 import type { AudioHistory } from '../history/audio-history.js'
-import { AudioHistoryPage } from '../history/audio-history-page.js'
+import { lazyPanel } from '../lazy-panel.js'
 import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
 import type { SpeechActivity } from '../announcements/speech-activity.js'
 import { isSpeechBusy } from '../announcements/speech-activity.js'
 import type { AudioFocus } from '../playback/tab-audio-focus.js'
 import { SettingsSearchContext } from './settings-search-context.js'
 import { searchSettings } from './settings-search.js'
+
+const AudioHistoryPage = lazyPanel(() => import('../history/audio-history-page.js').then(module => module.AudioHistoryPage))
 
 export interface SettingsCardProps {
   view: 'summary' | 'page'

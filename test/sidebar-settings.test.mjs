@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { resolveTtsSettings } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
+import { renderCompleted } from './helpers/render-completed.mjs'
 
 const { openVoiceWorkbench, registerVoiceSettingsSidebar, VOICE_SETTINGS_PANEL_ID } = await loadClientModule('src/client/settings/sidebar-action.tsx')
 const { SidebarSettings } = await loadClientModule('src/client/settings/sidebar-settings.tsx')
@@ -56,7 +57,7 @@ test('workbench entry follows the latest saved placement and falls back to plugi
   assert.deepEqual(h.selected, [VOICE_SETTINGS_PANEL_ID])
 })
 
-test('saved shortcut opens a standalone settings page using the shared configuration and controls', () => {
+test('saved shortcut opens a standalone settings page using the shared configuration and controls', async () => {
   const h = host()
   const dispose = registerVoiceSettingsSidebar(h.ctx, h.page)
   assert.equal(h.entries.size, 1)
@@ -72,7 +73,7 @@ test('saved shortcut opens a standalone settings page using the shared configura
   assert.ok(icon.includes('<svg'), 'the host receives a glyph for its native row')
   assert.equal(panel.options.inject().scope, h.scope)
   assert.equal(panel.options.inject().controller, h.page.controller)
-  const html = renderToStaticMarkup(createElement(panel.component, panel.options.inject()))
+  const html = await renderCompleted(createElement(panel.component, panel.options.inject()))
   assert.match(html, /<h1\b[^>]*>[\s\S]*?settings\.voiceSettingsNav[\s\S]*?<\/h1>/u)
   assert.ok(html.includes('type="password"'), 'provider credentials remain editable on the standalone page')
   assert.deepEqual(h.opened, [], 'opening settings must not navigate to plugin management')
@@ -124,12 +125,12 @@ test('native More navigation keeps the destination and stable entry identity acr
   } finally { dispose() }
 })
 
-test('the independent settings page opens its mixer by default', () => {
+test('the independent settings page opens its mixer by default', async () => {
   const h = host({ enabled: true })
   const dispose = registerVoiceSettingsSidebar(h.ctx, h.page)
   try {
     const panel = [...h.entries.values()].find(entry => entry.options.name === 'main')
-    const html = renderToStaticMarkup(createElement(panel.component, panel.options.inject()))
+    const html = await renderCompleted(createElement(panel.component, panel.options.inject()))
     const mixer = html.match(/<button\b[^>]*aria-label="settings.detailedVoiceConfig"[^>]*>/u)?.[0]
     assert.ok(mixer)
     assert.ok(mixer.includes('aria-expanded="true"'))
@@ -159,19 +160,19 @@ test('sidebar placement action reflects saved state and disables interaction whi
   }
 })
 
-test('mounted workbench replaces the bundle config form with a detail action, and exit restores the form', () => {
+test('mounted workbench replaces the bundle config form with a detail action, and exit restores the form', async () => {
   const h = host()
   const subject = { kind: 'bundle', pkg: { name: 'dsh-xiaomi-tts' } }
-  const form = () => renderToStaticMarkup(createElement(BundleSettingsCard, { ...h.page, view: 'page' }))
+  const form = () => renderCompleted(createElement(BundleSettingsCard, { ...h.page, view: 'page' }))
   const actions = () => renderToStaticMarkup(createElement(PluginDetailActions, { subject, scope: h.scope, t, onOpenWorkbench() {} }))
   const actionCount = () => (actions().match(/<button\b/gu) ?? []).length
   const baseActions = actionCount()
-  assert.ok(form().includes('type="password"'), 'unmounted workbench stays editable in plugin details')
+  assert.match(await form(), /type="password"/u, 'unmounted workbench stays editable in plugin details')
   h.update({ showInSidebar: true })
-  assert.equal(form(), '', 'mounting must not leave a second copy of the settings form')
+  assert.equal(await form(), '', 'mounting must not leave a second copy of the settings form')
   assert.equal(actionCount(), baseActions + 1, 'mounting exposes one additional navigation button in plugin details')
   h.update({ showInSidebar: false })
-  assert.ok(form().includes('type="password"'))
+  assert.ok((await form()).includes('type="password"'))
   assert.equal(actionCount(), baseActions, 'unmounting removes the navigation button')
 })
 

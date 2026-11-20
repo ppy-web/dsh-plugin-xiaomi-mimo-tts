@@ -19,7 +19,7 @@ import { copyText } from './copy-text.js'
 import { passportAsrTestError, requestPassportAsrTest } from './passport-asr-test.js'
 import type { PassportAsrTestFailure } from './passport-asr-test.js'
 
-interface Props extends PluginConfigViewProps {
+export interface PassportSettingsProps extends PluginConfigViewProps {
   scope: ConfigForm<PassportSettings>
   ttsScope: ConfigForm<TtsSettings>
   t: Translate
@@ -40,12 +40,12 @@ const GROUPS = [
 
 interface Draft { base: PassportSettings; value: PassportSettings; revision: number }
 
-export function PassportSettingsPage(props: Props): ReactElement {
+export function PassportSettingsPage(props: PassportSettingsProps): ReactElement {
   if (props.view === 'summary') return <>{props.t('passport.description')}</>
   return <PassportForm {...props} />
 }
 
-function PassportForm({ scope, ttsScope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured, connectionStatus, presets, openTtsSettings, guideHref = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport' }: Props): ReactElement {
+function PassportForm({ scope, ttsScope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured, connectionStatus, presets, openTtsSettings, guideHref = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport' }: PassportSettingsProps): ReactElement {
   const id = useId()
   const snapshot = useSettingsSnapshot(scope)
   const ttsSnapshot = useSettingsSnapshot(ttsScope)

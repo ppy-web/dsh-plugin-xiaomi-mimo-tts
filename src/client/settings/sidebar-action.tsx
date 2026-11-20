@@ -6,8 +6,10 @@ import type { ReactElement } from 'react'
 import { RiVoiceAiFill } from 'react-icons/ri'
 import { resolveTtsSettings } from '../../shared.js'
 import { NS } from '../localization.js'
-import { VoiceSettingsPage } from './voice-settings-page.js'
+import { lazyPanel } from '../lazy-panel.js'
 import type { VoiceSettingsPageProps } from './voice-settings-page.js'
+
+const VoiceSettingsPage = lazyPanel(() => import('./voice-settings-page.js').then(module => module.VoiceSettingsPage))
 
 export const VOICE_SETTINGS_PANEL_ID = 'xiaomi-mimo-tts.settings'
 

@@ -12,7 +12,6 @@ import {
   TTS_PROVIDER_CHARACTER_ASSET_ROUTES,
   TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE,
   TTS_PROVIDER_LOGO_ASSET_ROUTES,
-  TTS_BREEZE_WORDMARK_ASSET_ROUTE,
   TTS_MOSS_LOGO_ASSET_ROUTE,
   TTS_API_KEY_WHALE_ASSET_ROUTE,
   TTS_HISTORY_EMPTY_ASSET_ROUTE,
@@ -256,13 +255,6 @@ export function apply(ctx: Context, config: Config): void {
     data: readFileSync(new URL('../assets/ui/provider-external-takeover.webp', import.meta.url)),
     contentType: 'image/webp',
     description: 'External speech provider takeover character',
-  })
-
-  registerStaticAsset(ctx, {
-    path: TTS_BREEZE_WORDMARK_ASSET_ROUTE,
-    data: readFileSync(new URL('../assets/ui/provider-breeze-logo-light.png', import.meta.url)),
-    contentType: 'image/png',
-    description: 'Breeze Blue wordmark',
   })
 
   registerStaticAsset(ctx, {

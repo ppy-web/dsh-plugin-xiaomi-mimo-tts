@@ -7,13 +7,12 @@ settings:
 importers:
 
   .:
+    publishDirectory: output/npm-package
+    linkDirectory: false
     dependencies:
       motion:
         specifier: ^14.1.0
         version: 14.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react-icons:
-        specifier: ^5.7.0
-        version: 5.7.0(react@18.3.1)
       silk-wasm:
         specifier: 3.7.1
         version: 3.7.1
@@ -201,6 +200,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      react-icons:
+        specifier: ^5.7.0
+        version: 5.7.0(react@18.3.1)
       rollup-plugin-visualizer:
         specifier: ^7.1.1
         version: 7.1.1(rolldown@1.2.8)
@@ -213,6 +215,9 @@ importers:
       simple-icons:
         specifier: 16.33.0
         version: 16.33.0
+      source-map-js:
+        specifier: 1.2.1
+        version: 1.2.1
       tsdown:
         specifier: ^0.22.2
         version: 0.22.14(typescript@6.0.3)

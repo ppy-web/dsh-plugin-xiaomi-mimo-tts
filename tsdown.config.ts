@@ -1,11 +1,16 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { defineConfig } from 'tsdown'
+import { defineConfig, Rolldown } from 'tsdown'
+import type { TsdownPlugin } from 'tsdown'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { SourceMapConsumer, SourceMapGenerator } from 'source-map-js'
 
 const PACKAGE_ID = 'dsh-xiaomi-tts'
+const CLIENT_ENTRY = 'client.js'
+const CLIENT_CHUNK = /^client\.[A-Za-z0-9][A-Za-z0-9._-]*\.js$/u
+const SOURCE_MAP_TRAILER = /\/\/#[ \t]*sourceMappingURL=[^\r\n]*\s*$/u
 
-function bundleVisualizer(target: 'client' | 'voice-avatar' | 'host') {
+function bundleVisualizer(target: 'client' | 'host') {
   return visualizer({
     filename: path.resolve('output/bundle-analysis', `${target}.html`),
     title: `${PACKAGE_ID} / ${target}`,
@@ -55,21 +60,101 @@ function rawTextImports() {
   }
 }
 
-export function createClientConfig(avatar = false) {
+/** Use DSH's versioned chunk transport for package-local dynamic imports. */
+function clientChunkImports(): TsdownPlugin {
+  return {
+    name: 'dsh-client-chunk-imports',
+    renderChunk(code, chunk) {
+      const transformed = new Rolldown.RolldownMagicString(code)
+      const imports = chunk.dynamicImports.map(file => file.replace(/^\.\//u, '')).filter(file => CLIENT_CHUNK.test(file))
+      const asyncImports = new Set(imports)
+      const call = /Promise\.resolve\(\)\.then\(\(\)\s*=>\s*require\((['"])\.\/(client\.[\w.-]+\.js)\1\)\)|\brequire\((['"])\.\/(client(?:\.[\w.-]+)?\.js)\3\)/gu
+      for (const match of code.matchAll(call)) {
+        const [, , asyncFile, , file] = match
+        if (asyncFile) {
+          if (!imports.includes(asyncFile)) continue
+          asyncImports.delete(asyncFile)
+          transformed.overwrite(match.index, match.index + match[0].length, `require.async(${JSON.stringify(`./${asyncFile}`)})`)
+        } else {
+          const id = file === CLIENT_ENTRY ? PACKAGE_ID : `${PACKAGE_ID}/${file}`
+          transformed.overwrite(match.index, match.index + match[0].length, `require(${JSON.stringify(id)})`)
+        }
+      }
+      if (asyncImports.size > 0) throw new Error(`Cannot find the generated imports for ${[...asyncImports].join(', ')}`)
+      return transformed.hasChanged() ? transformed : null
+    },
+    generateBundle: {
+      order: 'post',
+      handler(_options, bundle) {
+        const entry = bundle[CLIENT_ENTRY]
+        if (entry?.type !== 'chunk') throw new Error(`Missing ${CLIENT_ENTRY}`)
+        const chunks = Object.values(bundle).filter(file => file.type === 'chunk')
+        const shared = chunks.filter(chunk => !chunk.isEntry && !chunk.isDynamicEntry)
+        const deferred = new Set(chunks.filter(chunk => chunk.isDynamicEntry).map(chunk => chunk.fileName))
+        for (const chunk of chunks) {
+          const callers = chunks.filter(caller => caller.dynamicImports.includes(chunk.fileName))
+          for (const dependency of chunk.imports.filter(file => deferred.has(file))) {
+            if (!chunk.isDynamicEntry || callers.length === 0 || callers.some(caller => caller.fileName !== dependency)) {
+              throw new Error(`${chunk.fileName} requires deferred chunk ${dependency} before it has loaded`)
+            }
+          }
+        }
+        if (shared.length === 0) return
+
+        // DSH starts the factory synchronously, so register shared chunks in the
+        // entry script. Deferred pages reuse those same module instances.
+        const startup: string[] = []
+        const combinedMap = new SourceMapGenerator({ file: entry.fileName })
+        let lineOffset = 0
+        for (const chunk of [...shared, entry]) {
+          const code = chunk.code.replace(SOURCE_MAP_TRAILER, '')
+          if (chunk.map) {
+            const map = new SourceMapConsumer(JSON.parse(chunk.map.toString()))
+            map.eachMapping(mapping => {
+              const generated = { line: mapping.generatedLine + lineOffset, column: mapping.generatedColumn }
+              if (mapping.source === null || mapping.originalLine === null || mapping.originalColumn === null) {
+                combinedMap.addMapping({ generated })
+              } else {
+                combinedMap.addMapping({ generated, source: mapping.source, name: mapping.name,
+                  original: { line: mapping.originalLine, column: mapping.originalColumn } })
+              }
+            })
+            for (const source of map.sources) combinedMap.setSourceContent(source, map.sourceContentFor(source, true))
+          }
+          startup.push(code)
+          lineOffset += code.split('\n').length
+        }
+        const map = bundle[`${entry.fileName}.map`]
+        entry.code = startup.join('\n') + '\n'
+        if (map?.type === 'asset') {
+          map.source = combinedMap.toString()
+          entry.code += `//# sourceMappingURL=${map.fileName}\n`
+        }
+        for (const chunk of shared) {
+          delete bundle[chunk.fileName]
+          delete bundle[`${chunk.fileName}.map`]
+        }
+        entry.imports = entry.imports.filter(file => !shared.some(chunk => chunk.fileName === file))
+      },
+    },
+  }
+}
+
+export function createClientConfig() {
   return defineConfig({
-    name: `${PACKAGE_ID}/${avatar ? 'voice-avatar' : 'client'}`,
-    entry: avatar ? { client: 'src/client/settings/controls/generated-voice-avatar.tsx' } : { client: 'src/client/index.tsx' },
+    name: `${PACKAGE_ID}/client`,
+    entry: { client: 'src/client/index.tsx' },
     outDir: 'lib',
     format: 'cjs',
     platform: 'browser',
     dts: false,
+    inputOptions: { preserveEntrySignatures: 'allow-extension' },
     sourcemap: true,
     minify: true,
     clean: false,
     external: [...CLIENT_EXTERNALS],
     noExternal: (id: string) => (CLIENT_EXTERNALS.includes(id) ? undefined : true),
     define: {
-      __DSH_CLIENT_BUNDLE__: 'true',
       'process.env.NODE_ENV': JSON.stringify('production'),
       'import.meta.env.MODE': JSON.stringify('production'),
       'import.meta.env': JSON.stringify({ MODE: 'production' }),
@@ -85,13 +170,14 @@ export function createClientConfig(avatar = false) {
           `client bundle purity: "${source}" is not an allowed DSH client external or inline-safe package`,
         )
       },
-    }, ...(process.env.DSH_BUNDLE_ANALYZE === '1' ? [bundleVisualizer(avatar ? 'voice-avatar' : 'client')] : [])],
+    }, clientChunkImports(), ...(process.env.DSH_BUNDLE_ANALYZE === '1' ? [bundleVisualizer('client')] : [])],
     outputOptions: {
       keepNames: true,
       legalComments: 'inline',
-      exports: avatar ? 'named' : 'auto',
-      entryFileNames: avatar ? 'client.generated-voice-avatar.js' : 'client.js',
-      banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(PACKAGE_ID)}, ${avatar ? 'chunk: "client.generated-voice-avatar.js", ' : ''}factory: (require) => {`,
+      exports: 'named',
+      entryFileNames: CLIENT_ENTRY,
+      chunkFileNames: 'client.[name].js',
+      banner: chunk => `window.__ModuleLoader__.load({ id: ${JSON.stringify(PACKAGE_ID)}, ${chunk.isEntry ? '' : `chunk: ${JSON.stringify(chunk.fileName)}, `}factory: (require) => {`,
       footer: 'return module.exports; } });',
       intro: 'var module = { exports: {} }; var exports = module.exports;',
     },
@@ -125,4 +211,4 @@ export default defineConfig([{
   plugins: process.env.DSH_BUNDLE_ANALYZE === '1' ? [bundleVisualizer('host')] : [],
   outputOptions: { keepNames: true, legalComments: 'inline' },
   clean: true,
-}, createClientConfig(), createClientConfig(true)])
+}, createClientConfig()])
