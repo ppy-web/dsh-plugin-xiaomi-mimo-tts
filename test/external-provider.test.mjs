@@ -77,6 +77,23 @@ test('disabling external reception cancels in-flight audio and rejects stale req
   } finally { off(); await f.service.dispose() }
 })
 
+test('saving volume and sound settings keeps an in-flight external synthesis valid', async () => {
+  let started, finish
+  const ready = new Promise(resolve => { started = resolve })
+  const f = fixture({ synthesize: () => { started(); return new Promise(resolve => { finish = resolve }) } })
+  const off = f.service.registerProvider(f.provider)
+  try {
+    const { revision } = f.service.engineState()
+    const audio = f.service.synthesize({ text: 'hello', engineRevision: revision })
+    await ready
+    Object.assign(f.settings, { voiceVolume: 0.35, voiceRate: 1.2, soundEnabled: false })
+    f.service.refreshEngine()
+    assert.equal(f.service.engineState().revision, revision)
+    finish({ format: 'wav', data: createTestWav() })
+    assert.equal((await audio).format, 'wav')
+  } finally { off(); await f.service.dispose() }
+})
+
 test('reception preference saves and resets during takeover without touching built-in settings', async () => {
   let user = {}
   const saved = resolveTtsSettings({ provider: 'doubao' })
@@ -304,7 +321,7 @@ test('Web routes use the same external engine for audio, PCM and authenticated e
 })
 
 test('engine metadata rejects cross-origin reads and streams initial and changed state', async () => {
-  await withRoutes(async ({ base, service }) => {
+  await withRoutes(async ({ base, service, settings }) => {
     for (const route of ['engine-state', 'engine-events']) {
       const denied = await fetch(`${base}/${route}`, { headers: { origin: 'https://other.example' } })
       assert.equal(denied.status, 403)
@@ -317,9 +334,10 @@ test('engine metadata rejects cross-origin reads and streams initial and changed
     const reader = events.body.getReader()
     const initial = new TextDecoder().decode((await reader.read()).value)
     assert.ok(initial.includes('external:test-provider'))
+    settings.acceptExternalProviders = false
     service.refreshEngine()
     const changed = new TextDecoder().decode((await reader.read()).value)
-    assert.ok(changed.includes(`"revision":${service.engineState().revision}`))
+    assert.ok(changed.includes(`"provider":"${service.engineState().provider}"`))
     controller.abort(); await reader.cancel().catch(() => {})
   })
 })

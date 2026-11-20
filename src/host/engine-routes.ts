@@ -1,11 +1,19 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { TTS_ENGINE_EVENTS_ROUTE, TTS_ENGINE_STATE_ROUTE, TTS_ENGINE_SELECTION_ROUTE } from '../constants.js'
+import { TTS_API_KEY_STATUS_EVENT, TTS_ENGINE_EVENTS_ROUTE, TTS_ENGINE_STATE_ROUTE, TTS_ENGINE_SELECTION_ROUTE } from '../constants.js'
 import { json, readJsonBody, sameOriginRequest } from './http.js'
 import { TtsProviderError } from './provider-error.js'
 
 /** Browser-only metadata: reject cross-origin reads, including requests without an Origin but marked cross-site. */
-export function registerEngineRoutes(ctx: Context): void {
+export function registerEngineRoutes(ctx: Context, credentials?: { read: () => Record<string, string>; subscribe: (listener: () => void) => () => void }): void {
   const connections = new Set<() => void>()
+  const credentialListeners = new Set<(payload: string) => void>()
+  let credentialPayload = credentials ? JSON.stringify(credentials.read()) : undefined
+  if (credentials) ctx.effect(() => credentials.subscribe(() => {
+    const payload = JSON.stringify(credentials.read())
+    if (payload === credentialPayload) return
+    credentialPayload = payload
+    for (const listener of credentialListeners) listener(payload)
+  }))
   ctx.effect(() => () => { for (const close of connections) close(); connections.clear() })
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact', path: TTS_ENGINE_SELECTION_ROUTE,
@@ -45,18 +53,22 @@ export function registerEngineRoutes(ctx: Context): void {
       if (!events) { json(res, 200, ctx.speechSynthesis.engineState()); return }
       res.setHeader('content-type', 'text/event-stream; charset=utf-8')
       res.setHeader('x-accel-buffering', 'no')
-      const send = () => {
+      const write = (message: string) => {
         if (res.destroyed || res.writableEnded) return
         if (res.writableLength > 65536) { res.destroy(); return }
-        res.write(`data: ${JSON.stringify(ctx.speechSynthesis.engineState())}\n\n`)
+        res.write(message)
       }
+      const send = () => write(`data: ${JSON.stringify(ctx.speechSynthesis.engineState())}\n\n`)
+      const sendCredentials = (payload: string) => write(`event: ${TTS_API_KEY_STATUS_EVENT}\ndata: ${payload}\n\n`)
       const off = ctx.speechSynthesis.subscribeEngine(send)
-      const heartbeat = setInterval(() => { if (!res.destroyed) res.write(': heartbeat\n\n') }, 25000)
+      if (credentials) credentialListeners.add(sendCredentials)
+      const heartbeat = setInterval(() => write(': heartbeat\n\n'), 25000)
       heartbeat.unref()
-      const close = () => { off(); clearInterval(heartbeat); connections.delete(close); if (!res.writableEnded) res.end() }
+      const close = () => { off(); credentialListeners.delete(sendCredentials); clearInterval(heartbeat); connections.delete(close); if (!res.writableEnded) res.end() }
       connections.add(close)
       res.once('close', close)
       send()
+      if (credentialPayload !== undefined) sendCredentials(credentialPayload)
     },
   }))
 }

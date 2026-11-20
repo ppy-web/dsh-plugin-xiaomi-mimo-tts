@@ -80,6 +80,19 @@ export function ttsSelection(settings: ResolvedTtsSettings): TtsSelection {
   return { provider: 'xiaomi', model: settings.model, voice: settings.voice, voiceDesignPrompt: settings.voiceDesignPrompt, speechInstruction: settings.instruction.trim() }
 }
 
+/**
+ * Identity of one selection, shared by the client's interruption check and the
+ * Host's engine settings. Playback rate is applied on top and must never make a
+ * selection look different, or a volume/speed change would interrupt speech.
+ */
+export function selectionKey(selection: TtsSelection): string {
+  return JSON.stringify({ ...selection, voiceRate: undefined })
+}
+
+export function ttsSelectionKey(settings: ResolvedTtsSettings): string {
+  return selectionKey(ttsSelection(settings))
+}
+
 export function supportsDuplexTts(provider: TtsProvider): provider is 'doubao' | 'deepseek' {
   return provider === 'doubao' || provider === 'deepseek'
 }

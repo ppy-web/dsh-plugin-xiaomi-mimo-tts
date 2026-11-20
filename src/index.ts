@@ -197,7 +197,19 @@ export function readConfig(config: Config): ResolvedTtsSettings {
 export function apply(ctx: Context, config: Config): void {
   const current = () => readConfig(config)
   ctx.inject(['webServer'], host => { host.plugin(SpeechHost, { current, updates: (listener: () => void) => ctx.on('loader/volatile-update', listener) }) })
-  ctx.inject(['speechSynthesis'], host => { registerOpenApiRoutes(host, () => config.openApiToken.get()); registerEngineRoutes(host) })
+  ctx.inject(['speechSynthesis'], host => {
+    registerOpenApiRoutes(host, () => config.openApiToken.get())
+    registerEngineRoutes(host, {
+      read: () => {
+        const settings = current()
+        return Object.fromEntries(TTS_PROVIDERS.map(provider => {
+          const { configured, supported } = apiKeyStatus(settings, provider)
+          return [provider, configured ? supported ? 'recognized' : 'unrecognized' : 'missing']
+        }))
+      },
+      subscribe: listener => ctx.on('loader/volatile-update', listener),
+    })
+  })
   // Native read-aloud in the dsh-go app; absent on hosts without its bridge.
   ctx.inject(['dshGo', 'speechSynthesis'], host => {
     host.effect(() => registerDshGo({ dshGo: host.dshGo, speech: host.speechSynthesis, current }), 'xiaomi-mimo-tts: dsh-go voice')
@@ -327,15 +339,15 @@ export function apply(ctx: Context, config: Config): void {
       const query = new URL(req.url ?? '/', 'http://localhost').searchParams.get('provider')
       if (query !== null && !TTS_PROVIDERS.includes(query as typeof TTS_PROVIDERS[number])) { json(res, 400, { error: 'invalid-provider' }); return }
       const provider = (query ?? settings.provider) as typeof TTS_PROVIDERS[number]
-      const apiKey = ttsApiKey({ ...settings, provider })
-      json(res, 200, {
-        provider,
-        configured: apiKey.length > 0,
-        supported: apiKey.length > 0 && isSupportedTtsApiKey(apiKey, provider),
-      })
+      json(res, 200, { provider, ...apiKeyStatus(settings, provider) })
     },
   }), 'xiaomi-mimo-tts: API key status route')
 
   registerSynthesisRoutes(ctx, current)
   registerMossRoutes(ctx, current)
+}
+
+function apiKeyStatus(settings: ResolvedTtsSettings, provider: typeof TTS_PROVIDERS[number]) {
+  const key = ttsApiKey({ ...settings, provider })
+  return { configured: key.length > 0, supported: key.length > 0 && isSupportedTtsApiKey(key, provider) }
 }

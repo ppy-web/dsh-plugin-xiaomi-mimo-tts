@@ -1,5 +1,5 @@
 import { TTS_API_KEY_STATUS_ROUTE } from '../../shared.js'
-import type { TtsProvider } from '../../types/providers.js'
+import { TTS_PROVIDERS, type TtsProvider } from '../../types/providers.js'
 import { hostRoute } from '../host-route.js'
 import type { SnapshotSource } from '../plugin-activity.js'
 import type { ApiKeyStatus } from './api-key-state.js'
@@ -10,9 +10,13 @@ interface Entry {
   request: AbortController | null
 }
 
+type HostKeyStatus = 'missing' | 'recognized' | 'unrecognized'
+const isHostKeyStatus = (value: unknown): value is HostKeyStatus => value === 'missing' || value === 'recognized' || value === 'unrecognized'
+
 /** One request per provider, shared by every mounted speech surface. Never stores a secret. */
 export class ApiKeyStatusStore {
   private available = true
+  private hostStatuses: Record<TtsProvider, HostKeyStatus> | null = null
   private readonly entries = new Map<TtsProvider, Entry>()
 
   private entry(provider: TtsProvider): Entry {
@@ -42,6 +46,29 @@ export class ApiKeyStatusStore {
     this.invalidate()
   }
 
+  hasHostStatuses(): boolean { return this.hostStatuses !== null }
+
+  acceptHostStatuses = (value: unknown): void => {
+    if (value === null) {
+      if (!this.hostStatuses) return
+      this.hostStatuses = null
+      this.invalidate()
+      return
+    }
+    if (!value || typeof value !== 'object') return
+    const statuses = value as Record<TtsProvider, unknown>
+    if (!TTS_PROVIDERS.every(provider => isHostKeyStatus(statuses[provider]))) return
+    this.hostStatuses = statuses as Record<TtsProvider, HostKeyStatus>
+    if (!this.available) return
+    for (const [provider, entry] of this.entries) {
+      const status = this.hostStatuses[provider]
+      if (entry.status === status) continue
+      this.reset(entry)
+      entry.status = status
+      for (const listener of entry.listeners) listener()
+    }
+  }
+
   invalidate = (): void => {
     for (const [provider, entry] of this.entries) {
       this.reset(entry)
@@ -59,6 +86,10 @@ export class ApiKeyStatusStore {
 
   private load(provider: TtsProvider, entry: Entry): void {
     if (!this.available || entry.listeners.size === 0 || entry.request !== null || entry.status !== 'loading') return
+    if (this.hostStatuses) {
+      entry.status = this.hostStatuses[provider]
+      return
+    }
     const request = new AbortController()
     entry.request = request
     const publish = (status: ApiKeyStatus): void => {
@@ -101,7 +132,7 @@ export function bindApiKeyStatus(
     // Invalidate before resuming so reconnect and revision changes share one request.
     if (!Object.is(revision, snapshot.revision)) {
       revision = snapshot.revision
-      store.setAvailable(false)
+      if (!store.hasHostStatuses()) store.setAvailable(false)
     }
     store.setAvailable(available)
   }

@@ -5,16 +5,8 @@ import { apiKeyStatusStore } from '../settings/api-key-status-store.js'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
 
-const listeners = new Set<() => void>()
-
-export function onTtsCredentialsSaved(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => { listeners.delete(listener) }
-}
-
 export function invalidateApiKeyStatus(): void {
-  apiKeyStatusStore.invalidate()
-  for (const listener of listeners) listener()
+  if (!apiKeyStatusStore.hasHostStatuses()) apiKeyStatusStore.invalidate()
 }
 
 export function useApiKeyStatus(active: boolean, provider: TtsProvider): ApiKeyStatus {

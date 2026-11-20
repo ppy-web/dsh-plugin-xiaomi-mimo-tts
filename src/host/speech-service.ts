@@ -6,7 +6,7 @@ import type { ExternalSpeechProvider, SpeechEngineState, SpeechAudio, SpeechArti
 import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
 import type { SynthesisRuntime } from './complete-synthesis.js'
 import { completeAudioFormat, completeAudioLimit, CompleteAudioResponseError, synthesisOptions } from './validation.js'
-import { supportsDuplexTts, TTS_PROVIDERS } from '../types/providers.js'
+import { supportsDuplexTts, ttsApiKey, ttsSelectionKey, TTS_PROVIDERS } from '../types/providers.js'
 import type { TtsProvider } from '../types/providers.js'
 import { splitDeepseekText } from '../text/deepseek-limit.js'
 import { TtsProviderError, safeProviderError } from './provider-error.js'
@@ -26,6 +26,15 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
+function engineSettings(value: ResolvedTtsSettings) {
+  const settings = resolveTtsSettings(value)
+  return {
+    selection: ttsSelectionKey(settings), key: ttsApiKey(settings),
+    baseURL: settings.provider === 'xiaomi' ? settings.baseURL : undefined,
+    maxTextLength: settings.maxTextLength,
+  }
+}
+
 /** Host-only synthesis, with transport registration independent of the Web player. */
 export class HostSpeechService implements SpeechSynthesisService {
   private readonly adapters = new Map<string, SpeechDeliveryAdapter>()
@@ -38,9 +47,12 @@ export class HostSpeechService implements SpeechSynthesisService {
   private disposed = false
   private readonly external = new ExternalProviders()
   private readonly defaultJobs = new Set<AbortController>()
+  private engineConfig: ReturnType<typeof engineSettings>
 
   constructor(private readonly current: () => ResolvedTtsSettings, private readonly runtime: SynthesisRuntime = {}) {
-    this.external.setEnabled(current().acceptExternalProviders !== false)
+    const settings = current()
+    this.engineConfig = engineSettings(settings)
+    this.external.setEnabled(settings.acceptExternalProviders !== false)
     this.external.subscribe(() => {
       for (const controller of this.defaultJobs) controller.abort(new TtsProviderError('speech-engine-changed', undefined, 409))
     })
@@ -48,7 +60,13 @@ export class HostSpeechService implements SpeechSynthesisService {
 
   registerProvider(provider: ExternalSpeechProvider): () => void { return this.external.register(provider) }
   subscribeEngine = (listener: () => void): (() => void) => this.external.subscribe(listener)
-  refreshEngine(): void { if (!this.external.setEnabled(this.current().acceptExternalProviders !== false)) this.external.changed() }
+  refreshEngine(settings = this.current()): void {
+    const previous = this.engineConfig
+    const next = this.engineConfig = engineSettings(settings)
+    if (this.external.setEnabled(settings.acceptExternalProviders !== false)) return
+    if (previous.maxTextLength !== next.maxTextLength || (!this.external.id
+      && (previous.selection !== next.selection || previous.key !== next.key || previous.baseURL !== next.baseURL))) this.external.changed()
+  }
 
   async configureProvider(request: { provider: SpeechProviderId; engineRevision: number; signal?: AbortSignal } & ExternalSpeechConfigurationChange): Promise<SpeechEngineState> {
     const id = this.resolveProvider(request)
@@ -384,7 +402,12 @@ export default class SpeechHost {
       maxAutoCharacters: config.current().qqbotMaxAutoCharacters ?? 0,
       maxDurationMs: (config.current().qqbotMaxDurationSeconds ?? 0) * 1000,
     }) })
-    const update = () => { service.setAutomaticDeliveryEnabled('qqbot', config.current().qqbotEnabled === true); service.refreshEngine(); recognition.refresh() }
+    const update = () => {
+      const settings = config.current()
+      service.setAutomaticDeliveryEnabled('qqbot', settings.qqbotEnabled === true)
+      service.refreshEngine(settings)
+      recognition.refresh()
+    }
     update()
     if (config.updates) ctx.effect(() => config.updates!(update))
     const clean = () => cleanupSpeechArtifacts().catch(() => ctx.logger.warn('Speech audio cleanup failed.'))

@@ -1,7 +1,7 @@
 import type { ExternalSpeechSelection, SpeechEngineState } from '../host-api.js'
 import type { ResolvedTtsSettings } from '../types/settings.js'
 import { prepareExternalTtsText, splitTtsSegments, supportsRealtimeTts } from '../shared.js'
-import { TTS_ENGINE_EVENTS_ROUTE, TTS_ENGINE_STATE_ROUTE } from '../constants.js'
+import { TTS_API_KEY_STATUS_EVENT, TTS_ENGINE_EVENTS_ROUTE, TTS_ENGINE_STATE_ROUTE } from '../constants.js'
 import { hostRoute } from './host-route.js'
 
 export interface EngineView { status: 'inactive' | 'connecting' | 'ready' | 'unknown'; engine: SpeechEngineState | null }
@@ -17,11 +17,15 @@ export class EngineStateStore {
     this.view = { status, engine }
     for (const listener of this.listeners) listener()
   }
-  start(): () => void {
+  start(acceptCredentials?: (value: unknown) => void): () => void {
     this.publish('connecting')
     let disposed = false
     let refreshing: AbortController | null = null
     const source = new EventSource(hostRoute(TTS_ENGINE_EVENTS_ROUTE))
+    if (acceptCredentials) source.addEventListener(TTS_API_KEY_STATUS_EVENT, event => {
+      if (disposed) return
+      try { acceptCredentials(JSON.parse((event as MessageEvent<string>).data)) } catch { /* Retain the last valid status. */ }
+    })
     const refresh = async (): Promise<void> => {
       refreshing?.abort()
       const controller = new AbortController()
@@ -40,8 +44,11 @@ export class EngineStateStore {
         if (!disposed) this.accept(JSON.parse(event.data) as SpeechEngineState)
       } catch { if (!disposed) this.publish('unknown') }
     }
-    source.onerror = () => { refreshing?.abort(); if (!disposed) this.publish('unknown') }
-    return () => { disposed = true; refreshing?.abort(); source.close(); this.publish('inactive', null) }
+    source.onerror = () => {
+      refreshing?.abort()
+      if (!disposed) { acceptCredentials?.(null); this.publish('unknown') }
+    }
+    return () => { disposed = true; refreshing?.abort(); source.close(); acceptCredentials?.(null); this.publish('inactive', null) }
   }
   /** Also used by the standalone preview with its in-process Host fixture. */
   accept(state: SpeechEngineState): void {

@@ -17,7 +17,7 @@ import type { AudioHistory } from '../history/audio-history.js'
 import { PcmRecording } from '../history/pcm-recording.js'
 import { DuplexPcmStream } from './duplex-pcm.js'
 import { DEEPSEEK_INPUT_IDLE_MS, exceedsDeepseekLimit, splitDeepseekText } from '../../text/deepseek-limit.js'
-import { supportsDuplexTts, ttsSelection, usesCloudVoiceRate } from '../../types/providers.js'
+import { selectionKey, supportsDuplexTts, ttsSelection, usesCloudVoiceRate } from '../../types/providers.js'
 import type { TtsSelection } from '../../types/providers.js'
 import type { ResolvedTtsSettings } from '../../types/settings.js'
 import { engineMaxTextLength, externalEngine, externalText, splitExternalText } from '../engine-state.js'
@@ -134,7 +134,7 @@ export class LiveSpeechController {
   configure(settings: ResolvedTtsSettings): void {
     const next = ttsSelection(settings)
     // Rate changes apply to the next playback without interrupting the current session.
-    if (JSON.stringify({ ...next, voiceRate: undefined }) !== JSON.stringify({ ...this.selection, voiceRate: undefined })) this.interrupt()
+    if (selectionKey(next) !== selectionKey(this.selection)) this.interrupt()
     this.selection = next
     this.voiceRate = settings.voiceRate
     this.timeoutMs = settings.requestTimeoutMs

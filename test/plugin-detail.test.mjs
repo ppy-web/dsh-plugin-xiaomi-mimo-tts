@@ -108,6 +108,26 @@ test('host revision, bundle activity and reconnect refresh subscribers and dispo
   off()
 })
 
+test('live Key status changes refresh only the provider whose status changed', t => {
+  const requests = mockRequests(t)
+  const scope = source({ status: 'ready', revision: 1 })
+  const store = new ApiKeyStatusStore()
+  const statuses = { xiaomi: 'recognized', doubao: 'missing', breeze: 'missing', deepseek: 'missing' }
+  store.acceptHostStatuses(statuses)
+  const dispose = bindApiKeyStatus(scope, source(false), store)
+  const observed = []
+  const offXiaomi = store.subscribe('xiaomi', () => observed.push('xiaomi'))
+  const offDoubao = store.subscribe('doubao', () => observed.push('doubao'))
+  t.after(() => { offXiaomi(); offDoubao(); dispose() })
+  scope.set({ status: 'ready', revision: 2 })
+  assert.deepEqual(observed, [])
+  assert.equal(requests.length, 0)
+  store.acceptHostStatuses({ ...statuses, doubao: 'recognized' })
+  assert.deepEqual(observed, ['doubao'])
+  assert.equal(store.getSnapshot('xiaomi'), 'recognized')
+  assert.equal(store.getSnapshot('doubao'), 'recognized')
+})
+
 for (const [body, expected, httpStatus] of [
   [{ configured: false, supported: false }, 'missing', 200],
   [{ configured: true, supported: true }, 'recognized', 200],

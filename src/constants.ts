@@ -124,3 +124,4 @@ export const MIN_TTS_SEGMENT_CHARACTERS = 50
 
 /** Minimum spoken characters to accumulate for low-latency browser speech during generation. */
 export const MIN_TTS_STREAM_CHARACTERS = 20
+export const TTS_API_KEY_STATUS_EVENT = 'api-key-status'

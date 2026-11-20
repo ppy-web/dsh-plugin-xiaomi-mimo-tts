@@ -18,7 +18,6 @@ import type { Translate } from './localization.js'
 import { LiveSpeechController, LocalSpeechController, PlaybackController } from './playback/index.js'
 import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
 import { ReadingCaptions } from './playback/reading-captions.js'
-import { onTtsCredentialsSaved } from './conversation/api-key-status.js'
 import { registerBundleSettings } from './settings/bundle-settings.js'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { registerWhalePersonaSettings, registerQqbotSpeechSettings } from './settings/qqbot-registration.js'
@@ -232,7 +231,6 @@ export function apply(ctx: Context): void {
   }
   updateProvider()
   ctx.effect(() => scope.subscribe(updateProvider), 'xiaomi-mimo-tts: provider selection')
-  ctx.effect(() => onTtsCredentialsSaved(() => { live.interrupt(); playback.interrupt(); local.interrupt(); pcmService.stop(); questionPlayback?.stop() }), 'xiaomi-mimo-tts: saved credentials')
   const stopOptionalPcm = () => { pcmService.stop(); questionPlayback?.stop(); history.stopReplay() }
   live.setBeforePlayback(stopOptionalPcm)
   local.setBeforePlayback(stopOptionalPcm)
@@ -246,7 +244,7 @@ export function apply(ctx: Context): void {
   }
   ctx.effect(() => {
     const off = engineStateStore.subscribe(stopAllPlayback)
-    const stop = engineStateStore.start()
+    const stop = engineStateStore.start(apiKeyStatusStore.acceptHostStatuses)
     return () => { off(); stop() }
   }, 'xiaomi-mimo-tts: speech engine state')
   ctx.effect(() => observePluginActivity(changes, stopAllPlayback), 'xiaomi-mimo-tts: plugin changes')
