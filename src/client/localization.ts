@@ -94,7 +94,7 @@ export const zh = {
   'settings.passportIntegrationHint': 'WhaleTalk Passport（鲸语通行证），随身使用 DSH 语音对话',
   'settings.novelIntegration': 'dsh-novel 小说插件',
   'settings.novelIntegrationHint': '阅读与听书，可使用本插件的宿主朗读服务',
-  'settings.audioReactiveIntegration': 'dsh-audio-reactive 音频响应主题',
+  'settings.audioReactiveIntegration': 'dsh-audio-reactive 音频响应',
   'settings.audioReactiveIntegrationHint': '在聊天正文背后显示流式朗读频谱',
   'settings.qqbotIntegration': 'QQ Bot',
   'settings.qqbotIntegrationHint': '需先启用「QQ Bot 传声筒」组件，开启后自动发送语音',

@@ -260,7 +260,7 @@ test('captions and audio response styles save and reset independently', async ()
   assert.equal(user.voiceRate, 1.3)
 })
 
-test('audio response controls appear in plugin settings and not on the voice reading page', context => {
+test('host integration keeps captions and audio response controls off the voice reading page', context => {
   const report = console.error
   context.mock.method(console, 'error', (...args) => {
     if (typeof args[0] === 'string' && args[0].startsWith('Warning: useLayoutEffect does nothing on the server')) return
@@ -284,14 +284,11 @@ test('audio response controls appear in plugin settings and not on the voice rea
     const hostInputs = hostSettings.match(/<input\b[^>]*>/gu) ?? []
     const hostCaptions = hostInputs.find(input => input.includes('aria-label="settings.readingCaptions"'))
     const hostResponse = hostInputs.find(input => input.includes('aria-label="settings.audioResponse"'))
-    const voiceInputs = voiceReading.match(/<input\b[^>]*>/gu) ?? []
-    const voiceCaptions = voiceInputs.find(input => input.includes('aria-label="settings.readingCaptions"'))
     assert.ok(hostCaptions)
     assert.ok(hostResponse)
-    assert.ok(voiceCaptions)
     assert.equal(hostCaptions.includes('checked=""'), showReadingCaptions)
     assert.equal(hostResponse.includes('checked=""'), showAudioResponse)
-    assert.equal(voiceCaptions.includes('checked=""'), showReadingCaptions)
+    assert.doesNotMatch(voiceReading, /settings\.readingCaptions/u)
     assert.doesNotMatch(voiceReading, /settings\.audioResponse/u)
     assert.doesNotMatch(hostSettings, /<input\b[^>]*type="radio"/u)
     const pluginStyle = (plugin.match(/<input\b[^>]*>/gu) ?? []).find(input => input.includes('type="radio"') && input.includes('value="siri-wave-line"'))

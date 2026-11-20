@@ -63,9 +63,6 @@ interface VoiceReadingPageProps {
 type ReadingRange = 'voiceVolume' | 'voiceRate'
 type ReadingRangeValues = Partial<Record<ReadingRange, number | undefined>>
 const RANGE_SAVE_DELAY = 250
-const INTERACTION_SWITCHES = [
-  { field: 'showReadingCaptions', label: 'settings.readingCaptions', hint: 'settings.readingCaptionsHint' },
-] as const
 
 interface VoiceReadingRangesProps {
   t: Translate
@@ -307,7 +304,7 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
           }}
         />
       </div>
-      <div className="xmimo-voice-reading-row xmimo-voice-reading-before-interaction">
+      <div className="xmimo-voice-reading-row">
         <div className="xmimo-voice-reading-copy">
           <div className="xmimo-voice-reading-row-title">{t('settings.voiceReadingSound')}</div>
           <div className="xmimo-voice-reading-row-hint">{t('settings.voiceReadingSoundHint')}</div>
@@ -321,14 +318,6 @@ function VoiceReadingPage({ scope, t, openPluginSettings, changes = IDLE_PLUGIN_
           }}
         />
       </div>
-      {INTERACTION_SWITCHES.map(({ field, label, hint }) => <div className="xmimo-voice-reading-row xmimo-voice-reading-interaction-row" key={field}>
-        <div className="xmimo-voice-reading-copy">
-          <div className="xmimo-voice-reading-row-title">{t(label)}</div>
-          <div className="xmimo-voice-reading-row-hint">{t(hint)}</div>
-        </div>
-        <Switch checked={settings[field]} disabled={disabled} label={t(label)}
-          onChange={value => { void write([{ op: 'set', path: [field], value }]) }} />
-      </div>)}
     </div>
     {failed && <p className="xmimo-voice-reading-failure" role="status">{t('settings.voiceReadingSaveFailed')}</p>}
   </div></AvatarStyleContext.Provider>
