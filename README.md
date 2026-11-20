@@ -35,17 +35,19 @@
 
 ## 🚀 安装与使用
 
-需要 DSH `0.2.2` 以上、Node.js 24.9+，当前适配目标为 DSH `0.2.2-rc.1`。
+需要 DSH `0.2.2` 以上、Node.js 24.9+，当前适配目标为 DSH `0.2.2-rc.5`。
 
 AI Passport 连接器还依赖宿主已启用 `@deepseek-ai/dsh-experimental-speech-to-text` 与识别 provider；该识别组件由 DSH 宿主提供，本插件不代为安装，缺少时设备无法连接（详见用户手册的 AI Passport 章节）。
 
-在 DSH 插件管理面板搜索 `dsh-xiaomi-tts` 安装，或使用 Web 端命令：
+在 DSH 插件管理面板搜索 `dsh-xiaomi-tts` 安装；
+
+或使用 Web 端命令：
 
 ```bash
 dsh plugin --profile web add dsh-xiaomi-tts@latest
 ```
 
-卸载插件：
+卸载：
 
 ```bash
 dsh plugin --profile web remove dsh-xiaomi-tts
@@ -53,11 +55,12 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 
 [社区插件市场](https://awesome-dsh-plugin.com)中搜索 `xiaomi-mimo-tts`。
 
-安装后可直接使用浏览器语音，**自动播报和 UI 音效默认关闭**。云端语音配置：
+首次安装默认使用浏览器语音，推荐配置：
 
-1. 打开插件设置，选择小米 MiMo、豆包或 Breeze，填写并保存 [小米 Key](https://platform.xiaomimimo.com?ref=GQDDDU)、[豆包 Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default) 或 [Breeze Key](https://breezeblue.ai/zh?code=JHKLSJ)。
+1. 打开插件设置，在右上角切换你想用的供应商：默认小米 MiMo，可切换豆包、 Breeze或DeepSeek（在播报台开启），填写并保存 [小米 Key](https://platform.xiaomimimo.com?ref=GQDDDU)、[豆包 Key](https://console.volcengine.com/speech/new/setting/apikeys?projectName=default) 或 [Breeze Key](https://breezeblue.ai/zh?code=JHKLSJ)。
 2. 在“调音台”选择模型、音色，在“播报台”试听；三家服务商的密钥、音色与模型各自独立保存，密钥须先保存，模型和音色支持草稿试听。
 3. 在「设置 → 语音朗读」调整音量、语速、朗读范围及自动播报、音效，与插件设置共用配置。
+4. 稳定使用 Breeze 需要科学上网，推荐 [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy)
 
 ## 📖 用户手册
 
@@ -65,12 +68,23 @@ dsh plugin --profile web remove dsh-xiaomi-tts
 
 ## 🔌 插件联动
 
+本插件向外部提供查询和调用接口，完整接入方式见[开放能力接口文档](open-api.md)。
+
 - **浏览器插件**：通过 `ctx.xiaomiMimoTts.play(text)` 在当前页面播放，使用 `stop()` 停止。
 - **宿主插件**：注入 `speechSynthesis`，通过 `ctx.speechSynthesis` 查询能力、合成或导出音频，也可注册交付渠道或外部语音供应商。
 - **DSH Agent**：挂载 `dsh-xiaomi-tts/speech-agent`，使用 `speak`、`synthesize_speech` 和 `speech_mode` 工具。
 - **外部程序或设备**：配置 `openApiToken` 后，通过 HTTP 查询能力、导出音频并使用限时 URL 下载。
 
-第三方插件通过可选服务调用语音播报，新播放会中断当前朗读：
+- [dsh-whale-musume · 元气鲸鱼娘桌宠](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) 支持互动气泡播报 `已联动`
+- [dsh-pet · 蓝色大肥鱼桌宠](https://github.com/PC2005-cloud/dsh-pet#readme) 支持播报碎碎念，闲聊消息 `已联动`
+- [dsh-qqbot · 腾讯官方QQ机器人](https://github.com/tencent-connect/dsh-qqbot#readme) 支持向 QQ 推送语音和表情包 `已联动`
+- [dsh-novel · 小说阅读与听书](https://github.com/xrn1997/dsh-novel#readme) 可使用本插件的宿主朗读服务朗读小说 `已联动`
+- [dsh-Go · dsh 移动端移植](https://github.com/ccch1mneyyy/dsh-Go) 在移动端也可使用本插件 `已适配`
+- [dsh-audio-reactive · 音频响应](https://github.com/ppy-web/dsh-audio-reactive) 随流式播报显示跳动的频谱背景 `已适配`
+- [dsh-speech-provider-adapter · 供应商适配器](https://github.com/ppy-web/dsh-speech-provider-adapter#readme) 为音色工坊管理自定义语音供应商、模型与音色
+- [WhaleTalk Passport · 鲸语通行证](https://github.com/ppy-web/whaletalk-passport#readme) AI Passport 设备应用，和你的鲸鱼娘实时语音对话
+
+一个简单的调用示例：
 
 ```ts
 import type { XiaomiMimoTtsService } from 'dsh-xiaomi-tts/client-api'
@@ -79,10 +93,6 @@ const tts = ctx.get('xiaomiMimoTts') as XiaomiMimoTtsService | undefined
 tts?.play('欢迎回来')
 // tts?.stop()
 ```
-
-使用 `ctx.get()` 动态获取可选服务，避免声明必需注入；插件未安装或未就绪时跳过。
-
-完整接入方式见[开放能力接口文档](open-api.md)。
 
 ## 🔒 隐私
 
@@ -101,17 +111,6 @@ pnpm test
 pnpm dev:build    # 构建预览
 pnpm pack:check   # 检查打包内容
 ```
-
-## 🤝 推荐
-
-- [WhaleTalk Passport · 鲸语通行证](https://github.com/ppy-web/whaletalk-passport#readme) AI Passport 设备应用，和你的鲸鱼娘实时语音对话
-- [dsh-speech-provider-adapter · 供应商适配器](https://github.com/ppy-web/dsh-speech-provider-adapter#readme) 为音色工坊管理自定义语音供应商、模型与音色
-- [dsh-whale-musume · 元气鲸鱼娘桌宠](https://github.com/Sutera-Diffusus/dsh-whale-musume#readme) 支持互动气泡播报 `已联动`
-- [dsh-pet · 蓝色大肥鱼桌宠](https://github.com/PC2005-cloud/dsh-pet#readme) 支持播报碎碎念，闲聊消息 `已联动`
-- [dsh-qqbot · 腾讯官方QQ机器人](https://github.com/tencent-connect/dsh-qqbot#readme) 支持向 QQ 推送语音和表情包 `已联动`
-- [dsh-novel · 小说阅读与听书](https://github.com/xrn1997/dsh-novel#readme) 可使用本插件的宿主朗读服务朗读小说 `已联动`
-- [dsh-Go · dsh 移动端移植](https://github.com/ccch1mneyyy/dsh-Go) 在移动端也可使用本插件 `已适配`
-- [✈️𝘾𝙤𝙠𝙚𝘾𝙡𝙤𝙪𝙙](https://vip.ih004.com/#/register?code=UHKslrCy) · 科学上网
 
 <a href="https://www.star-history.com/?repos=ppy-web%2Fdsh-plugin-xiaomi-mimo-tts&type=timeline&logscale=&legend=bottom-right">
  <picture>
