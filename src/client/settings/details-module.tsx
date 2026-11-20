@@ -38,7 +38,7 @@ import { SettingFieldHeading } from './field-heading.js'
 import { formatVoiceRate, readScopeLabelKey, VOICE_RATE_RANGE } from './voice-reading-options.js'
 import { AvatarStyleCards } from './controls/avatar-style-cards.js'
 import { ReadScopeCards } from './controls/read-scope-cards.js'
-import type { EditableSettingField, SettingField } from './types.js'
+import type { EditableSettingField, SettingField, SettingsValues } from './types.js'
 
 function DeepseekVoiceOptions({ value, disabled, t, onChange }: {
   value: DeepSeekVoice
@@ -94,64 +94,42 @@ function ModelPicker({ value, disabled, label, presetLabel, voiceDesignLabel, on
   </div>
 }
 
+export const DETAIL_FIELDS = [
+  'provider', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'deepseekVoice', 'breezeVoice', 'breezeInstruction',
+  'doubaoInstruction', 'instruction', 'model', 'localSpeechMode', 'localVoiceURI', 'localVoiceEngine', 'mossEnabled',
+  'mossBaseURL', 'mossVoice', 'mossVoiceName', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'voiceVolume',
+  'voiceRate', 'avatarStyle', 'readScope', 'autoPlay',
+] as const satisfies readonly EditableSettingField[]
+
 export interface DetailsModuleProps {
+  draft: Pick<SettingsValues, typeof DETAIL_FIELDS[number]>
   externalSelection?: ExternalSpeechSelection | undefined
   onExternalSelectionChange?: ((selection: ExternalSpeechSelection) => void) | undefined
-  provider: TtsProvider
-  doubaoModel: DoubaoTtsModel
-  doubaoVoice: string
-  doubaoClonedVoice: string
-  deepseekVoice?: DeepSeekVoice
-  onDeepseekVoiceChange?: (voice: DeepSeekVoice) => void
-  breezeVoice: string
-  breezeInstruction: string
-  speechInstruction: string
-  onSpeechInstructionChange: (instruction: string) => void
-  onDoubaoModelChange: (model: DoubaoTtsModel) => void
-  onDoubaoVoiceChange: (voice: string) => void
-  onDoubaoClonedVoiceChange: (voice: string) => void
-  onBreezeVoiceChange: (voice: string) => void
-  onBreezeInstructionChange: (value: string) => void
   t: Translate
   open: boolean
   minimal: boolean
   writable: boolean
-  autoPlay: boolean
-  voiceVolume: number
-  voiceRate: number
-  avatarStyle: TtsAvatarStyle
-  readScope: TtsReadScope
-  model: TtsModel
-  localSpeechMode: TtsLocalSpeechMode
-  localVoiceURI: string
-  localVoiceEngine: TtsLocalVoiceEngine
-  mossEnabled: boolean
-  mossBaseURL: string
-  mossVoice: string
-  mossVoiceName: string
-  voice: string
-  voiceDesignPrompt: string
-  voiceDesignCustomPrompt: string
-  fieldOverridden: (field: SettingField) => boolean
+  overrides: readonly SettingField[]
   resetField: (field: EditableSettingField) => void
+  onChange: <K extends EditableSettingField>(field: K, value: SettingsValues[K]) => void
   onToggle: () => void
   onVoiceVolumeChange: (value: number) => void
+  onVoiceVolumePreview: (value: number) => void
+  onVoiceVolumeCancel: () => void
   onVoiceVolumeInteractionEnd: (value: number) => void
   onVoiceRateChange: (value: number) => void
   onVoiceRateInteractionEnd: (value: number) => void
-  onAvatarStyleChange: (value: TtsAvatarStyle) => void
-  onReadScopeChange: (value: TtsReadScope) => void
-  onModelChange: (value: TtsModel) => void
   onVoiceDesignPromptChange: (value: string) => void
-  onVoiceChange: (value: string) => void
-  onLocalVoiceURIChange: (value: string) => void
-  onLocalVoiceEngineChange: (value: TtsLocalVoiceEngine) => void
-  onMossBaseURLChange: (value: string) => void
   onMossVoiceChange: (voiceId: string, voiceName: string) => void
-  onLocalSpeechModeChange: (value: TtsLocalSpeechMode) => void
 }
 
-export function DetailsModule({ externalSelection, onExternalSelectionChange, t, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, breezeVoice, breezeInstruction, deepseekVoice = 'stella', onDeepseekVoiceChange, speechInstruction, onSpeechInstructionChange, onDoubaoModelChange, onDoubaoVoiceChange, onDoubaoClonedVoiceChange, onBreezeVoiceChange, onBreezeInstructionChange, open, minimal, writable, autoPlay, voiceVolume, voiceRate, readScope, avatarStyle, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, fieldOverridden, resetField, onToggle, onVoiceVolumeChange, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onAvatarStyleChange, onReadScopeChange, onModelChange, onVoiceDesignPromptChange, onVoiceChange, onLocalVoiceURIChange, onLocalVoiceEngineChange, onMossBaseURLChange, onMossVoiceChange, onLocalSpeechModeChange }: DetailsModuleProps): ReactElement {
+export function DetailsModule({ draft, externalSelection, onExternalSelectionChange, t, open, minimal, writable, overrides, resetField, onChange, onToggle, onVoiceVolumeChange, onVoiceVolumePreview, onVoiceVolumeCancel, onVoiceVolumeInteractionEnd, onVoiceRateChange, onVoiceRateInteractionEnd, onVoiceDesignPromptChange, onMossVoiceChange }: DetailsModuleProps): ReactElement {
+  const {
+    provider, doubaoModel, doubaoVoice, doubaoClonedVoice, deepseekVoice, breezeVoice, breezeInstruction,
+    instruction, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice,
+    mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, voiceVolume, voiceRate, avatarStyle, readScope, autoPlay,
+  } = draft
+  const fieldOverridden = useCallback((field: SettingField) => overrides.includes(field), [overrides])
   useEngineState()
   const external = externalEngine()
   const providerWritable = writable && !external
@@ -162,8 +140,8 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
   const onLocalVoicesAvailabilityChange = useCallback((available: boolean): void => { setLocalVoicesAvailable(available) }, [])
   const localVoiceAvailable = localVoiceEngine === 'browser' ? localVoicesAvailable !== false : true
   useEffect(() => {
-    if (!localVoiceAvailable && localSpeechMode !== 'auto') onLocalSpeechModeChange('auto')
-  }, [localSpeechMode, localVoiceAvailable, onLocalSpeechModeChange])
+    if (!localVoiceAvailable && localSpeechMode !== 'auto') onChange('localSpeechMode', 'auto')
+  }, [localSpeechMode, localVoiceAvailable, onChange])
   const summaryModel = provider === 'deepseek' ? t('settings.providerDeepseek') : provider === 'doubao' ? t(doubaoModel === 'seed-icl-2.0' ? 'settings.doubaoCloneModel' : 'settings.doubaoStandardModel') : t(model === 'mimo-v2.5-tts-voicedesign' ? 'settings.summaryVoiceDesignModel' : 'settings.summaryPresetModel')
   const voiceDesignPreset = TTS_VOICE_DESIGN_PRESETS.find((item) => item.prompt === voiceDesignPrompt)
   const summaryVoice = provider === 'deepseek' ? t(deepseekVoice === 'stella' ? 'settings.deepseekStella' : 'settings.deepseekTide') : provider === 'doubao' ? (doubaoModel === 'seed-icl-2.0' ? doubaoClonedVoice || t('settings.doubaoVoiceId') : DOUBAO_VOICE_PRESETS.find(voice => voice.value === doubaoVoice)?.name ?? doubaoVoice) : provider === 'breeze' ? breezeVoiceLabel(breezeVoice) : model === 'mimo-v2.5-tts-voicedesign'
@@ -175,11 +153,12 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
   const summaryVoiceRate = formatVoiceRate(voiceRate)
   const instructionField = provider === 'doubao' ? 'doubaoInstruction' : provider === 'breeze' ? 'breezeInstruction' : 'instruction'
   const supportsInstruction = provider !== 'deepseek' && (provider !== 'doubao' || doubaoModel === 'seed-tts-2.0')
-  const instruction = provider === 'breeze' ? breezeInstruction : speechInstruction
-  const summaryInstruction = supportsInstruction ? speechInstructionLabel(provider, instruction, t) : null
+  const speechInstruction = provider === 'doubao' ? draft.doubaoInstruction : instruction
+  const activeInstruction = provider === 'breeze' ? breezeInstruction : speechInstruction
+  const summaryInstruction = supportsInstruction ? speechInstructionLabel(provider, activeInstruction, t) : null
   const readScopeControl = <div className="xmimo-tts-format" hidden={hide('readScope')}>
     <SettingFieldHeading label={t('settings.readScope')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('readScope')} resettable disabled={!writable} onReset={() => { resetField('readScope') }} />
-    <ReadScopeCards value={readScope} disabled={!writable} t={t} onChange={onReadScopeChange} />
+    <ReadScopeCards value={readScope} disabled={!writable} t={t} onChange={(next) => { onChange('readScope', next) }} />
   </div>
   return <CollapsibleModule
     className="xmimo-tts-settings-module xmimo-tts-details xmimo-ui-module"
@@ -187,7 +166,7 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
     ariaLabel={t('settings.detailedVoiceConfig')}
     searchGroups={['mixer', 'playback', 'local']}
     summary={<span className="xmimo-tts-details-summary xmimo-ui-summary">
-      <span>{summaryVoiceVolume}</span><span>{summaryVoiceRate}</span><span>{summaryReadScope}</span>{external ? <><span>{external.name}</span><span>{externalSelection?.model ?? external.modelName}</span><span>{externalSelection?.voice ?? external.voiceName}</span></> : <>{provider === 'breeze' ? null : <span>{summaryModel}</span>}<span>{summaryVoice}</span>{summaryInstruction === null ? null : <span title={`${t('settings.speechInstruction')}: ${instruction.trim() || summaryInstruction}`}>{summaryInstruction}</span>}</>}{minimal ? null : <span>{summaryStrategy}</span>}
+      <span>{summaryVoiceVolume}</span><span>{summaryVoiceRate}</span><span>{summaryReadScope}</span>{external ? <><span>{external.name}</span><span>{externalSelection?.model ?? external.modelName}</span><span>{externalSelection?.voice ?? external.voiceName}</span></> : <>{provider === 'breeze' ? null : <span>{summaryModel}</span>}<span>{summaryVoice}</span>{summaryInstruction === null ? null : <span title={`${t('settings.speechInstruction')}: ${activeInstruction.trim() || summaryInstruction}`}>{summaryInstruction}</span>}</>}{minimal ? null : <span>{summaryStrategy}</span>}
     </span>}
     open={open}
     onToggle={onToggle}
@@ -196,20 +175,20 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
       {external ? <ExternalSpeechFields engine={external} selection={externalSelection} writable={writable} minimal={minimal} t={t} onChange={onExternalSelectionChange ?? (() => {})} /> : <>
       {provider !== 'breeze' && provider !== 'deepseek' ? <div className="xmimo-tts-model" hidden={hide('model')}>
         <SettingFieldHeading label={t('settings.model')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden(provider === 'doubao' ? 'doubaoModel' : 'model')} resettable disabled={!providerWritable} onReset={() => { resetField(provider === 'doubao' ? 'doubaoModel' : 'model') }} />
-        {provider === 'doubao' ? <SegmentedControl id="xmimo-tts-doubao-model" value={doubaoModel} options={[{ value: 'seed-tts-2.0', label: t('settings.doubaoStandardModel') }, { value: 'seed-icl-2.0', label: t('settings.doubaoCloneModel') }]} label={t('settings.model')} disabled={!providerWritable} onChange={onDoubaoModelChange} className="xmimo-tts-settings-segmented xmimo-tts-doubao-models" /> : <ModelPicker
+        {provider === 'doubao' ? <SegmentedControl id="xmimo-tts-doubao-model" value={doubaoModel} options={[{ value: 'seed-tts-2.0', label: t('settings.doubaoStandardModel') }, { value: 'seed-icl-2.0', label: t('settings.doubaoCloneModel') }]} label={t('settings.model')} disabled={!providerWritable} onChange={(next) => { onChange('doubaoModel', next) }} className="xmimo-tts-settings-segmented xmimo-tts-doubao-models" /> : <ModelPicker
           value={model}
           disabled={!providerWritable}
           label={t('settings.model')}
           presetLabel={t('settings.presetModelShort')}
           voiceDesignLabel={t('settings.voiceDesignModelShort')}
-          onChange={onModelChange}
+          onChange={(next) => { onChange('model', next) }}
         />}
         {autoPlay && !minimal ? <small>{t(provider === 'doubao' ? 'settings.doubaoStreamingHint' : model === 'mimo-v2.5-tts' ? 'settings.modelAutoPlayHintPreset' : 'settings.modelAutoPlayHintVoiceDesign')}</small> : null}
       </div> : null}
       {provider === 'deepseek' ? <div className="xmimo-tts-voice" hidden={hide('voice')}>
         <SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('deepseekVoice')} resettable disabled={!providerWritable} onReset={() => resetField('deepseekVoice')} />
-        <DeepseekVoiceOptions value={deepseekVoice} disabled={!providerWritable} t={t} onChange={onDeepseekVoiceChange} />
-      </div> : provider === 'breeze' ? <div className="xmimo-tts-voice" hidden={hide('voice')}><SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('breezeVoice')} resettable disabled={!providerWritable} onReset={() => resetField('breezeVoice')} /><BreezeVoicePicker value={breezeVoice} disabled={!providerWritable} t={t} onChange={onBreezeVoiceChange} /></div> : provider === 'doubao' ? <div className={`xmimo-tts-voice xmimo-tts-doubao-voice${doubaoModel === 'seed-icl-2.0' ? ' xmimo-tts-cloned-voice' : ''}`} hidden={hide(doubaoModel === 'seed-icl-2.0' ? 'clonedVoice' : 'voice')}>
+        <DeepseekVoiceOptions value={deepseekVoice} disabled={!providerWritable} t={t} onChange={(next) => { onChange('deepseekVoice', next) }} />
+      </div> : provider === 'breeze' ? <div className="xmimo-tts-voice" hidden={hide('voice')}><SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('breezeVoice')} resettable disabled={!providerWritable} onReset={() => resetField('breezeVoice')} /><BreezeVoicePicker value={breezeVoice} disabled={!providerWritable} t={t} onChange={(next) => { onChange('breezeVoice', next) }} /></div> : provider === 'doubao' ? <div className={`xmimo-tts-voice xmimo-tts-doubao-voice${doubaoModel === 'seed-icl-2.0' ? ' xmimo-tts-cloned-voice' : ''}`} hidden={hide(doubaoModel === 'seed-icl-2.0' ? 'clonedVoice' : 'voice')}>
         <SettingFieldHeading
           label={t(doubaoModel === 'seed-icl-2.0' ? 'settings.doubaoClonedVoiceLabel' : 'settings.voice')}
           suffix={<small className="xmimo-tts-doubao-voice-hint"><a href={doubaoModel === 'seed-icl-2.0' ? 'https://console.volcengine.com/speech/new/experience/clone?projectName=default' : 'https://console.volcengine.com/speech/new/voices?projectName=default'} target="_blank" rel="noopener noreferrer">{t(doubaoModel === 'seed-icl-2.0' ? 'settings.doubaoCreateVoice' : 'settings.doubaoVoiceLibrary')}</a>{doubaoModel === 'seed-icl-2.0' ? <> {t('settings.doubaoCloneHint')}</> : null}</small>}
@@ -220,7 +199,7 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
           disabled={!providerWritable}
           onReset={() => resetField(doubaoModel === 'seed-icl-2.0' ? 'doubaoClonedVoice' : 'doubaoVoice')}
         />
-        {doubaoModel === 'seed-icl-2.0' ? <VoiceIdInput kind="cloned" value={doubaoClonedVoice} disabled={!providerWritable} label={t('settings.doubaoClonedVoice')} historyLabel={t('settings.doubaoClonedVoiceHistory')} t={t} onChange={onDoubaoClonedVoiceChange} /> : <DoubaoVoicePicker value={doubaoVoice} disabled={!providerWritable} minimal={minimal} onChange={onDoubaoVoiceChange} t={t} />}
+        {doubaoModel === 'seed-icl-2.0' ? <VoiceIdInput kind="cloned" value={doubaoClonedVoice} disabled={!providerWritable} label={t('settings.doubaoClonedVoice')} historyLabel={t('settings.doubaoClonedVoiceHistory')} t={t} onChange={(next) => { onChange('doubaoClonedVoice', next) }} /> : <DoubaoVoicePicker value={doubaoVoice} disabled={!providerWritable} minimal={minimal} onChange={(next) => { onChange('doubaoVoice', next) }} t={t} />}
       </div> : null}
       {provider === 'xiaomi' && model === 'mimo-v2.5-tts-voicedesign' ? <div className="xmimo-tts-voice-design-prompt" hidden={hide('voiceDesign')}>
         <SettingFieldHeading
@@ -253,12 +232,12 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
       {provider === 'xiaomi' && model === 'mimo-v2.5-tts' ? <>
         <div className="xmimo-tts-voice" hidden={hide('voice')}>
           <SettingFieldHeading label={t('settings.voice')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voice')} resettable disabled={!providerWritable} onReset={() => { resetField('voice') }} />
-          <BuiltInVoicePicker value={voice} disabled={!providerWritable} label={t('settings.voice')} minimal={minimal} onChange={onVoiceChange} />
+          <BuiltInVoicePicker value={voice} disabled={!providerWritable} label={t('settings.voice')} minimal={minimal} onChange={(next) => { onChange('voice', next) }} />
         </div>
       </> : null}
       {supportsInstruction ? <div className="xmimo-tts-voice xmimo-tts-speech-instruction" hidden={hide('instruction')}>
         <SettingFieldHeading label={t('settings.speechInstruction')} suffix={<FieldInfo label={t('settings.speechInstructionInfo')} text={t('settings.speechInstructionLimitations')} />} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden(instructionField)} resettable disabled={!providerWritable} onReset={() => resetField(instructionField)} />
-        {provider === 'breeze' ? <SpeechInstructionPicker provider={provider} value={breezeInstruction} disabled={!providerWritable} minimal={minimal} onChange={onBreezeInstructionChange} t={t} /> : <SpeechInstructionPicker provider={provider} value={speechInstruction} disabled={!providerWritable} minimal={minimal} onChange={onSpeechInstructionChange} t={t} />}
+        {provider === 'breeze' ? <SpeechInstructionPicker provider={provider} value={breezeInstruction} disabled={!providerWritable} minimal={minimal} onChange={(next) => { onChange('breezeInstruction', next) }} t={t} /> : <SpeechInstructionPicker provider={provider} value={speechInstruction} disabled={!providerWritable} minimal={minimal} onChange={(next) => { onChange(instructionField, next) }} t={t} />}
       </div> : null}
       </>}
       <details {...moreSettings} className="xmimo-tts-more-settings" hidden={search !== null && !showMore}>
@@ -274,11 +253,11 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
           <div className="xmimo-tts-playback-controls" hidden={hide('voiceVolume', 'voiceRate')}>
             <div className="xmimo-tts-volume" hidden={hide('voiceVolume')}>
               <SettingFieldHeading label={t('settings.voiceVolume')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceVolume')} resettable disabled={!writable} onReset={() => { resetField('voiceVolume') }} />
-              <LensSlider value={voiceVolume} label={t('settings.voiceVolume')} minimal={minimal} disabled={!writable} onChange={onVoiceVolumeChange} onInteractionEnd={onVoiceVolumeInteractionEnd} />
+              <LensSlider value={voiceVolume} label={t('settings.voiceVolume')} minimal={minimal} disabled={!writable} commitOnEnd onChange={onVoiceVolumeChange} onPreviewChange={onVoiceVolumePreview} onInteractionCancel={onVoiceVolumeCancel} onInteractionEnd={onVoiceVolumeInteractionEnd} />
             </div>
             <div className="xmimo-tts-volume" hidden={hide('voiceRate')}>
               <SettingFieldHeading label={t('settings.voiceRate')} suffix={<FieldInfo label={t('settings.voiceRateInfo')} text={t('settings.voiceRateHint')} />} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('voiceRate')} resettable disabled={!writable} onReset={() => { resetField('voiceRate') }} />
-              <LensSlider value={voiceRate} {...VOICE_RATE_RANGE} formatValue={formatVoiceRate} label={t('settings.voiceRate')} minimal={minimal} disabled={!writable} onChange={onVoiceRateChange} onInteractionEnd={onVoiceRateInteractionEnd} />
+              <LensSlider value={voiceRate} {...VOICE_RATE_RANGE} formatValue={formatVoiceRate} label={t('settings.voiceRate')} minimal={minimal} disabled={!writable} commitOnEnd onChange={onVoiceRateChange} onInteractionEnd={onVoiceRateInteractionEnd} />
             </div>
           </div>
           {!minimal || (search !== null && !hide('browserVoice', 'localEngine', 'mossBaseURL', 'mossVoice')) ? <LocalVoiceModule
@@ -294,16 +273,16 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
             mossVoiceName={mossVoiceName}
             fieldOverridden={fieldOverridden}
             resetField={resetField}
-            onEngineChange={onLocalVoiceEngineChange}
-            onBrowserVoiceChange={onLocalVoiceURIChange}
-            onMossBaseURLChange={onMossBaseURLChange}
+            onEngineChange={(next) => { onChange('localVoiceEngine', next) }}
+            onBrowserVoiceChange={(next) => { onChange('localVoiceURI', next) }}
+            onMossBaseURLChange={(next) => { onChange('mossBaseURL', next) }}
             onMossVoiceChange={onMossVoiceChange}
             onBrowserAvailabilityChange={onLocalVoicesAvailabilityChange}
           /> : null}
           {readScopeControl}
           <div className="xmimo-tts-format" hidden={hide('avatarStyle')}>
             <SettingFieldHeading label={t('settings.avatarStyle')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('avatarStyle')} resettable disabled={!writable} onReset={() => { resetField('avatarStyle') }} />
-            <AvatarStyleCards value={avatarStyle} disabled={!writable} t={t} onChange={onAvatarStyleChange} />
+            <AvatarStyleCards value={avatarStyle} disabled={!writable} t={t} onChange={(next) => { onChange('avatarStyle', next) }} />
           </div>
           {!minimal || search?.visible.has('localSpeechMode') ? <div className="xmimo-tts-format" hidden={hide('localSpeechMode')}>
             <SettingFieldHeading label={t('settings.localSpeechMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localSpeechMode')} resettable disabled={!writable} onReset={() => { resetField('localSpeechMode') }} />
@@ -318,7 +297,7 @@ export function DetailsModule({ externalSelection, onExternalSelectionChange, t,
                 }))}
                 label={t('settings.localSpeechMode')}
                 disabled={!writable}
-                onChange={onLocalSpeechModeChange}
+                onChange={(next) => { onChange('localSpeechMode', next) }}
                 className="xmimo-tts-settings-segmented xmimo-tts-speech-policy"
               />
             </div>

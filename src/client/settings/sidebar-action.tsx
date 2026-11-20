@@ -4,19 +4,21 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { ReactElement } from 'react'
 import { RiVoiceAiFill } from 'react-icons/ri'
-import { resolveTtsSettings } from '../../shared.js'
+import type { ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { TtsSettings } from '../../shared.js'
 import { NS } from '../localization.js'
 import { lazyPanel } from '../lazy-panel.js'
 import type { VoiceSettingsPageProps } from './voice-settings-page.js'
+import { observeSettingsSlice } from './scope.js'
 
 const VoiceSettingsPage = lazyPanel(() => import('./voice-settings-page.js').then(module => module.VoiceSettingsPage))
 
 export const VOICE_SETTINGS_PANEL_ID = 'xiaomi-mimo-tts.settings'
+export const sidebarMounted = (snapshot: ConfigFormSnapshot<TtsSettings>): boolean => snapshot.status === 'ready' && snapshot.value?.showInSidebar === true
 
 /** Follow the saved placement at click time, including changes made while the guide is open. */
 export function openVoiceWorkbench(ctx: Pick<Context, 'layout' | 'pluginNavigation'>, scope: VoiceSettingsPageProps['scope']): void {
-  const snapshot = scope.getSnapshot()
-  if (snapshot.status === 'ready' && resolveTtsSettings(snapshot.value).showInSidebar) {
+  if (sidebarMounted(scope.getSnapshot())) {
     ctx.layout.selectPanel(VOICE_SETTINGS_PANEL_ID as MainPanelId)
   } else {
     ctx.pluginNavigation.openBundle('dsh-xiaomi-tts')
@@ -36,16 +38,14 @@ export function registerVoiceSettingsSidebar(ctx: Context, props: Omit<VoiceSett
   }
   const removePanel = ctx.slots.register({ name: 'main', key: VOICE_SETTINGS_PANEL_ID, inject: () => pageProps }, VoiceSettingsPage)
   let remove: (() => void) | undefined
-  const update = (): void => {
-    const snapshot = scope.getSnapshot()
-    const visible = snapshot.status === 'ready' && resolveTtsSettings(snapshot.value).showInSidebar
+  const update = (visible: boolean): void => {
     if (visible && !remove) {
       remove = ctx.slots.register({ name: 'sidebar.panellist', id: VOICE_SETTINGS_PANEL_ID, order: -10, label: () => t('settings.voiceSettingsNav'), locale: NS }, VoiceSettingsSidebarIcon)
     }
     if (!visible) { remove?.(); remove = undefined }
   }
-  const off = scope.subscribe(update)
-  try { update() } catch (error) { off(); removePanel(); throw error }
+  let off: () => void
+  try { off = observeSettingsSlice(scope, sidebarMounted, update) } catch (error) { removePanel(); throw error }
   let disposed = false
   return () => {
     if (disposed) return

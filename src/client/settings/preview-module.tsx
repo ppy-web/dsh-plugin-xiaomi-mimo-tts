@@ -4,27 +4,35 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PreviewError, PreviewRecording, PreviewSource, PreviewStatus } from '../playback/preview-player.js'
 import { CollapsibleModule } from './collapsible-module.js'
 import { useSettingsSearch } from './settings-search-context.js'
-import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS } from './announcement-settings.js'
-import type { AnnouncementSettingsProps } from './announcement-settings.js'
+import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS, ANNOUNCEMENT_TOGGLE_FIELDS } from './announcement-settings.js'
+import type { AnnouncementToggle, AnnouncementToggleField } from './announcement-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { AudioTagPicker } from './controls/audio-tag-picker.js'
 import { TactileButton } from './controls/tactile-button.js'
 import { ProviderSettings } from './provider-settings.js'
-import type { ProviderSettingsProps } from './provider-settings.js'
 import type { ExternalSpeechSelection } from '../../host-api.js'
-import type { AudioResponseStyle } from '../../types/settings.js'
+import type { AnnouncementSourceId } from '../../types/settings.js'
+import type { OptionalTtsProvider } from '../../types/providers.js'
 import { CaptionVisualPicker } from '../conversation/caption-visual.js'
 import { PREVIEW_PRESETS } from './preview-presets.js'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
 import { SettingFieldHeading } from './field-heading.js'
 import { HistoryDownloads } from '../history/history-list.js'
+import type { SettingsValues, SettingField } from './types.js'
+import type { Translate } from '../localization.js'
+import type { AudioResponseStyle } from '../../types/settings.js'
 
-export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<ProviderSettingsProps, 't' | 'writable' | 'visibleSettings'> {
-  audioResponseStyle: AudioResponseStyle
-  audioResponseStyleOverridden: boolean
-  onAudioResponseStyleChange: (value: AudioResponseStyle) => void
-  onAudioResponseStyleReset: () => void
+export const BROADCAST_FIELDS = [
+  'announcementSources', 'qqbotEnabled', 'audioResponseStyle', 'doubaoEnabled', 'breezeEnabled', 'deepseekEnabled',
+  'mossEnabled', 'acceptExternalProviders', ...ANNOUNCEMENT_TOGGLE_FIELDS,
+] as const satisfies readonly SettingField[]
+
+export interface PreviewModuleProps {
+  t: Translate
+  writable: boolean
+  draft: Pick<SettingsValues, typeof BROADCAST_FIELDS[number]>
+  overrides: readonly SettingField[]
   enabled: boolean
   status: PreviewStatus
   source: PreviewSource
@@ -37,13 +45,22 @@ export interface PreviewModuleProps extends AnnouncementSettingsProps, Omit<Prov
   onToggleOpen: () => void
   audioTagProvider?: 'xiaomi' | 'breeze' | undefined
   externalSelection?: ExternalSpeechSelection | undefined
+  onSettingChange: (field: AnnouncementToggleField, value: boolean) => void
+  resetField: (field: AnnouncementToggleField) => void
+  onSourcesChange: (sources: AnnouncementSourceId[]) => void
+  onSourcesReset: () => void
+  onQqbotChange: (enabled: boolean) => void
+  onAudioResponseStyleChange: (value: AudioResponseStyle) => void
+  onAudioResponseStyleReset: () => void
+  onAcceptExternalProvidersChange: (enabled: boolean) => void
+  onMossEnabledChange: (enabled: boolean) => void
+  onProviderEnabledChange: (provider: OptionalTtsProvider, enabled: boolean) => void
 }
 
 export function PreviewModule({
-  t, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, externalSelection,
-  doubaoEnabled, breezeEnabled, deepseekEnabled, mossEnabled, onMossEnabledChange, onProviderEnabledChange,
-  acceptExternalProviders, onAcceptExternalProvidersChange,
-  audioResponseStyle, audioResponseStyleOverridden, onAudioResponseStyleChange, onAudioResponseStyleReset, ...settings
+  t, writable, draft, overrides, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, externalSelection,
+  onSettingChange, resetField, onSourcesChange, onSourcesReset, onQqbotChange,
+  onAudioResponseStyleChange, onAudioResponseStyleReset, onAcceptExternalProvidersChange, onMossEnabledChange, onProviderEnabledChange,
 }: PreviewModuleProps): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   useEngineState()
@@ -101,6 +118,11 @@ export function PreviewModule({
             ? 'settings.previewCompletedMimo'
             : 'settings.previewHint'
 
+  const toggles = Object.fromEntries(ANNOUNCEMENT_TOGGLE_FIELDS.map(field => [field, {
+    value: draft[field], overridden: overrides.includes(field),
+    onChange: (value: boolean) => onSettingChange(field, value), onReset: () => resetField(field),
+  } satisfies AnnouncementToggle])) as Record<AnnouncementToggleField, AnnouncementToggle>
+
   return <CollapsibleModule className="xmimo-tts-settings-module xmimo-tts-broadcast"
     title={<span className="xmimo-ui-module-title"><RiRadio2Line size={14} aria-hidden="true" focusable="false" />{t('settings.previewTitle')}</span>}
     ariaLabel={t('settings.previewTitle')}
@@ -118,11 +140,11 @@ export function PreviewModule({
         <PlaybackIcon state={busy ? 'stop' : 'play'} />
         <span>{t(busy ? 'settings.previewStopShort' : 'settings.previewListen')}</span>
       </TactileButton>
-      {ANNOUNCEMENT_SOURCE_OPTIONS.filter(option => settings.sources.includes(option.id)).map(option => <span key={option.id}>{t(option.label)}</span>)}
-      {settings.qqbotEnabled ? <span>{t('settings.qqbotIntegration')}</span> : null}
-      {settings.voiceRecognitionService ? <span>{t('settings.voiceRecognitionService')}</span> : null}
-      {settings.showReadingCaptions ? <span>{t('settings.readingCaptions')}</span> : null}
-      {settings.sources.length === 0 && !settings.qqbotEnabled ? <span>{t('settings.announcementsNone')}</span> : null}
+      {ANNOUNCEMENT_SOURCE_OPTIONS.filter(option => draft.announcementSources.includes(option.id)).map(option => <span key={option.id}>{t(option.label)}</span>)}
+      {draft.qqbotEnabled ? <span>{t('settings.qqbotIntegration')}</span> : null}
+      {toggles.voiceRecognitionService.value ? <span>{t('settings.voiceRecognitionService')}</span> : null}
+      {draft.showReadingCaptions ? <span>{t('settings.readingCaptions')}</span> : null}
+      {draft.announcementSources.length === 0 && !draft.qqbotEnabled ? <span>{t('settings.announcementsNone')}</span> : null}
     </span>
       {!open && status === 'error' ? <small className="xmimo-tts-preview-summary-status xmimo-tts-failed" role="status">{t(messageKey)}</small> : null}
     </>}>
@@ -165,17 +187,20 @@ export function PreviewModule({
         <small className={status === 'error' ? 'xmimo-tts-failed' : 'xmimo-tts-preview-status'} aria-live="polite">{t(messageKey)}</small>
         {downloadFailed ? <small className="xmimo-tts-failed" role="alert">{t('settings.previewDownloadFailed')}</small> : null}
       </div>
-      {settings.showAudioResponse && !hide('settings.audioResponse') ? <div className="xmimo-tts-format">
-        <SettingFieldHeading label={t('settings.audioResponseEffects')} disabled={!settings.writable} overridden={audioResponseStyleOverridden}
+      {draft.showAudioResponse && !hide('settings.audioResponse') ? <div className="xmimo-tts-format">
+        <SettingFieldHeading label={t('settings.audioResponseEffects')} disabled={!writable} overridden={overrides.includes('audioResponseStyle')}
           resettable overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} onReset={onAudioResponseStyleReset} />
-        <CaptionVisualPicker label={t('settings.audioResponseEffects')} hideLabel value={audioResponseStyle}
-          disabled={!settings.writable} onChange={onAudioResponseStyleChange} />
+        <CaptionVisualPicker label={t('settings.audioResponseEffects')} hideLabel value={draft.audioResponseStyle}
+          disabled={!writable} onChange={onAudioResponseStyleChange} />
       </div> : null}
-      <ProviderSettings t={t} writable={settings.writable} providerLocked={external !== null} visibleSettings={search?.visible}
-        doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} deepseekEnabled={deepseekEnabled ?? false}
-        mossEnabled={mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange}
-        acceptExternalProviders={acceptExternalProviders} onAcceptExternalProvidersChange={onAcceptExternalProvidersChange} />
-      <AnnouncementSettings t={t} {...settings} parentOpen={open} />
+      <ProviderSettings t={t} writable={writable} providerLocked={external !== null} visibleSettings={search?.visible}
+        doubaoEnabled={draft.doubaoEnabled} breezeEnabled={draft.breezeEnabled} deepseekEnabled={draft.deepseekEnabled}
+        mossEnabled={draft.mossEnabled} onMossEnabledChange={onMossEnabledChange} onProviderEnabledChange={onProviderEnabledChange}
+        acceptExternalProviders={draft.acceptExternalProviders} onAcceptExternalProvidersChange={onAcceptExternalProvidersChange} />
+      <AnnouncementSettings t={t} writable={writable} toggles={toggles} parentOpen={open}
+        sources={draft.announcementSources} sourcesOverridden={overrides.includes('announcementSources')}
+        onSourcesChange={onSourcesChange} onSourcesReset={onSourcesReset}
+        qqbotEnabled={draft.qqbotEnabled} onQqbotChange={onQqbotChange} />
     </div>
   </CollapsibleModule>
 }

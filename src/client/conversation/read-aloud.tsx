@@ -5,14 +5,14 @@ import {
   Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { RiVoiceAiFill } from 'react-icons/ri'
-import { resolveTtsSettings } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { Translate } from '../localization.js'
 import type { LiveSpeechController, LocalSpeechController, PlaybackController } from '../playback/index.js'
-import { useSettingsSnapshot } from '../settings/scope.js'
+import { resolvedSettingsSnapshot, useSettingsSlice } from '../settings/scope.js'
+import { selectConversationSettings } from '../settings/conversation-settings.js'
 import { AnimatedAudioLines } from './animated-audio-lines.js'
 import { automaticAssistantMessageId, messageText, messageTime, messageLiveIdentity } from './message-text.js'
 import { automaticReplyMode } from './automatic-reading.js'
@@ -74,8 +74,8 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   const sessionSnapshot = useSession(snapshot => snapshot)
   const legacy = useChat(chat => chat.legacy)
   const foldedReplies = useSyncExternalStore(automaticReading.subscribe, automaticReading.getSnapshot, automaticReading.getSnapshot)
-  const settingsSnapshot = useSettingsSnapshot(settings)
-  const resolvedSettings = resolveTtsSettings(settingsSnapshot.value)
+  const settingsSlice = useSettingsSlice(settings, selectConversationSettings)
+  const resolvedSettings = resolvedSettingsSnapshot(settings.getSnapshot())
   const replyMode = automaticReplyMode(foldedReplies, resolvedSettings.readScope)
   const latestMessageId = useChat(chat => automaticAssistantMessageId(chat, replyMode))
   const running = sessionSnapshot.running
@@ -87,9 +87,6 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   const text = message.text
   const engineView = useEngineState()
   const apiKeySupported = useApiKeySupported(ownsAudio && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider)
-  local.setVoiceURI(resolvedSettings.localVoiceURI)
-  local.setMossVoice(resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice)
-  local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
   const view = useSyncExternalStore(playback.subscribe, playback.getSnapshot, playback.getSnapshot)
 
   const request = {
@@ -97,17 +94,18 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
     turn: legacy.partial?.turn ?? message.identity?.turn,
     settings: resolvedSettings, apiKeySupported,
   }
+  const latestRequest = () => ({ ...request, settings: resolvedSettingsSnapshot(settings.getSnapshot()) })
 
   useEffect(() => {
-    if (!engineCanRequest() || !automaticReading.allowed(sessionId) || !ownsAudio || !automaticAudioFocus.canPlay() || text.length === 0 || settingsSnapshot.value?.enabled !== true || settingsSnapshot.value?.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (!engineCanRequest() || !automaticReading.allowed(sessionId) || !ownsAudio || !automaticAudioFocus.canPlay() || text.length === 0 || settingsSlice.enabled !== true || settingsSlice.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     const cancel = window.setTimeout(() => {
       if (!automaticAudioFocus.canPlay() || live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity) || !automaticReading.allowed(sessionId) || !playback.claimAutomaticPlayback(sessionId, messageId)) return
-      if (playCompletedReply(request, true)) automaticReading.markAutomatic()
+      if (playCompletedReply(latestRequest(), true)) automaticReading.markAutomatic()
     }, 0)
     return () => window.clearTimeout(cancel)
-  }, [engineView, automaticReading, latestMessageId, automaticAudioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.time, messageId, playback, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.breezeVoice, resolvedSettings.breezeInstruction, resolvedSettings.readScope, resolvedSettings.voiceRate, running, sessionId, settingsSnapshot.value?.autoPlay, settingsSnapshot.value?.enabled, text])
+  }, [engineView, automaticReading, latestMessageId, automaticAudioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.time, messageId, playback, running, sessionId, settingsSlice, text])
 
-  if (settingsSnapshot.value?.enabled !== true || text.length === 0) return null
+  if (settingsSlice.enabled !== true || text.length === 0) return null
 
   const mine = view.sessionId === sessionId && view.messageId === messageId
   const status = mine ? view.status : 'idle'
@@ -138,7 +136,7 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
         aria-description={statusText ?? undefined}
         aria-pressed={status === 'playing' || liveActive}
         disabled={status === 'loading' && source === 'complete'}
-        onClick={() => { audioFocus.claim(); if (audioFocus.canPlay()) { automaticReading.markManual(); handleReadAloudClick(request, view) } }}
+        onClick={() => { audioFocus.claim(); if (audioFocus.canPlay()) { automaticReading.markManual(); handleReadAloudClick(latestRequest(), view) } }}
       >
         {status === 'playing'
           ? <AnimatedAudioLines size={16} />

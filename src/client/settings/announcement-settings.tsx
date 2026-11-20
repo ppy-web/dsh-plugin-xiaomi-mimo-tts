@@ -8,44 +8,27 @@ import { FieldInfo } from './controls/field-info.js'
 import { useNestedDisclosure } from './use-nested-disclosure.js'
 import { useSettingsSearch } from './settings-search-context.js'
 
+export type AnnouncementToggleField = 'voiceRecognitionService' | 'showInHostSettings' | 'showFeatureGuide' | 'inputAvoidance' | 'importantAnnouncementsFirst' | 'showReadingCaptions' | 'showAudioResponse'
+
+/** One boolean setting and the actions the heading needs to show and clear its override. */
+export interface AnnouncementToggle {
+  value: boolean
+  overridden: boolean
+  onChange: (value: boolean) => void
+  onReset: () => void
+}
+
 export interface AnnouncementSettingsProps {
   children?: ReactNode
   t: Translate
-  sources: AnnouncementSourceId[]
-  qqbotEnabled: boolean
-  showInHostSettings: boolean
-  showFeatureGuide: boolean
-  onShowFeatureGuideChange: (enabled: boolean) => void
-  showFeatureGuideOverridden: boolean
-  onShowFeatureGuideReset: () => void
-  voiceRecognitionService: boolean
-  onVoiceRecognitionServiceChange: (enabled: boolean) => void
-  voiceRecognitionServiceOverridden: boolean
-  onVoiceRecognitionServiceReset: () => void
-  onShowInHostSettingsChange: (enabled: boolean) => void
-  showInHostSettingsOverridden: boolean
-  onShowInHostSettingsReset: () => void
-  showReadingCaptions: boolean
-  onShowReadingCaptionsChange: (enabled: boolean) => void
-  showReadingCaptionsOverridden: boolean
-  onShowReadingCaptionsReset: () => void
-  showAudioResponse: boolean
-  onShowAudioResponseChange: (enabled: boolean) => void
-  showAudioResponseOverridden: boolean
-  onShowAudioResponseReset: () => void
-  inputAvoidance: boolean
-  onInputAvoidanceChange: (enabled: boolean) => void
-  inputAvoidanceOverridden: boolean
-  onInputAvoidanceReset: () => void
-  importantAnnouncementsFirst: boolean
-  onImportantAnnouncementsFirstChange: (enabled: boolean) => void
-  importantAnnouncementsFirstOverridden: boolean
-  onImportantAnnouncementsFirstReset: () => void
-  onQqbotChange: (enabled: boolean) => void
   writable: boolean
-  overridden: boolean
-  onChange: (sources: AnnouncementSourceId[]) => void
-  onReset: () => void
+  sources: AnnouncementSourceId[]
+  sourcesOverridden: boolean
+  onSourcesChange: (sources: AnnouncementSourceId[]) => void
+  onSourcesReset: () => void
+  qqbotEnabled: boolean
+  onQqbotChange: (enabled: boolean) => void
+  toggles: Record<AnnouncementToggleField, AnnouncementToggle>
 }
 
 const HOST_SOURCE_OPTIONS = [
@@ -66,28 +49,26 @@ const SOURCE_GROUPS = [
   { label: 'settings.announcementsPlugins', hint: 'settings.announcementsPluginsHint', options: PLUGIN_SOURCE_OPTIONS },
 ] as const
 
+const HOST_TOGGLE_ROWS = [
+  { field: 'voiceRecognitionService', label: 'settings.voiceRecognitionService', hint: 'settings.voiceRecognitionServiceHint' },
+  { field: 'showInHostSettings', label: 'settings.showInHostSettings', hint: 'settings.showInHostSettingsHint' },
+  { field: 'showFeatureGuide', label: 'settings.showFeatureGuide', hint: 'settings.showFeatureGuideHint' },
+  { field: 'inputAvoidance', label: 'settings.inputAvoidance', hint: 'settings.inputAvoidanceHint' },
+  { field: 'importantAnnouncementsFirst', label: 'settings.importantAnnouncementsFirst', hint: 'settings.importantAnnouncementsFirstHint' },
+  { field: 'showReadingCaptions', label: 'settings.readingCaptions', hint: 'settings.readingCaptionsHint' },
+  { field: 'showAudioResponse', label: 'settings.audioResponse', hint: 'settings.audioResponseHint' },
+] as const satisfies readonly { field: AnnouncementToggleField, label: string, hint: string }[]
+
+export const ANNOUNCEMENT_TOGGLE_FIELDS = HOST_TOGGLE_ROWS.map(row => row.field)
+
 export function AnnouncementSettings({
-  children, t, sources, qqbotEnabled, onQqbotChange, writable, overridden, onChange, onReset, parentOpen = true,
-  showInHostSettings, onShowInHostSettingsChange, showInHostSettingsOverridden, onShowInHostSettingsReset,
-  showFeatureGuide, onShowFeatureGuideChange, showFeatureGuideOverridden, onShowFeatureGuideReset,
-  voiceRecognitionService, onVoiceRecognitionServiceChange, voiceRecognitionServiceOverridden, onVoiceRecognitionServiceReset,
-  showReadingCaptions, onShowReadingCaptionsChange, showReadingCaptionsOverridden, onShowReadingCaptionsReset,
-  showAudioResponse, onShowAudioResponseChange, showAudioResponseOverridden, onShowAudioResponseReset,
-  inputAvoidance, onInputAvoidanceChange, inputAvoidanceOverridden, onInputAvoidanceReset,
-  importantAnnouncementsFirst, onImportantAnnouncementsFirstChange, importantAnnouncementsFirstOverridden, onImportantAnnouncementsFirstReset,
+  children, t, sources, sourcesOverridden, onSourcesChange, onSourcesReset,
+  qqbotEnabled, onQqbotChange, writable, toggles, parentOpen = true,
 }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   const showMore = search !== null && (search.groups.has('host') || search.groups.has('sources') || search.groups.has('integrations'))
   const moreSettings = useNestedDisclosure(parentOpen, showMore)
-  const hostOptions = [
-    { label: 'settings.voiceRecognitionService', hint: 'settings.voiceRecognitionServiceHint', checked: voiceRecognitionService, overridden: voiceRecognitionServiceOverridden, onChange: onVoiceRecognitionServiceChange, onReset: onVoiceRecognitionServiceReset },
-    { label: 'settings.showInHostSettings', hint: 'settings.showInHostSettingsHint', checked: showInHostSettings, overridden: showInHostSettingsOverridden, onChange: onShowInHostSettingsChange, onReset: onShowInHostSettingsReset },
-    { label: 'settings.showFeatureGuide', hint: 'settings.showFeatureGuideHint', checked: showFeatureGuide, overridden: showFeatureGuideOverridden, onChange: onShowFeatureGuideChange, onReset: onShowFeatureGuideReset },
-    { label: 'settings.inputAvoidance', hint: 'settings.inputAvoidanceHint', checked: inputAvoidance, overridden: inputAvoidanceOverridden, onChange: onInputAvoidanceChange, onReset: onInputAvoidanceReset },
-    { label: 'settings.importantAnnouncementsFirst', hint: 'settings.importantAnnouncementsFirstHint', checked: importantAnnouncementsFirst, overridden: importantAnnouncementsFirstOverridden, onChange: onImportantAnnouncementsFirstChange, onReset: onImportantAnnouncementsFirstReset },
-    { label: 'settings.readingCaptions', hint: 'settings.readingCaptionsHint', checked: showReadingCaptions, overridden: showReadingCaptionsOverridden, onChange: onShowReadingCaptionsChange, onReset: onShowReadingCaptionsReset },
-    { label: 'settings.audioResponse', hint: 'settings.audioResponseHint', checked: showAudioResponse, overridden: showAudioResponseOverridden, onChange: onShowAudioResponseChange, onReset: onShowAudioResponseReset },
-  ] as const
+  const hostOptions = HOST_TOGGLE_ROWS.map(row => ({ ...row, ...toggles[row.field] }))
   return <details {...moreSettings} className="xmimo-tts-more-settings" hidden={search !== null && !showMore}>
     <summary className="xmimo-tts-more-settings-trigger" hidden={showMore}>
       <RiSettings3Line className="xmimo-tts-more-settings-icon" size={20} aria-hidden="true" focusable="false" />
@@ -108,21 +89,21 @@ export function AnnouncementSettings({
             <span>{t(option.label)}</span>
             <small>{t(option.hint)}</small>
           </div>
-          <Switch checked={option.checked} disabled={!writable} label={t(option.label)} onChange={option.onChange} />
+          <Switch checked={option.value} disabled={!writable} label={t(option.label)} onChange={option.onChange} />
         </div>)}
       </section>
       {SOURCE_GROUPS.map((group, index) => <section key={group.label} className="xmimo-tts-format xmimo-tts-switch-grid" aria-label={t(group.label)} hidden={search !== null && !search.groups.has(index === 0 ? 'sources' : 'integrations')}>
         <SettingFieldHeading label={t(group.label)}
           suffix={<FieldInfo label={t(group.label)} text={t(group.hint)} />}
           overriddenLabel={t('settings.overridden')}
-          resetLabel={t('settings.reset')} overridden={index === 0 && overridden} resettable disabled={!writable} onReset={onReset} />
+          resetLabel={t('settings.reset')} overridden={index === 0 && sourcesOverridden} resettable disabled={!writable} onReset={onSourcesReset} />
         {group.options.map(option => <div key={option.id} className="xmimo-tts-announcement-source" hidden={hide(option.id)}>
           <div>
             {option.href ? <a href={option.href} target="_blank" rel="noopener noreferrer">{t(option.label)} ↗</a> : <span>{t(option.label)}</span>}
             <small>{t(option.hint)}</small>
           </div>
           <Switch checked={sources.includes(option.id)} disabled={!writable} label={t(option.label)}
-            onChange={checked => onChange(ANNOUNCEMENT_SOURCES.filter(id => id === option.id ? checked : sources.includes(id)))} />
+            onChange={checked => onSourcesChange(ANNOUNCEMENT_SOURCES.filter(id => id === option.id ? checked : sources.includes(id)))} />
         </div>)}
         {index === 1 ? <><div className="xmimo-tts-announcement-source" hidden={hide('qqbot')}>
           <div>

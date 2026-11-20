@@ -11,7 +11,7 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
   let player: ReturnType<typeof createUISFX> | null = null
 
   const getPlayer = (): ReturnType<typeof createUISFX> => {
-    if (player === null) player = createUISFX({ pack: settings.pack, volume: settings.volume, enabled: settings.enabled, maxVoices: 8, preferences: { key: 'xiaomi-mimo-tts:sound-effects' } })
+    if (player === null) player = createUISFX({ pack: settings.pack, volume: settings.volume, enabled: settings.enabled, maxVoices: 8 })
     return player
   }
   const play = (cue: SoundCue, options?: SoundEffectsPlayOptions): void => {
@@ -38,11 +38,12 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
       try { getPlayer().play('check', { retrigger: 'ignore' }) } catch { /* Preview is best effort. */ }
     },
     update(next) {
+      const previous = settings
       settings = next
       if (player === null) return
-      player.setEnabled(next.enabled)
-      player.setVolume(next.volume)
-      player.setPack(next.pack)
+      if (previous.enabled !== next.enabled) player.setEnabled(next.enabled)
+      if (previous.volume !== next.volume) player.setVolume(next.volume)
+      if (previous.pack !== next.pack) player.setPack(next.pack)
     },
     async dispose() {
       const current = player

@@ -1,7 +1,7 @@
 import { availableTtsProviders, TTS_PROVIDER_SWITCH } from '../../types/providers.js'
 import { useExternalSelection } from './external-selection.js'
 import type { ReactElement, RefObject } from 'react'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { GoHistory } from 'react-icons/go'
 import { RiSwitchFill } from 'react-icons/ri'
@@ -12,29 +12,31 @@ import {
   resolveTtsSettings,
 } from '../../shared.js'
 import { saveSettingsDraft, validateSettingsDraft, EDITABLE_SETTING_FIELDS, BUILTIN_SETTING_FIELDS, SaveSettingsError } from './save-settings.js'
+import { API_KEY_BY_PROVIDER, API_KEY_STATE, EMPTY_DRAFT, draftFieldDirty, editDraft, hasLayerField, isApiKeyField, pruneDraftEdits } from './draft.js'
+import type { ApiKeyField, DraftSettings } from './draft.js'
 import { useEngineState } from '../use-engine-state.js'
 import { engineStateStore, externalEngine } from '../engine-state.js'
 import { invalidateApiKeyStatus, useApiKeyStatus } from '../conversation/api-key-status.js'
 import type { TtsSettings, SoundEffectsScope } from '../../shared.js'
 import type { Translate } from '../localization.js'
-import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PreviewPlayer } from '../playback/preview-player.js'
 import type { PreviewView } from '../playback/preview-player.js'
-import { isRecord, useSettingsSnapshot } from './scope.js'
+import { isRecord, resolvedSettingsSnapshot, settingsSliceEqual, settingsValueEqual, useSettingsSlice, useSettingsTranslation } from './scope.js'
 import { ToggleSoundPlayer } from '../sound-effects/toggle-sound-player.js'
 import type { SoundEffectsController } from '../sound-effects/types.js'
 import { ApiKeyModule } from './api-key-module.js'
 import { resolveApiKeyViewState } from './api-key-state.js'
 import { AvatarStyleContext } from './controls/voice-avatar.js'
-import { DetailsModule } from './details-module.js'
-import { PreviewModule } from './preview-module.js'
+import { DETAIL_FIELDS, DetailsModule } from './details-module.js'
+import { BROADCAST_FIELDS, PreviewModule } from './preview-module.js'
 import { SoundEffectsPanel } from './sound-effects-module.js'
 import { SidebarSettings } from './sidebar-settings.js'
 import { withSidebarLoading } from './sidebar-loading.js'
 import { SwitchModule } from './switch-module.js'
-import { readMinimalMode, writeMinimalMode } from './minimal-mode.js'
+import { readMinimalMode, subscribeMinimalMode, writeMinimalMode } from './minimal-mode.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
-import type { DraftChanges, EditableSettingField, ResolvedSettings, SettingField, SettingsValues } from './types.js'
+import type { DraftChanges, EditableSettingField, SettingField } from './types.js'
 import type { AudioHistory } from '../history/audio-history.js'
 import { lazyPanel } from '../lazy-panel.js'
 import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
@@ -54,6 +56,7 @@ export interface SettingsCardProps {
   onOpenProviderSettings?: ((bundle: string) => void) | undefined
   scope: ConfigForm<TtsSettings>
   t: Translate
+  localeRevision?: SnapshotSource<number> | undefined
   controller: SoundEffectsController
   beforePreview?: (() => void) | undefined
   beforeHistoryPlayback?: (() => void) | undefined
@@ -63,34 +66,47 @@ export interface SettingsCardProps {
   speechActivity?: SpeechActivity | undefined
 }
 
-type DraftSettings = SettingsValues
-
-/** Secret fields map one-to-one to the provider whose key they hold. */
-const API_KEY_STATE = {
-  apiKey: 'xiaomi',
-  doubaoApiKey: 'doubao',
-  breezeApiKey: 'breeze',
-  deepseekApiKey: 'deepseek',
-} as const
-type ApiKeyField = keyof typeof API_KEY_STATE
-const API_KEY_BY_PROVIDER = {
-  xiaomi: 'apiKey',
-  doubao: 'doubaoApiKey',
-  breeze: 'breezeApiKey',
-  deepseek: 'deepseekApiKey',
-} as const satisfies Record<typeof API_KEY_STATE[ApiKeyField], ApiKeyField>
-
-function isApiKeyField(field: SettingField): field is ApiKeyField {
-  return field in API_KEY_STATE
-}
-
 function layerSettings(value: unknown): TtsSettings | undefined {
   return isRecord(value) ? value as TtsSettings : undefined
 }
 
-function hasLayerField(value: unknown, field: string): boolean {
-  return isRecord(value) && Object.hasOwn(value, field)
+const VOICE_FIELDS = new Set<EditableSettingField>(['deepseekVoice', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice',
+  'breezeVoice', 'breezeInstruction', 'model', 'voice', 'doubaoInstruction', 'instruction'])
+
+function pickSettings<K extends EditableSettingField>(settings: DraftSettings, fields: readonly K[]): Pick<DraftSettings, K> {
+  return Object.fromEntries(fields.map(field => [field, settings[field]])) as Pick<DraftSettings, K>
 }
+
+function selectCardSettings(snapshot: ConfigFormSnapshot<TtsSettings>) {
+  const resolved = resolvedSettingsSnapshot(snapshot)
+  const values = pickSettings(resolved, EDITABLE_SETTING_FIELDS)
+  const { status, writable, user } = snapshot
+  return { ...values, status, writable, overrides: EDITABLE_SETTING_FIELDS.filter(field => hasLayerField(user, field)) }
+}
+
+/** Keep memoized modules on stable event props while their handlers read the latest committed render. */
+function useSettingsActions<T extends Record<string, (...args: never[]) => unknown>>(actions: T): T {
+  const current = useRef(actions)
+  const useCommitEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
+  useCommitEffect(() => { current.current = actions }, [actions])
+  return useMemo(() => Object.fromEntries(Object.keys(current.current).map(name => [
+    name, (...args: never[]) => current.current[name]?.(...args),
+  ])) as T, [])
+}
+
+const SettingsSwitches = memo(SwitchModule)
+const SettingsApiKey = memo(ApiKeyModule)
+function compareModuleProps<T extends { draft: Partial<DraftSettings>; overrides: readonly SettingField[] }>(
+  { draft: previous, overrides: previousOverrides, ...previousProps }: T,
+  { draft: next, overrides: nextOverrides, ...nextProps }: T,
+): boolean {
+  return settingsSliceEqual(previous, next) && settingsValueEqual(previousOverrides, nextOverrides)
+    && settingsSliceEqual(previousProps, nextProps)
+}
+
+const SettingsDetails = memo(DetailsModule, compareModuleProps)
+const SettingsBroadcast = memo(PreviewModule, compareModuleProps)
+const SettingsSounds = memo(SoundEffectsPanel)
 
 function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement> }): ReactElement {
   const view = useSyncExternalStore(history.subscribe, history.getSnapshot)
@@ -105,76 +121,37 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   return <SettingsPage {...props} />
 }
 
-function SettingsPage({ scope, t, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, renderHeader, onSidebarChange, onOpenProviderSettings, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRevision, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, renderHeader, onSidebarChange, onOpenProviderSettings, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+  const t = useSettingsTranslation(translate, localeRevision)
   useEngineState()
   const external = externalEngine()
   const externalDraft = useExternalSelection(external)
-  const snapshot = useSettingsSnapshot(scope)
+  const snapshot = useSettingsSlice(scope, selectCardSettings)
   const changing = useSyncExternalStore(pluginChanges.subscribe, pluginChanges.getSnapshot, pluginChanges.getSnapshot)
   const writable = snapshot.writable && !changing
-  const value = snapshot.value
-  const initial = resolveTtsSettings(value)
-  const [apiKeys, setApiKeys] = useState({ xiaomi: '', doubao: '', breeze: '', deepseek: '' })
-  const [provider, setProvider] = useState(initial.provider)
-  const [doubaoModel, setDoubaoModel] = useState(initial.doubaoModel)
-  const [doubaoVoice, setDoubaoVoice] = useState(initial.doubaoVoice)
-  const [doubaoClonedVoice, setDoubaoClonedVoice] = useState(initial.doubaoClonedVoice)
-  const [doubaoInstruction, setDoubaoInstruction] = useState(initial.doubaoInstruction)
-  const [doubaoEnabled, setDoubaoEnabled] = useState(initial.doubaoEnabled)
-  const [breezeEnabled, setBreezeEnabled] = useState(initial.breezeEnabled)
-  const [deepseekEnabled, setDeepseekEnabled] = useState(initial.deepseekEnabled)
-  const [deepseekVoice, setDeepseekVoice] = useState(initial.deepseekVoice)
-  const [breezeVoice, setBreezeVoice] = useState(initial.breezeVoice)
-  const [breezeInstruction, setBreezeInstruction] = useState(initial.breezeInstruction)
-  const [instruction, setInstruction] = useState(initial.instruction)
+  const [edits, setEdits] = useState(EMPTY_DRAFT)
+  const { changes, keys: apiKeys } = edits
+  const draft = useMemo(() => {
+    const values = { ...snapshot, ...edits.values }
+    return values.enabled ? values : { ...values, autoPlay: false }
+  }, [snapshot, edits.values])
+  const { enabled, autoPlay, soundEnabled, voiceVolume, voiceRate, soundVolume, soundPack, taskSounds, clickSounds,
+    mossEnabled, localVoiceEngine, model, provider, doubaoEnabled, breezeEnabled,
+    deepseekEnabled, avatarStyle } = draft
   const apiKey = apiKeys[provider]
   const apiKeyField = API_KEY_BY_PROVIDER[provider]
-  const setApiKey = (next: string): void => { setApiKeys(current => ({ ...current, [provider]: next })) }
-  const [showInSidebar, setShowInSidebar] = useState(initial.showInSidebar)
-  const [showInHostSettings, setShowInHostSettings] = useState(initial.showInHostSettings)
-  const [showFeatureGuide, setShowFeatureGuide] = useState(initial.showFeatureGuide)
-  const [acceptExternalProviders, setAcceptExternalProviders] = useState(initial.acceptExternalProviders)
-  const [voiceRecognitionService, setVoiceRecognitionService] = useState(initial.voiceRecognitionService)
-  const [announcementSources, setAnnouncementSources] = useState(initial.announcementSources)
-  const [qqbotEnabled, setQqbotEnabled] = useState(initial.qqbotEnabled)
-  const [enabled, setEnabled] = useState(initial.enabled)
-  const [autoPlay, setAutoPlay] = useState(initial.autoPlay)
-  const [showReadingCaptions, setShowReadingCaptions] = useState(initial.showReadingCaptions)
-  const [showAudioResponse, setShowAudioResponse] = useState(initial.showAudioResponse)
-  const [audioResponseStyle, setAudioResponseStyle] = useState(initial.audioResponseStyle)
-  const [inputAvoidance, setInputAvoidance] = useState(initial.inputAvoidance)
-  const [importantAnnouncementsFirst, setImportantAnnouncementsFirst] = useState(initial.importantAnnouncementsFirst)
-  const [voiceVolume, setVoiceVolume] = useState(initial.voiceVolume)
-  const [voiceRate, setVoiceRate] = useState(initial.voiceRate)
-  const [avatarStyle, setAvatarStyle] = useState(initial.avatarStyle)
-  const [readScope, setReadScope] = useState(initial.readScope)
-  const [model, setModel] = useState(initial.model)
-  const [localSpeechMode, setLocalSpeechMode] = useState(initial.localSpeechMode)
-  const [localVoiceURI, setLocalVoiceURI] = useState(initial.localVoiceURI)
-  const [localVoiceEngine, setLocalVoiceEngine] = useState(initial.localVoiceEngine)
-  const [mossEnabled, setMossEnabled] = useState(initial.mossEnabled)
-  const [mossBaseURL, setMossBaseURL] = useState(initial.mossBaseURL)
-  const [mossVoice, setMossVoice] = useState(initial.mossVoice)
-  const [mossVoiceName, setMossVoiceName] = useState(initial.mossVoiceName)
-  const [voice, setVoice] = useState(initial.voice)
-  const [voiceDesignPrompt, setVoiceDesignPrompt] = useState(initial.voiceDesignPrompt)
-  const [voiceDesignCustomPrompt, setVoiceDesignCustomPrompt] = useState(initial.voiceDesignCustomPrompt)
-  const [soundEnabled, setSoundEnabled] = useState(initial.soundEnabled)
-  const [soundVolume, setSoundVolume] = useState(initial.soundVolume)
-  const [soundPack, setSoundPack] = useState(initial.soundPack)
-  const [taskSounds, setTaskSounds] = useState(initial.taskSounds)
-  const [clickSounds, setClickSounds] = useState(initial.clickSounds)
-  const [changes, setChanges] = useState<DraftChanges>({})
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [saveError, setSaveError] = useState<'api-key-rejected' | 'host-rejected' | 'provider-count' | 'unknown' | null>(null)
   const saveInFlight = useRef(false)
   const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | null>(initialPanel ?? null)
   const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast'): void => setOpenPanel(current => current === panel ? null : panel)
   const [query, setQuery] = useState('')
-  const search = renderHeader ? searchSettings(query, t, {
-    provider, externalName: external?.name, voiceDesign: model === 'mimo-v2.5-tts-voicedesign',
-    doubaoClone: doubaoModel === 'seed-icl-2.0', soundEnabled, mossEnabled, mossSelected: mossEnabled && localVoiceEngine === 'moss',
-  }) : null
+  const externalName = external?.name
+  const doubaoClone = draft.doubaoModel === 'seed-icl-2.0'
+  const search = useMemo(() => renderHeader ? searchSettings(query, t, {
+    provider, externalName, voiceDesign: model === 'mimo-v2.5-tts-voicedesign',
+    doubaoClone, soundEnabled, mossEnabled, mossSelected: mossEnabled && localVoiceEngine === 'moss',
+  }) : null, [renderHeader, query, t, provider, externalName, model, doubaoClone, soundEnabled, mossEnabled, localVoiceEngine])
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
   const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView, history))
@@ -187,36 +164,25 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     toggleSoundPlayer.dispose()
   }), [audioFocus, previewPlayer, toggleSoundPlayer])
   const apiKeyStatus = useApiKeyStatus(snapshot.status === 'ready' && !changing, provider)
-  const [minimalMode, setMinimalMode] = useState(readMinimalMode)
+  const minimalMode = useSyncExternalStore(subscribeMinimalMode, readMinimalMode, () => false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const historyLinkRef = useRef<HTMLButtonElement>(null)
   const historyWasOpen = useRef(false)
 
-  const accepted = resolveTtsSettings(value)
-  const base = resolveTtsSettings(layerSettings(snapshot.base))
-  const draft: DraftSettings = { showInSidebar, showInHostSettings, showFeatureGuide, acceptExternalProviders, voiceRecognitionService, qqbotEnabled, announcementSources, provider, doubaoModel, doubaoVoice, doubaoClonedVoice, doubaoInstruction, doubaoEnabled, breezeEnabled, deepseekEnabled, deepseekVoice, breezeVoice, breezeInstruction, instruction, enabled, autoPlay: enabled && autoPlay, showReadingCaptions, showAudioResponse, audioResponseStyle, inputAvoidance, importantAnnouncementsFirst, voiceVolume, voiceRate, readScope, avatarStyle, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice, mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, soundEnabled, soundVolume, soundPack, taskSounds, clickSounds }
-  const acceptedValue = (field: EditableSettingField): ResolvedSettings[typeof field] => {
-    const raw = value?.[field]
-    return (raw === undefined ? accepted[field] : raw) as ResolvedSettings[typeof field]
-  }
-  const hasOverride = (field: SettingField): boolean => hasLayerField(snapshot.user, field)
-  const fieldOverridden = (field: SettingField): boolean => {
+  const hasOverride = (field: EditableSettingField): boolean => snapshot.overrides.includes(field)
+  const fieldOverridden = (field: EditableSettingField): boolean => {
     const change = changes[field]
-    if (change?.kind === 'clear') return false
-    if (change?.kind === 'set') return isApiKeyField(field) ? apiKeys[API_KEY_STATE[field]].trim().length > 0 : true
-    return hasOverride(field)
+    return change ? change.kind === 'set' : hasOverride(field)
   }
-  const fieldDirty = (field: EditableSettingField): boolean => {
-    const change = changes[field]
-    if (change === undefined) return false
-    if (change.kind === 'clear') return hasOverride(field)
-    return Array.isArray(draft[field]) ? JSON.stringify(draft[field]) !== JSON.stringify(acceptedValue(field)) : !Object.is(draft[field], acceptedValue(field))
-  }
+  const raw = scope.getSnapshot().value
+  const fieldDirty = (field: EditableSettingField): boolean =>
+    draftFieldDirty(changes[field], draft[field], raw?.[field] ?? snapshot[field], hasOverride(field))
   const hasApiKeyDraft = (field: ApiKeyField): boolean => changes[field]?.kind === 'set' && apiKeys[API_KEY_STATE[field]].trim().length > 0
   const apiKeyDirty = (Object.keys(API_KEY_STATE) as ApiKeyField[]).some(hasApiKeyDraft)
-  const dirty = EDITABLE_SETTING_FIELDS.some(fieldDirty) || apiKeyDirty || externalDraft.dirty
+  const dirtyFields = (Object.keys(changes) as SettingField[]).filter(field => !isApiKeyField(field) && fieldDirty(field))
+  const dirty = dirtyFields.length > 0 || apiKeyDirty || externalDraft.dirty
   const validationError = external ? null : validateSettingsDraft(draft)
-  const saveableDirty = external ? externalDraft.dirty || EDITABLE_SETTING_FIELDS.some(field => !BUILTIN_SETTING_FIELDS.has(field) && fieldDirty(field)) : dirty
+  const saveableDirty = external ? externalDraft.dirty || dirtyFields.some(field => !BUILTIN_SETTING_FIELDS.has(field)) : dirty
   const apiKeyViewState = resolveApiKeyViewState(apiKey, isSupportedTtsApiKey(apiKey, provider), apiKeyStatus, changes[apiKeyField]?.kind)
   const apiKeyMessage = t(apiKeyViewState === 'loading'
     ? 'settings.apiKeyLoading'
@@ -233,58 +199,6 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
               : 'settings.apiKeyUnsupported')
   const apiKeyInvalid = apiKeyViewState === 'pending-invalid' || apiKeyViewState === 'unrecognized'
 
-  useEffect(() => {
-    if (dirty) return
-    const next = resolveTtsSettings(value)
-    setProvider(next.provider)
-    setDoubaoModel(next.doubaoModel)
-    setDoubaoVoice(next.doubaoVoice)
-    setDoubaoClonedVoice(next.doubaoClonedVoice)
-    setDoubaoInstruction(next.doubaoInstruction)
-    setDoubaoEnabled(next.doubaoEnabled)
-    setBreezeEnabled(next.breezeEnabled)
-    setDeepseekEnabled(next.deepseekEnabled)
-    setDeepseekVoice(next.deepseekVoice)
-    setBreezeVoice(next.breezeVoice)
-    setBreezeInstruction(next.breezeInstruction)
-    setInstruction(next.instruction)
-    setShowInSidebar(next.showInSidebar)
-    setShowInHostSettings(next.showInHostSettings)
-    setShowFeatureGuide(next.showFeatureGuide)
-    setAcceptExternalProviders(next.acceptExternalProviders)
-    setVoiceRecognitionService(next.voiceRecognitionService)
-    setAnnouncementSources(next.announcementSources)
-    setQqbotEnabled(next.qqbotEnabled)
-    setEnabled(next.enabled)
-    setAutoPlay(next.autoPlay)
-    setShowReadingCaptions(next.showReadingCaptions)
-    setShowAudioResponse(next.showAudioResponse)
-    setAudioResponseStyle(next.audioResponseStyle)
-    setInputAvoidance(next.inputAvoidance)
-    setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
-    setVoiceVolume(next.voiceVolume)
-    setVoiceRate(next.voiceRate)
-    setAvatarStyle(next.avatarStyle)
-    setReadScope(next.readScope)
-    setModel(next.model)
-    setLocalSpeechMode(next.localSpeechMode)
-    setLocalVoiceURI(next.localVoiceURI)
-    setLocalVoiceEngine(next.localVoiceEngine)
-    setMossEnabled(next.mossEnabled)
-    setMossBaseURL(next.mossBaseURL)
-    setMossVoice(next.mossVoice)
-    setMossVoiceName(next.mossVoiceName)
-    setVoice(next.voice)
-    setVoiceDesignPrompt(next.voiceDesignPrompt)
-    setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
-    setSoundEnabled(next.soundEnabled)
-    setSoundVolume(next.soundVolume)
-    setSoundPack(next.soundPack)
-    setTaskSounds(next.taskSounds)
-    setClickSounds(next.clickSounds)
-    setChanges({})
-  }, [dirty, value])
-
   useEffect(() => () => {
     toggleSoundPlayer.dispose()
     void previewPlayer.dispose()
@@ -296,6 +210,12 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     controller.update({ enabled: soundEnabled, volume: soundVolume, pack: soundPack, taskSounds, clickSounds })
   }, [clickSounds, controller, soundEnabled, soundPack, soundVolume, taskSounds])
 
+  useEffect(() => () => {
+    const accepted = resolvedSettingsSnapshot(scope.getSnapshot())
+    controller.update({ enabled: accepted.soundEnabled, volume: accepted.soundVolume, pack: accepted.soundPack,
+      taskSounds: accepted.taskSounds, clickSounds: accepted.clickSounds })
+  }, [controller, scope])
+
   useEffect(() => { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setVolume(voiceVolume) }, [previewPlayer, toggleSoundPlayer, voiceVolume])
 
   useEffect(() => {
@@ -303,127 +223,40 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     historyWasOpen.current = historyOpen
   }, [historyOpen])
 
-  if (snapshot.status === 'unavailable') return renderHeader?.() ?? null
-
-  const markChange = (field: SettingField): void => {
-    setChanges((current) => ({ ...current, [field]: { kind: 'set' } }))
-    setState('idle')
+  const clearSaveMessage = (): void => {
+    setState(current => current === 'saving' ? current : 'idle')
     setSaveError(null)
+  }
+
+  const edit = (values: Partial<DraftSettings>, kind: 'set' | 'clear' = 'set'): void => {
+    const host = scope.getSnapshot()
+    const accepted = resolvedSettingsSnapshot(host)
+    setEdits(current => editDraft(current, values, kind, {
+      accepted: field => host.value?.[field] ?? accepted[field],
+      overridden: field => hasLayerField(host.user, field),
+    }, saveInFlight.current))
+    clearSaveMessage()
   }
 
   const resetField = (field: EditableSettingField): void => {
     previewPlayer.stop()
-    setChanges((current) => ({ ...current, [field]: { kind: 'clear' } }))
-    setState('idle')
-    if (field === 'provider') setProvider(availableTtsProviders(doubaoEnabled, breezeEnabled, deepseekEnabled).includes(base.provider) ? base.provider : 'xiaomi')
-    if (field === 'doubaoModel') setDoubaoModel(base.doubaoModel)
-    if (field === 'doubaoVoice') setDoubaoVoice(base.doubaoVoice)
-    if (field === 'doubaoClonedVoice') setDoubaoClonedVoice(base.doubaoClonedVoice)
-    if (field === 'doubaoInstruction') setDoubaoInstruction(base.doubaoInstruction)
-    if (field === 'deepseekVoice') setDeepseekVoice(base.deepseekVoice)
-    if (field === 'breezeVoice') setBreezeVoice(base.breezeVoice)
-    if (field === 'breezeInstruction') setBreezeInstruction(base.breezeInstruction)
-    if (field === 'instruction') setInstruction(base.instruction)
-    if (field === 'showInSidebar') setShowInSidebar(base.showInSidebar)
-    if (field === 'showInHostSettings') setShowInHostSettings(base.showInHostSettings)
-    if (field === 'showFeatureGuide') setShowFeatureGuide(base.showFeatureGuide)
-    if (field === 'voiceRecognitionService') setVoiceRecognitionService(base.voiceRecognitionService)
-    if (field === 'announcementSources') setAnnouncementSources(base.announcementSources)
-    if (field === 'qqbotEnabled') setQqbotEnabled(base.qqbotEnabled)
-    if (field === 'enabled') setEnabled(base.enabled)
-    if (field === 'autoPlay') setAutoPlay(base.autoPlay)
-    if (field === 'showReadingCaptions') setShowReadingCaptions(base.showReadingCaptions)
-    if (field === 'showAudioResponse') setShowAudioResponse(base.showAudioResponse)
-    if (field === 'audioResponseStyle') setAudioResponseStyle(base.audioResponseStyle)
-    if (field === 'inputAvoidance') setInputAvoidance(base.inputAvoidance)
-    if (field === 'importantAnnouncementsFirst') setImportantAnnouncementsFirst(base.importantAnnouncementsFirst)
-    if (field === 'voiceVolume') setVoiceVolume(base.voiceVolume)
-    if (field === 'voiceRate') setVoiceRate(base.voiceRate)
-    if (field === 'avatarStyle') setAvatarStyle(base.avatarStyle)
-    if (field === 'readScope') setReadScope(base.readScope)
-    if (field === 'model') setModel(base.model)
-    if (field === 'localSpeechMode') setLocalSpeechMode(base.localSpeechMode)
-    if (field === 'localVoiceURI') setLocalVoiceURI(base.localVoiceURI)
-    if (field === 'localVoiceEngine') setLocalVoiceEngine(!mossEnabled ? 'browser' : base.localVoiceEngine)
-    if (field === 'mossEnabled') {
-      setMossEnabled(base.mossEnabled)
-      if (!base.mossEnabled && localVoiceEngine === 'moss') {
-        setLocalVoiceEngine('browser')
-        setChanges(current => ({ ...current, localVoiceEngine: { kind: 'set' } }))
-      }
-    }
-    if (field === 'mossBaseURL') setMossBaseURL(base.mossBaseURL)
-    if (field === 'mossVoice') setMossVoice(base.mossVoice)
-    if (field === 'mossVoiceName') setMossVoiceName(base.mossVoiceName)
-    if (field === 'voice') setVoice(base.voice)
-    if (field === 'voiceDesignPrompt') setVoiceDesignPrompt(base.voiceDesignPrompt)
-    if (field === 'voiceDesignCustomPrompt') setVoiceDesignCustomPrompt(base.voiceDesignCustomPrompt)
-    if (field === 'soundEnabled') setSoundEnabled(base.soundEnabled)
-    if (field === 'soundVolume') setSoundVolume(base.soundVolume)
-    if (field === 'soundPack') setSoundPack(base.soundPack)
-    if (field === 'taskSounds') setTaskSounds(base.taskSounds)
-    if (field === 'clickSounds') setClickSounds(base.clickSounds)
+    const base = resolveTtsSettings(layerSettings(scope.getSnapshot().base))
+    const next = field === 'provider' && !availableTtsProviders(doubaoEnabled, breezeEnabled, deepseekEnabled).includes(base.provider)
+      ? 'xiaomi' : field === 'localVoiceEngine' && !mossEnabled ? 'browser' : base[field]
+    edit({ [field]: next }, 'clear')
+    if (field === 'mossEnabled' && !base.mossEnabled && localVoiceEngine === 'moss') edit({ localVoiceEngine: 'browser' })
   }
 
   const discard = (): void => {
     externalDraft.discard()
-    const next = resolveTtsSettings(scope.getSnapshot().value)
-    setProvider(next.provider)
-    setDoubaoModel(next.doubaoModel)
-    setDoubaoVoice(next.doubaoVoice)
-    setDoubaoClonedVoice(next.doubaoClonedVoice)
-    setDoubaoInstruction(next.doubaoInstruction)
-    setDoubaoEnabled(next.doubaoEnabled)
-    setBreezeEnabled(next.breezeEnabled)
-    setDeepseekEnabled(next.deepseekEnabled)
-    setDeepseekVoice(next.deepseekVoice)
-    setBreezeVoice(next.breezeVoice)
-    setBreezeInstruction(next.breezeInstruction)
-    setInstruction(next.instruction)
-    setShowInSidebar(next.showInSidebar)
-    setShowInHostSettings(next.showInHostSettings)
-    setShowFeatureGuide(next.showFeatureGuide)
-    setAcceptExternalProviders(next.acceptExternalProviders)
-    setVoiceRecognitionService(next.voiceRecognitionService)
-    setAnnouncementSources(next.announcementSources)
-    setQqbotEnabled(next.qqbotEnabled)
-    setEnabled(next.enabled)
-    setAutoPlay(next.autoPlay)
-    setShowReadingCaptions(next.showReadingCaptions)
-    setShowAudioResponse(next.showAudioResponse)
-    setAudioResponseStyle(next.audioResponseStyle)
-    setInputAvoidance(next.inputAvoidance)
-    setImportantAnnouncementsFirst(next.importantAnnouncementsFirst)
-    setVoiceVolume(next.voiceVolume)
-    setVoiceRate(next.voiceRate)
-    setAvatarStyle(next.avatarStyle)
-    setReadScope(next.readScope)
-    setModel(next.model)
-    setLocalSpeechMode(next.localSpeechMode)
-    setLocalVoiceURI(next.localVoiceURI)
-    setLocalVoiceEngine(next.localVoiceEngine)
-    setMossEnabled(next.mossEnabled)
-    setMossBaseURL(next.mossBaseURL)
-    setMossVoice(next.mossVoice)
-    setMossVoiceName(next.mossVoiceName)
-    setVoice(next.voice)
-    setVoiceDesignPrompt(next.voiceDesignPrompt)
-    setVoiceDesignCustomPrompt(next.voiceDesignCustomPrompt)
-    setSoundEnabled(next.soundEnabled)
-    setSoundVolume(next.soundVolume)
-    setSoundPack(next.soundPack)
-    setTaskSounds(next.taskSounds)
-    setClickSounds(next.clickSounds)
-    setApiKeys({ xiaomi: '', doubao: '', breeze: '', deepseek: '' })
+    setEdits(EMPTY_DRAFT)
     previewPlayer.stop()
-    setChanges({})
-    setState('idle')
+    clearSaveMessage()
   }
 
   const save = async (sidebar?: boolean): Promise<void> => {
     if (!writable || pluginChanges.getSnapshot() || saveInFlight.current) return
     saveInFlight.current = true
-    setOpenPanel(null)
     setState('saving')
     setSaveError(null)
     try {
@@ -432,9 +265,8 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
         const nextChanges: DraftChanges = sidebar === undefined ? changes : { ...changes, showInSidebar: { kind: 'set' } }
         await externalDraft.save()
         await saveSettingsDraft(scope, nextDraft, nextChanges, apiKeys, external !== null)
-        if (changes.apiKey !== undefined || changes.doubaoApiKey !== undefined || changes.breezeApiKey !== undefined || changes.deepseekApiKey !== undefined) invalidateApiKeyStatus()
-        if (!external) setApiKeys({ xiaomi: '', doubao: '', breeze: '', deepseek: '' })
-        setChanges(external ? Object.fromEntries(Object.entries(changes).filter(([field]) => BUILTIN_SETTING_FIELDS.has(field))) : {})
+        if (!external && apiKeyDirty) invalidateApiKeyStatus()
+        setEdits(current => pruneDraftEdits(current, changes, external !== null))
         setState('saved')
         if (sidebar !== undefined) onSidebarChange?.(sidebar)
       }
@@ -462,72 +294,100 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
       return
     }
     beforePreview?.()
-    void previewPlayer.play(text, { ...draft, ...(external ? { externalSelection: externalDraft.value } : {}) })
+    void previewPlayer.play(text, { ...resolvedSettingsSnapshot(scope.getSnapshot()), ...draft, ...(external ? { externalSelection: externalDraft.value } : {}) })
   }
-
-  const toggleSettingsPreview = (): void => { togglePreview(previewText) }
 
   const changeEnabled = (next: boolean): void => {
     if (minimalMode && soundEnabled && clickSounds) controller.play(next ? 'toggle-on' : 'toggle-off')
     else if (audioFocus.canPlay()) toggleSoundPlayer.schedule(next ? 'on' : 'off')
-    setEnabled(next)
-    if (!next) {
-      setAutoPlay(false)
-      setChanges((current) => ({ ...current, enabled: { kind: 'set' }, autoPlay: { kind: 'set' } }))
-    } else {
-      markChange('enabled')
-    }
-    setState('idle')
+    edit(next ? { enabled: true } : { enabled: false, autoPlay: false })
   }
 
   const changeAutoPlay = (next: boolean): void => {
     if (minimalMode && soundEnabled && clickSounds) controller.play(next ? 'toggle-on' : 'toggle-off')
     else if (audioFocus.canPlay()) toggleSoundPlayer.schedule(next ? 'auto-on' : 'auto-off')
-    setAutoPlay(next)
-    if (next) {
-      setEnabled(true)
-      setChanges((current) => ({ ...current, autoPlay: { kind: 'set' }, enabled: { kind: 'set' } }))
-    } else {
-      markChange('autoPlay')
-    }
-    setState('idle')
+    edit(next ? { autoPlay: true, enabled: true } : { autoPlay: false })
   }
 
   const changeProvider = (next: typeof provider): void => {
     if (soundEnabled && clickSounds) controller.play('select')
     previewPlayer.stop()
-    setProvider(next)
-    markChange('provider')
+    edit({ provider: next })
   }
 
   const changeSoundScope = (scope: SoundEffectsScope): void => {
-    const flags = getSoundEffectsModeFlags(scope)
-    controller.update({ enabled: soundEnabled, taskSounds: flags.taskSounds, clickSounds: flags.clickSounds, volume: soundVolume, pack: soundPack })
-    setTaskSounds(flags.taskSounds)
-    setClickSounds(flags.clickSounds)
-    setChanges(current => ({ ...current, taskSounds: { kind: 'set' }, clickSounds: { kind: 'set' } }))
-    setState('idle')
+    const { taskSounds: nextTask, clickSounds: nextClick } = getSoundEffectsModeFlags(scope)
+    controller.update({ enabled: soundEnabled, taskSounds: nextTask, clickSounds: nextClick, volume: soundVolume, pack: soundPack })
+    edit({ taskSounds: nextTask, clickSounds: nextClick })
   }
 
   const changeSoundEnabled = (next: boolean): void => {
-    const flags = getSoundEffectsModeFlags(resolveSoundEffectsScope(taskSounds, clickSounds))
+    const { taskSounds: nextTask, clickSounds: nextClick } = getSoundEffectsModeFlags(resolveSoundEffectsScope(taskSounds, clickSounds))
     if (!next && soundEnabled && clickSounds) controller.play('toggle-off')
-    controller.update({ enabled: next, taskSounds: flags.taskSounds, clickSounds: flags.clickSounds, volume: soundVolume, pack: soundPack })
-    if (next && flags.clickSounds) controller.play('toggle-on')
-    setSoundEnabled(next)
-    setTaskSounds(flags.taskSounds)
-    setClickSounds(flags.clickSounds)
-    setChanges(current => ({ ...current, soundEnabled: { kind: 'set' }, taskSounds: { kind: 'set' }, clickSounds: { kind: 'set' } }))
-    setState('idle')
+    controller.update({ enabled: next, taskSounds: nextTask, clickSounds: nextClick, volume: soundVolume, pack: soundPack })
+    if (next && nextClick) controller.play('toggle-on')
+    edit({ soundEnabled: next, taskSounds: nextTask, clickSounds: nextClick })
   }
 
-  const toggleMinimalMode = (): void => {
-    const next = !minimalMode
-    setMinimalMode(next)
-    writeMinimalMode(next)
-    toggleSoundPlayer.setEnabled(!next)
-    if (next) previewPlayer.stop()
-  }
+  const change = <K extends EditableSettingField>(field: K, value: DraftSettings[K]): void => edit({ [field]: value })
+  const actions = useSettingsActions({
+    changeProvider, changeEnabled, changeAutoPlay, changeSoundEnabled, changeSoundScope, resetField,
+    changeApiKey(next: string) {
+      setEdits(current => ({
+        ...current,
+        keys: { ...current.keys, [provider]: next },
+        changes: { ...current.changes, [apiKeyField]: { kind: 'set' } },
+      }))
+      clearSaveMessage()
+    },
+    changeExternal(next: Parameters<typeof externalDraft.change>[0]) { previewPlayer.stop(); externalDraft.change(next); clearSaveMessage() },
+    update<K extends EditableSettingField>(field: K, next: DraftSettings[K]) {
+      if (VOICE_FIELDS.has(field)) previewPlayer.stop()
+      change(field, next)
+    },
+    changeVoiceDesignPrompt(next: string) { edit({ voiceDesignPrompt: next, voiceDesignCustomPrompt: next }) },
+    changeMossVoice(voiceId: string, voiceName: string) { edit({ mossVoice: voiceId, mossVoiceName: voiceName }) },
+    changeMossEnabled(next: boolean) {
+      previewPlayer.stop()
+      edit(!next && localVoiceEngine === 'moss' ? { mossEnabled: next, localVoiceEngine: 'browser' } : { mossEnabled: next })
+    },
+    changeProviderEnabled(target: keyof typeof TTS_PROVIDER_SWITCH, next: boolean) {
+      const count = availableTtsProviders(doubaoEnabled, breezeEnabled, deepseekEnabled).length
+      if (next ? count >= 3 : count <= 2) return
+      previewPlayer.stop()
+      edit({ [TTS_PROVIDER_SWITCH[target]]: next, ...(!next && provider === target ? { provider: 'xiaomi' } : {}) })
+    },
+    toggleMixer() { togglePanel('mixer') },
+    toggleSound() { togglePanel('sound') },
+    toggleBroadcast() { togglePanel('broadcast') },
+    togglePreview() { togglePreview(previewText) },
+    changePreviewText(next: string) { previewPlayer.stop(); setPreviewText(next) },
+    previewVoiceVolume(next: number) { previewPlayer.setVolume(next); toggleSoundPlayer.setPreviewVolume(next) },
+    cancelVoiceVolume() { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setPreviewVolume(voiceVolume) },
+    endVoiceVolume(next: number) {
+      if (!audioFocus.canPlay()) return
+      if (minimalMode) controller.previewVolume()
+      else toggleSoundPlayer.previewVolume(next)
+    },
+    endVoiceRate(next: number) { controller.play('success', { playbackRate: next }) },
+    toggleMinimalMode() {
+      const next = !minimalMode
+      writeMinimalMode(next)
+      if (next) previewPlayer.stop()
+    },
+    changeVoiceVolume(next: number) { change('voiceVolume', next) },
+    changeVoiceRate(next: number) { change('voiceRate', next) },
+    changeSoundVolume(next: number) { change('soundVolume', next) },
+    changeSoundPack(next: DraftSettings['soundPack']) { change('soundPack', next) },
+    changeAcceptExternalProviders(next: boolean) { change('acceptExternalProviders', next) },
+    changeAudioResponseStyle(next: DraftSettings['audioResponseStyle']) { change('audioResponseStyle', next) },
+    resetAudioResponseStyle() { resetField('audioResponseStyle') },
+    changeQqbotEnabled(next: boolean) { change('qqbotEnabled', next) },
+    changeAnnouncementSources(next: DraftSettings['announcementSources']) { change('announcementSources', next) },
+    resetAnnouncementSources() { resetField('announcementSources') },
+  })
+
+  if (snapshot.status === 'unavailable') return renderHeader?.() ?? null
 
   if (historyOpen && history) return <>{renderHeader?.()}
     {changing ? <p className="xmimo-ui-scope xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p>
@@ -554,10 +414,10 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
         {search?.unavailable.length ? <ul className="xmimo-tts-search-unavailable">
           {search.unavailable.map(item => <li key={item.id}><strong>{item.label}</strong><span>{t(item.message)}</span></li>)}
         </ul> : null}
-        <SwitchModule
-          doubaoEnabled={doubaoEnabled}
-          breezeEnabled={breezeEnabled}
-          deepseekEnabled={deepseekEnabled}
+        <SettingsSwitches
+          doubaoEnabled={draft.doubaoEnabled}
+          breezeEnabled={draft.breezeEnabled}
+          deepseekEnabled={draft.deepseekEnabled}
           t={t}
           provider={provider}
           enabled={enabled}
@@ -565,12 +425,12 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           soundEnabled={soundEnabled}
           minimal={minimalMode}
           writable={writable}
-          onProviderChange={changeProvider}
-          onEnabledChange={changeEnabled}
-          onAutoPlayChange={changeAutoPlay}
-          onSoundEnabledChange={changeSoundEnabled}
+          onProviderChange={actions.changeProvider}
+          onEnabledChange={actions.changeEnabled}
+          onAutoPlayChange={actions.changeAutoPlay}
+          onSoundEnabledChange={actions.changeSoundEnabled}
         />
-        <ApiKeyModule
+        <SettingsApiKey
           onOpenProviderSettings={onOpenProviderSettings}
           t={t}
           provider={provider}
@@ -580,179 +440,78 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
           missing={apiKeyStatus === 'missing'}
           writable={writable}
           minimal={minimalMode}
-          onChange={(next) => { setApiKey(next); markChange(apiKeyField) }}
+          onChange={actions.changeApiKey}
         />
-        <DetailsModule
+        <SettingsDetails
+          draft={pickSettings(draft, DETAIL_FIELDS)}
           externalSelection={externalDraft.value}
-          onExternalSelectionChange={next => { previewPlayer.stop(); externalDraft.change(next); setState('idle') }}
+          onExternalSelectionChange={actions.changeExternal}
           t={t}
-          provider={provider}
-          doubaoModel={doubaoModel}
-          doubaoVoice={doubaoVoice}
-          doubaoClonedVoice={doubaoClonedVoice}
-          breezeVoice={breezeVoice}
-          deepseekVoice={deepseekVoice}
-          onDeepseekVoiceChange={next => { previewPlayer.stop(); setDeepseekVoice(next); markChange('deepseekVoice') }}
-          breezeInstruction={breezeInstruction}
-          speechInstruction={provider === 'doubao' ? doubaoInstruction : instruction}
-          onSpeechInstructionChange={next => {
-            previewPlayer.stop()
-            if (provider === 'doubao') { setDoubaoInstruction(next); markChange('doubaoInstruction') }
-            else { setInstruction(next); markChange('instruction') }
-          }}
-          onDoubaoModelChange={next => { previewPlayer.stop(); setDoubaoModel(next); markChange('doubaoModel') }}
-          onDoubaoVoiceChange={next => { previewPlayer.stop(); setDoubaoVoice(next); markChange('doubaoVoice') }}
-          onDoubaoClonedVoiceChange={next => { previewPlayer.stop(); setDoubaoClonedVoice(next); markChange('doubaoClonedVoice') }}
-          onBreezeVoiceChange={(next: string) => { previewPlayer.stop(); setBreezeVoice(next); markChange('breezeVoice') }}
-          onBreezeInstructionChange={(next: string) => { previewPlayer.stop(); setBreezeInstruction(next); markChange('breezeInstruction') }}
           open={openPanel === 'mixer'}
           minimal={minimalMode}
           writable={writable}
-          autoPlay={autoPlay}
-          voiceVolume={voiceVolume}
-          voiceRate={voiceRate}
-          avatarStyle={avatarStyle}
-          readScope={readScope}
-          model={model}
-          localSpeechMode={localSpeechMode}
-          localVoiceURI={localVoiceURI}
-          localVoiceEngine={localVoiceEngine}
-          mossEnabled={mossEnabled}
-          mossBaseURL={mossBaseURL}
-          mossVoice={mossVoice}
-          mossVoiceName={mossVoiceName}
-          voice={voice}
-          voiceDesignPrompt={voiceDesignPrompt}
-          voiceDesignCustomPrompt={voiceDesignCustomPrompt}
-          fieldOverridden={fieldOverridden}
-          resetField={resetField}
-          onToggle={() => togglePanel('mixer')}
-          onVoiceVolumeChange={(next) => { previewPlayer.setVolume(next); toggleSoundPlayer.setPreviewVolume(next); setVoiceVolume(next); markChange('voiceVolume') }}
-          onVoiceVolumeInteractionEnd={(next) => { if (!audioFocus.canPlay()) return; if (minimalMode) controller.previewVolume(); else toggleSoundPlayer.previewVolume(next) }}
-          onVoiceRateChange={(next) => { setVoiceRate(next); markChange('voiceRate') }}
-          onVoiceRateInteractionEnd={(next) => { controller.play('success', { playbackRate: next }) }}
-          onAvatarStyleChange={(next) => { setAvatarStyle(next); markChange('avatarStyle') }}
-          onReadScopeChange={(next) => { setReadScope(next); markChange('readScope') }}
-          onModelChange={(nextModel) => { previewPlayer.stop(); setModel(nextModel); markChange('model') }}
-          onVoiceDesignPromptChange={(next) => {
-            setVoiceDesignPrompt(next)
-            setVoiceDesignCustomPrompt(next)
-            setChanges((current) => ({ ...current, voiceDesignPrompt: { kind: 'set' }, voiceDesignCustomPrompt: { kind: 'set' } }))
-            setState('idle')
-          }}
-          onVoiceChange={(next) => { previewPlayer.stop(); setVoice(next); markChange('voice') }}
-          onLocalVoiceURIChange={(next) => { setLocalVoiceURI(next); markChange('localVoiceURI') }}
-          onLocalVoiceEngineChange={(next) => { setLocalVoiceEngine(next); markChange('localVoiceEngine') }}
-          onMossBaseURLChange={(next) => { setMossBaseURL(next); markChange('mossBaseURL') }}
-          onMossVoiceChange={(voiceId, voiceName) => {
-            setMossVoice(voiceId)
-            setMossVoiceName(voiceName)
-            setChanges((current) => ({ ...current, mossVoice: { kind: 'set' }, mossVoiceName: { kind: 'set' } }))
-            setState('idle')
-          }}
-          onLocalSpeechModeChange={(next) => { setLocalSpeechMode(next); markChange('localSpeechMode') }}
+          overrides={DETAIL_FIELDS.filter(fieldOverridden)}
+          resetField={actions.resetField}
+          onChange={actions.update}
+          onToggle={actions.toggleMixer}
+          onVoiceVolumeChange={actions.changeVoiceVolume}
+          onVoiceVolumePreview={actions.previewVoiceVolume}
+          onVoiceVolumeCancel={actions.cancelVoiceVolume}
+          onVoiceVolumeInteractionEnd={actions.endVoiceVolume}
+          onVoiceRateChange={actions.changeVoiceRate}
+          onVoiceRateInteractionEnd={actions.endVoiceRate}
+          onVoiceDesignPromptChange={actions.changeVoiceDesignPrompt}
+          onMossVoiceChange={actions.changeMossVoice}
         />
-        <PreviewModule
-          externalSelection={externalDraft.value}
-          mossEnabled={mossEnabled}
-          onMossEnabledChange={next => {
-            previewPlayer.stop()
-            setMossEnabled(next)
-            const switchToBrowser = !next && localVoiceEngine === 'moss'
-            if (switchToBrowser) setLocalVoiceEngine('browser')
-            setChanges(current => ({ ...current, mossEnabled: { kind: 'set' }, ...(switchToBrowser ? { localVoiceEngine: { kind: 'set' } as const } : {}) }))
-            setState('idle')
-          }}
-          doubaoEnabled={doubaoEnabled}
-          breezeEnabled={breezeEnabled}
-          deepseekEnabled={deepseekEnabled}
-          onProviderEnabledChange={(target, next) => {
-            const count = availableTtsProviders(doubaoEnabled, breezeEnabled, deepseekEnabled).length
-            if (next ? count >= 3 : count <= 2) return
-            previewPlayer.stop()
-            if (target === 'doubao') setDoubaoEnabled(next)
-            else if (target === 'breeze') setBreezeEnabled(next)
-            else setDeepseekEnabled(next)
-            const switchToXiaomi = !next && provider === target
-            if (switchToXiaomi) setProvider('xiaomi')
-            setChanges(current => ({ ...current, [TTS_PROVIDER_SWITCH[target]]: { kind: 'set' }, ...(switchToXiaomi ? { provider: { kind: 'set' } as const } : {}) }))
-            setState('idle')
-          }}
+        <SettingsBroadcast
           t={t}
+          writable={writable}
+          draft={pickSettings(draft, BROADCAST_FIELDS)}
+          externalSelection={externalDraft.value}
+          overrides={BROADCAST_FIELDS.filter(fieldOverridden)}
+          onSettingChange={actions.update}
+          resetField={actions.resetField}
           enabled={!changing}
           open={openPanel === 'broadcast'}
-          onToggleOpen={() => togglePanel('broadcast')}
+          onToggleOpen={actions.toggleBroadcast}
           status={previewView.status}
           source={previewView.source}
           error={previewView.error}
           text={previewText}
           audioTagProvider={provider === 'breeze' ? 'breeze' : provider === 'xiaomi' && model === 'mimo-v2.5-tts' ? 'xiaomi' : undefined}
-          onToggle={toggleSettingsPreview}
-          onTextChange={next => { previewPlayer.stop(); setPreviewText(next) }}
+          onToggle={actions.togglePreview}
+          onTextChange={actions.changePreviewText}
           recording={previewPlayer.getRecording()}
-          showInHostSettings={showInHostSettings}
-          showFeatureGuide={showFeatureGuide}
-          onShowFeatureGuideChange={next => { setShowFeatureGuide(next); markChange('showFeatureGuide') }}
-          showFeatureGuideOverridden={fieldOverridden('showFeatureGuide')}
-          onShowFeatureGuideReset={() => resetField('showFeatureGuide')}
-          acceptExternalProviders={acceptExternalProviders}
-          onAcceptExternalProvidersChange={next => { setAcceptExternalProviders(next); markChange('acceptExternalProviders') }}
-          voiceRecognitionService={voiceRecognitionService}
-          onVoiceRecognitionServiceChange={next => { setVoiceRecognitionService(next); markChange('voiceRecognitionService') }}
-          voiceRecognitionServiceOverridden={fieldOverridden('voiceRecognitionService')}
-          onVoiceRecognitionServiceReset={() => resetField('voiceRecognitionService')}
-          onShowInHostSettingsChange={next => { setShowInHostSettings(next); markChange('showInHostSettings') }}
-          showInHostSettingsOverridden={fieldOverridden('showInHostSettings')}
-          onShowInHostSettingsReset={() => resetField('showInHostSettings')}
-          showReadingCaptions={showReadingCaptions}
-          onShowReadingCaptionsChange={next => { setShowReadingCaptions(next); markChange('showReadingCaptions') }}
-          showReadingCaptionsOverridden={fieldOverridden('showReadingCaptions')}
-          onShowReadingCaptionsReset={() => resetField('showReadingCaptions')}
-          showAudioResponse={showAudioResponse}
-          onShowAudioResponseChange={next => { setShowAudioResponse(next); markChange('showAudioResponse') }}
-          showAudioResponseOverridden={fieldOverridden('showAudioResponse')}
-          onShowAudioResponseReset={() => resetField('showAudioResponse')}
-          audioResponseStyle={audioResponseStyle}
-          onAudioResponseStyleChange={next => { setAudioResponseStyle(next); markChange('audioResponseStyle') }}
-          audioResponseStyleOverridden={fieldOverridden('audioResponseStyle')}
-          onAudioResponseStyleReset={() => resetField('audioResponseStyle')}
-          inputAvoidance={inputAvoidance}
-          onInputAvoidanceChange={next => { setInputAvoidance(next); markChange('inputAvoidance') }}
-          inputAvoidanceOverridden={fieldOverridden('inputAvoidance')}
-          onInputAvoidanceReset={() => resetField('inputAvoidance')}
-          importantAnnouncementsFirst={importantAnnouncementsFirst}
-          onImportantAnnouncementsFirstChange={next => { setImportantAnnouncementsFirst(next); markChange('importantAnnouncementsFirst') }}
-          importantAnnouncementsFirstOverridden={fieldOverridden('importantAnnouncementsFirst')}
-          onImportantAnnouncementsFirstReset={() => resetField('importantAnnouncementsFirst')}
-          sources={announcementSources}
-          qqbotEnabled={qqbotEnabled}
-          onQqbotChange={next => { setQqbotEnabled(next); markChange('qqbotEnabled') }}
-          writable={writable}
-          overridden={fieldOverridden('announcementSources')}
-          onReset={() => resetField('announcementSources')}
-          onChange={next => { setAnnouncementSources(next); markChange('announcementSources') }}
+          onSourcesChange={actions.changeAnnouncementSources}
+          onSourcesReset={actions.resetAnnouncementSources}
+          onQqbotChange={actions.changeQqbotEnabled}
+          onAudioResponseStyleChange={actions.changeAudioResponseStyle}
+          onAudioResponseStyleReset={actions.resetAudioResponseStyle}
+          onAcceptExternalProvidersChange={actions.changeAcceptExternalProviders}
+          onMossEnabledChange={actions.changeMossEnabled}
+          onProviderEnabledChange={actions.changeProviderEnabled}
         />
-        {soundEnabled ? <SoundEffectsPanel
+        {soundEnabled ? <SettingsSounds
           t={t}
           controller={controller}
           enabled={soundEnabled}
           volume={soundVolume}
           pack={soundPack}
-          taskSounds={taskSounds}
-          clickSounds={clickSounds}
+          taskSounds={draft.taskSounds}
+          clickSounds={draft.clickSounds}
           writable={writable}
           minimal={minimalMode}
           open={openPanel === 'sound'}
-          onToggle={() => togglePanel('sound')}
-          onScopeChange={changeSoundScope}
-          onVolumeChange={(next) => { setSoundVolume(next); markChange('soundVolume') }}
-          onPackChange={(next) => { setSoundPack(next); markChange('soundPack') }}
+          onToggle={actions.toggleSound}
+          onScopeChange={actions.changeSoundScope}
+          onVolumeChange={actions.changeSoundVolume}
+          onPackChange={actions.changeSoundPack}
         /> : null}
         <div className="xmimo-tts-card-footer">
           <div className="xmimo-tts-card-actions">
             <div className="xmimo-tts-card-action-links">
-              {search === null || search.visible.has('sidebar') ? <SidebarSettings t={t} value={accepted.showInSidebar} disabled={!writable || state === 'saving' || validationError !== null}
-                onToggle={() => { void save(!accepted.showInSidebar) }} /> : null}
+              {search === null || search.visible.has('sidebar') ? <SidebarSettings t={t} value={snapshot.showInSidebar} disabled={!writable || state === 'saving' || validationError !== null}
+                onToggle={() => { void save(!snapshot.showInSidebar) }} /> : null}
               {history && search === null ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
                 previewPlayer.stop()
                 toggleSoundPlayer.dispose()
@@ -766,7 +525,7 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
                 hidden={search !== null && !search.visible.has('minimalMode')}
                 aria-pressed={minimalMode}
                 aria-label={`${t('settings.minimalMode')}: ${t(minimalMode ? 'settings.minimalModeOn' : 'settings.minimalModeOff')}`}
-                onClick={toggleMinimalMode}
+                onClick={actions.toggleMinimalMode}
               >
                 <RiSwitchFill size={14} aria-hidden="true" focusable="false" />
                 <span className="xmimo-tts-action-label">{t(minimalMode ? 'settings.defaultModeShort' : 'settings.minimalModeShort')}</span>
@@ -790,4 +549,4 @@ function SettingsPage({ scope, t, controller, history, speechActivity, beforePre
     </div>
     </SettingsSearchContext.Provider>
   </AvatarStyleContext.Provider>
-}
+})

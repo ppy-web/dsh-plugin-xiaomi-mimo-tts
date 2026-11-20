@@ -7,7 +7,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { TTS_SETTINGS_NAMESPACE, resolveTtsSettings, ttsSelection } from '../shared.js'
+import { TTS_SETTINGS_NAMESPACE, resolveTtsSettings, ttsSelectionKey } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 import { AutomaticReading } from './conversation/automatic-reading.js'
 import { ReadAloudAction } from './conversation/read-aloud.js'
@@ -19,6 +19,7 @@ import { LiveSpeechController, LocalSpeechController, PlaybackController } from 
 import { XiaomiMimoTtsPcmService } from './playback/pcm-play-service.js'
 import { ReadingCaptions } from './playback/reading-captions.js'
 import { registerBundleSettings } from './settings/bundle-settings.js'
+import { observeSettingsSlice, resolvedSettingsSnapshot } from './settings/scope.js'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { registerWhalePersonaSettings, registerQqbotSpeechSettings } from './settings/qqbot-registration.js'
 import { registerPassportSettings } from './settings/passport-registration.js'
@@ -95,8 +96,11 @@ export function apply(ctx: Context): void {
   const locale = ctx.locale as unknown as {
     bind(namespace: string): Translate
     register(namespace: string, dictionaries: Record<string, typeof en>): () => void
+    subscribe(listener: () => void): () => void
+    getSnapshot(): { revision: number }
   }
   const t = locale.bind(NS)
+  const localeRevision = { subscribe: (listener: () => void) => locale.subscribe(listener), getSnapshot: () => locale.getSnapshot().revision }
   ctx.effect(() => locale.register(NS, { zh, en }), 'xiaomi-mimo-tts: dictionaries')
 
   const scope = ctx.configForms.get<TtsSettings>(TTS_SETTINGS_NAMESPACE)
@@ -113,8 +117,8 @@ export function apply(ctx: Context): void {
   const composerInput = new ComposerInputActivity(document)
   const announcementAudioFocus = new PluginAudioFocus(audioFocus, composerInput)
   const soundEffects = createSoundEffectsController(audioFocus.canPlay, tabAudioFocus.canPlay)
-  const getSoundSettings = () => {
-    const resolved = resolveTtsSettings(scope.getSnapshot().value)
+  const selectSoundSettings = (snapshot: ReturnType<typeof scope.getSnapshot>) => {
+    const resolved = resolvedSettingsSnapshot(snapshot)
     return {
       enabled: resolved.soundEnabled,
       volume: resolved.soundVolume,
@@ -123,11 +127,11 @@ export function apply(ctx: Context): void {
       clickSounds: resolved.clickSounds,
     }
   }
-  soundEffects.update(getSoundSettings())
+  const getSoundSettings = () => selectSoundSettings(scope.getSnapshot())
   ctx.effect(() => {
     const offClick = installClickSounds(ctx, soundEffects, getSoundSettings)
     const offTask = installTaskSoundWatcher(ctx, soundEffects, getSoundSettings)
-    const offSettings = scope.subscribe(() => { soundEffects.update(getSoundSettings()) })
+    const offSettings = observeSettingsSlice(scope, selectSoundSettings, soundEffects.update)
     const offTabAudio = tabAudioFocus.subscribe(() => { if (!tabAudioFocus.canPlay()) void soundEffects.dispose() })
     return () => { offClick(); offTask(); offSettings(); offTabAudio(); void soundEffects.dispose() }
   }, 'xiaomi-mimo-tts: sound effects')
@@ -174,16 +178,16 @@ export function apply(ctx: Context): void {
       (child as unknown as { sessions: ISessions }).sessions, t, options)),
   ], announcements.play, announcements.stop)
   ctx.effect(() => {
-    const update = () => {
-      const snapshot = scope.getSnapshot()
-      const settings = resolveTtsSettings(snapshot.value)
-      const sources = settings.announcementSources.filter(source => source !== 'question-titles' || settings.autoPlay)
-      collectors.update(sources, snapshot.status === 'ready' && settings.enabled && announcementAudioFocus.canPlay())
-      if (snapshot.status !== 'ready' || !settings.enabled) pcmService.stop()
+    const select = (snapshot: ReturnType<typeof scope.getSnapshot>) => {
+      const { announcementSources, autoPlay, enabled } = resolvedSettingsSnapshot(snapshot)
+      return { enabled: snapshot.status === 'ready' && enabled, sources: autoPlay ? announcementSources : announcementSources.filter(source => source !== 'question-titles') }
     }
-    const offSettings = scope.subscribe(update)
-    const offFocus = announcementAudioFocus.subscribe(update)
-    update()
+    const update = ({ enabled, sources }: ReturnType<typeof select>) => {
+      collectors.update(sources, enabled && announcementAudioFocus.canPlay())
+      if (!enabled) pcmService.stop()
+    }
+    const offSettings = observeSettingsSlice(scope, select, update)
+    const offFocus = announcementAudioFocus.subscribe(() => update(select(scope.getSnapshot())))
     return () => { offSettings(); offFocus(); collectors.dispose() }
   }, 'xiaomi-mimo-tts: announcement collectors')
   ctx.effect(() => {
@@ -212,25 +216,24 @@ export function apply(ctx: Context): void {
       automaticReading.interruptAutomatic(() => { live.interrupt(); local.interrupt(); playback.interrupt() })
       pcmService.stop(); questionPlayback?.stop()
     })
-    const update = () => composerInput.configure(resolveTtsSettings(scope.getSnapshot().value).inputAvoidance)
-    const offSettings = scope.subscribe(update)
-    update()
+    const offSettings = observeSettingsSlice(scope, snapshot => resolvedSettingsSnapshot(snapshot).inputAvoidance, enabled => composerInput.configure(enabled))
     return () => { offSettings(); offActivity(); composerInput.dispose() }
   }, 'xiaomi-mimo-tts: composer input avoidance')
   let providerSelectionKey: string | null = null
-  const updateProvider = () => {
-    const settings = resolveTtsSettings(scope.getSnapshot().value)
-    const key = JSON.stringify({ ...ttsSelection(settings), voiceRate: undefined })
+  ctx.effect(() => observeSettingsSlice(scope, snapshot => {
+    const settings = resolvedSettingsSnapshot(snapshot)
+    const { requestTimeoutMs, maxPausedPcmBytes, maxTextLength } = settings
+    return { key: ttsSelectionKey(settings), requestTimeoutMs, maxPausedPcmBytes, maxTextLength }
+  }, ({ key }) => {
     if (providerSelectionKey !== null && providerSelectionKey !== key) {
       live.interrupt(); playback.interrupt(); local.interrupt(); pcmService.stop()
       questionPlayback?.stop()
     }
     providerSelectionKey = key
+    const settings = resolvedSettingsSnapshot(scope.getSnapshot())
     live.configure(settings)
     playback.configure(settings)
-  }
-  updateProvider()
-  ctx.effect(() => scope.subscribe(updateProvider), 'xiaomi-mimo-tts: provider selection')
+  }), 'xiaomi-mimo-tts: provider selection')
   const stopOptionalPcm = () => { pcmService.stop(); questionPlayback?.stop(); history.stopReplay() }
   live.setBeforePlayback(stopOptionalPcm)
   local.setBeforePlayback(stopOptionalPcm)
@@ -248,13 +251,22 @@ export function apply(ctx: Context): void {
     return () => { off(); stop() }
   }, 'xiaomi-mimo-tts: speech engine state')
   ctx.effect(() => observePluginActivity(changes, stopAllPlayback), 'xiaomi-mimo-tts: plugin changes')
-  const updateVoiceVolume = () => { const volume = resolveTtsSettings(scope.getSnapshot().value).voiceVolume; live.setVolume(volume); local.setVolume(volume); playback.setVolume(volume); pcmService.setVolume(volume); questionPlayback?.setVolume(volume) }
-  updateVoiceVolume()
-  ctx.effect(() => scope.subscribe(updateVoiceVolume), 'xiaomi-mimo-tts: voice volume')
+  ctx.effect(() => observeSettingsSlice(scope, snapshot => resolvedSettingsSnapshot(snapshot).voiceVolume, volume => {
+    live.setVolume(volume); local.setVolume(volume); playback.setVolume(volume); pcmService.setVolume(volume); questionPlayback?.setVolume(volume)
+  }), 'xiaomi-mimo-tts: voice volume')
 
-  const updateVoiceRate = () => { const rate = resolveTtsSettings(scope.getSnapshot().value).voiceRate; live.setVoiceRate(rate); local.setVoiceRate(rate); playback.setVoiceRate(rate) }
-  updateVoiceRate()
-  ctx.effect(() => scope.subscribe(updateVoiceRate), 'xiaomi-mimo-tts: voice rate')
+  ctx.effect(() => observeSettingsSlice(scope, snapshot => resolvedSettingsSnapshot(snapshot).voiceRate, rate => {
+    live.setVoiceRate(rate); local.setVoiceRate(rate); playback.setVoiceRate(rate)
+  }), 'xiaomi-mimo-tts: voice rate')
+
+  ctx.effect(() => observeSettingsSlice(scope, snapshot => {
+    const { localVoiceURI, localVoiceEngine, mossBaseURL, mossVoice, requestTimeoutMs } = resolvedSettingsSnapshot(snapshot)
+    return { localVoiceURI, localVoiceEngine, mossBaseURL, mossVoice, requestTimeoutMs }
+  }, ({ localVoiceURI, localVoiceEngine, mossBaseURL, mossVoice, requestTimeoutMs }) => {
+    local.setVoiceURI(localVoiceURI)
+    local.setMossVoice(localVoiceEngine, mossBaseURL, mossVoice)
+    local.setTimeoutMs(requestTimeoutMs)
+  }), 'xiaomi-mimo-tts: local speech settings')
 
   ctx.effect(() => async () => {
     live.setBeforePlayback(null)
@@ -316,7 +328,7 @@ export function apply(ctx: Context): void {
     inject: () => ({ t, scope, changes }),
   }, PluginDetailBadge))
 
-  const settingsPageProps = { scope, t, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback,
+  const settingsPageProps = { scope, t, localeRevision, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback,
     onOpenProviderSettings: (bundle: string) => ctx.pluginNavigation.openBundle(bundle),
   }
   registerSlotContribution(ctx, 'plugins.bundle.config', () => registerBundleSettings(ctx, {
@@ -341,7 +353,7 @@ export function apply(ctx: Context): void {
     label: () => t('settings.voiceReadingNav'),
     inject: (): VoiceReadingSectionInjected => ({
       scope,
-      t,
+      t, localeRevision,
       changes,
       openPluginSettings: () => ctx.pluginNavigation.openBundle('dsh-xiaomi-tts'),
     }),

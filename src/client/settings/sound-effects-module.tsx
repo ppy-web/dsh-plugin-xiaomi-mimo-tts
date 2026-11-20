@@ -126,7 +126,10 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
           label={t('settings.soundEffectsVolume')}
           minimal={minimal}
           disabled={!writable || !enabled}
-          onChange={(value) => { controller.setVolume(value); onVolumeChange(value) }}
+          commitOnEnd
+          onChange={onVolumeChange}
+          onPreviewChange={controller.setVolume}
+          onInteractionCancel={() => controller.setVolume(volume)}
           onInteractionEnd={() => { controller.previewVolume() }}
         />
       </label>

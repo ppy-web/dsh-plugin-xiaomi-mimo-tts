@@ -4,6 +4,7 @@ import { DEFAULT_TTS_SETTINGS, isSupportedTtsApiKey } from '../../types/settings
 import type { TtsSettings } from '../../types/settings.js'
 import { resolveTtsSettings } from '../../utils/settings.js'
 import type { DraftChanges, SettingsValues, EditableSettingField } from './types.js'
+import { settingsValueEqual } from './scope.js'
 
 export const EDITABLE_SETTING_FIELDS: readonly EditableSettingField[] = ['showInSidebar', 'showInHostSettings', 'showFeatureGuide', 'acceptExternalProviders', 'voiceRecognitionService', 'qqbotEnabled', 'announcementSources', 'provider', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'doubaoInstruction', 'doubaoEnabled', 'deepseekEnabled', 'deepseekVoice', 'breezeEnabled', 'breezeVoice', 'breezeInstruction', 'instruction', 'enabled', 'autoPlay', 'showReadingCaptions', 'showAudioResponse', 'audioResponseStyle', 'inputAvoidance', 'importantAnnouncementsFirst', 'voiceVolume', 'voiceRate', 'readScope', 'avatarStyle', 'model', 'localSpeechMode', 'localVoiceURI', 'localVoiceEngine', 'mossEnabled', 'mossBaseURL', 'mossVoice', 'mossVoiceName', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'soundEnabled', 'soundVolume', 'soundPack', 'taskSounds', 'clickSounds']
 
@@ -54,7 +55,7 @@ export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: S
     const change = changes[field]
     if (!change) return
     const accepted = snapshot.value?.[field] ?? acceptedValues[field]
-    if (change.kind === 'set' && (Array.isArray(value) ? JSON.stringify(accepted) === JSON.stringify(value) : Object.is(accepted, value))) return
+    if (change.kind === 'set' && settingsValueEqual(accepted, value)) return
     if (change.kind === 'clear' && !overridden(field)) return
     ops.push(change.kind === 'clear' ? { op: 'unset', path: [field] } : { op: 'set', path: [field], value })
   }

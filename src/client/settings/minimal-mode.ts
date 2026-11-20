@@ -2,16 +2,30 @@ export const MINIMAL_MODE_STORAGE_KEY = 'dsh-xiaomi-mimo-tts:minimal-mode'
 const listeners = new Set<() => void>()
 let fallbackMode = false
 let useFallback = false
+let cachedMode: boolean | undefined
+
+function publish(mode: boolean): void {
+  if (cachedMode === mode) return
+  cachedMode = mode
+  for (const listener of listeners) listener()
+}
+
+function onStorage(event: StorageEvent): void {
+  if (event.key === MINIMAL_MODE_STORAGE_KEY || event.key === null) publish(readStoredMode())
+}
 
 export function subscribeMinimalMode(listener: () => void): () => void {
-  listeners.add(listener)
-  const onStorage = (event: StorageEvent): void => {
-    if (event.key === MINIMAL_MODE_STORAGE_KEY || event.key === null) listener()
+  if (listeners.size === 0 && typeof window !== 'undefined') {
+    cachedMode = readStoredMode()
+    window.addEventListener('storage', onStorage)
   }
-  if (typeof window !== 'undefined') window.addEventListener('storage', onStorage)
+  listeners.add(listener)
   return () => {
     listeners.delete(listener)
-    if (typeof window !== 'undefined') window.removeEventListener('storage', onStorage)
+    if (listeners.size === 0) {
+      cachedMode = undefined
+      if (typeof window !== 'undefined') window.removeEventListener('storage', onStorage)
+    }
   }
 }
 
@@ -23,7 +37,7 @@ function getStorage(): Storage | undefined {
   }
 }
 
-export function readMinimalMode(): boolean {
+function readStoredMode(): boolean {
   try {
     if (useFallback) return fallbackMode
     const storage = getStorage()
@@ -32,6 +46,8 @@ export function readMinimalMode(): boolean {
     return fallbackMode
   }
 }
+
+export function readMinimalMode(): boolean { return cachedMode ?? readStoredMode() }
 
 export function writeMinimalMode(enabled: boolean): void {
   fallbackMode = enabled
@@ -43,5 +59,5 @@ export function writeMinimalMode(enabled: boolean): void {
     useFallback = true
     // Storage may be disabled by the browser; the in-memory toggle still works.
   }
-  for (const listener of listeners) listener()
+  if (listeners.size > 0) publish(enabled)
 }

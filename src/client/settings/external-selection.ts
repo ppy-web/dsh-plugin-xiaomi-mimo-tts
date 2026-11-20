@@ -4,7 +4,7 @@ import { TTS_DESKTOP_WRITE_HEADER, TTS_ENGINE_SELECTION_ROUTE } from '../../cons
 import { engineStateStore } from '../engine-state.js'
 import { hostRoute } from '../host-route.js'
 
-async function configureExternal(engine: SpeechEngineState, change: ExternalSpeechConfigurationChange, revision = engine.revision): Promise<void> {
+async function configureExternal(engine: SpeechEngineState, change: ExternalSpeechConfigurationChange, revision = engine.revision): Promise<SpeechEngineState> {
   const response = await fetch(hostRoute(TTS_ENGINE_SELECTION_ROUTE), {
     method: 'POST', headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
     body: JSON.stringify({ provider: engine.provider, engineRevision: revision, ...change }),
@@ -12,25 +12,36 @@ async function configureExternal(engine: SpeechEngineState, change: ExternalSpee
   const body = await response.json() as SpeechEngineState & { error?: string }
   if (!response.ok) throw new Error(body.error ?? 'external-configuration-failed')
   if ((engineStateStore.getSnapshot().engine?.revision ?? -1) <= body.revision) engineStateStore.accept(body)
+  return body
 }
 
-export const saveExternalSelection = (engine: SpeechEngineState, selection: ExternalSpeechSelection, revision = engine.revision): Promise<void> => configureExternal(engine, { selection }, revision)
-export const switchExternalConfiguration = (engine: SpeechEngineState, configurationId: string): Promise<void> => configureExternal(engine, { configurationId })
+export const saveExternalSelection = (engine: SpeechEngineState, selection: ExternalSpeechSelection, revision = engine.revision) => configureExternal(engine, { selection }, revision)
+export const switchExternalConfiguration = async (engine: SpeechEngineState, configurationId: string): Promise<void> => { await configureExternal(engine, { configurationId }) }
 
 /** The Voice reading page saves each selection immediately. */
-export function saveExternalReadingModel(engine: SpeechEngineState, modelId: string): Promise<void> {
+export function externalReadingModel(engine: SpeechEngineState, modelId: string): ExternalSpeechSelection | undefined {
   const model = engine.models?.find(item => item.id === modelId)
   const previous = engine.selection
-  if (!engine.configurable || !model?.voices.length || modelId === previous?.model) return Promise.resolve()
+  if (!engine.configurable || !model?.voices.length || modelId === previous?.model) return
   const voice = model.voices.find(item => item.id === previous?.voice)?.id ?? model.voices[0]!.id
-  return saveExternalSelection(engine, { model: modelId, voice, speechInstruction: '' })
+  return { model: modelId, voice, speechInstruction: '' }
 }
 
-export function saveExternalReadingVoice(engine: SpeechEngineState, voiceId: string): Promise<void> {
+export function externalReadingVoice(engine: SpeechEngineState, voiceId: string): ExternalSpeechSelection | undefined {
   const previous = engine.selection
   const model = engine.models?.find(item => item.id === previous?.model)
-  if (!engine.configurable || !previous || voiceId === previous.voice || !model?.voices.some(item => item.id === voiceId)) return Promise.resolve()
-  return saveExternalSelection(engine, { ...previous, voice: voiceId })
+  if (!engine.configurable || !previous || voiceId === previous.voice || !model?.voices.some(item => item.id === voiceId)) return
+  return { ...previous, voice: voiceId }
+}
+
+export async function saveExternalReadingModel(engine: SpeechEngineState, modelId: string): Promise<void> {
+  const selection = externalReadingModel(engine, modelId)
+  if (selection) await saveExternalSelection(engine, selection)
+}
+
+export async function saveExternalReadingVoice(engine: SpeechEngineState, voiceId: string): Promise<void> {
+  const selection = externalReadingVoice(engine, voiceId)
+  if (selection) await saveExternalSelection(engine, selection)
 }
 
 export function nextExternalConfiguration(engine: SpeechEngineState) {
@@ -52,7 +63,11 @@ export function useExternalSelection(engine: SpeechEngineState | null) {
   }
   return { value, dirty, change, discard: () => setDraft(null), save: async () => {
     if (!engine || !current || !dirty) return
-    await saveExternalSelection(engine, current.value, current.revision)
-    setDraft(null)
+    const accepted = await saveExternalSelection(engine, current.value, current.revision)
+    setDraft(next => {
+      if (next === current) return null
+      return next?.identity === current.identity && next.revision === current.revision
+        ? { ...next, revision: accepted.revision } : next
+    })
   } }
 }

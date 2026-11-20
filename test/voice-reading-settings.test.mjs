@@ -10,7 +10,7 @@ import {
   TTS_VOICE_PRESETS,
   resolveTtsSettings,
 } from '../lib/shared.js'
-import { loadClientModule } from './helpers/client-modules.mjs'
+import { loadClientModule, settle } from './helpers/client-modules.mjs'
 
 const {
   buildVoiceReadingVoiceSource,
@@ -29,6 +29,39 @@ const {
 const { LensSlider } = await loadClientModule('src/client/settings/controls/lens-slider.tsx')
 const { ReadScopeCards } = await loadClientModule('src/client/settings/controls/read-scope-cards.tsx')
 const { centeredRangeScale } = await loadClientModule('src/client/settings/controls/use-settings-range.ts')
+const { createVoiceReadingWrites } = await loadClientModule('src/client/settings/voice-reading-writes.ts')
+
+test('auto-save keeps newer edits visible when an earlier Host write is refused', async () => {
+  let value = { voiceVolume: 1, voiceRate: 1, soundEnabled: true }
+  const requests = []
+  const scope = { getSnapshot: () => ({ value }), mutate(ops) {
+    return new Promise(resolve => requests.push({ ops, respond(ok) {
+      if (ok) value = { ...value, ...Object.fromEntries(ops.map(op => [op.path[0], op.value])) }
+      resolve(ok)
+    } }))
+  } }
+  const writes = createVoiceReadingWrites(scope, () => true)
+  writes.write(volumeWriteOps(0.4))
+  writes.write(volumeWriteOps(0.7), 10000)
+  writes.write(rateWriteOps(1.2), 10000)
+  assert.deepEqual(writes.getSnapshot().patch, { voiceVolume: 0.7, voiceRate: 1.2 })
+  assert.deepEqual(requests[0].ops, volumeWriteOps(0.4))
+  assert.equal(requests.length, 1)
+  requests[0].respond(false)
+  await settle()
+  assert.deepEqual(writes.getSnapshot(), { patch: { voiceVolume: 0.7, voiceRate: 1.2 }, failed: true })
+  const pending = writes.flush()
+  assert.deepEqual(requests[1].ops, [...volumeWriteOps(0.7), ...rateWriteOps(1.2)])
+  requests[1].respond(true)
+  await pending
+  assert.deepEqual(value, { voiceVolume: 0.7, voiceRate: 1.2, soundEnabled: true })
+  assert.deepEqual(writes.getSnapshot().patch, {})
+  writes.write(soundWriteOps(false, resolveTtsSettings(value)))
+  requests[2].respond(false)
+  await settle()
+  assert.equal(value.soundEnabled, true)
+  assert.deepEqual(writes.getSnapshot(), { patch: {}, failed: true })
+})
 
 test('credential warnings remain visible with local speech enabled for either provider', () => {
   for (const provider of ['xiaomi', 'doubao']) {

@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { resolveTtsSettings, ttsSelection } from '../../shared.js'
 import type { TtsSettings } from '../../shared.js'
 import type { LiveSpeechController, LocalSpeechController, PlaybackController } from '../playback/index.js'
 import { RealtimeSpeechSession } from '../playback/realtime-speech-session.js'
-import { useSettingsSnapshot } from '../settings/scope.js'
+import { resolvedSettingsSnapshot, useSettingsSlice } from '../settings/scope.js'
+import { selectConversationSettings } from '../settings/conversation-settings.js'
 import { assistantText, automaticAssistantMessageId, finalLiveMessage } from './message-text.js'
 import { automaticReplyMode } from './automatic-reading.js'
 import { latestTurn } from './turn-state.js'
@@ -37,15 +37,11 @@ interface SessionPlaybackObserverProps {
 export function SessionPlaybackObserver({ sessionId, useSession, useChat, playback, live, local, settings, questions, automaticReading, audioFocus = unrestrictedAudioFocus, automaticAudioFocus = audioFocus }: SessionPlaybackObserverProps): null {
   useEffect(() => questions?.activateSession(sessionId), [questions, sessionId])
   const ownsAudio = useSyncExternalStore(automaticAudioFocus.subscribe, automaticAudioFocus.canPlay, automaticAudioFocus.canPlay)
-  const settingsSnapshot = useSettingsSnapshot(settings)
-  const resolvedSettings = useMemo(() => resolveTtsSettings(settingsSnapshot.value), [settingsSnapshot.value])
+  const settingsSlice = useSettingsSlice(settings, selectConversationSettings)
+  const resolvedSettings = resolvedSettingsSnapshot(settings.getSnapshot())
   const engineView = useEngineState()
   const builtinKeySupported = useApiKeySupported(ownsAudio && !externalEngine() && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider)
   const apiKeySupported = externalEngine() ? engineView.engine?.ready ?? false : builtinKeySupported
-  live.setMaxPausedPcmBytes(resolvedSettings.maxPausedPcmBytes)
-  local.setVoiceURI(resolvedSettings.localVoiceURI)
-  local.setMossVoice(resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice)
-  local.setTimeoutMs(resolvedSettings.requestTimeoutMs)
 
   const runningSnapshot = useSession(snapshot => snapshot.running)
   const openState = useSession(snapshot => snapshot.openState)
@@ -55,7 +51,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   const concise = resolvedSettings.readScope === 'concise'
 
   const [speech] = useState(() => new RealtimeSpeechSession(live, local))
-  const selectionKey = useMemo(() => JSON.stringify([ttsSelection(resolvedSettings), engineView, concise]), [resolvedSettings, engineView, concise])
+  const selectionKey = useMemo(() => JSON.stringify([settingsSlice.selection, engineView, concise]), [settingsSlice.selection, engineView, concise])
   const previousSelection = useRef(selectionKey)
   const active = useRef<{ turn: number; step: number } | null>(null)
   const wasRunning = useRef(runningSnapshot)
@@ -94,7 +90,6 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       active.current = null
       if (runningSnapshot) runArmed.current = false
     }
-    live.configure(resolvedSettings)
     speech.configure({ localSpeechMode: resolvedSettings.localSpeechMode, apiKeySupported, readScope: resolvedSettings.readScope })
     const beganRun = runningSnapshot && !wasRunning.current
     wasRunning.current = runningSnapshot

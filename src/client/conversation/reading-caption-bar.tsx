@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { PlaybackController } from '../playback/playback-controller.js'
 import { readComposerRecordingLevel, readComposerVoiceInput } from '../voice-input-activity.js'
-import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { resolveTtsSettings, type TtsSettings } from '../../shared.js'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { TtsSettings } from '../../shared.js'
 import type { Translate } from '../localization.js'
 import { CaptionVisual } from './caption-visual.js'
 import type { ReadingCaptions } from '../playback/reading-captions.js'
-import { useSettingsSnapshot } from '../settings/scope.js'
+import { resolvedSettingsSnapshot, useSettingsSlice } from '../settings/scope.js'
 
 interface ReadingCaptionBarProps {
   sessionId: string
@@ -16,6 +16,11 @@ interface ReadingCaptionBarProps {
   captions: ReadingCaptions
   settings: ConfigForm<TtsSettings>
   t: Translate
+}
+
+function selectCaptionSettings(snapshot: ConfigFormSnapshot<TtsSettings>) {
+  const { showReadingCaptions, showAudioResponse, audioResponseStyle } = resolvedSettingsSnapshot(snapshot)
+  return { showReadingCaptions, showAudioResponse, audioResponseStyle }
 }
 
 
@@ -29,8 +34,7 @@ export function ReadingCaptionLines({ text, previousText, label }: { text: strin
 
 /** Adds a caption row to the host composer while the reader follows the bottom. */
 export function ReadingCaptionBar({ sessionId, useSession, playback, captions, settings, t }: ReadingCaptionBarProps): ReactElement | null {
-  const snapshot = useSettingsSnapshot(settings)
-  const { showReadingCaptions, showAudioResponse, audioResponseStyle } = resolveTtsSettings(snapshot.value)
+  const { showReadingCaptions, showAudioResponse, audioResponseStyle } = useSettingsSlice(settings, selectCaptionSettings)
   const subscribe = useCallback((listener: () => void) => showReadingCaptions ? captions.subscribe(listener) : () => {}, [captions, showReadingCaptions])
   const view = useSyncExternalStore(subscribe, captions.getSnapshot, captions.getSnapshot)
   const running = useSession(snapshot => snapshot.running)

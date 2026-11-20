@@ -1,5 +1,5 @@
 import type { ComponentProps, PointerEvent } from 'react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export interface SettingsRangeProps {
   value: number
@@ -10,7 +10,9 @@ export interface SettingsRangeProps {
   step?: number
   center?: number
   formatValue?: (value: number) => string
+  commitOnEnd?: boolean
   onChange: (value: number) => void
+  onPreviewChange?: (value: number) => void
   onInteractionStart?: () => void
   onInteractionEnd?: (value: number) => void
   onInteractionCancel?: () => void
@@ -46,11 +48,13 @@ interface RangePointer {
   value: number
 }
 
-export function useSettingsRange({ value, label, disabled = false, min = 0, max = 1, step = 0.01, center, formatValue, onChange, onInteractionStart, onInteractionEnd, onInteractionCancel }: SettingsRangeProps) {
+export function useSettingsRange({ value, label, disabled = false, min = 0, max = 1, step = 0.01, center, formatValue, commitOnEnd = false, onChange, onPreviewChange, onInteractionStart, onInteractionEnd, onInteractionCancel }: SettingsRangeProps) {
+  const [preview, setPreview] = useState<number>()
   const lower = Number.isFinite(min) ? min : 0
   const upper = Number.isFinite(max) && max > lower ? max : lower + 1
   const increment = Number.isFinite(step) && step > 0 ? step : (upper - lower) / 100
-  const bounded = Number.isFinite(value) ? Math.max(lower, Math.min(upper, value)) : upper
+  const inputValue = preview ?? value
+  const bounded = Number.isFinite(inputValue) ? Math.max(lower, Math.min(upper, inputValue)) : upper
   const scale = center !== undefined && center > lower && center < upper ? centeredRangeScale(lower, upper, increment, center) : null
   const current = scale?.snap(bounded) ?? bounded
   const progress = scale?.position(current) ?? (current - lower) / (upper - lower)
@@ -60,6 +64,44 @@ export function useSettingsRange({ value, label, disabled = false, min = 0, max 
   const keys = useRef(new Set<string>())
   const [dragging, setDragging] = useState(false)
   const [pointerFocused, setPointerFocused] = useState(false)
+  const previewFrame = useRef<number | undefined>(undefined)
+  const previewValue = useRef(0)
+
+  useEffect(() => () => {
+    if (previewFrame.current !== undefined) cancelAnimationFrame(previewFrame.current)
+  }, [])
+
+  const cancelPreviewFrame = (): void => {
+    if (previewFrame.current !== undefined) cancelAnimationFrame(previewFrame.current)
+    previewFrame.current = undefined
+  }
+
+  const change = (next: number): void => {
+    if (commitOnEnd) setPreview(next)
+    else onChange(next)
+    if (!onPreviewChange) return
+    previewValue.current = next
+    if (previewFrame.current === undefined) previewFrame.current = requestAnimationFrame(() => {
+      previewFrame.current = undefined
+      onPreviewChange(previewValue.current)
+    })
+  }
+  const finish = (next: number): void => {
+    if (previewFrame.current !== undefined) {
+      cancelPreviewFrame()
+      onPreviewChange?.(next)
+    }
+    if (commitOnEnd) {
+      setPreview(undefined)
+      if (next !== value) onChange(next)
+    }
+    onInteractionEnd?.(next)
+  }
+  const cancel = (): void => {
+    cancelPreviewFrame()
+    setPreview(undefined)
+    onInteractionCancel?.()
+  }
 
   const clearPointer = (): void => {
     if (pointer.current === null) return
@@ -69,7 +111,7 @@ export function useSettingsRange({ value, label, disabled = false, min = 0, max 
   const cancelPointer = (event: PointerEvent<HTMLInputElement>): void => {
     if (event.pointerId !== pointer.current?.id) return
     clearPointer()
-    onInteractionCancel?.()
+    cancel()
   }
   const updatePointer = (drag: RangePointer, clientX: number): void => {
     if (drag.travel <= 0) return
@@ -78,7 +120,7 @@ export function useSettingsRange({ value, label, disabled = false, min = 0, max 
     const next = scale?.value(position) ?? snapRangeValue(lower + (upper - lower) * position, lower, upper, increment)
     if (next !== drag.value) {
       drag.value = next
-      onChange(next)
+      change(next)
     }
   }
   const inputProps = {
@@ -123,8 +165,8 @@ export function useSettingsRange({ value, label, disabled = false, min = 0, max 
       if (drag?.id !== event.pointerId) return
       if (!disabled) updatePointer(drag, event.clientX)
       clearPointer()
-      if (disabled) onInteractionCancel?.()
-      else onInteractionEnd?.(drag.value)
+      if (disabled) cancel()
+      else finish(drag.value)
     },
     onPointerCancel: cancelPointer,
     onLostPointerCapture: cancelPointer,
@@ -133,7 +175,7 @@ export function useSettingsRange({ value, label, disabled = false, min = 0, max 
       clearPointer()
       keys.current.clear()
       setPointerFocused(false)
-      if (wasEditing) onInteractionCancel?.()
+      if (wasEditing) cancel()
     },
     onKeyDown(event) {
       if (disabled || !RANGE_KEYS.has(event.key)) return
@@ -153,19 +195,19 @@ export function useSettingsRange({ value, label, disabled = false, min = 0, max 
         ? Math.max(1, Math.round((upper - lower) / increment / 10)) * increment
         : increment
       const next = key === 'Home' ? lower : key === 'End' ? upper : scale.snap(previous + (increase ? keyStep : -keyStep))
-      if (next !== previous) onChange(next)
+      if (next !== previous) change(next)
     },
     onKeyUp(event) {
       if (!keys.current.delete(event.key) || keys.current.size > 0 || pointer.current !== null) return
-      if (disabled) onInteractionCancel?.()
-      else onInteractionEnd?.(readValue(event.currentTarget))
+      if (disabled) cancel()
+      else finish(readValue(event.currentTarget))
     },
     onChange(event) {
       const next = readValue(event.currentTarget)
       if (disabled || pointer.current !== null || !Number.isFinite(next)) return
-      onChange(next)
+      change(next)
       // Native range changes from assistive tools need no pointer or keyboard sequence.
-      if (keys.current.size === 0) onInteractionEnd?.(next)
+      if (keys.current.size === 0) finish(next)
     },
   } satisfies ComponentProps<'input'>
 

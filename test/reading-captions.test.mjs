@@ -16,7 +16,7 @@ const { handleReadAloudClick } = await loadClientModule('src/client/playback/rea
 const { LocalSpeechController } = await loadClientModule('src/client/playback/local-speech-controller.ts')
 const { PcmAudioQueue } = await loadClientModule('src/client/playback/pcm-audio-queue.ts')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
-const { AnnouncementSettings } = await loadClientModule('src/client/settings/announcement-settings.tsx')
+const { AnnouncementSettings, ANNOUNCEMENT_TOGGLE_FIELDS } = await loadClientModule('src/client/settings/announcement-settings.tsx')
 const { PreviewModule } = await loadClientModule('src/client/settings/preview-module.tsx')
 const { VoiceReadingSection } = await loadClientModule('src/client/settings/voice-reading-section.tsx')
 
@@ -275,8 +275,7 @@ test('host integration keeps captions and audio response controls off the voice 
     const snapshot = { status: 'ready', writable: true, value }
     const scope = { getSnapshot: () => snapshot, subscribe: () => () => {}, mutate: async () => true }
     const plugin = renderToStaticMarkup(createElement(PreviewModule, {
-      t, ...value, writable: true, enabled: true, open: true, text: '', sources: [], status: 'idle', source: null, recording: null,
-      onShowReadingCaptionsChange() {}, onShowAudioResponseChange() {}, onAudioResponseStyleChange() {},
+      t, draft: resolveTtsSettings(value), overrides: [], writable: true, enabled: true, open: true, text: '', status: 'idle', source: null, recording: null,
     }))
     const voiceReading = renderToStaticMarkup(createElement(VoiceReadingSection, { scope, t, close() {}, openPluginSettings() {} }))
     const hostSettings = plugin.match(/<section\b[^>]*aria-label="settings\.hostIntegration"[^>]*>([\s\S]*?)<\/section>/u)?.[1]
@@ -300,10 +299,11 @@ test('host integration keeps captions and audio response controls off the voice 
 })
 
 test('Host integration presents one shared override action for multiple overridden switches', () => {
+  const toggles = Object.fromEntries(ANNOUNCEMENT_TOGGLE_FIELDS.map(field => [field, {
+    value: false, overridden: field === 'inputAvoidance' || field === 'voiceRecognitionService', onChange() {}, onReset() {},
+  }]))
   const html = renderToStaticMarkup(createElement(AnnouncementSettings, {
-    t: key => key, sources: [], writable: true, overridden: false, onChange() {}, onReset() {},
-    voiceRecognitionService: false, voiceRecognitionServiceOverridden: true, onVoiceRecognitionServiceReset() {},
-    inputAvoidance: false, inputAvoidanceOverridden: true, onInputAvoidanceReset() {},
+    t: key => key, sources: [], writable: true, sourcesOverridden: false, toggles,
   }))
   const host = html.match(/<section\b[^>]*aria-label="settings\.hostIntegration"[^>]*>([\s\S]*?)<\/section>/u)?.[1]
   assert.ok(host)

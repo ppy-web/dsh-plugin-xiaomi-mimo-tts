@@ -74,7 +74,8 @@ async function registerSettings(failChunk) {
   const changes = { getSnapshot: () => false, subscribe: () => () => {} }
   const settings = new Set(['settings.section', 'plugins.bundle.config', 'plugins.row.config', 'sidebar.panellist'])
   const ctx = {
-    locale: { bind: () => key => key }, configForms: { get: () => scope }, pluginChanges: { bundle: () => changes },
+    locale: { bind: () => key => key, getSnapshot: () => ({ revision: 0 }), subscribe: () => () => {} },
+    configForms: { get: () => scope }, pluginChanges: { bundle: () => changes },
     slots: { inject: (_name, register) => register(), register: (options, component) => { slots.push({ options, component }); return () => {} } },
     effect: (fn, label) => { if (settings.has(label?.slice('xiaomi-mimo-tts: '.length))) return fn(); return () => {} },
     logger: { error: message => { throw new Error(message) } }, pluginNavigation: { openBundle() {} }, layout: { selectPanel() {} },

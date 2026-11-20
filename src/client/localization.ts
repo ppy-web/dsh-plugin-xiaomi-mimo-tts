@@ -403,7 +403,7 @@ export const zh = {
   "settings.localSpeechMode": "语音策略",
   "settings.localSpeechAuto": "云端优先",
   "settings.localSpeechFirst": "本地优先",
-  "settings.localSpeechDisabled": "关闭本地语音",
+  "settings.localSpeechDisabled": "关闭本地",
   "settings.localSpeechAutoHint": "云端优先，播放前失败则转本地语音",
   "settings.localSpeechFirstHint":
     "本地优先，失败则转云端语音",
@@ -1009,7 +1009,7 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.localSpeechMode": "Speech strategy",
   "settings.localSpeechAuto": "Cloud first",
   "settings.localSpeechFirst": "Local first",
-  "settings.localSpeechDisabled": "Disable local speech",
+  "settings.localSpeechDisabled": "Disable local",
   "settings.localSpeechAutoHint":
     "Cloud first; fall back to browser speech if it fails before playback",
   "settings.localSpeechFirstHint":

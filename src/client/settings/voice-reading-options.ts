@@ -32,9 +32,10 @@ export interface VoiceReadingChoice {
   avatarId?: string
 }
 
-export type VoiceReadingWriteOp =
-  | { op: 'set'; path: string[]; value: unknown }
-  | { op: 'unset'; path: string[] }
+type VoiceReadingWriteField = VoiceReadingField | 'voiceDesignCustomPrompt' | 'provider' | 'enabled' | 'autoPlay'
+  | 'readScope' | 'voiceVolume' | 'voiceRate' | 'soundEnabled' | 'taskSounds' | 'clickSounds'
+
+export type VoiceReadingWriteOp = { op: 'set'; path: [VoiceReadingWriteField]; value: string | number | boolean }
 
 export interface VoiceReadingVoiceSource {
   field: VoiceReadingField
@@ -61,7 +62,8 @@ function voiceChoices(presets: readonly VoiceReadingChoice[], current: string, l
 }
 
 export function buildVoiceReadingVoiceSource(
-  settings: ResolvedTtsSettings,
+  settings: Pick<ResolvedTtsSettings, 'provider' | 'model' | 'voice' | 'voiceDesignPrompt' | 'doubaoModel'
+    | 'doubaoVoice' | 'doubaoClonedVoice' | 'breezeVoice' | 'deepseekVoice'>,
   clonedVoiceHistory: readonly string[] = [],
   library: VoiceIdLibrary = {},
   t?: Translate,

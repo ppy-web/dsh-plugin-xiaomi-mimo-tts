@@ -7,7 +7,7 @@ import { resolveTtsSettings } from '../lib/shared.js'
 
 const { observeSubagents } = await loadClientModule('src/client/announcements/subagents.ts')
 const { AnnouncementManager } = await loadClientModule('src/client/announcements/manager.ts')
-const { AnnouncementSettings } = await loadClientModule('src/client/settings/announcement-settings.tsx')
+const { AnnouncementSettings, ANNOUNCEMENT_TOGGLE_FIELDS } = await loadClientModule('src/client/settings/announcement-settings.tsx')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
 const { en } = await loadClientModule('src/client/localization.ts')
 const t = key => en[key]
@@ -118,10 +118,10 @@ test('subagent source is an accessible switch under announcement sources, enable
     if (typeof args[0] === 'string' && args[0].startsWith('Warning: useLayoutEffect does nothing on the server')) return
     report(...args)
   })
+  const toggles = Object.fromEntries(ANNOUNCEMENT_TOGGLE_FIELDS.map(field => [field, { value: false, overridden: false }]))
   for (const selected of [false, true]) for (const writable of [false, true]) {
     const html = renderToStaticMarkup(createElement(AnnouncementSettings, {
-      t, sources: selected ? ['subagent-results'] : [], writable, overridden: false,
-      onChange() {}, onReset() {},
+      t, sources: selected ? ['subagent-results'] : [], writable, sourcesOverridden: false, toggles,
     }))
     const input = html.match(/<input\b[^>]*>/g)?.find(control => control.includes(`aria-label="${t('settings.announcementsSubagents')}"`))
     assert.ok(input)
