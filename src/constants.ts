@@ -89,22 +89,6 @@ export const TTS_QQ_GROUP_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/qq-group.webp'
 /** Public QQ discussion group the plugin links to. */
 export const TTS_QQ_GROUP_NUMBER = '1104616387'
 
-/** Same-origin prefix used by the Web client to load switch feedback sounds. */
-export const TTS_TOGGLE_AUDIO_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/audio'
-
-/** Bundled switch feedback sounds grouped by the state they announce. */
-export const TTS_TOGGLE_SOUND_FILES = {
-  on: ['on02.mp3', 'on03.mp3'],
-  off: ['off01.mp3', 'off02.mp3'],
-  'auto-on': ['auto-on01.mp3'],
-  'auto-off': ['auto-off03.mp3'],
-} as const
-
-export type TtsToggleSoundKind = keyof typeof TTS_TOGGLE_SOUND_FILES
-
-/** Bundled sounds used to preview the currently selected voice or UI volume. */
-export const TTS_VOLUME_PREVIEW_FILES = ['volume-01.mp3', 'on02.mp3'] as const
-
 /** Default Xiaomi endpoint for Token Plan API keys. */
 export const TOKEN_PLAN_TTS_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
 

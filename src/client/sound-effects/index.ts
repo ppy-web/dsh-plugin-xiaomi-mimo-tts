@@ -1,4 +1,4 @@
-import { createUISFX } from './runtime.js'
+import { createUISFX, getCue } from './runtime.js'
 import type { SoundEffectsController, SoundEffectsPlayOptions, SoundEffectsSettings, SoundCue } from './types.js'
 import { classifyClick } from './click-classifier.js'
 import { DEFAULT_SOUND_SETTINGS } from '../../types/sound.js'
@@ -33,9 +33,12 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
       settings = { ...settings, volume: Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : settings.volume }
       if (player !== null) player.setVolume(settings.volume)
     },
-    previewVolume() {
+    previewVolume(voiceVolume) {
       if (!canPlay() || !settings.enabled) return
-      try { getPlayer().play('check', { retrigger: 'ignore' }) } catch { /* Preview is best effort. */ }
+      const volume = voiceVolume === undefined ? undefined : getCue('check').defaultVolume * Math.max(0, Math.min(1, voiceVolume))
+      try {
+        getPlayer().play('check', volume === undefined ? { retrigger: 'ignore' } : { volume, retrigger: 'restart' })
+      } catch { /* Preview is best effort. */ }
     },
     update(next) {
       const previous = settings

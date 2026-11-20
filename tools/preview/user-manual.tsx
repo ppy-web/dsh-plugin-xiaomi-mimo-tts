@@ -48,7 +48,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         items: [
           { label: '调音台标题', detail: '点击“调音台”标题栏展开或收起详细设置。标题栏摘要会显示当前音量、倍速、朗读范围、模型、声音和策略。' },
           { label: '更多', detail: '音量与语速位于“更多”顶部，其下为本地音色、朗读范围和语音策略。调音台收起时，“更多”同步收起，再次打开调音台后默认关闭，草稿保留。先在播报台的语音服务商中开启「MOSS-Nano（本地）」并保存，才显示浏览器与 MOSS 的切换标签；关闭后保留 MOSS 服务地址和音色配置。' },
-          { label: '音量滑块', detail: '拖动或用键盘方向键调整语音音量；松开鼠标或完成键盘操作时会试听当前音量。旁边的“恢复默认”按钮会把该项恢复为基础配置，恢复动作仍需点击“保存”。' },
+          { label: '音量滑块', detail: '拖动或用键盘方向键调整语音音量。开启音效时，松开鼠标或完成键盘操作会用当前音效包试听。旁边的“恢复默认”按钮会把该项恢复为基础配置，恢复动作仍需点击“保存”。' },
           { label: '播放速度滑块', detail: '拖动或用键盘调整 0.5×–2.0× 速度。豆包在云端合成时应用语速，播放时保持 1×；小米 PCM 在本地调整速度，音高会随速度改变。' },
           { label: '模型按钮', detail: '小米可选择预置音色或音色设计；豆包可选择标准合成（seed-tts-2.0）或声音复刻（seed-icl-2.0）；Breeze 固定使用 breeze-tts-2，支持预置音色和自定义 Voice ID。DeepSeek 提供海星与暗潮两种音色。' },
           { label: 'Voice Design 选择器与手动编辑', detail: '点击声音设计选择器，选择“自定义”或一个预设。选择自定义后可直接编辑音色描述文本框。' },
@@ -178,7 +178,7 @@ const COPY: Record<ManualLocale, ManualCopy> = {
         summary: 'Control volume, speed, model, voice source, and local fallback.',
         items: [
           { label: 'Console header', detail: 'Click Mixing Console to expand or collapse detailed settings. Its summary shows volume, speed, read scope, model, voice, and strategy.' },
-          { label: 'Voice volume slider', detail: 'Drag or use arrow keys to change voice volume; releasing the pointer or finishing a keyboard interaction previews that level. Restore default returns this field to its base value, but still requires Save.' },
+          { label: 'Voice volume slider', detail: 'Drag or use arrow keys to change voice volume. With sound effects enabled, releasing the pointer or finishing a keyboard adjustment previews the level using the current sound pack. Restore default returns this field to its base value. Click Save to keep the change.' },
           { label: 'Playback speed slider', detail: 'Drag or use the keyboard to set 0.5×–2.0× speed. Doubao applies speed during cloud synthesis and plays the result at 1×. Xiaomi PCM adjusts speed locally, which also changes pitch.' },
           { label: 'Model buttons', detail: 'Xiaomi offers preset voices and Voice Design. Doubao offers Standard TTS (seed-tts-2.0) and Voice cloning (seed-icl-2.0). Breeze uses breeze-tts-2 with preset voices and custom Voice IDs. DeepSeek offers two voices, Stella and Tide.' },
           { label: 'Voice Design picker', detail: 'Open the picker and choose Custom or a preset. Custom enables the editable description. Edit the description directly and save the settings when it is ready.' },

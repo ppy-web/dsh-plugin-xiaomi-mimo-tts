@@ -19,7 +19,7 @@ export interface SoundEffectsController {
   playMicrophoneCue(recording: boolean): void
   preview(cue: SoundCue): void
   setVolume(value: number): void
-  previewVolume(): void
+  previewVolume(voiceVolume?: number): void
   update(settings: SoundEffectsSettings): void
   dispose(): Promise<void>
 }

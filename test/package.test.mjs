@@ -99,10 +99,8 @@ test('shared route and settings contracts are internally consistent', () => {
     sharedModule.TTS_API_KEY_STATUS_ROUTE,
     sharedModule.TTS_TOGGLE_CHARACTER_ASSET_ROUTE,
     sharedModule.TTS_API_KEY_WHALE_ASSET_ROUTE,
-    sharedModule.TTS_TOGGLE_AUDIO_ASSET_ROUTE,
   ]
   assert.ok(routes.every((route) => route.startsWith('/plugins/xiaomi-mimo-tts/')))
-  assert.ok(Object.values(sharedModule.TTS_TOGGLE_SOUND_FILES).every((files) => files.length > 0 && files.every((file) => file.endsWith('.mp3'))))
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.enabled, true)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.autoPlay, false)
   assert.equal(sharedModule.DEFAULT_TTS_SETTINGS.soundEnabled, false)
@@ -128,7 +126,7 @@ test('accepts only canonical padded Base64 and calculates its decoded size', () 
   for (const value of ['', 'abc', 'ab=c', 'YW Jj', 'YWJj\n']) assert.equal(sharedModule.strictBase64DecodedLength(value), null)
 })
 
-test('ships the UI image and audio assets referenced by shared contracts', async () => {
+test('ships the UI image assets referenced by shared contracts', async () => {
   const imageRoutes = [...Object.values(sharedModule.TTS_PROVIDER_CHARACTER_ASSET_ROUTES), ...Object.values(sharedModule.TTS_PROVIDER_LOGO_ASSET_ROUTES)]
   assert.equal(new Set(imageRoutes).size, imageRoutes.length)
   assertWebp(await readFile(new URL('../assets/ui/toggle-characters.webp', import.meta.url)), 'toggle characters')
@@ -137,13 +135,6 @@ test('ships the UI image and audio assets referenced by shared contracts', async
   for (const route of [...Object.values(sharedModule.TTS_PROVIDER_CHARACTER_ASSET_ROUTES), sharedModule.TTS_QQ_GROUP_ASSET_ROUTE]) {
     const file = route.slice(route.lastIndexOf('/') + 1)
     assertWebp(await readFile(new URL(`../assets/ui/${file}`, import.meta.url)), file)
-  }
-  const audioFiles = [...new Set([...Object.values(sharedModule.TTS_TOGGLE_SOUND_FILES).flat(), ...sharedModule.TTS_VOLUME_PREVIEW_FILES])]
-  for (const file of audioFiles) {
-    const data = await readFile(new URL(`../assets/audio/${file}`, import.meta.url))
-    assert.ok(data.byteLength > 0, file)
-    assert.equal(data[0], 0xff, file)
-    assert.equal(data[1] & 0xe0, 0xe0, file)
   }
 })
 

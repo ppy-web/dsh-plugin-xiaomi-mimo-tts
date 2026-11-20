@@ -31,7 +31,7 @@ function CharacterToggle({ kind, checked, disabled, label, stateLabel, minimal, 
   if (minimal) return <div
     className="xmimo-tts-minimal-control xmimo-tts-minimal-toggle"
     hidden={hidden}
-    data-xmimo-sound-toggle={kind === 'sound' ? 'true' : undefined}
+    data-xmimo-sound-toggle={kind}
     onClick={(event) => {
       if ((event.target as HTMLElement).closest('button') !== null || disabled) return
       onChange(!checked)
@@ -41,7 +41,7 @@ function CharacterToggle({ kind, checked, disabled, label, stateLabel, minimal, 
     <Switch checked={checked} disabled={disabled} label={`${label}: ${stateLabel}`} onChange={onChange} />
   </div>
 
-  return <label className={`xmimo-tts-character-toggle xmimo-tts-character-toggle-${state}`} hidden={hidden} data-xmimo-sound-toggle={kind === 'sound' ? 'true' : undefined}>
+  return <label className={`xmimo-tts-character-toggle xmimo-tts-character-toggle-${state}`} hidden={hidden} data-xmimo-sound-toggle={kind}>
     <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => { onChange(event.target.checked) }} />
     <span className="xmimo-tts-character-control">
       {!minimal ? <span

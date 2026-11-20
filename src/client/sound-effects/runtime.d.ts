@@ -10,4 +10,5 @@ export interface UisfxPlayer {
 
 export const cueNames: readonly string[]
 export const packNames: readonly string[]
+export function getCue(cue: string): { defaultVolume: number }
 export function createUISFX(options?: { pack?: string; volume?: number; enabled?: boolean; maxVoices?: number; preferences?: { key?: string } }): UisfxPlayer

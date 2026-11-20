@@ -17,9 +17,6 @@ import {
   TTS_HISTORY_EMPTY_ASSET_ROUTE,
   TTS_UPDATE_CELEBRATION_ASSET_ROUTE,
   TTS_QQ_GROUP_ASSET_ROUTE,
-  TTS_TOGGLE_AUDIO_ASSET_ROUTE,
-  TTS_TOGGLE_SOUND_FILES,
-  TTS_VOLUME_PREVIEW_FILES,
 } from './constants.js'
 import {
   TTS_MODELS,
@@ -36,7 +33,7 @@ import {
   ANNOUNCEMENT_SOURCES,
   isSupportedTtsApiKey,
 } from './types/index.js'
-import { registerStaticAsset, registerStaticAssetMap, json } from './host/index.js'
+import { registerStaticAsset, json } from './host/index.js'
 import { registerSynthesisRoutes } from './host/synthesis-routes.js'
 import { registerMossRoutes } from './host/moss-routes.js'
 import { registerVoiceInputProviders } from './host/voice-input-providers.js'
@@ -218,12 +215,6 @@ export function apply(ctx: Context, config: Config): void {
     registerVoiceInputProviders(host, () => config.voiceRecognitionService.get(), listener => ctx.on('loader/volatile-update', listener))
   })
 
-  const toggleSoundAssets = new Map([...new Set([...Object.values(TTS_TOGGLE_SOUND_FILES).flat(), ...TTS_VOLUME_PREVIEW_FILES])].map((file) => {
-    const path = `${TTS_TOGGLE_AUDIO_ASSET_ROUTE}/${file}`
-    const data = readFileSync(new URL(`../assets/audio/${file}`, import.meta.url))
-    return [path, data] as const
-  }))
-
   const mimoLogoAsset = readFileSync(new URL('../assets/mimo.svg', import.meta.url))
   const toggleCharacterAsset = readFileSync(new URL('../assets/ui/toggle-characters.webp', import.meta.url))
   const soundEffectsCharacterAsset = readFileSync(new URL('../assets/ui/sound-effects-toggle-characters.webp', import.meta.url))
@@ -316,13 +307,6 @@ export function apply(ctx: Context, config: Config): void {
     data: apiKeyWhaleAsset,
     contentType: 'image/png',
     description: 'API key whale asset',
-  })
-
-  registerStaticAssetMap(ctx, {
-    pathPrefix: TTS_TOGGLE_AUDIO_ASSET_ROUTE,
-    assets: toggleSoundAssets,
-    contentType: 'audio/mpeg',
-    description: 'toggle sound assets',
   })
 
   ctx.effect(() => ctx.webServer.register({

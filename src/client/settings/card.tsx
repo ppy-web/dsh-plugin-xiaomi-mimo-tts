@@ -23,7 +23,6 @@ import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-
 import { PreviewPlayer } from '../playback/preview-player.js'
 import type { PreviewView } from '../playback/preview-player.js'
 import { isRecord, resolvedSettingsSnapshot, settingsSliceEqual, settingsValueEqual, useSettingsSlice, useSettingsTranslation } from './scope.js'
-import { ToggleSoundPlayer } from '../sound-effects/toggle-sound-player.js'
 import type { SoundEffectsController } from '../sound-effects/types.js'
 import { ApiKeyModule } from './api-key-module.js'
 import { resolveApiKeyViewState } from './api-key-state.js'
@@ -157,12 +156,9 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView, history))
   useEffect(() => engineStateStore.subscribe(() => previewPlayer.stop()), [previewPlayer])
   useEffect(() => speechActivity?.register(() => isSpeechBusy(previewPlayer.getView().status), () => previewPlayer.stop()), [speechActivity, previewPlayer])
-  const [toggleSoundPlayer] = useState(() => new ToggleSoundPlayer())
   useEffect(() => audioFocus.subscribe(() => {
-    if (audioFocus.canPlay()) return
-    previewPlayer.stop()
-    toggleSoundPlayer.dispose()
-  }), [audioFocus, previewPlayer, toggleSoundPlayer])
+    if (!audioFocus.canPlay()) previewPlayer.stop()
+  }), [audioFocus, previewPlayer])
   const apiKeyStatus = useApiKeyStatus(snapshot.status === 'ready' && !changing, provider)
   const minimalMode = useSyncExternalStore(subscribeMinimalMode, readMinimalMode, () => false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -199,12 +195,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
               : 'settings.apiKeyUnsupported')
   const apiKeyInvalid = apiKeyViewState === 'pending-invalid' || apiKeyViewState === 'unrecognized'
 
-  useEffect(() => () => {
-    toggleSoundPlayer.dispose()
-    void previewPlayer.dispose()
-  }, [previewPlayer, toggleSoundPlayer])
-
-  useEffect(() => { toggleSoundPlayer.setEnabled(!minimalMode) }, [minimalMode, toggleSoundPlayer])
+  useEffect(() => () => { void previewPlayer.dispose() }, [previewPlayer])
 
   useEffect(() => {
     controller.update({ enabled: soundEnabled, volume: soundVolume, pack: soundPack, taskSounds, clickSounds })
@@ -216,7 +207,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
       taskSounds: accepted.taskSounds, clickSounds: accepted.clickSounds })
   }, [controller, scope])
 
-  useEffect(() => { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setVolume(voiceVolume) }, [previewPlayer, toggleSoundPlayer, voiceVolume])
+  useEffect(() => { previewPlayer.setVolume(voiceVolume) }, [previewPlayer, voiceVolume])
 
   useEffect(() => {
     if (!historyOpen && historyWasOpen.current) historyLinkRef.current?.focus({ preventScroll: true })
@@ -298,14 +289,12 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   }
 
   const changeEnabled = (next: boolean): void => {
-    if (minimalMode && soundEnabled && clickSounds) controller.play(next ? 'toggle-on' : 'toggle-off')
-    else if (audioFocus.canPlay()) toggleSoundPlayer.schedule(next ? 'on' : 'off')
+    if (soundEnabled && clickSounds && audioFocus.canPlay()) controller.play(next ? 'toggle-on' : 'toggle-off')
     edit(next ? { enabled: true } : { enabled: false, autoPlay: false })
   }
 
   const changeAutoPlay = (next: boolean): void => {
-    if (minimalMode && soundEnabled && clickSounds) controller.play(next ? 'toggle-on' : 'toggle-off')
-    else if (audioFocus.canPlay()) toggleSoundPlayer.schedule(next ? 'auto-on' : 'auto-off')
+    if (soundEnabled && clickSounds && audioFocus.canPlay()) controller.play(next ? 'toggle-on' : 'toggle-off')
     edit(next ? { autoPlay: true, enabled: true } : { autoPlay: false })
   }
 
@@ -362,12 +351,10 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     toggleBroadcast() { togglePanel('broadcast') },
     togglePreview() { togglePreview(previewText) },
     changePreviewText(next: string) { previewPlayer.stop(); setPreviewText(next) },
-    previewVoiceVolume(next: number) { previewPlayer.setVolume(next); toggleSoundPlayer.setPreviewVolume(next) },
-    cancelVoiceVolume() { previewPlayer.setVolume(voiceVolume); toggleSoundPlayer.setPreviewVolume(voiceVolume) },
+    previewVoiceVolume(next: number) { previewPlayer.setVolume(next) },
+    cancelVoiceVolume() { previewPlayer.setVolume(voiceVolume) },
     endVoiceVolume(next: number) {
-      if (!audioFocus.canPlay()) return
-      if (minimalMode) controller.previewVolume()
-      else toggleSoundPlayer.previewVolume(next)
+      if (audioFocus.canPlay()) controller.previewVolume(next)
     },
     endVoiceRate(next: number) { controller.play('success', { playbackRate: next }) },
     toggleMinimalMode() {
@@ -397,7 +384,6 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
         audioFocus.claim()
         if (!audioFocus.canPlay()) return false
         previewPlayer.stop()
-        toggleSoundPlayer.dispose()
         beforeHistoryPlayback?.()
         return true
       }} onBack={() => { setHistoryOpen(false) }} />}
@@ -514,7 +500,6 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
                 onToggle={() => { void save(!snapshot.showInSidebar) }} /> : null}
               {history && search === null ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
                 previewPlayer.stop()
-                toggleSoundPlayer.dispose()
                 setHistoryOpen(true)
               }} /> : null}
               <Button
