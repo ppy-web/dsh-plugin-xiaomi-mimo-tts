@@ -98,13 +98,14 @@
   bottom: calc(100% + 7px);
   max-width: calc(100% - 82px);
   overflow: hidden;
-  border-radius: 8px;
-  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 82%, transparent);
+  border-radius: 10px;
+  padding: 4px 9px;
   color: var(--dsw-alias-label-secondary, #5f6875);
-  background: var(--dsw-alias-bg-layer-1, #fff);
+  background: var(--xmimo-skeuo-key-bg, var(--dsw-alias-bg-layer-1, #fff));
   font-size: 11px;
   line-height: 14px;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
+  box-shadow: var(--xmimo-skeuo-key-shadow, 0 4px 12px rgb(0 0 0 / 10%));
   text-overflow: ellipsis;
   white-space: nowrap
 }

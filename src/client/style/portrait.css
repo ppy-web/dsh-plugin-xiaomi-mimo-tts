@@ -54,14 +54,16 @@
   border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 18%, var(--dsw-alias-border-l2, #d7dbe2));
   border-radius: 14px;
   padding: 10px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 8%, var(--dsw-alias-bg-layer-1, #fff)), var(--dsw-alias-bg-layer-1, #fff));
-  box-shadow: 0 3px 12px rgba(47, 74, 145, .08);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 6%, transparent), transparent 56%),
+    var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
+  box-shadow: var(--xmimo-skeuo-panel-shadow, 0 3px 12px rgba(47, 74, 145, .08));
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease
 }
 
 .xmimo-tts-portrait-slot:hover {
   border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 38%, var(--dsw-alias-border-l2, #d7dbe2));
-  box-shadow: 0 6px 18px rgba(47, 74, 145, .12)
+  box-shadow: var(--xmimo-skeuo-key-hover-shadow, 0 6px 18px rgba(47, 74, 145, .12))
 }
 
 .xmimo-tts-portrait-slot-dragging {
@@ -81,18 +83,21 @@
 
 .xmimo-tts-portrait-badge {
   flex: none;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 26%, transparent);
   border-radius: 999px;
   padding: 1px 7px;
   color: var(--dsw-alias-brand-primary, #4f6ef7);
-  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, transparent);
+  background: var(--xmimo-skeuo-chip-bg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, transparent));
+  box-shadow: var(--xmimo-skeuo-chip-shadow, none);
   font-size: 10px;
   font-weight: 600;
   line-height: 16px
 }
 
 .xmimo-tts-portrait-badge-default {
+  border-color: color-mix(in srgb, var(--xmimo-ui-border, #d7dbe2) 72%, transparent);
   color: var(--dsw-alias-label-tertiary, #8b93a1);
-  background: color-mix(in srgb, var(--dsw-alias-label-tertiary, #8b93a1) 12%, transparent)
+  background: var(--xmimo-skeuo-chip-bg, color-mix(in srgb, var(--dsw-alias-label-tertiary, #8b93a1) 12%, transparent))
 }
 
 .xmimo-tts-portrait-drop {
@@ -140,9 +145,11 @@
   height: 96px;
   flex: none;
   overflow: hidden;
-  border-radius: 8px;
-  background-color: color-mix(in srgb, var(--dsw-alias-label-tertiary, #8b93a1) 8%, transparent);
-  background-repeat: no-repeat
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border, #d7dbe2) 66%, transparent);
+  border-radius: 10px;
+  background-color: var(--xmimo-ui-control-surface, color-mix(in srgb, var(--dsw-alias-label-tertiary, #8b93a1) 8%, transparent));
+  background-repeat: no-repeat;
+  box-shadow: var(--xmimo-skeuo-well-shadow, none)
 }
 
 .xmimo-tts-portrait-thumb-img {

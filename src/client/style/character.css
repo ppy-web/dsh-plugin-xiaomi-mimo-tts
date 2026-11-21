@@ -9,12 +9,36 @@
 
 .xmimo-tts-character-toggle {
   position: relative;
+  isolation: isolate;
   display: flex !important;
   min-width: 0;
   flex: 1;
   align-items: stretch;
   gap: 0 !important;
   cursor: pointer
+}
+
+.xmimo-tts-holo-shadow {
+  position: absolute;
+  z-index: 0;
+  inset: 10% 8% -4%;
+  border-radius: 16px;
+  background: light-dark(
+    color-mix(in srgb, var(--xmimo-ui-text, #1f2328) 28%, transparent),
+    rgb(0 0 0 / 62%)
+  );
+  filter: blur(18px);
+  opacity: calc(var(--xmimo-holo-awake, 0) * .58);
+  pointer-events: none;
+  transform: translate3d(var(--xmimo-holo-sx, 0px), var(--xmimo-holo-sy, 0px), 0) scale(var(--xmimo-holo-shadow-scale, .9));
+  will-change: transform, opacity
+}
+
+.xmimo-tts-character-toggle-on > .xmimo-tts-holo-shadow {
+  background: light-dark(
+    color-mix(in srgb, var(--xmimo-ui-brand, #4f6ef7) 38%, color-mix(in srgb, var(--xmimo-ui-text, #1f2328) 24%, transparent)),
+    color-mix(in srgb, var(--xmimo-ui-brand, #8ea2ff) 24%, rgb(0 0 0 / 72%))
+  )
 }
 
 .xmimo-tts-character-toggle>input {
@@ -33,6 +57,7 @@
   --xmimo-holo-strength: .22;
   box-sizing: border-box;
   position: relative;
+  z-index: 1;
   display: flex !important;
   width: 100%;
   min-width: 0;
@@ -41,14 +66,27 @@
   align-items: center;
   justify-content: flex-end;
   flex-direction: column;
-  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
-  border-radius: 18px;
+  border: 1px solid var(--xmimo-ui-border, var(--dsw-alias-border-l2, #d7dbe2));
+  border-radius: 16px;
   padding: 8px 10px 10px;
   color: var(--dsw-alias-label-secondary, #5f6875);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 8%, var(--dsw-alias-bg-layer-1, #fff)), var(--dsw-alias-bg-layer-1, #fff));
-  box-shadow: 0 3px 12px rgba(47, 74, 145, .08);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 5%, transparent), transparent 58%),
+    var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
+  box-shadow: var(--xmimo-skeuo-panel-shadow, 0 3px 12px rgba(47, 74, 145, .08));
   text-align: center;
   transition: transform 220ms cubic-bezier(.16, 1, .3, 1), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease
+}
+
+.xmimo-tts-holo-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  pointer-events: none
 }
 
 /* Share the foil face and rim with the externally managed provider group. */
@@ -84,8 +122,10 @@
   mask-composite: exclude
 }
 
+.xmimo-tts-character-toggle[data-xmimo-holo-spring]>.xmimo-tts-character-control,
 .xmimo-tts-character-toggle[data-xmimo-holo-active]>.xmimo-tts-character-control {
-  transform: perspective(700px) translateY(-2px) rotateX(var(--xmimo-holo-rx, 0deg)) rotateY(var(--xmimo-holo-ry, 0deg)) scale(1.015);
+  transform: perspective(1100px) scale(var(--xmimo-holo-lift, 1.02)) rotateX(var(--xmimo-holo-rx, 0deg)) rotateY(var(--xmimo-holo-ry, 0deg));
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
   will-change: transform
 }
 
@@ -101,6 +141,12 @@
   opacity: .8
 }
 
+/* When WebGL2 HoloCard shader is active, suppress the CSS gradient fallback. */
+.xmimo-tts-character-toggle[data-xmimo-holo-gl]>.xmimo-tts-character-control::before,
+.xmimo-tts-character-toggle[data-xmimo-holo-gl]>.xmimo-tts-character-control::after {
+  opacity: 0 !important
+}
+
 .xmimo-tts-character-portrait {
   position: relative;
   z-index: 2;
@@ -111,7 +157,8 @@
   background-size: 200% 200%;
   filter: saturate(.72);
   opacity: .78;
-  transition: filter 180ms ease, opacity 180ms ease, transform 180ms ease
+  transform: translate3d(var(--xmimo-holo-px, 0px), var(--xmimo-holo-py, 0px), 0);
+  transition: filter 180ms ease, opacity 180ms ease
 }
 
 .xmimo-tts-character-voice-on {
@@ -157,35 +204,42 @@
 
 .xmimo-tts-character-state {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   top: 9px;
   right: 9px;
   display: inline-flex !important;
   align-items: center;
-  gap: 4px;
-  border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border, var(--dsw-alias-border-l2, #d7dbe2)) 88%, transparent);
   border-radius: 999px;
-  padding: 2px 7px;
+  padding: 2px 8px;
   color: var(--dsw-alias-label-tertiary, #8b93a1);
-  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 88%, transparent);
+  background: var(--xmimo-skeuo-chip-bg, color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 88%, transparent));
   font-size: 10px;
   font-weight: 600;
   line-height: 15px;
-  box-shadow: 0 2px 7px rgba(15, 23, 42, .08)
+  box-shadow: var(--xmimo-skeuo-chip-shadow, 0 2px 7px rgba(15, 23, 42, .08))
 }
 
 .xmimo-tts-character-state>span {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--dsw-alias-label-dimmed, #aeb4bf)
+  background: var(--dsw-alias-label-dimmed, #aeb4bf);
+  box-shadow: inset 0 1px 1.5px rgb(0 0 0 / 28%)
 }
 
 .xmimo-tts-character-toggle-on .xmimo-tts-character-control {
   --xmimo-holo-strength: .38;
-  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 55%, var(--dsw-alias-border-l2, #d7dbe2));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 15%, var(--dsw-alias-bg-layer-1, #fff)), var(--dsw-alias-bg-layer-1, #fff));
-  box-shadow: 0 5px 18px color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 16%, transparent)
+  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 44%, var(--xmimo-ui-border, var(--dsw-alias-border-l2, #d7dbe2)));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 14%, transparent), color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 3%, transparent) 68%, transparent),
+    var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
+  box-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular, rgb(255 255 255 / 80%)),
+    inset 0 -1px 0 color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 14%, transparent),
+    0 2px 4px var(--xmimo-skeuo-drop-tight, rgb(0 0 0 / 10%)),
+    0 8px 18px -6px color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 26%, transparent)
 }
 
 .xmimo-tts-character-toggle-on .xmimo-tts-character-portrait {
@@ -194,13 +248,13 @@
 }
 
 .xmimo-tts-character-toggle-on .xmimo-tts-character-state {
-  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 32%, var(--dsw-alias-border-l2, #d7dbe2));
+  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 36%, var(--xmimo-ui-border, var(--dsw-alias-border-l2, #d7dbe2)));
   color: var(--dsw-alias-brand-primary, #4f6ef7)
 }
 
 .xmimo-tts-character-toggle-on .xmimo-tts-character-state>span {
-  background: var(--dsw-alias-brand-primary, #4f6ef7);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 14%, transparent)
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, #fff 55%, var(--dsw-alias-brand-primary, #4f6ef7)), var(--dsw-alias-brand-primary, #4f6ef7) 68%);
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 20%, transparent), 0 0 6px color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 42%, transparent)
 }
 
 .xmimo-tts-character-toggle>input:focus-visible+.xmimo-tts-character-control {
@@ -208,8 +262,10 @@
   outline-offset: 2px
 }
 
-.xmimo-tts-character-toggle>input:active:not(:disabled)+.xmimo-tts-character-control {
-  transform: translateY(0) scale(.985)
+.xmimo-tts-character-toggle>input:active:not(:disabled)+.xmimo-tts-character-control,
+.xmimo-tts-provider-toggle:active:not(:disabled)>.xmimo-tts-character-control {
+  transform: translateY(1px) scale(.985);
+  box-shadow: var(--xmimo-skeuo-pressed-shadow)
 }
 
 .xmimo-tts-character-toggle>input:disabled+.xmimo-tts-character-control {
@@ -222,7 +278,7 @@
   appearance: none;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: 16px;
   background: transparent;
   font: inherit;
   text-align: inherit
@@ -231,10 +287,6 @@
 .xmimo-tts-provider-toggle:focus-visible {
   outline: 2px solid var(--xmimo-ui-brand);
   outline-offset: 2px
-}
-
-.xmimo-tts-provider-toggle:active:not(:disabled)>.xmimo-tts-character-control {
-  transform: scale(.985)
 }
 
 .xmimo-tts-provider-toggle:disabled {

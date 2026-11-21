@@ -62,11 +62,22 @@
   border-radius: 999px;
 }
 
+.xmimo-tts-slider:not(.xmimo-tts-slider-minimal) .xmimo-tts-slider-rail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border, #d7dbe2) 78%, transparent);
+  border-radius: inherit;
+  box-shadow: var(--xmimo-skeuo-well-shadow, inset 0 1px 3px rgb(0 0 0 / 12%));
+  pointer-events: none;
+}
+
 .xmimo-tts-slider-track {
   position: absolute;
   inset: 0;
   background:
     repeating-linear-gradient(to right, var(--slider-mark) 0 1px, transparent 1px 14px) center / calc(100% - var(--slider-thumb-size)) 6px no-repeat,
+    linear-gradient(180deg, light-dark(rgb(255 255 255 / 26%), rgb(255 255 255 / 8%)), transparent 55%, light-dark(rgb(0 0 0 / 5%), rgb(0 0 0 / 16%))),
     linear-gradient(var(--slider-fill-direction, to right), var(--slider-fill) var(--slider-thumb-distance), var(--slider-surface) var(--slider-thumb-distance));
 }
 
@@ -93,10 +104,17 @@
   box-sizing: border-box;
   width: calc(var(--slider-lens-width) * var(--xmimo-slider-zoom));
   height: calc(var(--slider-lens-height) * var(--xmimo-slider-zoom));
-  border: 1px solid color-mix(in srgb, var(--slider-text) 30%, var(--slider-control-surface));
+  border: 1px solid color-mix(in srgb, var(--slider-text) 24%, var(--slider-control-surface));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--slider-control-surface) 84%, transparent);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 14%);
+  background:
+    linear-gradient(180deg, light-dark(rgb(255 255 255 / 88%), rgb(255 255 255 / 20%)), light-dark(rgb(255 255 255 / 44%), rgb(0 0 0 / 18%))),
+    color-mix(in srgb, var(--slider-control-surface) 74%, transparent);
+  backdrop-filter: blur(4px);
+  box-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular, rgb(255 255 255 / 80%)),
+    inset 0 -1px 0 var(--xmimo-skeuo-bevel-low, rgb(0 0 0 / 12%)),
+    0 2px 6px var(--xmimo-skeuo-drop-tight, rgb(0 0 0 / 18%)),
+    0 1px 2px var(--xmimo-skeuo-drop-tight, rgb(0 0 0 / 14%));
   color: var(--slider-text);
   pointer-events: none;
   transform: translate(-50%, -50%);
@@ -111,7 +129,12 @@
 }
 
 .xmimo-tts-slider[data-dragging=true] .xmimo-tts-slider-knob {
-  box-shadow: 0 0 0 1px #18203660, 0 1px 2px #18203630, inset 0 1px 3px #18203640;
+  border-color: color-mix(in srgb, var(--slider-accent) 55%, var(--slider-control-surface));
+  box-shadow:
+    inset 0 1px 1px var(--xmimo-skeuo-specular, rgb(255 255 255 / 85%)),
+    inset 0 -1px 2px var(--xmimo-skeuo-bevel-low, rgb(0 0 0 / 24%)),
+    0 0 0 2px color-mix(in srgb, var(--slider-accent) 20%, transparent),
+    0 3px 10px -2px var(--xmimo-skeuo-drop-ambient, rgb(0 0 0 / 22%));
 }
 
 .xmimo-tts-slider > input {
@@ -259,11 +282,11 @@
   box-sizing: border-box;
   width: min(320px, calc(100vw - 32px));
   border: 1px solid var(--xmimo-ui-border-soft);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 8px 10px;
   color: var(--xmimo-ui-text);
-  background: var(--xmimo-ui-surface);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+  background: var(--xmimo-skeuo-panel-bg, var(--xmimo-ui-surface));
+  box-shadow: var(--xmimo-skeuo-popover-shadow, 0 4px 16px rgb(0 0 0 / 12%));
   font-size: 12px;
   font-weight: 400;
   line-height: 1.6;

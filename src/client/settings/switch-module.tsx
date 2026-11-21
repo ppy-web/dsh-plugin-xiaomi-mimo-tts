@@ -28,6 +28,12 @@ interface CharacterToggleProps {
   onChange: (checked: boolean) => void
 }
 
+const CARD_HOLO_PRESET = {
+  voice: 'bursts',
+  autoplay: 'stars',
+  sound: 'cosmos',
+} as const
+
 function CharacterToggle({ kind, checked, disabled, label, stateLabel, tooltip, customPortrait, minimal, onChange }: CharacterToggleProps): ReactElement {
   const { hide } = useSettingsSearch()
   const hidden = hide(kind === 'voice' ? 'enabled' : kind === 'autoplay' ? 'autoPlay' : 'soundEnabled')
@@ -46,7 +52,12 @@ function CharacterToggle({ kind, checked, disabled, label, stateLabel, tooltip, 
   </div>
 
   return <Tooltip label={tooltip} side="top" gap={4} portal>
-    <label className={`xmimo-tts-character-toggle xmimo-tts-character-toggle-${state}`} hidden={hidden} data-xmimo-sound-toggle={kind}>
+    <label
+      className={`xmimo-tts-character-toggle xmimo-tts-character-toggle-${state}`}
+      hidden={hidden}
+      data-xmimo-sound-toggle={kind}
+      data-xmimo-holo-preset={CARD_HOLO_PRESET[kind]}
+    >
       <input type="checkbox" checked={checked} disabled={disabled} aria-label={`${label}: ${stateLabel}`} onChange={(event) => { onChange(event.target.checked) }} />
       <span className="xmimo-tts-character-control">
         {!minimal ? (customPortrait !== null
@@ -58,8 +69,10 @@ function CharacterToggle({ kind, checked, disabled, label, stateLabel, tooltip, 
             style={{ backgroundImage: `url(${hostRoute(kind === 'sound' ? TTS_SOUND_EFFECTS_CHARACTER_ASSET_ROUTE : TTS_TOGGLE_CHARACTER_ASSET_ROUTE)})` }}
             aria-hidden="true"
           />) : null}
+        <canvas className="xmimo-tts-holo-canvas" aria-hidden="true" />
         <span className="xmimo-tts-character-state"><span aria-hidden="true" />{stateLabel}</span>
       </span>
+      <span className="xmimo-tts-holo-shadow" aria-hidden="true" />
     </label>
   </Tooltip>
 }
@@ -133,6 +146,7 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, deepseekEna
       data-provider={provider}
       data-external={external ? 'true' : undefined}
       data-xmimo-sound-toggle="provider"
+      data-xmimo-holo-preset="shards"
       aria-label={switchLabel}
       disabled={disabled}
       aria-busy={switching}
@@ -156,8 +170,10 @@ function ProviderToggle({ t, provider, doubaoEnabled, breezeEnabled, deepseekEna
               <span className="xmimo-tts-provider-face xmimo-tts-provider-face-back" style={{ backgroundImage: `url(${hostRoute(portrait.back)})` }} />
             </span>
           </span>}
+        <canvas className="xmimo-tts-holo-canvas" aria-hidden="true" />
         <span className="xmimo-tts-character-state xmimo-tts-provider-state">{switchIcon}</span>
       </span>
+      <span className="xmimo-tts-holo-shadow" aria-hidden="true" />
     </button>
   </Tooltip>
 }
@@ -182,7 +198,7 @@ export interface SwitchModuleProps {
 export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, deepseekEnabled, enabled, autoPlay, soundEnabled, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
   const { result } = useSettingsSearch()
   const portraits = usePortraitManifest()
-  const rowRef = useHoloHover(!minimal && writable)
+  const rowRef = useHoloHover(!minimal && writable, { tilt: 14, hoverScale: 1.035 })
   const [switching, setSwitching] = useState(false)
   const [switchFailed, setSwitchFailed] = useState(false)
   const changeExternal = (engine: SpeechEngineState, configurationId: string): void => {

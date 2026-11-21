@@ -32,7 +32,7 @@
   font-size: 13px
 }
 
-.xmimo-tts-grid input,
+.xmimo-tts-grid input:not([type='checkbox']):not([type='radio']):not([type='range']),
 .xmimo-tts-grid select,
 .xmimo-tts-grid textarea {
   box-sizing: border-box;
@@ -41,7 +41,8 @@
   border-radius: var(--xmimo-ui-control-radius);
   padding: 8px 10px;
   color: var(--xmimo-ui-text);
-  background: var(--xmimo-ui-control-surface);
+  background: var(--xmimo-skeuo-well-bg, var(--xmimo-ui-control-surface));
+  box-shadow: var(--xmimo-skeuo-well-shadow, none);
   font: inherit
 }
 
@@ -96,10 +97,12 @@
 }
 
 .xmimo-tts-overridden {
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 66%, transparent);
   border-radius: 999px;
   padding: 1px 7px;
   color: var(--dsw-alias-label-secondary, #5f6875);
-  background: var(--dsw-alias-bg-module-platform, #eef0f3);
+  background: var(--xmimo-skeuo-chip-bg, var(--dsw-alias-bg-module-platform, #eef0f3));
+  box-shadow: var(--xmimo-skeuo-chip-shadow, none);
   font-size: 11px;
   line-height: 17px
 }

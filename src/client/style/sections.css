@@ -9,16 +9,13 @@
 }
 
 .xmimo-tts-switch-module .xmimo-tts-character-control {
-  border-color: transparent;
-  border-radius: 12px;
-  box-shadow: none;
+  border-radius: 16px;
   justify-content: center;
   min-height: 140px
 }
 
 .xmimo-tts-switch-module .xmimo-tts-character-toggle-on .xmimo-tts-character-control {
-  border-color: transparent;
-  box-shadow: none
+  border-color: color-mix(in srgb, var(--xmimo-ui-brand) 44%, var(--xmimo-ui-border));
 }
 
 .xmimo-tts-switch-module .xmimo-tts-character-portrait {

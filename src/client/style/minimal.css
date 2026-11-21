@@ -5,8 +5,25 @@
 .xmimo-tts-card-minimal {
   --xmimo-ui-module-gap: 5px;
   --xmimo-ui-module-padding: 8px;
+  --xmimo-ui-module-radius: 10px;
+  --xmimo-ui-control-radius: 8px;
   --xmimo-ui-control-height: 30px;
   --xmimo-ui-mascot-size: 0px;
+  --xmimo-skeuo-panel-bg: transparent;
+  --xmimo-skeuo-panel-shadow: none;
+  --xmimo-skeuo-key-bg: var(--xmimo-ui-surface);
+  --xmimo-skeuo-key-hover-bg: var(--xmimo-ui-hover);
+  --xmimo-skeuo-key-active-bg: var(--xmimo-ui-hover);
+  --xmimo-skeuo-key-shadow: none;
+  --xmimo-skeuo-key-hover-shadow: none;
+  --xmimo-skeuo-pressed-shadow: none;
+  --xmimo-skeuo-well-bg: var(--xmimo-ui-control-surface);
+  --xmimo-skeuo-well-shadow: none;
+  --xmimo-skeuo-chip-bg: var(--xmimo-ui-chip-surface);
+  --xmimo-skeuo-chip-shadow: none;
+  --xmimo-skeuo-brand-bg: var(--dsw-alias-button-primary-fill, var(--xmimo-ui-brand));
+  --xmimo-skeuo-brand-hover-bg: var(--dsw-alias-button-primary-hover, color-mix(in srgb, var(--xmimo-ui-brand) 85%, var(--xmimo-ui-text)));
+  --xmimo-skeuo-brand-shadow: none;
   border: 1px solid var(--xmimo-ui-border);
   background: var(--xmimo-ui-surface, #fff);
   padding: 0 var(--xmimo-ui-space-3);
@@ -14,6 +31,34 @@
 
 .xmimo-tts-card-minimal .xmimo-ui-module {
   background: transparent;
+  box-shadow: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-ui-summary > span {
+  border-color: transparent;
+}
+
+.xmimo-tts-card-minimal button[role='switch'],
+.xmimo-tts-card-minimal button[role='switch'] > span,
+.xmimo-tts-card-minimal .xmimo-read-scope-option > input:checked + .xmimo-read-scope-card,
+.xmimo-tts-card-minimal .xmimo-tts-voice-avatar {
+  box-shadow: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-slider-knob {
+  background: color-mix(in srgb, var(--slider-control-surface) 92%, transparent);
+  backdrop-filter: none;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 14%);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-settings-segmented[role='tablist'] > span[aria-hidden='true'] {
+  border: 0;
+  background: var(--xmimo-ui-surface);
+  box-shadow: var(--dsw-elevation-soft, 0 1px 2px rgb(0 0 0 / 8%));
+}
+
+.xmimo-tts-card-minimal :is(.xmimo-tts-card-actions :is(button, a), .xmimo-tts-preview-preset, .xmimo-tts-instruction-tag, .xmimo-tts-voice-picker-trigger, .xmimo-tts-builtin-voice-trigger, .xmimo-tts-builtin-voice-option, .xmimo-read-scope-card, .xmimo-tts-sound-previews button):active {
+  transform: none;
 }
 
 .xmimo-tts-card-minimal
@@ -217,7 +262,6 @@
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-sound-pack-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 112px), 1fr));
   gap: 5px;
 }
 

@@ -13,12 +13,29 @@
     transform: none !important
   }
 
+  .xmimo-tts-holo-canvas,
+  .xmimo-tts-holo-shadow {
+    display: none !important
+  }
+
   .xmimo-tts-character-control,
   .xmimo-tts-character-control::before,
   .xmimo-tts-character-control::after,
   .xmimo-tts-character-portrait,
   .xmimo-tts-provider-flipper,
-  .xmimo-tts-api-key-whale {
+  .xmimo-tts-api-key-whale,
+  .xmimo-ui-module,
+  .xmimo-tts-card-actions :is(button, a),
+  .xmimo-tts-preview-preset,
+  .xmimo-tts-instruction-tag,
+  .xmimo-tts-voice-picker-trigger,
+  .xmimo-tts-builtin-voice-trigger,
+  .xmimo-tts-builtin-voice-option,
+  .xmimo-read-scope-card,
+  .xmimo-tts-sound-pack-option,
+  .xmimo-tts-sound-previews button,
+  .xmimo-voice-reading-provider-face,
+  .xmimo-voice-reading-selector {
     transition: none !important
   }
 }

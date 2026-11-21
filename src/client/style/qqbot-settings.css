@@ -79,7 +79,7 @@
 .xmimo-passport-live-text h5 { margin: 0 0 5px; font-size: 12px; color: var(--xmimo-ui-text-muted); font-weight: 600; }
 .xmimo-passport-live-text p { margin: 0; max-height: 8em; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; }
 .xmimo-passport-live-hint { font-size: 12px; }
-.xmimo-passport-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-block: 20px 24px; padding: 14px 16px; background: var(--xmimo-ui-surface-subtle, var(--xmimo-ui-control-surface)); border-radius: var(--xmimo-ui-control-radius); }
+.xmimo-passport-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-block: 20px 24px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 78%, transparent); background: var(--xmimo-skeuo-well-bg, var(--xmimo-ui-surface-subtle, var(--xmimo-ui-control-surface))); box-shadow: var(--xmimo-skeuo-well-shadow, none); border-radius: var(--xmimo-ui-control-radius); }
 .xmimo-passport-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--xmimo-ui-text-muted); flex-shrink: 0; }
 .xmimo-passport-status[data-tone="connected"] { background: color-mix(in srgb, #23865b 10%, var(--xmimo-ui-surface)); }
 .xmimo-passport-status[data-tone="connected"] .xmimo-passport-status-dot { background: #23865b; }
@@ -90,13 +90,13 @@
 .xmimo-passport-transfer { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 28px; }
 .xmimo-passport-transfer .xmimo-qq-hint { font-size: 12px; line-height: 1.7; }
 .xmimo-passport-addresses { display: flex; flex-direction: column; gap: 10px; padding: 0; margin: 16px 0 0; list-style: none; }
-.xmimo-passport-addresses li { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid var(--xmimo-ui-border); border-radius: var(--xmimo-ui-control-radius); }
+.xmimo-passport-addresses li { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid var(--xmimo-ui-border); border-radius: var(--xmimo-ui-control-radius); background: var(--xmimo-skeuo-panel-bg, transparent); box-shadow: var(--xmimo-skeuo-key-shadow, none); }
 .xmimo-passport-addresses li > div { display: flex; flex: 1 1 180px; flex-direction: column; gap: 4px; min-width: 0; }
 .xmimo-passport-addresses strong { user-select: all; font-size: 23px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .xmimo-passport-addresses span { color: var(--xmimo-ui-text-muted); }
 .xmimo-passport-addresses li > div > span { font-size: 12px; }
 .xmimo-passport-digits { display: flex; gap: 8px; margin-top: 16px; }
-.xmimo-passport-digits > span:not(.xmimo-passport-sr-only) { display: grid; place-items: center; width: 48px; height: 60px; border: 1px solid var(--xmimo-ui-border); border-radius: var(--xmimo-ui-control-radius); background: var(--xmimo-ui-control-surface); font-size: 32px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.xmimo-passport-digits > span:not(.xmimo-passport-sr-only) { display: grid; place-items: center; width: 48px; height: 60px; border: 1px solid var(--xmimo-ui-border); border-radius: var(--xmimo-ui-control-radius); background: var(--xmimo-skeuo-well-bg, var(--xmimo-ui-control-surface)); box-shadow: var(--xmimo-skeuo-well-shadow, none); font-size: 32px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .xmimo-passport-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .xmimo-passport-copy-feedback { display: block; margin-top: 8px; font-size: 12px; }
 .xmimo-passport-advanced { border-top: 1px solid var(--xmimo-ui-border-soft); }
@@ -110,7 +110,8 @@
   border: 1px solid var(--xmimo-ui-border);
   border-radius: var(--xmimo-ui-control-radius);
   padding: 8px 10px;
-  background: var(--xmimo-ui-control-surface);
+  background: var(--xmimo-skeuo-well-bg, var(--xmimo-ui-control-surface));
+  box-shadow: var(--xmimo-skeuo-well-shadow, none);
   color: var(--xmimo-ui-text);
   caret-color: var(--xmimo-ui-brand);
   font: inherit;

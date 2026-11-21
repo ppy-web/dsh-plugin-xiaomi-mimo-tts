@@ -10,8 +10,10 @@
   padding: 0 0 var(--xmimo-tactile-depth);
   border: 0;
   border-radius: var(--xmimo-tactile-radius, 999px);
-  background: color-mix(in srgb, var(--xmimo-tactile-surface), black 30%);
-  box-shadow: 0 1px 2px #0003;
+  background: color-mix(in srgb, var(--xmimo-tactile-surface), black 28%);
+  box-shadow:
+    0 2px 5px light-dark(rgb(0 0 0 / 16%), rgb(0 0 0 / 42%)),
+    0 1px 1px light-dark(rgb(0 0 0 / 10%), rgb(0 0 0 / 32%));
   color: var(--dsw-alias-label-primary, #1f2328);
   font: inherit;
   line-height: 1.3;
@@ -26,8 +28,11 @@
   min-width: 0;
   padding: var(--xmimo-tactile-padding, 5px 12px);
   border-radius: inherit;
-  background: linear-gradient(160deg, #fff2, #0002), var(--xmimo-tactile-surface);
-  box-shadow: inset 0 1px 1px #fff5, inset 0 0 0 1px #0002;
+  background: linear-gradient(180deg, rgb(255 255 255 / 22%), rgb(0 0 0 / 12%)), var(--xmimo-tactile-surface);
+  box-shadow:
+    inset 0 1px 0 light-dark(rgb(255 255 255 / 62%), rgb(255 255 255 / 24%)),
+    inset 0 -1px 0 rgb(0 0 0 / 16%),
+    inset 0 0 0 1px rgb(0 0 0 / 10%);
   transition: transform 140ms ease-out;
 }
 

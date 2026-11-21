@@ -12,7 +12,8 @@
   border-radius: var(--xmimo-ui-module-radius);
   padding: 12px;
   color: var(--xmimo-ui-text);
-  background: var(--xmimo-ui-surface);
+  background: var(--xmimo-skeuo-panel-bg, var(--xmimo-ui-surface));
+  box-shadow: var(--xmimo-skeuo-panel-shadow, none);
   font-size: 14px;
   line-height: 1.5;
 }

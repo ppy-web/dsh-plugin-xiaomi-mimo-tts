@@ -14,7 +14,8 @@
 .xmimo-tts-details-body {
   min-height: 0;
   overflow: hidden;
-  column-gap: 12px
+  column-gap: 12px;
+  padding-bottom: var(--xmimo-ui-space-2, 6px)
 }
 
 .xmimo-tts-details-body>* {
@@ -79,7 +80,8 @@
   padding: 3px;
   border: 1px solid var(--xmimo-ui-border);
   border-radius: 12px;
-  background: var(--xmimo-ui-hover);
+  background: var(--xmimo-skeuo-well-bg, var(--xmimo-ui-hover));
+  box-shadow: var(--xmimo-skeuo-well-shadow, none);
 }
 
 .xmimo-tts-deepseek-voices label { position: relative; min-width: 0; }
@@ -97,13 +99,19 @@
   gap: 6px;
   min-height: 30px;
   padding: 4px 6px;
+  border: 1px solid transparent;
   border-radius: 8px;
   color: var(--xmimo-ui-text);
   font-size: 13px;
   overflow-wrap: anywhere;
   cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
-.xmimo-tts-deepseek-voices input:checked + span { background: var(--xmimo-ui-surface); }
+.xmimo-tts-deepseek-voices input:checked + span {
+  border-color: color-mix(in srgb, var(--xmimo-ui-border) 62%, transparent);
+  background: var(--xmimo-skeuo-key-bg, var(--xmimo-ui-surface));
+  box-shadow: var(--xmimo-skeuo-key-shadow, none);
+}
 .xmimo-tts-deepseek-voices input:focus-visible + span { outline: var(--xmimo-ui-focus); }
 .xmimo-tts-deepseek-voices:disabled { opacity: .55; }
 .xmimo-tts-deepseek-voices:disabled .xmimo-tts-deepseek-voice-choice { cursor: default; }
@@ -122,23 +130,29 @@
   min-height: 60px;
   padding: 10px 12px;
   border: 1px solid var(--xmimo-ui-border-soft);
-  border-radius: 9px;
-  background: var(--dsw-alias-bg-layer-2, var(--xmimo-ui-hover));
+  border-radius: var(--xmimo-ui-control-radius, 10px);
+  background: var(--xmimo-skeuo-key-bg, var(--dsw-alias-bg-layer-2, var(--xmimo-ui-hover)));
+  box-shadow: var(--xmimo-skeuo-key-shadow, none);
   color: var(--xmimo-ui-text);
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
   list-style: none;
   cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .xmimo-tts-more-settings > summary::-webkit-details-marker { display: none; }
 .xmimo-tts-more-settings > summary[hidden] { display: none; }
-.xmimo-tts-more-settings > summary:hover,
-.xmimo-tts-more-settings[open] > summary {
+.xmimo-tts-more-settings > summary:hover {
   border-color: var(--dsw-alias-label-dimmed, #c8ccd4);
-  background: var(--dsw-alias-interactive-bg-hover, var(--xmimo-ui-hover));
+  background: var(--xmimo-skeuo-key-hover-bg, var(--dsw-alias-interactive-bg-hover, var(--xmimo-ui-hover)));
+  box-shadow: var(--xmimo-skeuo-key-hover-shadow, none);
+}
+.xmimo-tts-more-settings[open] > summary {
+  border-color: color-mix(in srgb, var(--xmimo-ui-brand) 36%, var(--xmimo-ui-border));
+  background: var(--xmimo-skeuo-well-bg, var(--dsw-alias-interactive-bg-hover, var(--xmimo-ui-hover)));
+  box-shadow: var(--xmimo-skeuo-pressed-shadow, none);
 }
 .xmimo-tts-more-settings > summary:focus-visible {
   outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);

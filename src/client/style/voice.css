@@ -20,15 +20,24 @@
 
 .xmimo-tts-voice-picker-trigger {
   min-height: 54px;
-  border-radius: 10px;
+  border-radius: var(--xmimo-ui-control-radius, 10px);
   padding: 6px 10px;
   color: var(--dsw-alias-label-primary, #1f2328);
-  background: var(--dsw-alias-bg-layer-2, #f3f4f6)
+  background: var(--xmimo-skeuo-key-bg, var(--dsw-alias-bg-layer-2, #f3f4f6));
+  box-shadow: var(--xmimo-skeuo-key-shadow, none);
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 120ms ease
 }
 
 .xmimo-tts-voice-picker-trigger:hover:not(:disabled) {
   border-color: var(--dsw-alias-label-dimmed, #c8ccd4);
-  background: var(--dsw-alias-interactive-bg-hover, #eef0f3)
+  background: var(--xmimo-skeuo-key-hover-bg, var(--dsw-alias-interactive-bg-hover, #eef0f3));
+  box-shadow: var(--xmimo-skeuo-key-hover-shadow, none)
+}
+
+.xmimo-tts-voice-picker-trigger:active:not(:disabled) {
+  background: var(--xmimo-skeuo-key-active-bg, var(--dsw-alias-interactive-bg-hover, #eef0f3));
+  box-shadow: var(--xmimo-skeuo-pressed-shadow, none);
+  transform: translateY(1px)
 }
 
 .xmimo-tts-voice-option-copy,
@@ -75,8 +84,10 @@
 
 .xmimo-tts-builtin-voice-trigger,
 .xmimo-tts-builtin-voice-option {
-  border-radius: 9px;
-  background: var(--dsw-alias-bg-layer-1, #fff);
+  border-radius: var(--xmimo-ui-control-radius, 10px);
+  background: var(--xmimo-skeuo-key-bg, var(--dsw-alias-bg-layer-1, #fff));
+  box-shadow: var(--xmimo-skeuo-key-shadow, none);
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 120ms ease
 }
 
 .xmimo-tts-builtin-voice-trigger {
@@ -87,7 +98,15 @@
 .xmimo-tts-builtin-voice-trigger:hover:not(:disabled),
 .xmimo-tts-builtin-voice-option:hover {
   border-color: var(--dsw-alias-label-dimmed, #c8ccd4);
-  background: var(--dsw-alias-interactive-bg-hover, #f7f7f5)
+  background: var(--xmimo-skeuo-key-hover-bg, var(--dsw-alias-interactive-bg-hover, #f7f7f5));
+  box-shadow: var(--xmimo-skeuo-key-hover-shadow, none)
+}
+
+.xmimo-tts-builtin-voice-trigger:active:not(:disabled),
+.xmimo-tts-builtin-voice-option:active:not(:disabled) {
+  background: var(--xmimo-skeuo-key-active-bg, var(--dsw-alias-interactive-bg-hover, #f7f7f5));
+  box-shadow: var(--xmimo-skeuo-pressed-shadow, none);
+  transform: translateY(1px)
 }
 
 .xmimo-tts-voice-picker-trigger:focus-visible,
@@ -130,10 +149,10 @@
   overflow: auto;
   overscroll-behavior: contain;
   border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-  border-radius: 12px;
+  border-radius: var(--xmimo-ui-module-radius, 14px);
   padding: 10px;
-  background: var(--dsw-alias-bg-layer-1, #fff);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, .12)
+  background: var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
+  box-shadow: var(--xmimo-skeuo-popover-shadow, 0 10px 28px rgba(15, 23, 42, .12))
 }
 
 .xmimo-tts-builtin-voice-option {
@@ -143,7 +162,11 @@
 }
 
 .xmimo-tts-builtin-voice-option-selected {
-  background: color-mix(in srgb, #dedbd2 24%, var(--dsw-alias-bg-layer-1, #fff))
+  border-color: color-mix(in srgb, var(--xmimo-ui-brand) 48%, var(--xmimo-ui-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--xmimo-ui-brand) 10%, transparent), color-mix(in srgb, var(--xmimo-ui-brand) 4%, transparent)),
+    var(--xmimo-skeuo-well-bg, var(--dsw-alias-bg-layer-1, #fff));
+  box-shadow: var(--xmimo-skeuo-pressed-shadow, none)
 }
 
 .xmimo-tts-builtin-voice-check {
@@ -155,7 +178,7 @@
 }
 
 .xmimo-tts-builtin-voice-check circle {
-  fill: #383932
+  fill: var(--xmimo-ui-brand, #383932)
 }
 
 .xmimo-tts-builtin-voice-check path {
@@ -424,17 +447,19 @@
 .xmimo-tts-instruction-tag {
   max-width: 100%;
   overflow: hidden;
-  padding: 3px 8px;
+  padding: 3px 9px;
   border: 1px solid var(--xmimo-ui-border-soft);
   border-radius: 999px;
   color: var(--xmimo-ui-text-muted);
-  background: var(--xmimo-ui-control-surface);
+  background: var(--xmimo-skeuo-key-bg, var(--xmimo-ui-control-surface));
+  box-shadow: var(--xmimo-skeuo-key-shadow, none);
   font: inherit;
   font-size: 11px;
   line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, color 140ms ease, transform 120ms ease
 }
 
 .xmimo-tts-voice-id-tag {
@@ -512,11 +537,27 @@
 .xmimo-tts-voice-id-tag:has(:disabled) { opacity: .55; }
 .xmimo-tts-voice-id-tag button:disabled { cursor: not-allowed; }
 
+.xmimo-tts-instruction-tag:hover:not(:disabled) {
+  color: var(--xmimo-ui-brand);
+  border-color: color-mix(in srgb, var(--xmimo-ui-brand) 65%, var(--xmimo-ui-border));
+  background: var(--xmimo-skeuo-key-hover-bg, var(--xmimo-ui-hover));
+  box-shadow: var(--xmimo-skeuo-key-hover-shadow, none)
+}
+
+.xmimo-tts-instruction-tag:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: var(--xmimo-skeuo-pressed-shadow, none)
+}
+
 .xmimo-tts-voice-id-tag[data-selected=true],
-.xmimo-tts-instruction-tag:hover:not(:disabled),
 .xmimo-tts-instruction-tag[aria-pressed=true] {
   color: var(--dsw-alias-brand-primary, #4f6ef7);
-  border-color: currentColor
+  border-color: color-mix(in srgb, var(--xmimo-ui-brand) 72%, var(--xmimo-ui-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--xmimo-ui-brand) 12%, transparent), color-mix(in srgb, var(--xmimo-ui-brand) 5%, transparent)),
+    var(--xmimo-skeuo-well-bg, var(--xmimo-ui-control-surface));
+  box-shadow: var(--xmimo-skeuo-pressed-shadow, none);
+  font-weight: 550
 }
 
 .xmimo-tts-instruction-tag:focus-visible {

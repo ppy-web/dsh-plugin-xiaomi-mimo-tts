@@ -6,16 +6,17 @@
  */
 
 /* ---------- Design tokens ---------- */
-.xmimo-ui-scope {
+.xmimo-ui-scope,
+.xmimo-voice-reading {
   --xmimo-ui-space-1: 4px;
   --xmimo-ui-space-2: 6px;
   --xmimo-ui-space-3: 8px;
   --xmimo-ui-space-4: 10px;
 
-  --xmimo-ui-module-gap: var(--xmimo-ui-space-3);
+  --xmimo-ui-module-gap: 10px;
   --xmimo-ui-module-padding: var(--xmimo-ui-space-4);
-  --xmimo-ui-module-radius: 12px;
-  --xmimo-ui-control-radius: 9px;
+  --xmimo-ui-module-radius: 14px;
+  --xmimo-ui-control-radius: 10px;
   --xmimo-ui-control-height: 34px;
   --xmimo-ui-summary-height: 34px;
   --xmimo-ui-mascot-size: 56px;
@@ -32,6 +33,94 @@
   --xmimo-ui-chip-surface: var(--dsw-alias-bg-module-platform, #eef0f3);
   --xmimo-ui-hover: var(--dsw-alias-interactive-bg-hover, #f3f4f6);
   --xmimo-ui-focus: 2px solid var(--xmimo-ui-brand);
+
+  /* Soft skeuomorphic material tokens (unified 180deg overhead light, adaptive to light/dark & palettes). */
+  --xmimo-skeuo-specular: light-dark(rgb(255 255 255 / 90%), rgb(255 255 255 / 11%));
+  --xmimo-skeuo-specular-soft: light-dark(rgb(255 255 255 / 58%), rgb(255 255 255 / 6%));
+  --xmimo-skeuo-bevel-low: light-dark(color-mix(in srgb, var(--xmimo-ui-text) 8%, transparent), rgb(0 0 0 / 36%));
+  --xmimo-skeuo-drop-tight: light-dark(color-mix(in srgb, var(--xmimo-ui-text) 9%, transparent), rgb(0 0 0 / 44%));
+  --xmimo-skeuo-drop-ambient: light-dark(color-mix(in srgb, var(--xmimo-ui-text) 11%, transparent), rgb(0 0 0 / 38%));
+  --xmimo-skeuo-inset-top: light-dark(color-mix(in srgb, var(--xmimo-ui-text) 13%, transparent), rgb(0 0 0 / 50%));
+  --xmimo-skeuo-inset-tight: light-dark(color-mix(in srgb, var(--xmimo-ui-text) 7%, transparent), rgb(0 0 0 / 30%));
+  --xmimo-skeuo-rim-bottom: light-dark(rgb(255 255 255 / 72%), rgb(255 255 255 / 6%));
+
+  --xmimo-skeuo-panel-bg: linear-gradient(
+    180deg,
+    light-dark(color-mix(in srgb, #fff 56%, var(--xmimo-ui-surface)), color-mix(in srgb, #fff 4%, var(--xmimo-ui-surface))),
+    light-dark(color-mix(in srgb, var(--xmimo-ui-control-surface) 38%, var(--xmimo-ui-surface)), color-mix(in srgb, #000 10%, var(--xmimo-ui-surface)))
+  );
+  --xmimo-skeuo-key-bg: linear-gradient(
+    180deg,
+    light-dark(color-mix(in srgb, #fff 74%, var(--xmimo-ui-surface)), color-mix(in srgb, #fff 8%, var(--xmimo-ui-surface))),
+    light-dark(color-mix(in srgb, var(--xmimo-ui-control-surface) 64%, var(--xmimo-ui-surface)), color-mix(in srgb, #000 14%, var(--xmimo-ui-surface)))
+  );
+  --xmimo-skeuo-key-hover-bg: linear-gradient(
+    180deg,
+    light-dark(color-mix(in srgb, #fff 88%, var(--xmimo-ui-surface)), color-mix(in srgb, #fff 12%, var(--xmimo-ui-surface))),
+    light-dark(color-mix(in srgb, var(--xmimo-ui-hover) 72%, var(--xmimo-ui-surface)), color-mix(in srgb, #000 6%, var(--xmimo-ui-surface)))
+  );
+  --xmimo-skeuo-key-active-bg: linear-gradient(
+    180deg,
+    light-dark(color-mix(in srgb, var(--xmimo-ui-text) 5%, var(--xmimo-ui-control-surface)), color-mix(in srgb, #000 26%, var(--xmimo-ui-surface))),
+    var(--xmimo-ui-control-surface)
+  );
+  --xmimo-skeuo-well-bg: linear-gradient(
+    180deg,
+    light-dark(color-mix(in srgb, var(--xmimo-ui-text) 4%, var(--xmimo-ui-control-surface)), color-mix(in srgb, #000 22%, var(--xmimo-ui-control-surface))),
+    light-dark(color-mix(in srgb, #fff 28%, var(--xmimo-ui-control-surface)), color-mix(in srgb, #000 8%, var(--xmimo-ui-control-surface)))
+  );
+  --xmimo-skeuo-chip-bg: linear-gradient(
+    180deg,
+    light-dark(color-mix(in srgb, #fff 68%, var(--xmimo-ui-surface)), color-mix(in srgb, #fff 7%, var(--xmimo-ui-chip-surface))),
+    light-dark(color-mix(in srgb, var(--xmimo-ui-chip-surface) 78%, var(--xmimo-ui-surface)), color-mix(in srgb, #000 14%, var(--xmimo-ui-chip-surface)))
+  );
+  --xmimo-skeuo-brand-bg: linear-gradient(
+    180deg,
+    color-mix(in srgb, #fff 16%, var(--xmimo-ui-brand)),
+    color-mix(in srgb, #000 14%, var(--xmimo-ui-brand))
+  );
+  --xmimo-skeuo-brand-hover-bg: linear-gradient(
+    180deg,
+    color-mix(in srgb, #fff 22%, var(--xmimo-ui-brand)),
+    color-mix(in srgb, #000 8%, var(--xmimo-ui-brand))
+  );
+
+  --xmimo-skeuo-panel-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular),
+    inset 0 -1px 0 var(--xmimo-skeuo-bevel-low),
+    0 1px 2px var(--xmimo-skeuo-drop-tight),
+    0 6px 16px -6px var(--xmimo-skeuo-drop-ambient);
+  --xmimo-skeuo-key-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular),
+    inset 0 -1px 0 var(--xmimo-skeuo-bevel-low),
+    0 1px 2px var(--xmimo-skeuo-drop-tight),
+    0 3px 6px -3px var(--xmimo-skeuo-drop-ambient);
+  --xmimo-skeuo-key-hover-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular),
+    inset 0 -1px 0 var(--xmimo-skeuo-bevel-low),
+    0 2px 4px var(--xmimo-skeuo-drop-tight),
+    0 6px 12px -4px var(--xmimo-skeuo-drop-ambient);
+  --xmimo-skeuo-pressed-shadow:
+    inset 0 2px 4px var(--xmimo-skeuo-inset-top),
+    inset 0 1px 1px var(--xmimo-skeuo-inset-tight),
+    0 1px 0 var(--xmimo-skeuo-rim-bottom);
+  --xmimo-skeuo-well-shadow:
+    inset 0 2px 4px var(--xmimo-skeuo-inset-top),
+    inset 0 1px 1.5px var(--xmimo-skeuo-inset-tight),
+    inset 0 -1px 0 var(--xmimo-skeuo-specular-soft),
+    0 1px 0 var(--xmimo-skeuo-rim-bottom);
+  --xmimo-skeuo-chip-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular),
+    0 1px 2px var(--xmimo-skeuo-drop-tight);
+  --xmimo-skeuo-popover-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular),
+    0 12px 28px -8px light-dark(color-mix(in srgb, var(--xmimo-ui-text) 20%, transparent), rgb(0 0 0 / 60%)),
+    0 3px 8px -2px var(--xmimo-skeuo-drop-tight);
+  --xmimo-skeuo-brand-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 32%),
+    inset 0 -1px 0 rgb(0 0 0 / 22%),
+    0 2px 5px color-mix(in srgb, var(--xmimo-ui-brand) 28%, transparent),
+    0 6px 14px -6px color-mix(in srgb, var(--xmimo-ui-brand) 36%, transparent);
 }
 
 /* ---------- Layout primitives ---------- */
@@ -62,7 +151,9 @@
   border: 1px solid var(--xmimo-ui-border);
   border-radius: var(--xmimo-ui-module-radius);
   color: var(--xmimo-ui-text);
-  background: var(--xmimo-ui-surface);
+  background: var(--xmimo-skeuo-panel-bg);
+  box-shadow: var(--xmimo-skeuo-panel-shadow);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .xmimo-ui-module-padded {
@@ -182,10 +273,11 @@
   align-items: center;
   gap: 6px;
   overflow: hidden;
-  border: 1px solid var(--xmimo-ui-border);
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 86%, transparent);
   border-radius: var(--xmimo-ui-control-radius);
   padding: 6px 6px 6px var(--xmimo-ui-space-2);
-  background: var(--xmimo-ui-control-surface);
+  background: var(--xmimo-skeuo-well-bg);
+  box-shadow: var(--xmimo-skeuo-well-shadow);
 }
 
 .xmimo-ui-summary > span {
@@ -193,10 +285,12 @@
   min-width: 0;
   max-width: 150px;
   flex: 0 1 auto;
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 66%, transparent);
   border-radius: 999px;
-  padding: 1px 7px;
+  padding: 1px 8px;
   color: var(--xmimo-ui-text-muted);
-  background: var(--xmimo-ui-chip-surface);
+  background: var(--xmimo-skeuo-chip-bg);
+  box-shadow: var(--xmimo-skeuo-chip-shadow);
   font-size: 11px;
   font-weight: 500;
   line-height: 16px;
@@ -232,7 +326,9 @@
   border-color: var(--xmimo-ui-border);
   border-radius: var(--xmimo-ui-control-radius);
   color: var(--xmimo-ui-text);
-  background: var(--xmimo-ui-control-surface);
+  background: var(--xmimo-skeuo-well-bg);
+  box-shadow: var(--xmimo-skeuo-well-shadow);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 
 .xmimo-ui-module input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.xmimo-tts-voice-id-edit),
@@ -245,6 +341,49 @@
 .xmimo-ui-module textarea:focus-visible {
   outline: var(--xmimo-ui-focus);
   outline-offset: 1px;
+}
+
+/* Tactile elevation for host SegmentedControl and Switch primitives inside settings. */
+.xmimo-ui-scope .xmimo-tts-settings-segmented[role='tablist'] {
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 82%, transparent);
+  background: var(--xmimo-skeuo-well-bg);
+  box-shadow: var(--xmimo-skeuo-well-shadow);
+}
+
+.xmimo-ui-scope .xmimo-tts-settings-segmented[role='tablist'] > span[aria-hidden='true'] {
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 55%, transparent);
+  box-sizing: border-box;
+  background: linear-gradient(
+    180deg,
+    light-dark(color-mix(in srgb, #fff 82%, var(--xmimo-ui-surface)), color-mix(in srgb, #fff 11%, var(--xmimo-ui-surface))),
+    light-dark(color-mix(in srgb, var(--xmimo-ui-control-surface) 48%, var(--xmimo-ui-surface)), color-mix(in srgb, #000 8%, var(--xmimo-ui-surface)))
+  );
+  box-shadow: var(--xmimo-skeuo-key-shadow);
+}
+
+.xmimo-ui-scope .xmimo-tts-settings-segmented[role='tablist'] > [role='tab'][aria-selected='true'] {
+  font-weight: 600;
+}
+
+:is(.xmimo-ui-scope, .xmimo-voice-reading) button[role='switch'] {
+  box-shadow:
+    inset 0 1.5px 3px light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 50%)),
+    inset 0 -1px 0 var(--xmimo-skeuo-specular-soft),
+    0 1px 0 var(--xmimo-skeuo-rim-bottom);
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+:is(.xmimo-ui-scope, .xmimo-voice-reading) button[role='switch'][aria-checked='true'] {
+  box-shadow:
+    inset 0 1.5px 3px rgb(0 0 0 / 24%),
+    inset 0 -1px 0 rgb(255 255 255 / 22%),
+    0 1px 3px color-mix(in srgb, var(--xmimo-ui-brand) 28%, transparent);
+}
+
+:is(.xmimo-ui-scope, .xmimo-voice-reading) button[role='switch'] > span {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 72%),
+    0 1px 3px rgb(0 0 0 / 28%);
 }
 /* ---------- Module-specific placement using shared dimensions ---------- */
 .xmimo-ui-module .xmimo-tts-details-body > * {

@@ -21,11 +21,11 @@
   min-width: 0;
 }
 
-/* Sound pack on the left; scope, volume and previews stacked on the right. */
+/* Sound pack on the left; scope, volume and previews stacked on the right (50/50 split). */
 .xmimo-tts-sound-layout {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: auto auto 1fr;
   align-items: stretch;
   gap: var(--xmimo-ui-space-3);
@@ -42,6 +42,7 @@
 }
 
 .xmimo-tts-sound-layout > .xmimo-tts-sound-pack {
+  container: xmimo-sound-pack / inline-size;
   height: 100%;
   grid-column: 1;
   grid-row: 1 / span 3;
@@ -106,8 +107,26 @@
 
 .xmimo-tts-sound-pack-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-  gap: 5px
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(4px, 1.4cqi, 6px)
+}
+
+@container xmimo-sound-pack (min-width: 480px) {
+  .xmimo-tts-sound-pack-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr))
+  }
+}
+
+@container xmimo-sound-pack (max-width: 299px) {
+  .xmimo-tts-sound-pack-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+}
+
+@container xmimo-sound-pack (max-width: 180px) {
+  .xmimo-tts-sound-pack-grid {
+    grid-template-columns: minmax(0, 1fr)
+  }
 }
 
 .xmimo-tts-sound-pack-option {
@@ -118,17 +137,19 @@
   align-items: center;
   justify-content: space-between;
   min-width: 0;
-  min-height: 48px;
+  min-height: clamp(40px, 11cqi, 52px);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--xmimo-sound-pack-accent) 26%, var(--dsw-alias-border-l2, #d7dbe2));
   border-radius: 14px;
-  padding: 8px 30px 8px 10px;
+  padding: clamp(6px, 2cqi, 9px) clamp(22px, 6.5cqi, 30px) clamp(6px, 2cqi, 9px) clamp(7px, 2.5cqi, 11px);
   color: var(--dsw-alias-label-secondary, #5f6875);
   background:
     radial-gradient(circle at 86% 12%, color-mix(in srgb, var(--xmimo-sound-pack-accent) 20%, transparent) 0 2px, transparent 3px),
-    linear-gradient(135deg, color-mix(in srgb, var(--xmimo-sound-pack-accent) 13%, var(--dsw-alias-bg-layer-1, #fff)), var(--dsw-alias-bg-layer-1, #fff));
+    linear-gradient(180deg, color-mix(in srgb, var(--xmimo-sound-pack-accent) 12%, transparent), transparent 72%),
+    var(--xmimo-skeuo-key-bg, var(--dsw-alias-bg-layer-1, #fff));
+  box-shadow: var(--xmimo-skeuo-key-shadow, none);
   font: inherit;
-  font-size: 11px;
+  font-size: clamp(10px, 2.8cqi, 12px);
   text-align: left;
   cursor: pointer;
   transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease
@@ -137,10 +158,10 @@
 .xmimo-tts-sound-pack-option::after {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: clamp(5px, 1.8cqi, 8px);
   display: grid;
-  width: 16px;
-  height: 16px;
+  width: clamp(13px, 3.8cqi, 16px);
+  height: clamp(13px, 3.8cqi, 16px);
   place-items: center;
   border-radius: 999px;
   color: var(--xmimo-sound-pack-accent);
@@ -155,10 +176,10 @@
 
 .xmimo-tts-sound-pack-icon {
   display: block;
-  width: 20px;
-  height: 20px;
+  width: clamp(15px, 4.8cqi, 20px);
+  height: clamp(15px, 4.8cqi, 20px);
   flex: none;
-  margin-right: 7px;
+  margin-right: clamp(4px, 1.8cqi, 7px);
   color: var(--xmimo-sound-pack-accent);
 }
 
@@ -174,11 +195,12 @@
   border-color: var(--xmimo-sound-pack-accent);
   color: var(--dsw-alias-label-primary, #1f2328);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, .10)
+  box-shadow: var(--xmimo-skeuo-key-hover-shadow, 0 4px 12px rgba(15, 23, 42, .10))
 }
 
 .xmimo-tts-sound-pack-option:active:not(:disabled) {
-  transform: scale(.97)
+  transform: translateY(1px) scale(.985);
+  box-shadow: var(--xmimo-skeuo-pressed-shadow, none)
 }
 
 .xmimo-tts-sound-pack-option-selected {
@@ -186,9 +208,13 @@
   color: var(--xmimo-sound-pack-accent);
   background:
     radial-gradient(circle at 88% 11%, color-mix(in srgb, var(--xmimo-sound-pack-accent) 35%, transparent) 0 2px, transparent 3px),
-    linear-gradient(135deg, color-mix(in srgb, var(--xmimo-sound-pack-accent) 22%, var(--dsw-alias-bg-layer-1, #fff)), var(--dsw-alias-bg-layer-1, #fff));
+    linear-gradient(180deg, color-mix(in srgb, var(--xmimo-sound-pack-accent) 18%, transparent), color-mix(in srgb, var(--xmimo-sound-pack-accent) 5%, transparent)),
+    var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
   font-weight: 650;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--xmimo-sound-pack-accent) 16%, transparent)
+  box-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular, rgb(255 255 255 / 75%)),
+    0 0 0 2px color-mix(in srgb, var(--xmimo-sound-pack-accent) 18%, transparent),
+    0 4px 12px -4px color-mix(in srgb, var(--xmimo-sound-pack-accent) 28%, transparent)
 }
 
 .xmimo-tts-sound-pack-option-selected::after {
@@ -225,15 +251,16 @@
   align-items: center;
   flex-direction: column;
   gap: 2px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 5px 3px 4px;
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border-soft) 72%, transparent);
+  border-radius: 9px;
+  padding: 6px 3px 5px;
   color: var(--dsw-alias-label-secondary, #5f6875);
-  background: transparent;
+  background: var(--xmimo-skeuo-key-bg, transparent);
+  box-shadow: var(--xmimo-skeuo-key-shadow, none);
   font: inherit;
   font-size: 10px;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, color 160ms ease
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 140ms ease, color 160ms ease
 }
 
 .xmimo-tts-sound-previews button>svg {
@@ -244,10 +271,11 @@
 }
 
 .xmimo-tts-sound-previews button:hover:not(:disabled) {
-  border-color: var(--dsw-alias-border-l2, #d7dbe2);
-  background: var(--dsw-alias-interactive-bg-hover, #f3f4f6);
+  border-color: color-mix(in srgb, var(--xmimo-ui-brand) 48%, var(--dsw-alias-border-l2, #d7dbe2));
+  background: var(--xmimo-skeuo-key-hover-bg, var(--dsw-alias-interactive-bg-hover, #f3f4f6));
+  box-shadow: var(--xmimo-skeuo-key-hover-shadow, none);
   color: var(--dsw-alias-brand-primary, #4f6ef7);
-  transform: translateY(-2px)
+  transform: translateY(-1px)
 }
 
 .xmimo-tts-sound-previews button:hover:not(:disabled)>svg {
@@ -255,7 +283,9 @@
 }
 
 .xmimo-tts-sound-previews button:active:not(:disabled) {
-  transform: translateY(0) scale(0.98)
+  background: var(--xmimo-skeuo-key-active-bg, var(--dsw-alias-interactive-bg-hover, #f3f4f6));
+  box-shadow: var(--xmimo-skeuo-pressed-shadow, none);
+  transform: translateY(1px) scale(0.98)
 }
 
 .xmimo-tts-sound-previews button:disabled {

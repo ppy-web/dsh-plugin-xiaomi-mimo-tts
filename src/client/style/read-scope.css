@@ -51,15 +51,32 @@
   padding: clamp(5px, 2cqi, 10px);
   border: 1px solid var(--dsw-alias-border-l2, #d7dbe2);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 65%, transparent);
+  background: var(--xmimo-skeuo-key-bg, color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 65%, transparent));
+  box-shadow: var(--xmimo-skeuo-key-shadow, none);
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 120ms ease;
 }
 
 .xmimo-read-scope-option:hover > input:not(:disabled) + .xmimo-read-scope-card {
-  border-color: var(--xmimo-scope-accent);
+  border-color: color-mix(in srgb, var(--xmimo-scope-accent) 70%, var(--dsw-alias-border-l2, #d7dbe2));
+  background: var(--xmimo-skeuo-key-hover-bg, color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 80%, transparent));
+  box-shadow: var(--xmimo-skeuo-key-hover-shadow, none);
+}
+
+.xmimo-read-scope-option:active > input:not(:disabled) + .xmimo-read-scope-card {
+  transform: translateY(1px);
+  box-shadow: var(--xmimo-skeuo-pressed-shadow, none);
 }
 
 .xmimo-read-scope-option > input:checked + .xmimo-read-scope-card {
   border-color: var(--xmimo-scope-accent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--xmimo-scope-accent) 10%, transparent), color-mix(in srgb, var(--xmimo-scope-accent) 3%, transparent)),
+    var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
+  box-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular, rgb(255 255 255 / 80%)),
+    inset 0 -1px 0 color-mix(in srgb, var(--xmimo-scope-accent) 16%, transparent),
+    0 2px 5px var(--xmimo-skeuo-drop-tight, rgb(0 0 0 / 10%)),
+    0 0 0 2px color-mix(in srgb, var(--xmimo-scope-accent) 14%, transparent);
 }
 
 .xmimo-read-scope-option > input:focus-visible + .xmimo-read-scope-card {
@@ -93,10 +110,14 @@
   margin-inline-start: auto;
   border: 1px solid var(--dsw-alias-label-secondary, #5f6875);
   border-radius: 50%;
+  background: var(--xmimo-skeuo-well-bg, transparent);
+  box-shadow: var(--xmimo-skeuo-well-shadow, none);
 }
 
 .xmimo-read-scope-option > input:checked + .xmimo-read-scope-card .xmimo-read-scope-radio {
   border: 4px solid var(--xmimo-scope-accent);
+  background: var(--dsw-alias-bg-layer-1, #fff);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--xmimo-scope-accent) 32%, transparent);
 }
 
 .xmimo-read-scope-sample {
