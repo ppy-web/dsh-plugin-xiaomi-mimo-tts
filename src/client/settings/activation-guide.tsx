@@ -12,19 +12,15 @@ import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import { hostRoute } from '../host-route.js'
 import { SOURCE_URL } from './plugin-links.js'
 
-const HIGHLIGHTS = [
-  'onboarding.featurePortraitCards',
-  'onboarding.featureResponseOrb',
-  'onboarding.featureMusicDucking',
-  'onboarding.featureDshGo',
-  'onboarding.featureDeepseekVoice',
-] as const
-
 const CONFETTI = [-116, -90, -60, -28, 28, 60, 90, 116].map((x, index) => ({
   '--confetti-x': `${x}px`,
   '--confetti-y': `${-58 - (index % 3) * 24}px`,
   '--confetti-turn': `${x * 2}deg`,
 }) as CSSProperties)
+
+function splitDiaryParagraphs(text: string): string[] {
+  return text.split(/\r?\n+/).map(line => line.trim()).filter(Boolean)
+}
 
 export interface ActivationGuideProps extends PluginActivationOwnerProps {
   t: Translate
@@ -58,6 +54,8 @@ export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, on
     }
   }
   if (!preview && !enabled) return null
+  const diaryParagraphs = splitDiaryParagraphs(t('onboarding.diary'))
+  const starNote = t('onboarding.starNote').trim()
   return <Modal
     open
     title={t('onboarding.title')}
@@ -79,12 +77,11 @@ export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, on
         <h2>{t('onboarding.title')} <span>v{TTS_VERSION}</span></h2>
         <p>{t('onboarding.summary')}</p>
       </header>
-      <div className="xmimo-tts-activation-features" role="region" aria-label={t('onboarding.details')} tabIndex={0}>
-        <ul>
-          {HIGHLIGHTS.map(key => <li key={key}>
-            <span aria-hidden="true">🎉</span><span>{t(key)}</span>
-          </li>)}
-        </ul>
+      <div className="xmimo-tts-activation-note" role="region" aria-label={t('onboarding.details')} tabIndex={0}>
+        <div className="xmimo-tts-activation-note-body">
+          {diaryParagraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+        </div>
+        {starNote ? <p className="xmimo-tts-activation-note-ps">{starNote}</p> : null}
       </div>
       <div className="xmimo-tts-activation-footer">
         <div className="xmimo-tts-activation-actions">

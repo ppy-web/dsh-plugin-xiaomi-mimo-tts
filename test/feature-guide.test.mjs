@@ -38,3 +38,27 @@ test('disabled preference suppresses automatic activation guide', () => {
   const html = renderToStaticMarkup(createElement(ActivationGuide, { scope, t: key => key, packageName: 'dsh-xiaomi-tts', onDismiss() {}, onOpenWorkbench() {} }))
   assert.equal(html, '')
 })
+
+test('activation guide renders multi-paragraph diary notes and optional star postscript', () => {
+  const scope = fixture({ showFeatureGuide: true })
+  const copy = {
+    'onboarding.title': 'Whale Note',
+    'onboarding.summary': 'Lead line',
+    'onboarding.details': 'Diary region',
+    'onboarding.diary': 'First observation.\n\nSecond observation.',
+    'onboarding.starNote': 'Please star!',
+  }
+  const t = key => copy[key] ?? key
+  const html = renderToStaticMarkup(createElement(ActivationGuide, { scope, t, packageName: 'dsh-xiaomi-tts', onDismiss() {}, onOpenWorkbench() {} }))
+  assert.match(html, /<p>First observation\.<\/p><p>Second observation\.<\/p>/)
+  assert.match(html, /Please star!/)
+
+  const withoutStar = renderToStaticMarkup(createElement(ActivationGuide, {
+    scope,
+    t: key => (key === 'onboarding.starNote' ? '   ' : t(key)),
+    packageName: 'dsh-xiaomi-tts',
+    onDismiss() {},
+    onOpenWorkbench() {},
+  }))
+  assert.doesNotMatch(withoutStar, /xmimo-tts-activation-note-ps/)
+})
