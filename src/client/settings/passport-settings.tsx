@@ -19,7 +19,7 @@ import { copyText } from './copy-text.js'
 import { passportAsrTestError, requestPassportAsrTest } from './passport-asr-test.js'
 import type { PassportAsrTestFailure } from './passport-asr-test.js'
 import { QQBOT_CLIENT_STYLES } from '../style/qqbot-styles.js'
-import { ensureClientStyle } from '../style/inject.js'
+import { useClientStyle } from '../style/inject.js'
 
 export interface PassportSettingsProps extends PluginConfigViewProps {
   scope: ConfigForm<PassportSettings>
@@ -172,7 +172,7 @@ export function PassportSettingsPage(props: PassportSettingsProps): ReactElement
 
 function PassportForm({ scope, ttsScope, t, changes = IDLE_PLUGIN_CHANGES, tokenConfigured, connectionStatus, presets, openTtsSettings, guideHref = 'https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport' }: PassportSettingsProps): ReactElement {
   const id = useId()
-  useEffect(() => ensureClientStyle('qqbot', QQBOT_CLIENT_STYLES), [])
+  useClientStyle('qqbot', QQBOT_CLIENT_STYLES)
   const snapshot = useSettingsSnapshot(scope)
   const ttsSnapshot = useSettingsSnapshot(ttsScope)
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)

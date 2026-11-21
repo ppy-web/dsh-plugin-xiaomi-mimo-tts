@@ -14,7 +14,7 @@ import { hostRoute } from '../host-route.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { VoiceReadingSelect } from '../settings/voice-reading-select.js'
 import { HISTORY_CLIENT_STYLES } from '../style/history-styles.js'
-import { ensureClientStyle } from '../style/inject.js'
+import { useClientStyle } from '../style/inject.js'
 
 export interface AudioHistoryPageProps {
   history: AudioHistory
@@ -43,7 +43,7 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
   const backRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const pageRef = useRef<HTMLElement>(null)
-  useEffect(() => ensureClientStyle('history', HISTORY_CLIENT_STYLES), [])
+  useClientStyle('history', HISTORY_CLIENT_STYLES)
   useEffect(() => {
     void history.ensureLoaded()
     replay.activate()

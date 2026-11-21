@@ -268,17 +268,20 @@ void main() {
     ? foilBase * (0.32 + 0.54 * spotlight + 0.26 * sheen)
     : clamp(foilBase * (0.58 + 0.68 * spotlight + 0.34 * sheen), 0.0, 0.72);
 
-  vec3 rawSpark = sparkles(p, halfway, sweep, mix(0.25, 1.0, uAwake)) * uEdge * frame * activeFade;
-  vec3 sparkRgb = isDark ? rawSpark : pow(clamp(rawSpark, 0.0, 1.0), vec3(1.5)) * 0.72;
+  float sparkWake = smoothstep(0.14, 0.82, uAwake);
+  vec3 rawSpark = sparkles(p, halfway, sweep, mix(0.2, 0.95, sparkWake)) * uEdge * frame * (0.28 * activeFade + 0.72 * sparkWake);
+  vec3 sparkRgb = isDark
+    ? mix(rawSpark, uFoil * max(rawSpark.r, max(rawSpark.g, rawSpark.b)), 0.3)
+    : mix(pow(clamp(rawSpark, 0.0, 1.0), vec3(1.45)) * 0.68, vec3(0.38, 0.42, 0.5), 0.28);
   float sparkPeak = max(rawSpark.r, max(rawSpark.g, rawSpark.b));
-  float sparkAlpha = isDark ? sparkPeak * 0.9 : clamp(sparkPeak * 1.08, 0.0, 0.94);
+  float sparkAlpha = isDark ? clamp(sparkPeak * 0.55, 0.0, 0.58) : clamp(sparkPeak * 0.56, 0.0, 0.52);
 
   vec3 rimRgb = isDark
     ? uFoil
-    : mix(vec3(0.2, 0.22, 0.28), lightTint * 1.15, 0.48 + 0.32 * sheen);
+    : mix(vec3(0.28, 0.3, 0.36), lightTint * 1.05, 0.24 + 0.22 * sheen);
   float rimAlpha = isDark
-    ? (0.06 + 0.26 * sheen) * frame * uAwake
-    : (0.18 + 0.34 * sheen) * frame * activeFade;
+    ? (0.04 + 0.16 * sheen) * frame * uAwake
+    : (0.07 + 0.18 * sheen) * frame * activeFade;
 
   vec3 prismSweep = pow(clamp(hue(dot(sweep, vec2(0.7, 0.5)) * 1.1 + uv.x * 0.55 + uv.y * 0.35), 0.0, 1.0), vec3(1.5)) * 0.62;
   vec3 glareRgb = isDark ? vec3(1.0) : mix(prismSweep, vec3(1.0), clamp(shine * 1.2, 0.0, 0.82));
@@ -454,7 +457,7 @@ class SharedHoloRenderer {
     gl.uniform1i(this.uniforms.uPreset, PRESET_INDEX[params.preset])
     gl.uniform1f(this.uniforms.uIntensity, params.intensity)
     gl.uniform1f(this.uniforms.uEdge, params.edgeSparkle)
-    gl.uniform1f(this.uniforms.uFrame, 0.045)
+    gl.uniform1f(this.uniforms.uFrame, 0.028)
     gl.uniform1f(this.uniforms.uRadius, params.radius / Math.max(1, clientWidth))
     gl.uniform1f(this.uniforms.uGlare, params.glare)
     gl.uniform1f(this.uniforms.uAwake, params.awake)

@@ -45,7 +45,7 @@ import type { AudioFocus } from '../playback/tab-audio-focus.js'
 import { SettingsSearchContext } from './settings-search-context.js'
 import { searchSettings } from './settings-search.js'
 import { WORKBENCH_CLIENT_STYLES } from '../style/workbench.js'
-import { ensureClientStyle } from '../style/inject.js'
+import { useClientStyle } from '../style/inject.js'
 
 const AudioHistoryPage = lazyPanel(() => import('../history/audio-history-page.js').then(module => module.AudioHistoryPage))
 
@@ -125,7 +125,7 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
 
 const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRevision, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, renderHeader, onSidebarChange, onOpenProviderSettings, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const t = useSettingsTranslation(translate, localeRevision)
-  useEffect(() => ensureClientStyle('workbench', WORKBENCH_CLIENT_STYLES), [])
+  useClientStyle('workbench', WORKBENCH_CLIENT_STYLES)
   useEngineState()
   const external = externalEngine()
   const externalDraft = useExternalSelection(external)

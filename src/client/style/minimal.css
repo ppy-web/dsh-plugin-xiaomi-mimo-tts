@@ -11,6 +11,7 @@
   --xmimo-ui-mascot-size: 0px;
   --xmimo-skeuo-panel-bg: transparent;
   --xmimo-skeuo-panel-shadow: none;
+  --xmimo-skeuo-panel-hover-shadow: none;
   --xmimo-skeuo-key-bg: var(--xmimo-ui-surface);
   --xmimo-skeuo-key-hover-bg: var(--xmimo-ui-hover);
   --xmimo-skeuo-key-active-bg: var(--xmimo-ui-hover);
@@ -30,6 +31,20 @@
 }
 
 .xmimo-tts-card-minimal .xmimo-ui-module {
+  border-bottom-color: var(--xmimo-ui-border);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-ui-module-title {
+  gap: 6px;
+}
+
+.xmimo-tts-card-minimal .xmimo-ui-module-title > svg {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
 }

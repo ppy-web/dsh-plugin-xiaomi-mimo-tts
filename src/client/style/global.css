@@ -13,9 +13,9 @@
   --xmimo-ui-space-3: 8px;
   --xmimo-ui-space-4: 10px;
 
-  --xmimo-ui-module-gap: 10px;
+  --xmimo-ui-module-gap: 12px;
   --xmimo-ui-module-padding: var(--xmimo-ui-space-4);
-  --xmimo-ui-module-radius: 14px;
+  --xmimo-ui-module-radius: 16px;
   --xmimo-ui-control-radius: 10px;
   --xmimo-ui-control-height: 34px;
   --xmimo-ui-summary-height: 34px;
@@ -46,8 +46,8 @@
 
   --xmimo-skeuo-panel-bg: linear-gradient(
     180deg,
-    light-dark(color-mix(in srgb, #fff 56%, var(--xmimo-ui-surface)), color-mix(in srgb, #fff 4%, var(--xmimo-ui-surface))),
-    light-dark(color-mix(in srgb, var(--xmimo-ui-control-surface) 38%, var(--xmimo-ui-surface)), color-mix(in srgb, #000 10%, var(--xmimo-ui-surface)))
+    light-dark(color-mix(in srgb, #fff 82%, var(--xmimo-ui-surface)), color-mix(in srgb, #fff 7%, var(--xmimo-ui-surface))),
+    light-dark(color-mix(in srgb, var(--xmimo-ui-control-surface) 58%, var(--xmimo-ui-surface)), color-mix(in srgb, #000 14%, var(--xmimo-ui-surface)))
   );
   --xmimo-skeuo-key-bg: linear-gradient(
     180deg,
@@ -87,9 +87,16 @@
 
   --xmimo-skeuo-panel-shadow:
     inset 0 1px 0 var(--xmimo-skeuo-specular),
-    inset 0 -1px 0 var(--xmimo-skeuo-bevel-low),
+    inset 0 -2px 0 var(--xmimo-skeuo-bevel-low),
     0 1px 2px var(--xmimo-skeuo-drop-tight),
-    0 6px 16px -6px var(--xmimo-skeuo-drop-ambient);
+    0 4px 10px -3px var(--xmimo-skeuo-drop-tight),
+    0 12px 24px -12px var(--xmimo-skeuo-drop-ambient);
+  --xmimo-skeuo-panel-hover-shadow:
+    inset 0 1px 0 var(--xmimo-skeuo-specular),
+    inset 0 -2px 0 var(--xmimo-skeuo-bevel-low),
+    0 2px 4px var(--xmimo-skeuo-drop-tight),
+    0 8px 18px -6px var(--xmimo-skeuo-drop-ambient),
+    0 16px 30px -14px var(--xmimo-skeuo-drop-ambient);
   --xmimo-skeuo-key-shadow:
     inset 0 1px 0 var(--xmimo-skeuo-specular),
     inset 0 -1px 0 var(--xmimo-skeuo-bevel-low),
@@ -148,12 +155,20 @@
   position: relative;
   min-width: 0;
   overflow: visible;
-  border: 1px solid var(--xmimo-ui-border);
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 94%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--xmimo-ui-text) 16%, var(--xmimo-ui-border));
   border-radius: var(--xmimo-ui-module-radius);
   color: var(--xmimo-ui-text);
   background: var(--xmimo-skeuo-panel-bg);
   box-shadow: var(--xmimo-skeuo-panel-shadow);
-  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+@media (hover: hover) {
+  .xmimo-ui-accordion:has(> .xmimo-ui-module-header :is(.xmimo-ui-module-toggle, .xmimo-ui-module-title-toggle):hover):not(:has(.xmimo-ui-accordion-collapse-open)) {
+    transform: translateY(-1px);
+    box-shadow: var(--xmimo-skeuo-panel-hover-shadow);
+  }
 }
 
 .xmimo-ui-module-padded {
@@ -194,15 +209,21 @@
 .xmimo-ui-module-title {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   vertical-align: middle;
 }
 
 .xmimo-ui-module-title > svg {
+  box-sizing: content-box;
   flex: none;
   width: 14px;
   height: 14px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 74%, transparent);
+  border-radius: 8px;
   color: var(--xmimo-ui-brand);
+  background: var(--xmimo-skeuo-key-bg);
+  box-shadow: var(--xmimo-skeuo-chip-shadow);
 }
 
 .xmimo-ui-module-toggle {

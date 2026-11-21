@@ -1,4 +1,4 @@
-import { useId, type ReactElement, type ReactNode } from 'react'
+import { useId, useState, type ReactElement, type ReactNode } from 'react'
 import { ModuleShell } from './module-shell.js'
 import { useAccordionViewport } from './accordion-viewport.js'
 import { useSettingsSearch } from './settings-search-context.js'
@@ -22,6 +22,8 @@ export function CollapsibleModule({ className, title, summary, interactiveSummar
   const filtering = result !== null && searchGroups !== undefined
   const hidden = filtering && !searchGroups.some(group => result.groups.has(group))
   const expanded = filtering ? !hidden : open
+  const [mounted, setMounted] = useState(() => expanded || typeof document === 'undefined')
+  if (expanded && !mounted) setMounted(true)
   const { panel, toggle } = useAccordionViewport(!filtering && open, onToggle)
 
   return <ModuleShell
@@ -40,7 +42,7 @@ export function CollapsibleModule({ className, title, summary, interactiveSummar
     <div id={`${id}-panel`} role="region" aria-labelledby={filtering ? undefined : `${id}-trigger`} aria-label={filtering ? ariaLabel : undefined}
       className={`xmimo-ui-accordion-collapse${expanded ? ' xmimo-ui-accordion-collapse-open' : ''}`}
       aria-hidden={!expanded} ref={element => { panel.current = element; if (element) element.inert = !expanded }}>
-      <div className="xmimo-ui-accordion-content">{children}</div>
+      <div className="xmimo-ui-accordion-content">{mounted ? children : null}</div>
     </div>
   </ModuleShell>
 }

@@ -86,7 +86,13 @@
   width: 100%;
   height: 100%;
   border-radius: inherit;
-  pointer-events: none
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease
+}
+
+.xmimo-tts-character-toggle[data-xmimo-holo-gl]>.xmimo-tts-character-control>.xmimo-tts-holo-canvas {
+  opacity: 1
 }
 
 /* Share the foil face and rim with the externally managed provider group. */

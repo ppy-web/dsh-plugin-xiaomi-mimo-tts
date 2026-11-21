@@ -7,7 +7,8 @@ import { BundleSettingsCard } from '../../src/client/settings/bundle-settings.js
 import { VoiceSettingsPage } from '../../src/client/settings/voice-settings-page.js'
 import { PluginDetailActions } from '../../src/client/settings/plugin-detail.js'
 import { createSoundEffectsController } from '../../src/client/sound-effects/index.js'
-import { CLIENT_STYLES } from '../../src/client/style/index.js'
+import { CORE_CLIENT_STYLES, HISTORY_CLIENT_STYLES, QQBOT_CLIENT_STYLES, WORKBENCH_CLIENT_STYLES } from '../../src/client/style/index.js'
+import { ensureClientStyle } from '../../src/client/style/inject.js'
 import { en, zh } from '../../src/client/localization.js'
 import type { LocaleKey, Translate } from '../../src/client/localization.js'
 import pluginIcon from '../../assets/plugin-icons/avatar.webp'
@@ -41,6 +42,13 @@ import './preview-shell.css'
 import './preview-palettes.css'
 
 const scope = new PreviewSettingsScope()
+// Inject plugin styles into <head> before first render so there is zero FOUC or duplicate style injection.
+const removePreviewStyles = [
+  ensureClientStyle('core', CORE_CLIENT_STYLES),
+  ensureClientStyle('workbench', WORKBENCH_CLIENT_STYLES),
+  ensureClientStyle('history', HISTORY_CLIENT_STYLES),
+  ensureClientStyle('qqbot', QQBOT_CLIENT_STYLES),
+]
 // Development-only takeover fixture; production activation belongs to the external Host plugin.
 const externalTakeover = new PreviewExternalTakeover(scope, new URL(window.location.href).searchParams.get('external'))
 const restorePreviewFetch = installPreviewFetch(scope)
@@ -52,7 +60,7 @@ const localeOptions = [
   { id: 'zh', label: '中文' }, { id: 'en', label: 'English' },
 ] as const
 
-if (import.meta.hot) import.meta.hot.dispose(() => { externalTakeover.dispose(); unbindApiKeyStatus(); restorePreviewFetch(); restorePreviewHostIcons(); void soundEffects.dispose(); void history.dispose() })
+if (import.meta.hot) import.meta.hot.dispose(() => { for (const remove of removePreviewStyles) remove(); externalTakeover.dispose(); unbindApiKeyStatus(); restorePreviewFetch(); restorePreviewHostIcons(); void soundEffects.dispose(); void history.dispose() })
 
 function translator(locale: PreviewLocale): Translate {
   const dictionary: Record<LocaleKey, string> = { zh, en }[locale]
@@ -198,7 +206,6 @@ function PreviewApp() {
     {activationOpen ? <ActivationGuide packageName="dsh-xiaomi-tts" t={t} scope={scope} preview
       onOpenWorkbench={() => { window.location.hash = scope.getSnapshot().value?.showInSidebar ? 'workbench' : 'settings' }}
       onOpenDetails={() => { setActivationOpen(false); window.location.hash = 'settings' }} onDismiss={() => setActivationOpen(false)} /> : null}
-    <style>{CLIENT_STYLES}</style>
   </div>
 }
 

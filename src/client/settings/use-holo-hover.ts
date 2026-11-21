@@ -157,12 +157,20 @@ export function useHoloHover(
     const renderCanvas = (card: HTMLElement, state: CardSpring, dark: boolean): void => {
       const canvas = card.querySelector<HTMLCanvasElement>(HOLO_CANVAS_SELECTOR)
       if (!canvas) return
-      const glRenderer = ensureRenderer()
-      if (!glRenderer) return
       const isOn = card.classList.contains('xmimo-tts-character-toggle-on')
       const restAwake = isOn ? (dark ? 0.22 : 0.32) : 0
       const tiltAwake = clamp(Math.hypot(state.tiltX, state.tiltY) / Math.max(1, tilt), 0, 1)
       const effectiveAwake = Math.max(restAwake, clamp(state.awake * 0.88 + tiltAwake * 0.32, 0, 1))
+      if (effectiveAwake <= 0.001) {
+        if (card.hasAttribute('data-xmimo-holo-gl')) {
+          const ctx = canvas.getContext('2d')
+          if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+          card.removeAttribute('data-xmimo-holo-gl')
+        }
+        return
+      }
+      const glRenderer = ensureRenderer()
+      if (!glRenderer) return
       const drawn = glRenderer.renderTo(canvas, {
         preset: cardPreset(card),
         tiltX: state.tiltX,
@@ -171,7 +179,7 @@ export function useHoloHover(
         lightY: state.lightY,
         awake: effectiveAwake,
         intensity: isOn ? (dark ? 0.68 : 0.82) : (dark ? 0.36 : 0.5),
-        edgeSparkle: isOn ? (dark ? 0.86 : 0.95) : (dark ? 0.48 : 0.64),
+        edgeSparkle: isOn ? (dark ? 0.45 : 0.48) : (dark ? 0.26 : 0.3),
         glare: isOn ? 0.56 : 0.42,
         radius: 16,
         dark,
@@ -348,22 +356,79 @@ export function useHoloHover(
       hovered = null
     }
 
+    let warmedUp = false
+    let restFrame = 0
+    let idleHandle: number | null = null
+    let idleUsesRic = false
+
+    const cancelDeferredPaint = (): void => {
+      if (restFrame) {
+        window.cancelAnimationFrame(restFrame)
+        restFrame = 0
+      }
+      if (idleHandle !== null) {
+        if (idleUsesRic && typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idleHandle)
+        else window.clearTimeout(idleHandle)
+        idleHandle = null
+      }
+    }
+
+    const scheduleRestPaint = (immediate = false): void => {
+      if (!alive || !media.matches || document.hidden) return
+      if (!warmedUp && !immediate) {
+        if (idleHandle !== null) return
+        if (typeof window.requestIdleCallback === 'function') {
+          idleUsesRic = true
+          idleHandle = window.requestIdleCallback(() => {
+            idleHandle = null
+            warmedUp = true
+            paintRestAll()
+          }, { timeout: 280 })
+        } else {
+          idleUsesRic = false
+          idleHandle = window.setTimeout(() => {
+            idleHandle = null
+            warmedUp = true
+            paintRestAll()
+          }, 90)
+        }
+        return
+      }
+      if (restFrame) return
+      restFrame = window.requestAnimationFrame(() => {
+        restFrame = 0
+        warmedUp = true
+        paintRestAll()
+      })
+    }
+
     const handleMediaChange = (): void => {
-      if (!media.matches) resetAll()
-      else paintRestAll()
+      if (!media.matches) {
+        cancelDeferredPaint()
+        resetAll()
+      } else {
+        scheduleRestPaint()
+      }
     }
 
     const handleVisibilityChange = (): void => {
-      if (document.hidden) resetAll()
-      else paintRestAll()
+      if (document.hidden) {
+        cancelDeferredPaint()
+        resetAll()
+      } else {
+        scheduleRestPaint()
+      }
     }
 
-    // Repaint resting holo luster when card sizes, ON/OFF states, or theme attributes change.
-    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(paintRestAll) : null
+    // Repaint resting holo luster when card sizes, ON/OFF states, or theme attributes change,
+    // without blocking initial page paint with synchronous WebGL2 shader compilation.
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => { if (warmedUp) scheduleRestPaint(true) })
+      : null
     resizeObserver?.observe(row)
 
     const mutationObserver = typeof MutationObserver !== 'undefined'
-      ? new MutationObserver(paintRestAll)
+      ? new MutationObserver(() => { if (warmedUp) scheduleRestPaint(true) })
       : null
     mutationObserver?.observe(row, { attributes: true, subtree: true, attributeFilter: ['class'] })
     mutationObserver?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] })
@@ -371,8 +436,16 @@ export function useHoloHover(
       mutationObserver?.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
     }
 
-    row.addEventListener('pointerover', track)
-    row.addEventListener('pointermove', track)
+    const trackWithWarmup = (event: PointerEvent): void => {
+      if (!warmedUp) {
+        cancelDeferredPaint()
+        warmedUp = true
+      }
+      track(event)
+    }
+
+    row.addEventListener('pointerover', trackWithWarmup)
+    row.addEventListener('pointermove', trackWithWarmup)
     row.addEventListener('pointerout', leave)
     row.addEventListener('pointerleave', leaveRow)
     row.addEventListener('pointercancel', leaveRow)
@@ -380,16 +453,16 @@ export function useHoloHover(
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('blur', leaveRow)
 
-    const initFrame = window.requestAnimationFrame(paintRestAll)
+    scheduleRestPaint()
 
     return () => {
       alive = false
-      window.cancelAnimationFrame(initFrame)
+      cancelDeferredPaint()
       resetAll()
       resizeObserver?.disconnect()
       mutationObserver?.disconnect()
-      row.removeEventListener('pointerover', track)
-      row.removeEventListener('pointermove', track)
+      row.removeEventListener('pointerover', trackWithWarmup)
+      row.removeEventListener('pointermove', trackWithWarmup)
       row.removeEventListener('pointerout', leave)
       row.removeEventListener('pointerleave', leaveRow)
       row.removeEventListener('pointercancel', leaveRow)
