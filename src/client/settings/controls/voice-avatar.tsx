@@ -1,5 +1,5 @@
 import { createContext, lazy, Suspense, useContext } from 'react'
-import type { TtsAvatarStyle } from '../../../shared.js'
+import type { TtsAvatarStyle } from '../../shared.js'
 
 export const AvatarStyleContext = createContext<TtsAvatarStyle>('default')
 import type { ReactElement } from 'react'

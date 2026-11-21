@@ -3,9 +3,9 @@ import type { CSSProperties, ReactElement } from 'react'
 import type { PluginActivationOwnerProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import { Button, IconCloseOutlineRegular, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { LuAudioLines, LuStar } from 'react-icons/lu'
-import { TTS_UPDATE_CELEBRATION_ASSET_ROUTE, TTS_VERSION } from '../../shared.js'
+import { TTS_UPDATE_CELEBRATION_ASSET_ROUTE, TTS_VERSION } from '../shared.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { resolveTtsSettings, type TtsSettings } from '../../shared.js'
+import { resolveTtsSettings, type TtsSettings } from '../shared.js'
 import { useSettingsSnapshot } from './scope.js'
 import type { Translate } from '../localization.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
@@ -26,7 +26,7 @@ const CONFETTI = [-116, -90, -60, -28, 28, 60, 90, 116].map((x, index) => ({
   '--confetti-turn': `${x * 2}deg`,
 }) as CSSProperties)
 
-interface ActivationGuideProps extends PluginActivationOwnerProps {
+export interface ActivationGuideProps extends PluginActivationOwnerProps {
   t: Translate
   scope: ConfigForm<TtsSettings>
   preview?: boolean

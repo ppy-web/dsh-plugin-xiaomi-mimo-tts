@@ -110,7 +110,7 @@ export function findSpeechMarkup(value: string, streaming = false, isTag?: Speec
       kind = display ? 'displayMath' : 'inlineMath'
       if (close >= after && close < limit) end = close + delimiter.length
       else if (display) { end = value.length; pending = true }
-      else pending = limit === value.length && (mark === '\\(' || !/^\$\s/u.test(tail))
+      else pending = limit === value.length && (mark === '\\(' || (!/^\$\s/u.test(tail) && !/[\r\n。！？；]/u.test(tail)))
     } else if (mark === '<') {
       if (tail.startsWith('<!--')) {
         const close = value.indexOf('-->', after + 3)
@@ -129,7 +129,7 @@ export function findSpeechMarkup(value: string, streaming = false, isTag?: Speec
         } else {
           const opener = HTML_START.exec(tail)?.[0]
           pending = '<!--'.startsWith(tail) || tail === '</' || opener !== undefined
-            && (/^\s+[\w:-]+\s*=/u.test(tail.slice(opener.length)) || !/[<>。！？；!?]/u.test(tail.slice(1)))
+            && ((/^\s+[\w:-]+\s*=/u.test(tail.slice(opener.length)) && !/\r?\n\r?\n/u.test(tail)) || !/[<>。！？；!?\r\n.,，]/u.test(tail.slice(1)))
         }
       }
     } else if (mark === '&') {

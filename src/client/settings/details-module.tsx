@@ -12,8 +12,8 @@ import {
   breezeVoiceLabel,
   TTS_MODELS,
   TTS_VOICE_DESIGN_PRESETS,
-} from '../../shared.js'
-import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope, TtsAvatarStyle } from '../../shared.js'
+} from '../shared.js'
+import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope, TtsAvatarStyle } from '../shared.js'
 import type { Translate } from '../localization.js'
 import { BuiltInVoicePicker } from './controls/built-in-voice-picker.js'
 import { LensSlider } from './controls/lens-slider.js'

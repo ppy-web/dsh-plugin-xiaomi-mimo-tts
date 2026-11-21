@@ -1,6 +1,6 @@
 import type { ExternalSpeechSelection, SpeechEngineState } from '../host-api.js'
 import type { ResolvedTtsSettings } from '../types/settings.js'
-import { prepareExternalTtsText, splitTtsSegments, supportsRealtimeTts } from '../shared.js'
+import { prepareExternalTtsText, splitTtsSegments, supportsRealtimeTts } from './shared.js'
 import { TTS_API_KEY_STATUS_EVENT, TTS_ENGINE_EVENTS_ROUTE, TTS_ENGINE_STATE_ROUTE } from '../constants.js'
 import { hostRoute } from './host-route.js'
 
@@ -37,8 +37,16 @@ export class EngineStateStore {
         if (!disposed && !controller.signal.aborted) this.accept(state)
       } catch { if (!disposed && !controller.signal.aborted) this.publish('unknown') }
     }
-    source.onopen = () => { void refresh() }
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    const clearReconnectTimer = (): void => {
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer)
+        reconnectTimer = null
+      }
+    }
+    source.onopen = () => { clearReconnectTimer(); void refresh() }
     source.onmessage = event => {
+      clearReconnectTimer()
       try {
         refreshing?.abort()
         if (!disposed) this.accept(JSON.parse(event.data) as SpeechEngineState)
@@ -46,9 +54,22 @@ export class EngineStateStore {
     }
     source.onerror = () => {
       refreshing?.abort()
-      if (!disposed) { acceptCredentials?.(null); this.publish('unknown') }
+      if (disposed) return
+      const connecting = typeof EventSource !== 'undefined' && typeof EventSource.CONNECTING === 'number' && source.readyState === EventSource.CONNECTING
+      if (connecting) {
+        if (reconnectTimer === null) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null
+            if (!disposed) { acceptCredentials?.(null); this.publish('unknown') }
+          }, 3000)
+        }
+        return
+      }
+      clearReconnectTimer()
+      acceptCredentials?.(null)
+      this.publish('unknown')
     }
-    return () => { disposed = true; refreshing?.abort(); source.close(); acceptCredentials?.(null); this.publish('inactive', null) }
+    return () => { disposed = true; clearReconnectTimer(); refreshing?.abort(); source.close(); acceptCredentials?.(null); this.publish('inactive', null) }
   }
   /** Also used by the standalone preview with its in-process Host fixture. */
   accept(state: SpeechEngineState): void {

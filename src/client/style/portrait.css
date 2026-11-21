@@ -194,7 +194,7 @@
 }
 
 .xmimo-tts-portrait-error {
-  color: var(--dsw-alias-label-danger, #d14343);
+  color: var(--dsw-alias-state-error-primary, #d14343);
   font-size: 10px;
   line-height: 15px
 }

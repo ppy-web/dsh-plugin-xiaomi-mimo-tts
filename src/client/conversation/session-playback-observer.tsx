@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import type { TtsSettings } from '../../shared.js'
+import type { TtsSettings } from '../shared.js'
 import type { LiveSpeechController, LocalSpeechController, PlaybackController } from '../playback/index.js'
 import { RealtimeSpeechSession } from '../playback/realtime-speech-session.js'
+import { preloadConciseText } from '../playback/concise-loader.js'
 import { resolvedSettingsSnapshot, useSettingsSlice } from '../settings/scope.js'
 import { selectConversationSettings } from '../settings/conversation-settings.js'
 import { assistantText, automaticAssistantMessageId, finalLiveMessage } from './message-text.js'
@@ -49,6 +50,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
   const foldedReplies = useSyncExternalStore(automaticReading.subscribe, automaticReading.getSnapshot, automaticReading.getSnapshot)
   const replyMode = automaticReplyMode(foldedReplies, resolvedSettings.readScope)
   const concise = resolvedSettings.readScope === 'concise'
+  useEffect(() => { if (concise) preloadConciseText() }, [concise])
 
   const [speech] = useState(() => new RealtimeSpeechSession(live, local))
   const selectionKey = useMemo(() => JSON.stringify([settingsSlice.selection, engineView, concise]), [settingsSlice.selection, engineView, concise])

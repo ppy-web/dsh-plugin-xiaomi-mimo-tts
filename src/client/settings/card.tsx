@@ -10,14 +10,14 @@ import {
   isSupportedTtsApiKey,
   resolveSoundEffectsScope,
   resolveTtsSettings,
-} from '../../shared.js'
+} from '../shared.js'
 import { saveSettingsDraft, validateSettingsDraft, EDITABLE_SETTING_FIELDS, BUILTIN_SETTING_FIELDS, SaveSettingsError } from './save-settings.js'
-import { API_KEY_BY_PROVIDER, API_KEY_STATE, EMPTY_DRAFT, draftFieldDirty, editDraft, hasLayerField, isApiKeyField, pruneDraftEdits } from './draft.js'
+import { API_KEY_BY_PROVIDER, API_KEY_STATE, EMPTY_DRAFT, draftFieldDirty, editApiKeyDraft, editDraft, hasLayerField, hasPendingProviderKey, isApiKeyField, pruneDraftEdits } from './draft.js'
 import type { ApiKeyField, DraftSettings } from './draft.js'
 import { useEngineState } from '../use-engine-state.js'
 import { engineStateStore, externalEngine } from '../engine-state.js'
 import { invalidateApiKeyStatus, useApiKeyStatus } from '../conversation/api-key-status.js'
-import type { TtsSettings, SoundEffectsScope } from '../../shared.js'
+import type { TtsSettings, SoundEffectsScope } from '../shared.js'
 import type { Translate } from '../localization.js'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PreviewPlayer } from '../playback/preview-player.js'
@@ -44,6 +44,8 @@ import { isSpeechBusy } from '../announcements/speech-activity.js'
 import type { AudioFocus } from '../playback/tab-audio-focus.js'
 import { SettingsSearchContext } from './settings-search-context.js'
 import { searchSettings } from './settings-search.js'
+import { WORKBENCH_CLIENT_STYLES } from '../style/workbench.js'
+import { ensureClientStyle } from '../style/inject.js'
 
 const AudioHistoryPage = lazyPanel(() => import('../history/audio-history-page.js').then(module => module.AudioHistoryPage))
 
@@ -86,7 +88,7 @@ function selectCardSettings(snapshot: ConfigFormSnapshot<TtsSettings>) {
 /** Keep memoized modules on stable event props while their handlers read the latest committed render. */
 function useSettingsActions<T extends Record<string, (...args: never[]) => unknown>>(actions: T): T {
   const current = useRef(actions)
-  const useCommitEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
+  const useCommitEffect = typeof window !== 'undefined' && typeof document !== 'undefined' && typeof document.createElement === 'function' ? useLayoutEffect : useEffect
   useCommitEffect(() => { current.current = actions }, [actions])
   return useMemo(() => Object.fromEntries(Object.keys(current.current).map(name => [
     name, (...args: never[]) => current.current[name]?.(...args),
@@ -108,7 +110,8 @@ const SettingsBroadcast = memo(PreviewModule, compareModuleProps)
 const SettingsSounds = memo(SoundEffectsPanel)
 
 function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement> }): ReactElement {
-  const view = useSyncExternalStore(history.subscribe, history.getSnapshot)
+  const view = useSyncExternalStore(history.subscribe, history.getSnapshot, history.getSnapshot)
+  useEffect(() => { void history.ensureLoaded() }, [history])
   return <Button ref={buttonRef} type="button" className="xmimo-tts-history-link" variant="toolbar" size="sm" onClick={onOpen}>
     <GoHistory size={14} aria-hidden="true" focusable="false" />
     <span className="xmimo-tts-action-label">{t('history.shortTitle')} · {view.entries.length}</span>
@@ -122,6 +125,7 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
 
 const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRevision, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, renderHeader, onSidebarChange, onOpenProviderSettings, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const t = useSettingsTranslation(translate, localeRevision)
+  useEffect(() => ensureClientStyle('workbench', WORKBENCH_CLIENT_STYLES), [])
   useEngineState()
   const external = externalEngine()
   const externalDraft = useExternalSelection(external)
@@ -279,7 +283,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
       previewPlayer.stop()
       return
     }
-    if (validationError !== null || (!external && changes[API_KEY_BY_PROVIDER[provider]] !== undefined)) {
+    if (validationError !== null || (!external && hasPendingProviderKey(changes, apiKeys, provider))) {
       previewPlayer.stop()
       setPreviewView({ status: 'error', source: provider === 'xiaomi' ? 'mimo' : provider, error: validationError !== null ? 'voice-required' : 'save-key-first' })
       return
@@ -322,11 +326,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   const actions = useSettingsActions({
     changeProvider, changeEnabled, changeAutoPlay, changeSoundEnabled, changeSoundScope, resetField,
     changeApiKey(next: string) {
-      setEdits(current => ({
-        ...current,
-        keys: { ...current.keys, [provider]: next },
-        changes: { ...current.changes, [apiKeyField]: { kind: 'set' } },
-      }))
+      setEdits(current => editApiKeyDraft(current, provider, next))
       clearSaveMessage()
     },
     changeExternal(next: Parameters<typeof externalDraft.change>[0]) { previewPlayer.stop(); externalDraft.change(next); clearSaveMessage() },

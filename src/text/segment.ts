@@ -83,27 +83,53 @@ export function splitTtsSegments(value: string, target = DEFAULT_TTS_SEGMENT_CHA
   return text.length === 0 ? [] : segmentsFromPreparedText(text, target, maximum)
 }
 
+const GRAPHEME_SEGMENTER = typeof Intl === 'undefined' ? null : new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+
+function tokenizeBreezeText(value: string): string[] {
+  const tokens: string[] = []
+  const pattern = /\[[^\[\]\r\n]+\]|\([^()\r\n]+\)/gu
+  let last = 0
+  const pushPlain = (part: string): void => {
+    if (!part) return
+    if (GRAPHEME_SEGMENTER) {
+      for (const segment of GRAPHEME_SEGMENTER.segment(part)) tokens.push(segment.segment)
+    } else {
+      for (const char of part) tokens.push(char)
+    }
+  }
+  for (const match of value.matchAll(pattern)) {
+    const start = match.index ?? 0
+    if (start > last) pushPlain(value.slice(last, start))
+    tokens.push(match[0])
+    last = start + match[0].length
+  }
+  if (last < value.length) pushPlain(value.slice(last))
+  return tokens
+}
+
 /** Split Breeze text without deleting or separating documented audio tags for provider-sized requests. */
 export function splitBreezeTtsSegments(value: string, maximum = BREEZE_MAX_TEXT_LENGTH, prepared = false): string[] {
   const text = prepared ? value : prepareBreezeTtsText(value)
   if (text.length === 0) return []
-  const tokens = text.match(/\[[^\]\r\n]+\]|\([^()\r\n]+\)|./gu) ?? []
+  const tokens = tokenizeBreezeText(text)
   const segments: string[] = []
   let current = ''
   for (const token of tokens) {
     if (current && current.length + token.length > maximum) {
-      segments.push(current)
+      const pushed = current.trim()
+      if (pushed) segments.push(pushed)
       current = ''
     }
     current += token
   }
-  if (current.trim()) segments.push(current)
+  const tail = current.trim()
+  if (tail) segments.push(tail)
   return segments
 }
 
 /** Split Breeze text at semantic sentence boundaries while keeping its audio tags attached to the text. */
-export function splitBreezeTtsSentences(value: string, target = DEFAULT_TTS_SEGMENT_CHARACTERS, maximum = MAX_TTS_SEGMENT_CHARACTERS): string[] {
-  const text = prepareBreezeTtsText(value)
+export function splitBreezeTtsSentences(value: string, target = DEFAULT_TTS_SEGMENT_CHARACTERS, maximum = MAX_TTS_SEGMENT_CHARACTERS, prepared = false): string[] {
+  const text = prepared ? value : prepareBreezeTtsText(value)
   return text.length === 0 ? [] : segmentsFromPreparedText(text, target, maximum)
 }
 
@@ -149,9 +175,9 @@ export class TtsFirstSegmentLimiter {
     // may grow past the maximum and force that tail into a separate group.
     const occupiedSegments = segments.length + (pending.length > 0 ? 1 : 0)
     if (occupiedSegments < this.segmentCount && countTtsSpeechCharacters(remainder) >= DEFAULT_TTS_SEGMENT_CHARACTERS) {
-      const prefix = `${completed}${remainder}`
+      const prefix = `${completed}${remainder}`.replace(/(?:\[[^\[\]\r\n]*|\([^()\r\n]*|（[^（）\r\n]*)$/u, '')
       // Keep complete audio tags and trailing decimal points intact.
-      return /(?:\[[^\]\r\n]+\]|\([^()\r\n]+\)|（[^（）\r\n]+）)$/u.test(prefix)
+      return /(?:\[[^\[\]\r\n]+\]|\([^()\r\n]+\)|（[^（）\r\n]+）)$/u.test(prefix)
         ? prefix
         : prefix.replace(/[^\p{L}\p{N}.]+$/u, '')
     }

@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import type { ReactElement } from 'react'
-import { TTS_AVATAR_STYLES } from '../../../shared.js'
-import type { TtsAvatarStyle } from '../../../shared.js'
+import { TTS_AVATAR_STYLES } from '../../shared.js'
+import type { TtsAvatarStyle } from '../../shared.js'
 import type { LocaleKey, Translate } from '../../localization.js'
 import { VoiceAvatar } from './voice-avatar.js'
 

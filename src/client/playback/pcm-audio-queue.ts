@@ -1,4 +1,4 @@
-import { normalizeVoiceRate } from '../../shared.js'
+import { normalizeVoiceRate } from '../shared.js'
 import { applyPcmVoiceRate, pcmPlaybackDuration } from './voice-rate.js'
 
 export interface PcmAudioQueueCallbacks {
@@ -72,6 +72,23 @@ export class PcmAudioQueue {
   setPlaybackRate(value: number): void { this.playbackRate = normalizeVoiceRate(value) }
   getPlaybackRate(): number { return this.playbackRate }
 
+  private async resumeContext(context: AudioContext, timeoutMs = 500): Promise<void> {
+    if (context.state === 'running') return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        context.resume(),
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => {
+            reject(Object.assign(new Error('autoplay-blocked'), { name: 'NotAllowedError' }))
+          }, timeoutMs)
+        }),
+      ])
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+    }
+  }
+
   async pause(): Promise<void> {
     const control = ++this.controlRevision
     const context = this.context
@@ -88,14 +105,14 @@ export class PcmAudioQueue {
       throw error
     }
     if (context === this.context && context !== null
-      && !this.userPaused && this.sources.size > 0 && context.state !== 'running') await context.resume()
+      && !this.userPaused && this.sources.size > 0 && context.state !== 'running') await this.resumeContext(context)
   }
 
   async resume(): Promise<void> {
     const control = ++this.controlRevision
     const revision = this.revision
     const context = this.context
-    if (context !== null && context.state !== 'running') await context.resume()
+    if (context !== null && context.state !== 'running') await this.resumeContext(context)
     if (revision === this.revision && control === this.controlRevision) {
       this.userPaused = false
       this.applyOutputVolume()
@@ -160,7 +177,7 @@ export class PcmAudioQueue {
     }
     const context = this.getContext()
     if (context.state !== 'running' && !this.userPaused) {
-      await context.resume()
+      await this.resumeContext(context)
       if (context === this.context && this.userPaused && (context.state as AudioContextState) === 'running') await context.suspend()
     }
     if (revision !== this.revision) return

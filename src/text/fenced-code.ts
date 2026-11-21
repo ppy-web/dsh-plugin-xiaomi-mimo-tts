@@ -13,7 +13,7 @@ interface SourceLine {
 const BLOCKQUOTE_PREFIX = /^[ \t]{0,3}>[ \t]?/
 const FENCE_LINE = /^([ \t]*)(`{3,}|~{3,})([^\r\n]*)/
 const LIST_ITEM = /^([ \t]*)([-*+]|\d{1,9}[.)])([ \t]+)/
-const THEMATIC_BREAK = /^[ \t]{0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/
+const THEMATIC_BREAK = /^[ \t]{0,3}(?:\*(?:[ \t]*\*){2,}|-(?:[ \t]*-){2,}|_(?:[ \t]*_){2,})[ \t]*$/
 const ATX_HEADING = /^[ \t]{0,3}#{1,6}(?:[ \t]|$)/
 
 function sourceLines(value: string): SourceLine[] {
@@ -52,13 +52,13 @@ function stripBlockquote(value: string, limit = Number.POSITIVE_INFINITY): { con
   return { content, depth }
 }
 
-function listItem(value: string): { indent: number; contentIndent: number } | null {
+function listItem(value: string): { indent: number; contentIndent: number; markerEnd: number; spaces: number } | null {
   if (THEMATIC_BREAK.test(value)) return null
   const match = LIST_ITEM.exec(value)
   if (match === null) return null
   const indent = indentWidth(match[1]!)
   const spaces = indentWidth(match[3]!)
-  return { indent, contentIndent: indent + match[2]!.length + Math.min(spaces, 4) }
+  return { indent, contentIndent: indent + match[2]!.length + Math.min(spaces, 4), markerEnd: match[0].length, spaces }
 }
 
 /** Track the content indentation of open list items so nested fences are not mistaken for top-level ones. */
@@ -123,7 +123,7 @@ export function findFencedCodeRegions(value: string): FencedCodeRegions {
         open = null
       } else {
         const fence = FENCE_LINE.exec(stripped.content)
-        if (fence !== null && fence[2]![0] === open.marker[0] && fence[2]!.length >= open.marker.length && fence[3]!.trim().length === 0) {
+        if (fence !== null && indent <= open.listIndent + 3 && fence[2]![0] === open.marker[0] && fence[2]!.length >= open.marker.length && fence[3]!.trim().length === 0) {
           regions.push([open.start, line.end])
           open = null
           continue
@@ -137,15 +137,19 @@ export function findFencedCodeRegions(value: string): FencedCodeRegions {
     if (stripped.content.trim() === '') continue
     lists.reset(stripped.depth)
     const item = listItem(stripped.content)
+    let fenceLine = stripped.content
+    let indent = indentWidth(stripped.content)
     if (item !== null) {
       lists.open(item.indent, item.contentIndent)
-      continue
+      if (item.spaces >= 5) continue
+      fenceLine = stripped.content.slice(item.markerEnd)
+      indent = item.contentIndent
+    } else {
+      lists.close(indent)
     }
-    const indent = indentWidth(stripped.content)
-    lists.close(indent)
-    const fence = FENCE_LINE.exec(stripped.content)
+    const fence = FENCE_LINE.exec(fenceLine)
     if (fence === null) continue
-    if (!(indent <= 3 || (lists.inside && indent >= lists.contentIndent))) continue
+    if (!(lists.inside ? indent >= lists.contentIndent && indent <= lists.contentIndent + 3 : indent <= 3)) continue
     const marker = fence[2]!
     if (marker[0] === '`' && fence[3]!.includes('`')) continue
     open = {

@@ -1,3 +1,4 @@
+import { TTS_DESKTOP_WRITE_HEADER } from '../../constants.js'
 import { hostRoute } from '../host-route.js'
 
 export interface QqMemoryEntry { id: string; kind: 'preference' | 'requirement'; text: string; updatedAt: number }
@@ -13,7 +14,7 @@ export async function loadQqMemory(): Promise<QqMemoryPeer[]> {
 
 export async function updateQqMemory(input: Record<string, unknown>): Promise<QqMemoryPeer> {
   const response = await fetch(hostRoute('/plugins/xiaomi-mimo-tts/qq-memory'), {
-    method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input),
+    method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' }, body: JSON.stringify(input),
   })
   if (!response.ok) throw new Error('qq-memory-update-failed')
   return response.json() as Promise<QqMemoryPeer>

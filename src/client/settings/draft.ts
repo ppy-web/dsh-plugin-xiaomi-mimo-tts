@@ -73,6 +73,18 @@ export function draftFieldDirty(change: DraftChange | undefined, value: unknown,
   return change.kind === 'clear' ? overridden : !settingsValueEqual(value, accepted)
 }
 
+export function editApiKeyDraft(current: DraftEdits, provider: keyof ApiKeys, next: string): DraftEdits {
+  const field = API_KEY_BY_PROVIDER[provider]
+  const nextChanges = { ...current.changes }
+  if (next.trim().length > 0) nextChanges[field] = { kind: 'set' }
+  else delete nextChanges[field]
+  return { ...current, keys: { ...current.keys, [provider]: next }, changes: nextChanges }
+}
+
+export function hasPendingProviderKey(changes: DraftChanges, keys: ApiKeys, provider: keyof ApiKeys): boolean {
+  return changes[API_KEY_BY_PROVIDER[provider]] !== undefined && keys[provider].trim().length > 0
+}
+
 /**
  * Drop the entries a successful save committed. An edit made while that save was
  * in flight replaced its change object and therefore survives, and built-in

@@ -1,4 +1,5 @@
 import type { AudioHistory, AudioHistoryEntry } from './audio-history.js'
+import { MusicAudioFocus } from '../playback/music-audio-focus.js'
 import { applyMediaVoiceRate } from '../playback/voice-rate.js'
 
 export interface HistoryReplayView {
@@ -26,6 +27,7 @@ export class HistoryReplay {
   private disposed = false
   private offStop: (() => void) | null = null
   private offHistory: (() => void) | null = null
+  private readonly musicFocus = new MusicAudioFocus()
 
   constructor(private readonly history: AudioHistory, private beforePlayback: () => boolean | void) {}
 
@@ -37,6 +39,15 @@ export class HistoryReplay {
     this.offHistory = this.history.subscribe(() => {
       if (this.view.entryId !== null && !this.history.getSnapshot().entries.some((entry) => entry.id === this.view.entryId)) this.stop()
     })
+  }
+
+  /** Clean up effect subscriptions without permanently disabling replay across remounts. */
+  deactivate(): void {
+    this.offStop?.()
+    this.offHistory?.()
+    this.offStop = null
+    this.offHistory = null
+    this.stop()
   }
 
   getSnapshot = (): HistoryReplayView => this.view
@@ -77,11 +88,13 @@ export class HistoryReplay {
         const ended = (): void => {
           if (!valid()) return
           this.attempt += 1
+          this.musicFocus.release()
           this.publish({ ...this.view, status: 'ended', currentTime: this.view.duration })
         }
         const error = (): void => {
           if (!valid()) return
           this.attempt += 1
+          this.musicFocus.release()
           this.publish({ ...this.view, status: 'error', error: media.error?.code === 3 || media.error?.code === 4 ? 'decode' : 'failed' })
         }
         for (const event of ['loadedmetadata', 'durationchange', 'timeupdate']) media.addEventListener(event, timing)
@@ -106,9 +119,13 @@ export class HistoryReplay {
     this.publish({ ...this.view, status: 'loading', error: null })
     try {
       await media.play()
-      if (!this.disposed && this.media === media && epoch === this.epoch && attempt === this.attempt) this.publish({ ...this.view, status: 'playing' })
+      if (!this.disposed && this.media === media && epoch === this.epoch && attempt === this.attempt) {
+        this.musicFocus.acquire()
+        this.publish({ ...this.view, status: 'playing' })
+      }
     } catch (error) {
       if (!this.disposed && this.media === media && epoch === this.epoch && attempt === this.attempt) {
+        this.musicFocus.release()
         this.publish({ ...this.view, status: 'error', error: error instanceof Error && error.name === 'NotAllowedError' ? 'blocked' : 'failed' })
       }
     }
@@ -118,6 +135,7 @@ export class HistoryReplay {
     if (this.media === null || (this.view.status !== 'playing' && this.view.status !== 'loading')) return
     this.attempt += 1
     this.media.pause()
+    this.musicFocus.release()
     this.publish({ ...this.view, status: 'paused' })
   }
 
@@ -135,17 +153,14 @@ export class HistoryReplay {
 
   dispose(): void {
     this.disposed = true
-    this.offStop?.()
-    this.offHistory?.()
-    this.offStop = null
-    this.offHistory = null
-    this.stop()
+    this.deactivate()
     this.listeners.clear()
   }
 
   private release(): void {
     this.epoch += 1
     this.attempt += 1
+    this.musicFocus.release()
     this.cleanup?.()
     this.cleanup = null
     if (this.media !== null) {

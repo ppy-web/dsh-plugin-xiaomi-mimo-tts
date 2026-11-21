@@ -5,6 +5,7 @@ export interface MossAudioHandle {
   readonly done: Promise<void>
   pause(): void
   resume(): Promise<void>
+  setVolume(value: number): void
   stop(): void
 }
 
@@ -77,6 +78,10 @@ export function playMossAudio(blob: Blob, options: MossAudioOptions): MossAudioH
       } catch {
         finish(new Error('autoplay-blocked'))
       }
+    },
+    setVolume(value) {
+      if (settled) return
+      audio.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : audio.volume
     },
     stop() {
       if (settled) return

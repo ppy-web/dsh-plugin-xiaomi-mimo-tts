@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react'
 import { useId } from 'react'
 import { Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { TTS_READ_SCOPES } from '../../../shared.js'
-import type { TtsReadScope } from '../../../shared.js'
+import { TTS_READ_SCOPES } from '../../shared.js'
+import type { TtsReadScope } from '../../shared.js'
 import type { Translate } from '../../localization.js'
 import { readScopeHintKey, readScopeLabelKey } from '../voice-reading-options.js'
 

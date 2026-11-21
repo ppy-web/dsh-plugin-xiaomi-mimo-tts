@@ -7,8 +7,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { TTS_SETTINGS_NAMESPACE, resolveTtsSettings, ttsSelectionKey } from '../shared.js'
-import type { TtsSettings } from '../shared.js'
+import { TTS_SETTINGS_NAMESPACE, resolveTtsSettings, ttsSelectionKey } from './shared.js'
+import type { TtsSettings } from './shared.js'
 import { AutomaticReading } from './conversation/automatic-reading.js'
 import { ReadAloudAction } from './conversation/read-aloud.js'
 import { SessionPlaybackObserver } from './conversation/session-playback-observer.js'
@@ -26,7 +26,8 @@ import { registerPassportSettings } from './settings/passport-registration.js'
 import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
 import { engineStateStore } from './engine-state.js'
 import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
-import { ActivationGuide } from './settings/activation-guide.js'
+import type { ActivationGuideProps } from './settings/activation-guide.js'
+import { lazyPanel } from './lazy-panel.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
 import { VoiceInputActivity } from './voice-input-activity.js'
 import { registerVoiceReadingNavIcon } from './settings/nav-icon.js'
@@ -36,7 +37,10 @@ import { VoiceReadingSection } from './settings/voice-reading-section.js'
 import type { VoiceReadingSectionInjected } from './settings/voice-reading-section.js'
 import { createSoundEffectsController, installClickSounds } from './sound-effects/index.js'
 import { installTaskSoundWatcher } from './sound-effects/task-watcher.js'
-import { CLIENT_STYLES } from './style/index.js'
+import { CORE_CLIENT_STYLES } from './style/core.js'
+import { ensureClientStyle } from './style/inject.js'
+
+const ActivationGuide = lazyPanel<ActivationGuideProps>(() => import('./settings/activation-guide.js').then(module => module.ActivationGuide))
 import { AudioHistory } from './history/audio-history.js'
 import { TabAudioFocus } from './playback/tab-audio-focus.js'
 import { SpeechActivity, isSpeechBusy } from './announcements/speech-activity.js'
@@ -266,13 +270,7 @@ export function apply(ctx: Context): void {
   ctx.effect(() => () => live.dispose(), 'xiaomi-mimo-tts: live playback')
   ctx.effect(() => () => local.dispose(), 'xiaomi-mimo-tts: local playback')
 
-  ctx.effect(() => {
-    const style = document.createElement('style')
-    style.dataset.plugin = NS
-    style.textContent = CLIENT_STYLES
-    document.head.appendChild(style)
-    return () => style.remove()
-  }, 'xiaomi-mimo-tts: styles')
+  ctx.effect(() => ensureClientStyle('core', CORE_CLIENT_STYLES), 'xiaomi-mimo-tts: styles')
 
   // The settings shell owns the nav glyph per section id and only falls back to
   // its gear when no `settings.section.icon` entry matches the section.

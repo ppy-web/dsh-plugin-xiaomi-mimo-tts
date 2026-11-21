@@ -1,5 +1,8 @@
 import type { ReactElement } from 'react'
-import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' && typeof document !== 'undefined' && typeof document.createElement === 'function' ? useLayoutEffect : useEffect
 
 export function FieldInfo({ label, text }: { label: string; text: string }): ReactElement {
   const id = useId()
@@ -7,7 +10,7 @@ export function FieldInfo({ label, text }: { label: string; text: string }): Rea
   const button = useRef<HTMLButtonElement>(null)
   const tooltip = useRef<HTMLSpanElement>(null)
   const [position, setPosition] = useState({ left: 0, top: 0 })
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!open) return
     const place = (): void => {
       if (button.current === null || tooltip.current === null) return
@@ -45,6 +48,9 @@ export function FieldInfo({ label, text }: { label: string; text: string }): Rea
         <path d="M12 11v6M12 7h.01" />
       </svg>
     </button>
-    {open ? <span ref={tooltip} id={id} role="tooltip" className="xmimo-tts-field-info-tooltip" style={position}>{text}</span> : null}
+    {open && typeof document !== 'undefined' ? createPortal(
+      <span ref={tooltip} id={id} role="tooltip" className="xmimo-ui-scope xmimo-tts-field-info-tooltip" style={position}>{text}</span>,
+      document.body,
+    ) : null}
   </span>
 }

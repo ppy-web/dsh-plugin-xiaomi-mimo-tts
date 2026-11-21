@@ -90,13 +90,13 @@ function previewAssets(): Plugin {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root: previewRoot,
   base: pagesBase,
   publicDir: false,
   plugins: [previewAssets()],
   define: {
-    'process.env.NODE_ENV': JSON.stringify('development'),
+    'process.env.NODE_ENV': JSON.stringify(command === 'serve' ? 'development' : 'production'),
   },
   server: {
     host: true,
@@ -106,4 +106,4 @@ export default defineConfig({
     outDir: path.join(repositoryRoot, '.preview-dist'),
     emptyOutDir: true,
   },
-})
+}))

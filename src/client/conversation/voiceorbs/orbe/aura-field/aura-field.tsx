@@ -393,6 +393,7 @@ export const AuraField = ({
       glRef.current = null;
       gl.deleteBuffer(buffer);
       dropResources();
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
   }, [size, showCanvas, frameRef]);
 

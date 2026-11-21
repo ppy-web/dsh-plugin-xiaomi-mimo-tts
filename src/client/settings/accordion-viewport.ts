@@ -1,11 +1,13 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
+
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' && typeof document !== 'undefined' && typeof document.createElement === 'function' ? useLayoutEffect : useEffect
 
 /** Keep the clicked panel anchored while its siblings collapse. */
 export function useAccordionViewport(open: boolean, onToggle: () => void) {
   const panel = useRef<HTMLDivElement | null>(null)
   const anchor = useRef<number | null>(null)
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const region = panel.current
     const section = region?.closest<HTMLElement>('.xmimo-ui-accordion')
     const content = region?.firstElementChild as HTMLElement | null

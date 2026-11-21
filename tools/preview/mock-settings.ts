@@ -11,11 +11,11 @@ import {
 import type { TtsSettings } from '../../src/shared.js'
 import { TTS_PROVIDERS, ttsApiKey } from '../../src/types/providers.js'
 import type { TtsProvider } from '../../src/types/providers.js'
-import { TTS_DUPLEX_ROUTE } from '../../src/constants.js'
+import { TTS_DUPLEX_ROUTE, TTS_ENGINE_SELECTION_ROUTE, TTS_PORTRAITS_ROUTE } from '../../src/constants.js'
+import { PORTRAIT_SLOTS } from '../../src/types/portrait.js'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PcmRecording } from '../../src/client/history/pcm-recording.js'
 import type { ApiKeyStatus } from '../../src/client/settings/api-key-state.js'
-import { TTS_ENGINE_SELECTION_ROUTE } from '../../src/constants.js'
 import { engineStateStore } from '../../src/client/engine-state.js'
 
 export class PreviewSettingsScope implements ConfigForm<TtsSettings> {
@@ -155,6 +155,10 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
     const rawUrl = input instanceof Request ? input.url : String(input)
     const url = new URL(rawUrl, window.location.href)
     const pathname = url.pathname
+    const method = init?.method ?? (input instanceof Request ? input.method : 'GET')
+    if (pathname === TTS_PORTRAITS_ROUTE && method === 'GET') {
+      return jsonResponse({ slots: Object.fromEntries(PORTRAIT_SLOTS.map(slot => [slot, null])) })
+    }
     if (pathname === TTS_ENGINE_SELECTION_ROUTE) {
       const body = JSON.parse(String(init?.body))
       const state = engineStateStore.getSnapshot().engine!

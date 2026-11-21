@@ -1,7 +1,6 @@
-import { Avatar, Style } from '@dicebear/core'
 import { useState } from 'react'
 import type { ReactElement } from 'react'
-import type { TtsAvatarStyle } from '../../../shared.js'
+import type { TtsAvatarStyle } from '../../shared.js'
 import loreleiNeutral from './lorelei-neutral.json' with { type: 'json' }
 
 export interface VoiceAvatarProps {
@@ -12,9 +11,99 @@ export interface VoiceAvatarProps {
   compact?: boolean
 }
 
+interface LoreleiPathElement {
+  name: string
+  type: string
+  attributes: Record<string, unknown>
+}
+
+interface LoreleiComponent {
+  probability?: number
+  variants: Record<string, { elements?: readonly LoreleiPathElement[] }>
+}
+
 const MAX_CACHED_AVATARS = 128
 const sources = new Map<string, string | null>()
-let style: Style | undefined
+
+function hashSeed(text: string): number {
+  let hash = 2166136261
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function createPrng(initial: number): () => number {
+  let state = initial || 1
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function escapeXmlAttr(value: string): string {
+  return value.replace(/&/gu, '&amp;').replace(/"/gu, '&quot;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')
+}
+
+function resolveColor(fill: unknown): string {
+  if (typeof fill === 'string') return fill
+  if (fill && typeof fill === 'object' && 'name' in fill) {
+    const colorName = (fill as { name: string }).name
+    const colors = loreleiNeutral.colors as Record<string, { values?: readonly string[] } | undefined>
+    return colors[colorName]?.values?.[0] ?? '#000000'
+  }
+  return '#000000'
+}
+
+function renderLoreleiSvg(seed: string, avatarStyle: TtsAvatarStyle): string {
+  const rand = createPrng(hashSeed(seed))
+  const parts: string[] = []
+  const components = loreleiNeutral.components as Record<string, LoreleiComponent | undefined>
+  for (const layer of loreleiNeutral.canvas.elements) {
+    const component = components[layer.name]
+    if (!component) continue
+    const roll = rand()
+    const pick = rand()
+    if (component.probability !== undefined && roll * 100 >= component.probability) continue
+    const variantKeys = Object.keys(component.variants)
+    if (variantKeys.length === 0) continue
+    const chosenKey = variantKeys[Math.floor(pick * variantKeys.length)]!
+    const variant = component.variants[chosenKey]
+    if (!variant?.elements?.length) continue
+    const paths = variant.elements.map(element => {
+      if (element.name !== 'path') return ''
+      const attrs = Object.entries(element.attributes)
+        .map(([attr, raw]) => {
+          const val = attr === 'fill' ? resolveColor(raw) : String(raw)
+          return `${attr}="${escapeXmlAttr(val)}"`
+        })
+        .join(' ')
+      return `<path ${attrs}/>`
+    }).join('')
+    const transform = typeof layer.attributes?.transform === 'string'
+      ? ` transform="${escapeXmlAttr(layer.attributes.transform)}"`
+      : ''
+    parts.push(`<g${transform}>${paths}</g>`)
+  }
+
+  const hash = hashSeed(seed)
+  const pastel = ['#fce0e8', '#ede4fa', '#fff0d0', '#e7e0fa', '#e0f2ee']
+  const sunrise = [['#ffb9bc', '#ffd9ac'], ['#ffa8c1', '#ffc8b8'], ['#ffc7a7', '#ffd9bc'], ['#ffaebd', '#ffd4c1']] as const
+  let background = ''
+  if (avatarStyle === 'pastel') {
+    const color = pastel[hash % pastel.length]!
+    background = `<rect width="600" height="600" fill="${color}"/>`
+  } else if (avatarStyle === 'sunrise') {
+    const [start, end] = sunrise[hash % sunrise.length]!
+    background = `<defs><linearGradient id="xmimo-bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${start}"/><stop offset="100%" stop-color="${end}"/></linearGradient></defs><rect width="600" height="600" fill="url(#xmimo-bg)"/>`
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" fill="none" shape-rendering="auto">${background}${parts.join('')}</svg>`
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
 
 function avatarSource(seed: string, avatarStyle: TtsAvatarStyle): string | null {
   const key = JSON.stringify([seed, avatarStyle])
@@ -23,14 +112,7 @@ function avatarSource(seed: string, avatarStyle: TtsAvatarStyle): string | null 
 
   let source: string | null = null
   try {
-    style ??= new Style(loreleiNeutral)
-    const hash = Array.from(seed).reduce((value, char) => (Math.imul(value, 31) + char.codePointAt(0)!) >>> 0, 0)
-    const pastel = ['#fce0e8', '#ede4fa', '#fff0d0', '#e7e0fa', '#e0f2ee']
-    const sunrise = [['#ffb9bc', '#ffd9ac'], ['#ffa8c1', '#ffc8b8'], ['#ffc7a7', '#ffd9bc'], ['#ffaebd', '#ffd4c1']]
-    const options = avatarStyle === 'pastel' ? { backgroundColor: pastel[hash % pastel.length] }
-        : avatarStyle === 'sunrise' ? { backgroundColor: sunrise[hash % sunrise.length], backgroundColorFill: 'linear' as const, backgroundColorOrder: 'fixed' as const }
-          : {}
-    source = new Avatar(style, { seed, ...options }).toDataUri()
+    source = renderLoreleiSvg(seed, avatarStyle)
   } catch {
     // Keep the picker usable when an avatar cannot be generated.
   }

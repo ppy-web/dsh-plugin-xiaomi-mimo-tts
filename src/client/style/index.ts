@@ -1,70 +1,13 @@
-/**
- * Client stylesheet assembly — the single <style> tag the plugin injects.
- *
- * Every UI module owns one CSS file under ./style/. Files are imported with
- * `?raw` (inlined as text at build time by the rawTextImports plugin in
- * tsdown.config.ts; Vite preview supports ?raw natively) and concatenated
- * below, so CASCADE ORDER == the order of this list:
- *
- *   1. component modules,
- *   2. shared responsive and reduced-motion overrides,
- *   3. design tokens and shared module styles, then compact-mode overrides.
- *
- * When adding styles: put them in the module file that owns the UI (create a
- * new one if needed) and add its import here in cascade order.
- */
-import action from './action.css?raw'
-import readingCaption from './reading-caption.css?raw'
-import base from './base.css?raw'
-import apiKey from './api-key.css?raw'
-import card from './card.css?raw'
-import fields from './fields.css?raw'
-import voice from './voice.css?raw'
-import cardActions from './card-actions.css?raw'
-import character from './character.css?raw'
-import details from './details.css?raw'
-import preview from './preview.css?raw'
-import sections from './sections.css?raw'
-import sound from './sound.css?raw'
-import portrait from './portrait.css?raw'
-import volume from './volume.css?raw'
-import voiceReading from './voice-reading.css?raw'
-import readScope from './read-scope.css?raw'
-import responsive from './responsive.css?raw'
-import motion from './motion.css?raw'
-import global from './global.css?raw'
-import minimal from './minimal.css?raw'
-import history from './history.css?raw'
-import pluginSurfaces from './plugin-surfaces.css?raw'
-import voiceStudioTitle from './voice-studio-title.css?raw'
-import qqbotSettings from './qqbot-settings.css?raw'
-import tactileControl from './tactile-control.css?raw'
+import { CORE_CLIENT_STYLES } from './core.js'
+import { HISTORY_CLIENT_STYLES } from './history-styles.js'
+import { QQBOT_CLIENT_STYLES } from './qqbot-styles.js'
+import { WORKBENCH_CLIENT_STYLES } from './workbench.js'
+
+export { CORE_CLIENT_STYLES, HISTORY_CLIENT_STYLES, QQBOT_CLIENT_STYLES, WORKBENCH_CLIENT_STYLES }
 
 export const CLIENT_STYLES = [
-  action,
-  readingCaption,
-  base,
-  apiKey,
-  card,
-  fields,
-  voice,
-  cardActions,
-  character,
-  details,
-  tactileControl,
-  preview,
-  sections,
-  sound,
-  portrait,
-  volume,
-  voiceReading,
-  readScope,
-  history,
-  pluginSurfaces,
-  voiceStudioTitle,
-  qqbotSettings,
-  responsive,
-  motion,
-  global,
-  minimal,
+  CORE_CLIENT_STYLES,
+  WORKBENCH_CLIENT_STYLES,
+  HISTORY_CLIENT_STYLES,
+  QQBOT_CLIENT_STYLES,
 ].join('\n')

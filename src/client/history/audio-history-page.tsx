@@ -7,12 +7,14 @@ import type { Translate } from '../localization.js'
 import { filterAudioHistory, HistoryDownloads, historyFileSize, historyTime } from './history-list.js'
 import type { HistorySource } from './history-list.js'
 import { HistoryReplay } from './history-replay.js'
-import { TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../../shared.js'
+import { TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../shared.js'
 import type { SpeechActivity } from '../announcements/speech-activity.js'
 import { isSpeechBusy } from '../announcements/speech-activity.js'
 import { hostRoute } from '../host-route.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { VoiceReadingSelect } from '../settings/voice-reading-select.js'
+import { HISTORY_CLIENT_STYLES } from '../style/history-styles.js'
+import { ensureClientStyle } from '../style/inject.js'
 
 export interface AudioHistoryPageProps {
   history: AudioHistory
@@ -41,11 +43,13 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
   const backRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const pageRef = useRef<HTMLElement>(null)
+  useEffect(() => ensureClientStyle('history', HISTORY_CLIENT_STYLES), [])
   useEffect(() => {
+    void history.ensureLoaded()
     replay.activate()
     backRef.current?.focus({ preventScroll: true })
-    return () => { replay.dispose(); downloads.dispose() }
-  }, [replay, downloads])
+    return () => { replay.deactivate(); downloads.dispose() }
+  }, [history, replay, downloads])
   useEffect(() => { replay.configure(volume, voiceRate, beforePlayback) }, [replay, volume, voiceRate, beforePlayback])
   useEffect(() => {
     const page = pageRef.current

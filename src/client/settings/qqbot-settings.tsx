@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactElement } from 're
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PluginConfigViewProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { QQBOT_SPEECH_LIMITS, resolveTtsSettings, type TtsSettings } from '../../shared.js'
+import { QQBOT_SPEECH_LIMITS, resolveTtsSettings, type TtsSettings } from '../shared.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
 import { useSettingsSnapshot } from './scope.js'
@@ -11,20 +11,20 @@ import { loadQqMemory, updateQqMemory, type QqMemoryPeer } from './qqbot-memory.
 import type { WhaleSettings } from '../../types/whale.js'
 import { WhalePersonaSettings } from './whale-settings.js'
 
-interface Props extends PluginConfigViewProps {
+export interface QqbotSpeechSettingsProps extends PluginConfigViewProps {
   scope: ConfigForm<TtsSettings>
   personaScope: ConfigForm<WhaleSettings>
   t: Translate
   changes?: SnapshotSource<boolean>
 }
-export function QqbotSpeechSettings(props: Props): ReactElement {
+export function QqbotSpeechSettings(props: QqbotSpeechSettingsProps): ReactElement {
   if (props.view === 'summary') return <>{props.t('qq.description')}</>
   return <div>
     <WhalePersonaSettings view={props.view} scope={props.personaScope} t={props.t} changes={props.changes} channel="qq" />
     <QqbotSpeechPage {...props} />
   </div>
 }
-function QqbotSpeechPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: Props): ReactElement {
+function QqbotSpeechPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: QqbotSpeechSettingsProps): ReactElement {
   const snapshot = useSettingsSnapshot(scope)
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
   const [draft, setDraft] = useState<{ base: QqSpeechDraft; value: QqSpeechDraft; revision: number } | null>(null)

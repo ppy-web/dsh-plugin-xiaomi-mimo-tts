@@ -55,7 +55,16 @@ function rawTextImports() {
     load(id) {
       if (!id.endsWith('?raw')) return null
       const target = id.slice(0, -'?raw'.length)
-      return `export default ${JSON.stringify(readFileSync(target, 'utf8'))};`
+      let content = readFileSync(target, 'utf8')
+      if (target.endsWith('.css')) {
+        content = content
+          .replace(/\/\*[\s\S]*?\*\//gu, '')
+          .replace(/[ \t]*\r?\n[ \t]*/gu, ' ')
+          .replace(/\s{2,}/gu, ' ')
+          .replace(/\s*([{;}])\s*/gu, '$1')
+          .trim()
+      }
+      return `export default ${JSON.stringify(content)};`
     },
   }
 }
@@ -172,7 +181,6 @@ export function createClientConfig() {
       },
     }, clientChunkImports(), ...(process.env.DSH_BUNDLE_ANALYZE === '1' ? [bundleVisualizer('client')] : [])],
     outputOptions: {
-      keepNames: true,
       legalComments: 'inline',
       exports: 'named',
       entryFileNames: CLIENT_ENTRY,

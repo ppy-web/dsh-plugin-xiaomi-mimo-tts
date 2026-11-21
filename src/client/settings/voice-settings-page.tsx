@@ -6,7 +6,7 @@ import { SettingsCard } from './card.js'
 import type { SettingsCardProps } from './card.js'
 import { MANUAL_URL, SOURCE_URL } from './plugin-links.js'
 import { QqGroupAction } from './voice-reading-links.js'
-import { TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../../shared.js'
+import { TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../shared.js'
 import { hostRoute } from '../host-route.js'
 import { SettingsSearchInput } from './settings-search-input.js'
 

@@ -1,4 +1,4 @@
-import { stripBreezeAudioTags, stripXiaomiAudioTags, supportsXiaomiAudioTags } from '../../shared.js'
+import { stripBreezeAudioTags, stripXiaomiAudioTags, supportsXiaomiAudioTags } from '../shared.js'
 import type { TtsSelection } from '../../types/providers.js'
 import { externalEngine, externalFallbackText } from '../engine-state.js'
 import { captionLineAt, splitCaptionLines, type CaptionLine } from './caption-lines.js'

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { useState } from 'react'
 import { IconCloseOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { ResolvedTtsSettings } from '../../shared.js'
+import type { ResolvedTtsSettings } from '../shared.js'
 import { useApiKeyStatus } from '../conversation/api-key-status.js'
 import type { Translate } from '../localization.js'
 import { voiceReadingWarningKey } from './voice-reading-options.js'

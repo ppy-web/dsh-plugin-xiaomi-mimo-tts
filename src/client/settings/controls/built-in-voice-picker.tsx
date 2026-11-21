@@ -2,7 +2,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useId, useRef } from 'react'
 import { usePresetDropdown } from './use-preset-dropdown.js'
 import { IconChevronDownOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
-import { TTS_VOICE_PRESETS } from '../../../shared.js'
+import { TTS_VOICE_PRESETS } from '../../shared.js'
 import { VoiceAvatar } from './voice-avatar.js'
 
 export interface VoicePickerPreset {

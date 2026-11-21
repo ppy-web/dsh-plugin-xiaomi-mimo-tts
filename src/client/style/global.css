@@ -27,6 +27,7 @@
   --xmimo-ui-border: var(--dsw-alias-border-l2, #d7dbe2);
   --xmimo-ui-border-soft: var(--dsw-alias-border-l2, #e5e7eb);
   --xmimo-ui-surface: var(--dsw-alias-bg-layer-1, #fff);
+  --xmimo-ui-surface-subtle: var(--dsw-alias-bg-layer-2, #f3f4f6);
   --xmimo-ui-control-surface: var(--dsw-alias-bg-layer-2, #f3f4f6);
   --xmimo-ui-chip-surface: var(--dsw-alias-bg-module-platform, #eef0f3);
   --xmimo-ui-hover: var(--dsw-alias-interactive-bg-hover, #f3f4f6);

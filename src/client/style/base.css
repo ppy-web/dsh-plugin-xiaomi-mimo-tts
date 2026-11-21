@@ -9,3 +9,29 @@
 .xmimo-tts-failed {
   color: var(--dsw-alias-state-error-primary, #dc2626)
 }
+
+.xmimo-tts-voice-avatar {
+  box-sizing: border-box;
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+}
+
+.xmimo-tts-voice-avatar-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--dsw-alias-brand-primary, #4f6ef7);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, var(--dsw-alias-bg-layer-1, #fff));
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.xmimo-tts-voice-avatar-compact {
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+}

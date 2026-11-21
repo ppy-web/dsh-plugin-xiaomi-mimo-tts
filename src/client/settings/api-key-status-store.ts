@@ -1,4 +1,4 @@
-import { TTS_API_KEY_STATUS_ROUTE } from '../../shared.js'
+import { TTS_API_KEY_STATUS_ROUTE } from '../shared.js'
 import { TTS_PROVIDERS, type TtsProvider } from '../../types/providers.js'
 import { hostRoute } from '../host-route.js'
 import type { SnapshotSource } from '../plugin-activity.js'

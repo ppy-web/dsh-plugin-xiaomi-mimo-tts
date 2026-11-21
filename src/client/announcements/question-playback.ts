@@ -1,4 +1,4 @@
-import type { ResolvedTtsSettings } from '../../shared.js'
+import type { ResolvedTtsSettings } from '../shared.js'
 import { PreviewPlayer } from '../playback/preview-player.js'
 import type { Announcement } from './types.js'
 import { isSpeechBusy, type SpeechActivity } from './speech-activity.js'

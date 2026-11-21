@@ -3,7 +3,7 @@ import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/cl
 import type { PlaybackController } from '../playback/playback-controller.js'
 import { readComposerRecordingLevel, readComposerVoiceInput } from '../voice-input-activity.js'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
-import type { TtsSettings } from '../../shared.js'
+import type { TtsSettings } from '../shared.js'
 import type { Translate } from '../localization.js'
 import { CaptionVisual } from './caption-visual.js'
 import type { ReadingCaptions } from '../playback/reading-captions.js'

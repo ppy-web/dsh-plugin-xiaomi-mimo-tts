@@ -1,5 +1,5 @@
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import type { TtsSettings } from '../../shared.js'
+import type { TtsSettings } from '../shared.js'
 import { observeSettingsSlice } from './scope.js'
 
 /** Mount an entry only while its saved Host settings preference is enabled. */

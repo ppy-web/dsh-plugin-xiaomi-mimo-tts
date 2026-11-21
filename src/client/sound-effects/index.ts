@@ -5,29 +5,58 @@ import { DEFAULT_SOUND_SETTINGS } from '../../types/sound.js'
 import type { Context } from '@deepseek-ai/cordis'
 
 const VALID_CUES = new Set<SoundCue>(['start', 'complete', 'success', 'error', 'notification', 'press', 'select', 'toggle-on', 'toggle-off', 'send', 'close', 'delete', 'open', 'stop', 'queued'])
+const BACKGROUND_TASK_CUES = new Set<SoundCue>(['start', 'complete', 'error', 'stop', 'queued'])
+
+function createSoundAudioContext(): AudioContext | undefined {
+  if (typeof window === 'undefined') return undefined
+  const AudioContextConstructor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (!AudioContextConstructor) return undefined
+  try {
+    return new AudioContextConstructor({ latencyHint: 'interactive' })
+  } catch {
+    return undefined
+  }
+}
 
 export function createSoundEffectsController(canPlay: () => boolean = () => true, canPlayMicrophoneCue = canPlay): SoundEffectsController {
   let settings: SoundEffectsSettings = { enabled: true, volume: DEFAULT_SOUND_SETTINGS.soundVolume, pack: DEFAULT_SOUND_SETTINGS.soundPack, taskSounds: true, clickSounds: true }
   let player: ReturnType<typeof createUISFX> | null = null
+  let ownedContext: AudioContext | undefined
 
   const getPlayer = (): ReturnType<typeof createUISFX> => {
-    if (player === null) player = createUISFX({ pack: settings.pack, volume: settings.volume, enabled: settings.enabled, maxVoices: 8 })
+    if (player === null) {
+      ownedContext ??= createSoundAudioContext()
+      player = createUISFX({
+        pack: settings.pack,
+        volume: settings.volume,
+        enabled: settings.enabled,
+        maxVoices: 8,
+        ...(ownedContext ? { context: ownedContext } : {}),
+      })
+    }
     return player
   }
-  const play = (cue: SoundCue, options?: SoundEffectsPlayOptions): void => {
+  const play = (cue: SoundCue, options?: SoundEffectsPlayOptions, interactive = false): void => {
     if (!settings.enabled || !VALID_CUES.has(cue)) return
-    try { getPlayer().play(cue, options) } catch { /* AudioContext may be unavailable. */ }
+    try {
+      const target = getPlayer()
+      if (!interactive && BACKGROUND_TASK_CUES.has(cue) && ownedContext?.state === 'suspended') {
+        void ownedContext.resume().catch(() => {})
+        return
+      }
+      target.play(cue, options)
+    } catch { /* AudioContext may be unavailable. */ }
   }
 
   return {
     play(cue, options) {
-      if (canPlay()) play(cue, options)
+      if (canPlay()) play(cue, options, false)
     },
     playMicrophoneCue(recording) {
-      if (settings.clickSounds && canPlayMicrophoneCue()) play(recording ? 'toggle-on' : 'toggle-off')
+      if (settings.clickSounds && canPlayMicrophoneCue()) play(recording ? 'toggle-on' : 'toggle-off', undefined, true)
     },
     preview(cue) {
-      if (canPlay()) play(cue)
+      if (canPlay()) play(cue, undefined, true)
     },
     setVolume(value) {
       settings = { ...settings, volume: Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : settings.volume }
@@ -50,8 +79,13 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
     },
     async dispose() {
       const current = player
+      const context = ownedContext
       player = null
+      ownedContext = undefined
       if (current !== null) await current.destroy()
+      if (context && context.state !== 'closed') {
+        try { await context.close() } catch { /* Best-effort AudioContext cleanup. */ }
+      }
     },
   }
 }

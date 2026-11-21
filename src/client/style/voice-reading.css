@@ -225,9 +225,9 @@
   min-width: 0;
   min-height: 36px;
   padding: 4px 8px 4px 12px;
-  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warning-primary, #c58a00) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary, #c58a00) 40%, transparent);
   border-radius: var(--dsw-radius-sm, 8px);
-  background: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #c58a00) 12%, var(--dsw-alias-bg-layer-1, #fff));
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary, #c58a00) 12%, var(--dsw-alias-bg-layer-1, #fff));
   color: var(--dsw-alias-label-primary, #1f2328);
   font-size: 12px;
   line-height: 20px;

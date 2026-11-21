@@ -1,11 +1,11 @@
 import type { ReactElement } from 'react'
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import {
   Button,
   Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { RiVoiceAiFill } from 'react-icons/ri'
-import type { TtsSettings } from '../../shared.js'
+import type { TtsSettings } from '../shared.js'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -31,6 +31,7 @@ const PLAYBACK_ERROR_KEYS: Record<string, Parameters<Translate>[0]> = {
   'resource-unavailable': 'error.resourceUnavailable',
   'rate-limited': 'error.rateLimited',
   'tts-timeout': 'error.timeout',
+  'timeout': 'error.timeout',
   'pcm-pause-buffer-limit': 'error.bufferLimit',
   'stream-buffer-limit': 'error.bufferLimit',
   'no-text': 'error.noText',
@@ -79,11 +80,11 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   const replyMode = automaticReplyMode(foldedReplies, resolvedSettings.readScope)
   const latestMessageId = useChat(chat => automaticAssistantMessageId(chat, replyMode))
   const running = sessionSnapshot.running
-  const message = {
+  const message = useMemo(() => ({
     text: messageText(legacy, messageId),
     time: messageTime(legacy, messageId),
     identity: messageLiveIdentity(legacy, messageId),
-  }
+  }), [legacy, messageId])
   const text = message.text
   const engineView = useEngineState()
   const apiKeySupported = useApiKeySupported(ownsAudio && resolvedSettings.localSpeechMode !== 'disabled', resolvedSettings.provider)
@@ -94,16 +95,25 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
     turn: legacy.partial?.turn ?? message.identity?.turn,
     settings: resolvedSettings, apiKeySupported,
   }
-  const latestRequest = () => ({ ...request, settings: resolvedSettingsSnapshot(settings.getSnapshot()) })
+  const latestRequest = () => {
+    const current = resolvedSettingsSnapshot(settings.getSnapshot())
+    return { ...request, settings: current, canStart: () => {
+      const latest = resolvedSettingsSnapshot(settings.getSnapshot())
+      return latest.enabled && latest.readScope === current.readScope && audioFocus.canPlay()
+    } }
+  }
 
   useEffect(() => {
     if (!engineCanRequest() || !automaticReading.allowed(sessionId) || !ownsAudio || !automaticAudioFocus.canPlay() || text.length === 0 || settingsSlice.enabled !== true || settingsSlice.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    let active = true
     const cancel = window.setTimeout(() => {
-      if (!automaticAudioFocus.canPlay() || live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity) || !automaticReading.allowed(sessionId) || !playback.claimAutomaticPlayback(sessionId, messageId)) return
-      if (playCompletedReply(latestRequest(), true)) automaticReading.markAutomatic()
+      const pending = latestRequest()
+      playCompletedReply({ ...pending, canStart: () => active && pending.canStart() && resolvedSettingsSnapshot(settings.getSnapshot()).autoPlay
+        && automaticAudioFocus.canPlay() && !live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity)
+        && automaticReading.allowed(sessionId) && playback.claimAutomaticPlayback(sessionId, messageId) }, true, () => automaticReading.markAutomatic())
     }, 0)
-    return () => window.clearTimeout(cancel)
-  }, [engineView, automaticReading, latestMessageId, automaticAudioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.time, messageId, playback, running, sessionId, settingsSlice, text])
+    return () => { active = false; window.clearTimeout(cancel) }
+  }, [engineView, automaticReading, latestMessageId, audioFocus, automaticAudioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.time, messageId, playback, running, sessionId, settings, settingsSlice, text])
 
   if (settingsSlice.enabled !== true || text.length === 0) return null
 

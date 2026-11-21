@@ -1,6 +1,6 @@
 import { browserVoice } from '../browser-voice.js'
-import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, normalizeVoiceRate, prepareTtsText, splitCompletedTtsSentences, splitTtsSegments } from '../../shared.js'
-import type { LiveSpeechCursor, TtsLocalVoiceEngine } from '../../shared.js'
+import { AbortableSentenceQueue, batchTtsStreamText, classifyLiveSpeechTransition, normalizeVoiceRate, prepareTtsText, splitCompletedTtsSentences, splitTtsSegments } from '../shared.js'
+import type { LiveSpeechCursor, TtsLocalVoiceEngine } from '../shared.js'
 import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
 import { applySpeechVoiceRate } from './voice-rate.js'
 import { fetchMossAudio, MossRequestError } from '../moss-service.js'
@@ -8,6 +8,29 @@ import { playMossAudio } from './moss-playback.js'
 import type { MossAudioHandle } from './moss-playback.js'
 import { mediaCaptionTiming, type ReadingCaptions } from './reading-captions.js'
 import { MusicAudioFocus } from './music-audio-focus.js'
+
+function waitForBrowserVoices(signal: AbortSignal, timeoutMs = 300): Promise<void> {
+  if (typeof window === 'undefined' || window.speechSynthesis === undefined) return Promise.resolve()
+  if (window.speechSynthesis.getVoices().length > 0 || signal.aborted) return Promise.resolve()
+  if (typeof window.speechSynthesis.addEventListener !== 'function') return Promise.resolve()
+  return new Promise<void>((resolve) => {
+    let settled = false
+    const done = (): void => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timer)
+      signal.removeEventListener('abort', done)
+      window.speechSynthesis.removeEventListener?.('voiceschanged', onVoicesChanged)
+      resolve()
+    }
+    const onVoicesChanged = (): void => {
+      if (window.speechSynthesis.getVoices().length > 0) done()
+    }
+    const timer = window.setTimeout(done, timeoutMs)
+    signal.addEventListener('abort', done, { once: true })
+    window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged)
+  })
+}
 
 export class LocalSpeechController {
   constructor(private readonly captions?: ReadingCaptions) {}
@@ -49,9 +72,13 @@ export class LocalSpeechController {
   setVoiceURI(value: string): void { this.voiceURI = value }
 
   setMossVoice(engine: TtsLocalVoiceEngine, baseURL: string, voice: string): void {
+    const engineChanged = this.localVoiceEngine !== engine
     this.localVoiceEngine = engine
     this.mossBaseURL = baseURL
     this.mossVoice = voice
+    if (engineChanged && this.sessionId !== null && (this.mossHandle !== null || this.status === 'playing' || this.status === 'loading' || this.status === 'paused')) {
+      this.cancel()
+    }
   }
 
   setTimeoutMs(value: number): void { this.timeoutMs = value }
@@ -63,6 +90,7 @@ export class LocalSpeechController {
   setVolume(value: number): void {
     this.volume = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1
     if (this.current !== null) this.current.volume = this.volume
+    this.mossHandle?.setVolume(this.volume)
   }
 
   setVoiceRate(value: number): void { this.voiceRate = normalizeVoiceRate(value) }
@@ -306,12 +334,17 @@ export class LocalSpeechController {
     )
   }
 
-  private speak(text: string, signal: AbortSignal, generation: number): Promise<void> {
-    if (generation !== this.generation || signal.aborted) return Promise.resolve()
+  private async speak(text: string, signal: AbortSignal, generation: number): Promise<void> {
+    if (generation !== this.generation || signal.aborted) return
     if (this.localVoiceEngine === 'moss') return this.speakMoss(text, signal, generation)
-    if (typeof window === 'undefined' || window.speechSynthesis === undefined) return Promise.reject(new Error('local-speech-unavailable'))
-    const voice = browserVoice(this.voiceURI)
-    if (voice === undefined) return Promise.reject(new Error('local-voice-unavailable'))
+    if (typeof window === 'undefined' || window.speechSynthesis === undefined) throw new Error('local-speech-unavailable')
+    let voice = browserVoice(this.voiceURI)
+    if (voice === undefined) {
+      await waitForBrowserVoices(signal)
+      if (generation !== this.generation || signal.aborted) return
+      voice = browserVoice(this.voiceURI)
+    }
+    if (voice === undefined) throw new Error('local-voice-unavailable')
     return new Promise<void>((resolve, reject) => {
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.voice = voice

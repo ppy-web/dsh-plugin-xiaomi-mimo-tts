@@ -1,4 +1,4 @@
-import { TTS_MOSS_PROBE_ROUTE, TTS_MOSS_SYNTH_ROUTE } from '../constants.js'
+import { TTS_DESKTOP_WRITE_HEADER, TTS_MOSS_PROBE_ROUTE, TTS_MOSS_SYNTH_ROUTE } from '../constants.js'
 import type { MossVoice } from '../moss.js'
 import { hostRoute } from './host-route.js'
 
@@ -44,7 +44,7 @@ export async function probeMossService(baseURL: string, signal?: AbortSignal): P
   try {
     response = await fetch(hostRoute(TTS_MOSS_PROBE_ROUTE), {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
       body: JSON.stringify({ baseURL }),
       ...(signal === undefined ? {} : { signal }),
     })
@@ -74,7 +74,7 @@ export async function fetchMossAudio(text: string, config: MossSpeechConfig, sig
   try {
     response = await fetch(hostRoute(TTS_MOSS_SYNTH_ROUTE), {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
       body: JSON.stringify({ text, baseURL: config.baseURL, voice: config.voice, format: 'wav' }),
       signal,
     })

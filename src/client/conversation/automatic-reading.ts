@@ -1,5 +1,5 @@
 import type { SnapshotSource } from '../plugin-activity.js'
-import type { TtsReadScope } from '../../shared.js'
+import type { TtsReadScope } from '../shared.js'
 
 export type FoldedReplies = 'all' | 'final'
 

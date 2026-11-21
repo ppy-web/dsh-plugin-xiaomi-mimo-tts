@@ -1,5 +1,6 @@
-import { applyTtsLivePlaybackScope, TtsFirstSegmentLimiter, countTtsSpeechCharacters, stableSpeechMarkdown, stripXiaomiAudioTags, stripBreezeAudioTags } from '../../shared.js'
-import type { LiveSpeechCursor, TtsLocalSpeechMode, TtsReadScope } from '../../shared.js'
+import { TtsFirstSegmentLimiter, countTtsSpeechCharacters, stableSpeechMarkdown, stripXiaomiAudioTags, stripBreezeAudioTags } from '../shared.js'
+import { applyTtsLivePlaybackScope } from '../../text/scope-light.js'
+import type { LiveSpeechCursor, TtsLocalSpeechMode, TtsReadScope } from '../shared.js'
 import type { LiveSpeechController } from './live-speech-controller.js'
 import type { LocalSpeechController } from './local-speech-controller.js'
 import type { LiveMessageIdentity } from './types.js'
@@ -15,6 +16,8 @@ interface SpeechStep {
   cursor: LiveSpeechCursor
   limiter: TtsFirstSegmentLimiter
   text: string
+  lastMarkdown?: string
+  lastPrepared?: string
   checkpoint: string | null
   final: LiveMessageIdentity | null
   inputFinished: boolean
@@ -82,15 +85,22 @@ export class RealtimeSpeechSession {
       current.steps.set(step, message)
     }
     if (message.inputFinished) return
+    if (!prime && message.lastMarkdown === markdown) return
+    message.lastMarkdown = markdown
     const prepared = this.live.prepareText(stableSpeechMarkdown(markdown))
-    message.text = this.scopeText(prepared, message)
+    if (!prime && message.lastPrepared === prepared) return
+    message.lastPrepared = prepared
+    const nextText = this.scopeText(prepared, message)
     const controller = this.controller(current.backend)
-    const backendText = this.backendText(current.backend, message.text)
-    if (prime) {
-      message.checkpoint = message.text
-      controller.prime(sessionId, turn, step, backendText, true)
+    if (prime || nextText !== message.text) {
+      message.text = nextText
+      const backendText = this.backendText(current.backend, message.text)
+      if (prime) {
+        message.checkpoint = message.text
+        controller.prime(sessionId, turn, step, backendText, true)
+      }
+      controller.observe(sessionId, turn, step, backendText, true)
     }
-    controller.observe(sessionId, turn, step, backendText, true)
     if (current.backend === 'live' && this.live.isDuplex() && message.limiter.complete && current.scope !== 'full') {
       const spoken = countTtsSpeechCharacters(message.text)
       if (countTtsSpeechCharacters(prepared) >= spoken * 2) {

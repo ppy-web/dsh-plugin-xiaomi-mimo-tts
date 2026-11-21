@@ -33,7 +33,7 @@ const TTS_OPERATORS: Record<string, [string, string]> = {
 const TTS_SENTENCE_PAUSE_PUNCTUATION = /[…⋯〜～]+/gu
 const TTS_PAUSE_MARKER = ''
 
-const TTS_URL_PATTERN = /\b(?:https?|ftp):\/\/[^\s<>()[\]，。！？；：、]+|\bwww\.[^\s<>()[\]，。！？；：、]+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|cn|net|org|io|ai|dev|me|co|edu|gov|xyz|tech|info|app|site|link)\b(?:[/:?#][^\s<>()[\]，。！？；：、]*)?/giu
+const TTS_URL_PATTERN = /\b(?:https?|ftp):\/\/[^\s<>()[\]，。！？；：、]+|\bwww\.[^\s<>()[\]，。！？；：、]+|\b(?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+(?:com|cn|net|org|io|ai|dev|me|co|edu|gov|xyz|tech|info|app|site|link)\b(?:[/:?#][^\s<>()[\]，。！？；：、]*)?/giu
 const TTS_WINDOWS_PATH_PATTERN = /(?<=["'])(?:[A-Za-z]:[\\/]|\\\\)[^"'<>\r\n]+(?=["'])|\b[A-Za-z]:[\\/][\w.~%+-]+(?:[\\/][\w.~%+-]+)*|\\\\[\w.~%+-]+(?:[\\/][\w.~%+-]+)+/gu
 const TTS_UNIX_PATH_PATTERN = /(?<=^|[\s([（【:：，、；。！？,;!?=*_'"`])~?\/(?!(?:\d+\/)+\d+(?![\w./-]))(?:[\w.~-]+\/)+[\w.~-]+/gu
 const TTS_RELATIVE_PATH_PATTERN = /(?:\.\.?[\\/])(?:[A-Za-z0-9._-]+[\\/])*(?:[A-Za-z0-9._-]+(?:\.[A-Za-z0-9_-]+)?)/gu
@@ -44,7 +44,7 @@ const MARKDOWN_HEADING_RE = /(^|\n)[ \t]{0,3}#+/g
 const MARKDOWN_LIST_RE = /(^|\n)\s*(?:[-*+]|\d+[.)])\s+/g
 const MARKDOWN_BLOCKQUOTE_RE = /(^|\n)\s*>\s?/g
 const MARKDOWN_TASK_MARKER_RE = /(^|\s)\[[ xX]\](?=\s|$)/g
-const MARKDOWN_RULE_RE = /(^|\n)[ \t]{0,3}(?:(?:=[ \t]*)+|(?:-[ \t]*)+|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})[ \t]*(?=\r?\n|$)/g
+const MARKDOWN_RULE_RE = /(^|\n)[ \t]{0,3}(?:=[ \t=]*|-[ \t-]*|\*(?:[ \t]*\*){2,}[ \t]*|_(?:[ \t]*_){2,}[ \t]*)(?=\r?\n|$)/g
 const MARKDOWN_TABLE_DELIMITER_RE = /(^|\n)[ \t]{0,3}(?=[^\r\n]*\|)[|:\- \t]+(?=\r?\n|$)/g
 const MARKDOWN_INLINE_FORMAT_RE = /`+|[*_]+|~{2,}/g
 const MARKDOWN_TABLE_SEP_RE = /[|]/g
@@ -129,9 +129,10 @@ function removeTtsSymbols(value: string): string {
 
 function normalizeTtsComparisons(value: string): string {
   return value.replace(TTS_COMPARISON_OPERATOR, (match, compound: string | undefined, single: string | undefined, offset: number) => {
-    // Use only the current clause's preceding text, which is stable as a reply grows.
+    // Use only the current clause's surrounding text, capped locally so long prose stays fast.
     const before = value.slice(Math.max(0, offset - 80), offset).match(/[^\r\n。！？!?；;:：.]*$/u)?.[0] ?? ''
-    const chinese = /\p{Script=Han}/u.test(before + value.slice(offset + match.length, offset + match.length + 2))
+    const after = value.slice(offset + match.length, offset + match.length + 80).match(/^[^\r\n。！？!?；;:：.]*/u)?.[0] ?? ''
+    const chinese = /\p{Script=Han}/u.test(before + after)
     return ` ${TTS_OPERATORS[(compound ?? single)!]![chinese ? 0 : 1]} `
   })
 }
@@ -232,13 +233,13 @@ export const BREEZE_AUDIO_TAG_GUIDANCE = ' Breeze audio tags (use only when the 
 
 /** Prepare Breeze text while preserving only the documented audio-tag vocabulary. */
 export function prepareBreezeTtsText(value: string): string {
-  return normalizeSpeech(value, (text, save) => text.replace(/\[[^\]\r\n]+\]|\([^()\r\n]+\)/gu, tag =>
+  return normalizeSpeech(value, (text, save) => text.replace(/\[[^\[\]\r\n]+\]|\([^()\r\n]+\)/gu, tag =>
     BREEZE_AUDIO_TAGS.has(tag) ? save(tag) : tag.startsWith('[') ? ' ' : tag), tag => BREEZE_AUDIO_TAGS.has(tag))
 }
 
 /** Remove documented Breeze audio tags for surfaces that cannot synthesize them, such as browser speech. */
 export function stripBreezeAudioTags(value: string): string {
-  return value.replace(/\[[^\]\r\n]+\]|\([^()\r\n]+\)/gu, tag => BREEZE_AUDIO_TAGS.has(tag) ? ' ' : tag)
+  return value.replace(/\[[^\[\]\r\n]+\]|\([^()\r\n]+\)/gu, tag => BREEZE_AUDIO_TAGS.has(tag) ? ' ' : tag)
 }
 
 export interface TtsSentenceSplit {

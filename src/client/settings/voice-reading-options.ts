@@ -6,8 +6,8 @@
  * unit tests, so it only depends on shared preset data and the locale key type.
  */
 
-import { BREEZE_VOICE_PRESETS, DOUBAO_VOICE_PRESETS, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, ttsSelection } from '../../shared.js'
-import type { ResolvedTtsSettings, TtsReadScope } from '../../shared.js'
+import { BREEZE_VOICE_PRESETS, DOUBAO_VOICE_PRESETS, TTS_VOICE_DESIGN_PRESETS, TTS_VOICE_PRESETS, ttsSelection } from '../shared.js'
+import type { ResolvedTtsSettings, TtsReadScope } from '../shared.js'
 import type { LocaleKey, Translate } from '../localization.js'
 import type { VoiceIdHistoryKind } from './voice-id-history.js'
 import type { ApiKeyStatus } from './api-key-state.js'

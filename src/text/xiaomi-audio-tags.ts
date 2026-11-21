@@ -18,10 +18,10 @@ export const XIAOMI_AUDIO_TAG_GUIDANCE = ' Xiaomi MiMo audio tags (only for Xiao
   + '. Put overall style at the beginning, e.g. (温柔 俏皮)你好; put local sound cues inline, e.g. 你好[轻笑]今天怎么样？ Chinese accepts (), （） or []; English accepts () or []. Custom sound descriptions and combined styles are supported, e.g. （紧张，深呼吸） or (soft, tired). Describe only audible delivery, emotion or sounds, never body actions. Use a few cues, do not pile them up. Singing requires (唱歌), (sing) or (singing) at the very beginning. VoiceDesign does not support audio tags: use speechInstruction instead. When retrying with another provider, remove these tags and use that provider\'s own syntax.'
 
 /** Match whole controls, including free-form and combined descriptions. */
-export const XIAOMI_AUDIO_TAG_PATTERN = /\([^()\r\n]+\)|（[^（）\r\n]+）|\[[^\]\r\n]+\]/gu
+export const XIAOMI_AUDIO_TAG_PATTERN = /\([^()\r\n]+\)|（[^（）\r\n]+）|\[[^\[\]\r\n]+\]/gu
 
 const KNOWN_CUES = new Set<string>([
-  ...XIAOMI_AUDIO_TAG_GROUPS.flatMap(group => [...group.tags, ...group.english]),
+  ...XIAOMI_AUDIO_TAG_GROUPS.flatMap(group => [...group.tags, ...group.english]).map(tag => tag.toLowerCase()),
   'laughs', 'chuckles', 'giggles', '声音变轻',
 ])
 

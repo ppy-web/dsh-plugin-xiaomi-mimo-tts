@@ -1,10 +1,15 @@
-import { TTS_ROUTE } from '../../shared.js'
+import { TTS_ROUTE } from '../shared.js'
+import { TTS_DESKTOP_WRITE_HEADER } from '../../constants.js'
 import { hostRoute } from '../host-route.js'
 import { applyMediaVoiceRate } from './voice-rate.js'
 import { externalEngine, speechRequestBody } from '../engine-state.js'
 import type { TtsSelection } from '../../types/providers.js'
 
 type SegmentAudioResult = { ok: true; blob: Blob } | { ok: false; error: unknown }
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status >= 500
+}
 
 /** Observe prefetch failures immediately, even while the preceding segment is still playing. */
 export async function prefetchSegmentAudio(text: string, signal: AbortSignal, selection?: TtsSelection): Promise<SegmentAudioResult> {
@@ -15,12 +20,21 @@ export async function prefetchSegmentAudio(text: string, signal: AbortSignal, se
       signal.throwIfAborted()
       try {
         const response = await fetch(hostRoute(TTS_ROUTE), {
-          method: 'POST', headers: { 'content-type': 'application/json' },
+          method: 'POST', headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
           body: JSON.stringify(body), signal,
         })
-        if (!response.ok) throw new Error(`segment-request-${response.status}`)
+        if (!response.ok) {
+          throw Object.assign(new Error(`segment-request-${response.status}`), {
+            retryable: isRetryableStatus(response.status),
+          })
+        }
         return { ok: true, blob: await response.blob() }
-      } catch (error) { lastError = error }
+      } catch (error) {
+        lastError = error
+        if (signal.aborted || (error instanceof Error && 'retryable' in error && error.retryable === false)) {
+          throw error
+        }
+      }
     }
     throw lastError
   } catch (error) { return { ok: false, error } }

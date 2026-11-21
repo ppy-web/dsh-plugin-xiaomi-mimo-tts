@@ -2,5 +2,5 @@ export type EditableSettingField = 'showInSidebar' | 'showInHostSettings' | 'sho
 export type SettingField = EditableSettingField | 'apiKey' | 'doubaoApiKey' | 'breezeApiKey' | 'deepseekApiKey'
 export type DraftChange = { kind: 'set' } | { kind: 'clear' }
 export type DraftChanges = Partial<Record<EditableSettingField, DraftChange> & Record<'apiKey' | 'doubaoApiKey' | 'breezeApiKey' | 'deepseekApiKey', { kind: 'set' }>>
-export type ResolvedSettings = ReturnType<typeof import('../../shared.js').resolveTtsSettings>
+export type ResolvedSettings = ReturnType<typeof import('../shared.js').resolveTtsSettings>
 export type SettingsValues = Pick<ResolvedSettings, EditableSettingField>

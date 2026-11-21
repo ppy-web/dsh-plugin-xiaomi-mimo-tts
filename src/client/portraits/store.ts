@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { TTS_PORTRAITS_ROUTE, TTS_PORTRAIT_IMAGE_ROUTE } from '../../constants.js'
+import { TTS_DESKTOP_WRITE_HEADER, TTS_PORTRAITS_ROUTE, TTS_PORTRAIT_IMAGE_ROUTE } from '../../constants.js'
 import { PORTRAIT_SLOTS } from '../../types/portrait.js'
 import type { PortraitManifest, PortraitSlot, PortraitSlotState } from '../../types/portrait.js'
 import { hostRoute } from '../host-route.js'
@@ -84,7 +84,7 @@ function readDataUrl(file: Blob): Promise<string> {
 async function request(body: Record<string, unknown>): Promise<void> {
   const response = await fetch(hostRoute(TTS_PORTRAITS_ROUTE), {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
     body: JSON.stringify(body),
   })
   if (!response.ok) throw new Error(`portrait-request-failed-${response.status}`)
@@ -101,7 +101,10 @@ export async function setPortraitScale(slot: PortraitSlot, scale: number): Promi
 }
 
 export async function resetPortrait(slot: PortraitSlot): Promise<void> {
-  const response = await fetch(`${hostRoute(TTS_PORTRAITS_ROUTE)}?slot=${slot}`, { method: 'DELETE' })
+  const response = await fetch(`${hostRoute(TTS_PORTRAITS_ROUTE)}?slot=${slot}`, {
+    method: 'DELETE',
+    headers: { [TTS_DESKTOP_WRITE_HEADER]: '1' },
+  })
   if (!response.ok) throw new Error(`portrait-reset-failed-${response.status}`)
   apply(normalize(await response.json()))
 }

@@ -1,4 +1,5 @@
 import { pcmDeltaFromSse } from '../../utils/pcm-delta.js'
+import { TTS_DESKTOP_WRITE_HEADER } from '../../constants.js'
 import { browserVoice } from '../browser-voice.js'
 import {
   TTS_ROUTE,
@@ -7,8 +8,8 @@ import {
   parseSseRecords,
   splitBreezeTtsSegments, splitTtsSegments,
   stripBreezeAudioTags, stripXiaomiAudioTags,
-} from '../../shared.js'
-import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel } from '../../shared.js'
+} from '../shared.js'
+import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel } from '../shared.js'
 import { removeEmoteMarkup } from '../../text/markup.js'
 import { hostRoute } from '../host-route.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
@@ -360,7 +361,7 @@ export class PreviewPlayer {
     this.request = controller
     const response = await fetch(hostRoute(TTS_ROUTE), {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
       body: JSON.stringify(speechRequestBody({ ...this.requestBody(text, settings, format) }, settings.externalSelection)),
       signal: controller.signal,
     })
@@ -421,7 +422,7 @@ export class PreviewPlayer {
     this.requestBusy = true
     const response = await fetch(hostRoute(TTS_STREAM_ROUTE), {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
       body: JSON.stringify(speechRequestBody({ ...this.requestBody(text, settings) }, settings.externalSelection)),
       signal: controller.signal,
     })

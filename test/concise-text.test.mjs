@@ -378,7 +378,23 @@ test('the Host accepts persisted first-segment settings and resolves them as Con
 const { automaticReplyMode } = await loadClientModule('src/client/conversation/automatic-reading.ts')
 const { automaticAssistantMessageId, messageText } = await loadClientModule('src/client/conversation/message-text.ts')
 const { playCompletedReply, handleReadAloudClick } = await loadClientModule('src/client/playback/read-aloud-playback.ts')
+const { loadConciseText } = await loadClientModule('src/client/playback/concise-loader.ts')
 const { PlaybackController } = await loadClientModule('src/client/playback/playback-controller.ts')
+
+test('loading Concise cannot start an interrupted reply or mark it as played', async () => {
+  const playback = new PlaybackController()
+  playback.activateSession('session')
+  const playbackAttempts = []
+  playCompletedReply({
+    sessionId: 'session', messageId: 'pending', text: '已经恢复导出。', playback,
+    settings: resolveTtsSettings({ readScope: 'concise', localSpeechMode: 'disabled' }),
+    apiKeySupported: true, live: { configure() {}, playCompleted: () => playbackAttempts.push('speech') },
+    local: { cancelSession() {} },
+  }, true, () => playbackAttempts.push('started'))
+  playback.interrupt()
+  await loadConciseText()
+  assert.deepEqual(playbackAttempts, [])
+})
 
 test('Concise chooses the settled host answer for automatic speech and the selected message for manual speech', () => {
   const settings = resolveTtsSettings({ readScope: 'concise', localSpeechMode: 'disabled' })

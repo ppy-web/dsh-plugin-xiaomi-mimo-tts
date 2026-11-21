@@ -1,4 +1,5 @@
-import { normalizeVoiceRate, prepareProviderTtsText, splitBreezeTtsSegments, splitTtsSegments, TTS_ROUTE } from '../../shared.js'
+import { normalizeVoiceRate, prepareProviderTtsText, splitBreezeTtsSegments, splitTtsSegments, TTS_ROUTE } from '../shared.js'
+import { TTS_DESKTOP_WRITE_HEADER } from '../../constants.js'
 import { hostRoute } from '../host-route.js'
 import type { PlaybackStatus, PlaybackView } from './types.js'
 import { applyMediaVoiceRate } from './voice-rate.js'
@@ -36,6 +37,7 @@ export class PlaybackController {
   private segmentedState: { sessionId: string; messageId: string; segments: string[]; index: number; voiceRate: number } | null = null
   private request: AbortController | null = null
   private generation = 0
+  private replyPreparation = 0
   private activeSessionId: string | null = null
   private beforePlayback: (() => void) | null = null
   private volume = 1
@@ -97,6 +99,14 @@ export class PlaybackController {
     this.captions?.clear(this)
     this.publish(this.emptyView())
   }
+
+  beginReplyPreparation(sessionId: string): () => boolean {
+    const preparation = ++this.replyPreparation
+    const generation = this.generation
+    return () => this.activeSessionId === sessionId && this.generation === generation && this.replyPreparation === preparation
+  }
+
+  cancelReplyPreparation(): void { this.replyPreparation += 1 }
 
   deactivateSession(sessionId: string): void {
     if (this.activeSessionId !== sessionId) return
@@ -284,18 +294,21 @@ export class PlaybackController {
     try {
       const response = await fetch(hostRoute(TTS_ROUTE), {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
         body: JSON.stringify(speechRequestBody({ ...selection, text, format })),
         signal: controller.signal,
       })
       if (!response.ok) {
-        let message = `${response.status}`
+        let message = response.status === 401 ? 'api-key-rejected'
+          : response.status === 429 ? 'rate-limited'
+            : response.status === 409 ? 'speech-engine-changed'
+              : `${response.status}`
         try {
-          const body = await response.json() as { message?: unknown; error?: unknown }
-          if (typeof body.message === 'string') message = body.message
-          else if (typeof body.error === 'string') message = body.error
+          const body = await response.json() as { error?: unknown; message?: unknown }
+          if (typeof body.error === 'string' && body.error) message = body.error
+          else if (typeof body.message === 'string' && body.message && message === `${response.status}`) message = body.message
         } catch {
-          // Non-JSON error bodies leave the HTTP status as the fallback message.
+          // Non-JSON error bodies leave the HTTP status mapping as the fallback code.
         }
         throw new Error(message)
       }

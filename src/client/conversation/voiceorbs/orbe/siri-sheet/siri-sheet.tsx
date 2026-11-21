@@ -498,6 +498,7 @@ export const SiriSheet = ({
       canvas.removeEventListener('webglcontextlost', onLost);
       gl.deleteBuffer(buffer);
       dropResources();
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
   }, [size, showCanvas, frameRef]);
 

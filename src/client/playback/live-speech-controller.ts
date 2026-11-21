@@ -8,8 +8,8 @@ import {
   splitCompletedTtsSentences,
   splitTtsSegments, prepareProviderTtsText, supportsXiaomiAudioTags,
   splitBreezeTtsSegments,
-} from '../../shared.js'
-import type { LiveSpeechCursor } from '../../shared.js'
+} from '../shared.js'
+import type { LiveSpeechCursor } from '../shared.js'
 import { streamPcmAudio } from '../../pcm-stream.js'
 import { PcmAudioQueue } from './pcm-audio-queue.js'
 import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
@@ -624,7 +624,24 @@ export class LiveSpeechController {
         let firstChunk = true
         let captionStarted = false
         const caption = () => readingCaptionText(job.text.join(''), this.selection)
-        job.updateCaption = () => { if (captionStarted) this.captions?.update(this, captionSource, caption()) }
+        let shownCaption = ''
+        job.updateCaption = () => {
+          if (!captionStarted) return
+          const next = caption()
+          if (!next) return
+          if (!shownCaption) {
+            this.captions?.show(this, job.batch.sessionId, next, {
+              source: captionSource,
+              analyser: () => this.audio.getAnalyser(),
+              rate,
+              elapsed: progress!.elapsed,
+              duration: () => job.audioComplete ? progress!.duration() : Number.NaN,
+            })
+          } else {
+            this.captions?.update(this, captionSource, next)
+          }
+          shownCaption = next
+        }
         job.stream = new DuplexPcmStream(this.selection, signal, async bytes => {
           if (!this.isCurrentStream(generation, signal)) return
           job.batch.pcm.appendBytes(bytes)
@@ -632,13 +649,16 @@ export class LiveSpeechController {
             this.startCaption(() => {
               if (!this.isCurrentStream(generation, signal)) return
               captionStarted = true
-              this.captions?.show(this, job.batch.sessionId, caption(), {
-                source: captionSource,
-                analyser: () => this.audio.getAnalyser(),
-                rate,
-                elapsed: progress.elapsed,
-                duration: () => job.audioComplete ? progress.duration() : Number.NaN,
-              })
+              shownCaption = caption()
+              if (shownCaption) {
+                this.captions?.show(this, job.batch.sessionId, shownCaption, {
+                  source: captionSource,
+                  analyser: () => this.audio.getAnalyser(),
+                  rate,
+                  elapsed: progress.elapsed,
+                  duration: () => job.audioComplete ? progress.duration() : Number.NaN,
+                })
+              }
             })
           } : undefined
           firstChunk = false

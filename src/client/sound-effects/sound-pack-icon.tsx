@@ -14,7 +14,7 @@ import {
   TbSettings,
   TbUfo,
 } from 'react-icons/tb'
-import type { SoundPack } from '../../shared.js'
+import type { SoundPack } from '../shared.js'
 
 const SOUND_PACK_ICONS: Record<SoundPack, IconType> = {
   minimal: TbCircle,

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { Switch, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import { RiPlugLine } from 'react-icons/ri'
-import { TTS_MOSS_LOGO_ASSET_ROUTE, TTS_PROVIDER_LOGO_ASSET_ROUTES } from '../../shared.js'
+import { TTS_MOSS_LOGO_ASSET_ROUTE, TTS_PROVIDER_LOGO_ASSET_ROUTES } from '../shared.js'
 import { availableTtsProviders } from '../../types/providers.js'
 import type { OptionalTtsProvider } from '../../types/providers.js'
 import type { Translate } from '../localization.js'

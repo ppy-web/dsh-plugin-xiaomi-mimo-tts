@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BREEZE_VOICE_PRESETS } from '../../../types/providers.js'
 import type { Translate } from '../../localization.js'
 import { VoicePresetPicker } from './built-in-voice-picker.js'
@@ -17,6 +17,7 @@ export function BreezeVoicePicker({ value, disabled, t, onChange }: {
 }): ReactElement {
   const known = BREEZE_VOICE_PRESETS.some(item => item.value === value)
   const [custom, setCustom] = useState(!known)
+  useEffect(() => { if (known) setCustom(false) }, [known])
   const customSelected = custom || !known
   const customLabel = t('settings.breezeCustomVoice')
   const presets: VoicePickerPreset[] = [

@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef, useState, type ReactElement } from 'react'
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react'
 import { AUDIO_RESPONSE_STYLES, type AudioResponseStyle } from '../../types/settings.js'
-import { AuraField } from './voiceorbs/orbe/aura-field/aura-field.js'
-import { SiriWaveLine } from './voiceorbs/orbe/siri-wave-line/siri-wave-line.js'
 import type { OrbState } from './voiceorbs/lib/orb-state.js'
-import { SiriSheet } from './voiceorbs/orbe/siri-sheet/siri-sheet.js'
 import type { ReadingCaptions } from '../playback/reading-captions.js'
+
+const AuraField = lazy(() => import('./voiceorbs/orbe/aura-field/aura-field.js').then(module => ({ default: module.AuraField })))
+const SiriWaveLine = lazy(() => import('./voiceorbs/orbe/siri-wave-line/siri-wave-line.js').then(module => ({ default: module.SiriWaveLine })))
+const SiriSheet = lazy(() => import('./voiceorbs/orbe/siri-sheet/siri-sheet.js').then(module => ({ default: module.SiriSheet })))
 
 const STYLE_NAMES: Record<AudioResponseStyle, string> = {
   'aura-field': 'Aura Field',
@@ -29,6 +30,10 @@ export function CaptionVisual({ variant, captions, state = 'speaking', preview =
   const samples = useRef(new Uint8Array(256))
   useEffect(() => {
     if (state === 'listening') return
+    if (state === 'idle' && !preview && !captions?.getAnalyser()) {
+      level.current = 0
+      return
+    }
     let frame = 0
     const update = (): void => {
       const analyser = captions?.getAnalyser()
@@ -78,7 +83,9 @@ export function CaptionVisual({ variant, captions, state = 'speaking', preview =
     data-hoverable={hoverable || undefined} data-hovered={hovered || undefined}
     onPointerEnter={hoverable ? event => { if (event.pointerType === 'mouse') setHovered(true) } : undefined}
     onPointerLeave={hoverable ? () => setHovered(false) : undefined}>
-    {variant === 'aura-field' ? <AuraField {...props} /> : variant === 'siri-wave-line' ? <SiriWaveLine {...props} /> : <SiriSheet {...props} />}
+    <Suspense fallback={null}>
+      {variant === 'aura-field' ? <AuraField {...props} /> : variant === 'siri-wave-line' ? <SiriWaveLine {...props} /> : <SiriSheet {...props} />}
+    </Suspense>
     {control ? <button type="button" className="xmimo-caption-voice-button" aria-label={control.label}
       aria-disabled={control.disabled || undefined} onMouseDown={event => { event.preventDefault() }}
       onClick={() => { if (!control.disabled) control.onClick() }} /> : null}
