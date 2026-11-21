@@ -82,7 +82,7 @@ async function withApi(run, options = {}) {
   const prefix = options.prefix ?? ''
   const server = createServer((req, res) => {
     const path = new URL(req.url, 'http://localhost').pathname.slice(prefix.length)
-    const route = routes.find(route => route.kind === 'exact' ? route.path === path : path.startsWith(route.path))
+    const route = routes.find(route => route.kind === 'exact' ? route.path === path : path === route.path || path.startsWith(`${route.path}/`))
     if (!route) { res.statusCode = 404; res.end(); return }
     Promise.resolve(route.handler(req, res)).catch(() => { res.statusCode = 500; res.end() })
   })
@@ -318,6 +318,34 @@ test('unloading withdraws routes and removes only published files, including lat
     await assert.rejects(readFile(late.path), { code: 'ENOENT' })
     assert.equal(await readFile(unrelated, 'utf8'), 'keep')
   })
+})
+
+test('download capacity preserves existing links and releases rejected artifacts', async () => {
+  const downloads = new AudioDownloads()
+  const artifact = { size: 1, format: 'wav', contentType: 'audio/wav', async remove() {} }
+  try {
+    const first = await downloads.publish(artifact)
+    for (let index = 1; index < 256; index += 1) await downloads.publish(artifact)
+    let removed = false
+    await assert.rejects(downloads.publish({ ...artifact, async remove() { removed = true } }), { code: 'speech-download-limit' })
+    assert.equal(removed, true)
+    assert.equal(await downloads.get(first.audioId), artifact)
+  } finally { await downloads.dispose() }
+})
+
+test('an export awaiting expired-file cleanup cannot publish after disposal', async () => {
+  let now = 0
+  const downloads = new AudioDownloads(() => now)
+  const cleanup = Promise.withResolvers()
+  const artifact = { size: 1, format: 'wav', contentType: 'audio/wav', remove: () => cleanup.promise }
+  for (let index = 0; index < 256; index += 1) await downloads.publish(artifact)
+  now += SPEECH_FILE_TTL_MS
+  let removed = false
+  const pending = assert.rejects(downloads.publish({ ...artifact, async remove() { removed = true } }), { code: 'speech-service-disposed' })
+  await downloads.dispose()
+  cleanup.resolve()
+  await pending
+  assert.equal(removed, true)
 })
 
 test('disconnecting an export request cancels synthesis and does not publish an artifact', async () => {

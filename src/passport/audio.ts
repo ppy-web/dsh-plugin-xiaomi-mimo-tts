@@ -34,6 +34,7 @@ export function playbackPcm(wave: Buffer, maxSeconds: number): Buffer {
   if (!pcm?.length || !rate || !channels || pcm.length % (channels * 2)) throw invalid()
   const frames = pcm.length / (channels * 2)
   if (frames / rate > maxSeconds) throw new Error('passport-reply-too-long')
+  if (rate === 24000 && channels === 1) return Buffer.from(pcm)
   const output = Buffer.alloc(Math.max(1, Math.floor(frames * 24000 / rate)) * 2)
   const sample = (index: number) => {
     const at = Math.min(frames - 1, index) * channels * 2
@@ -68,9 +69,10 @@ export class PcmUtterances {
     private readonly captured?: (pcm: Buffer, first: boolean) => void,
     private readonly discarded?: (code: string) => void) {}
 
-  reset(): void {
+  reset(preserveDiscarding = false): void {
     this.remainder = Buffer.alloc(0); this.pre = []; this.chunks = []
-    this.frames = 0; this.speechFrames = 0; this.quietFrames = 0; this.discarding = false
+    this.frames = 0; this.speechFrames = 0; this.quietFrames = 0
+    if (!preserveDiscarding) this.discarding = false
     this.streaming = false
   }
 

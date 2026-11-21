@@ -17,10 +17,11 @@ export class PcmQueue implements AsyncIterable<Uint8Array> {
     if (!bytes.length) return
     this.chunks.push(Buffer.from(bytes)); this.size += bytes.length; this.wake.resolve()
   }
-  end(error?: unknown): void { this.done = true; this.error = error; this.wake.resolve() }
+  end(error?: unknown): void { this.done = true; this.error = error; this.wake.resolve(); this.space.resolve() }
   async write(bytes: Uint8Array): Promise<void> {
     for (let offset = 0; offset < bytes.length;) {
       this.signal.throwIfAborted()
+      if (this.done) throw new TtsProviderError('stream-closed')
       if (this.size >= this.limit) { await abortable(this.space.promise, this.signal); continue }
       const length = Math.min(bytes.length - offset, this.limit - this.size)
       if (length <= 0) throw new TtsProviderError('stream-buffer-limit')
@@ -38,6 +39,6 @@ export class PcmQueue implements AsyncIterable<Uint8Array> {
         await abortable(this.wake.promise, this.signal)
         this.wake = Promise.withResolvers<void>()
       }
-    } finally { this.chunks = []; this.size = 0 }
+    } finally { this.done = true; this.chunks = []; this.size = 0; this.space.resolve() }
   }
 }

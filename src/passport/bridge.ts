@@ -17,6 +17,10 @@ import { performance } from 'node:perf_hooks'
 import type { CaptureOptions } from './audio.js'
 import { isPassportAccessToken, isPassportLanAddress } from '../types/passport.js'
 import type { PassportConnectionStatus } from '../types/passport.js'
+import { PASSPORT_ASR_ERROR_CODES } from './asr-error.js'
+
+const AUTH_WINDOW_MS = 60_000
+const AUTH_MAX_IP_FAILURES = 10
 
 export interface PassportOptions extends CaptureOptions {
   host: string
@@ -50,6 +54,7 @@ export class PassportBridge {
   private readonly sockets = new Set<WebSocket>()
   private readonly connections = new Set<PassportConnection>()
   private readonly pending = new Set<Promise<unknown>>()
+  private readonly authFailures = new Map<string, { count: number; resetAt: number }>()
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES, perMessageDeflate: false })
   private current: PassportConnection | undefined
   private server: Server | undefined
@@ -115,6 +120,32 @@ export class PassportBridge {
     if (session === this.session.agent?.session) this.current?.observe(event)
   }
 
+  private isAuthRateLimited(address = ''): boolean {
+    const now = Date.now()
+    const key = address || 'unknown'
+    const entry = this.authFailures.get(key)
+    return entry !== undefined && entry.resetAt > now && entry.count >= AUTH_MAX_IP_FAILURES
+  }
+
+  private recordAuthFailure(address = ''): void {
+    const now = Date.now()
+    const key = address || 'unknown'
+    const existing = this.authFailures.get(key)
+    if (!existing || existing.resetAt <= now) {
+      if (this.authFailures.size >= 256) {
+        const oldest = this.authFailures.keys().next().value
+        if (oldest !== undefined) this.authFailures.delete(oldest)
+      }
+      this.authFailures.set(key, { count: 1, resetAt: now + AUTH_WINDOW_MS })
+    } else {
+      existing.count += 1
+    }
+  }
+
+  private clearAuthFailure(address = ''): void {
+    if (address) this.authFailures.delete(address)
+  }
+
   private authorized(header: string | undefined, address = ''): boolean {
     if (/^\d{4}$/u.test(this.options.accessToken) && !isPassportLanAddress(address)) return false
     const expected = Buffer.from(`Bearer ${this.options.accessToken}`), supplied = Buffer.from(header ?? '')
@@ -126,17 +157,33 @@ export class PassportBridge {
     if (!isPassportAccessToken(this.options.accessToken)) throw new Error('passport-token-required')
     const server = createServer((req, res) => {
       res.setHeader('cache-control', 'no-store')
-      if (req.headers.origin || !this.authorized(req.headers.authorization, req.socket.remoteAddress)) { res.writeHead(401); res.end(); return }
+      const address = req.socket.remoteAddress ?? ''
+      if (this.isAuthRateLimited(address)) { res.setHeader('connection', 'close'); res.writeHead(429); res.end(); return }
+      if (req.headers.origin || !this.authorized(req.headers.authorization, address)) {
+        this.recordAuthFailure(address)
+        res.setHeader('connection', 'close')
+        res.writeHead(401)
+        res.end()
+        return
+      }
+      this.clearAuthFailure(address)
       if (req.method !== 'GET' || req.url !== '/api/health') { res.writeHead(404); res.end(); return }
       res.setHeader('content-type', 'application/json')
       res.end(JSON.stringify({ ok: true, adapter: 'passport', protocol_version: '7.0.0' }))
     })
+    server.maxConnections = 16
     this.server = server
     server.on('connection', socket => { socket.setTimeout(15000, () => socket.destroy()) })
     server.on('upgrade', (req, socket, head) => {
-      if (this.disposed || req.url !== '/api/realtime' || req.headers.origin || !this.authorized(req.headers.authorization, req.socket.remoteAddress)) {
+      const address = req.socket.remoteAddress ?? ''
+      if (this.isAuthRateLimited(address)) {
+        socket.end('HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n'); return
+      }
+      if (this.disposed || req.url !== '/api/realtime' || req.headers.origin || !this.authorized(req.headers.authorization, address)) {
+        this.recordAuthFailure(address)
         socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n'); return
       }
+      this.clearAuthFailure(address)
       if (this.sockets.size >= 2) { socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n'); return }
       this.wss.handleUpgrade(req, socket, head, ws => {
         if (socket instanceof Socket) socket.setTimeout(0)
@@ -247,8 +294,8 @@ class PassportConnection {
         this.receive(value as Event)
       } catch (error) {
         const code = error instanceof Error ? error.message : ''
-        if (/^passport-(?:recording-too-long|asr-[a-z-]+|recognition-cancelled|recognition-failed|no-speech)$/u.test(code)) {
-          this.fail(code); this.interrupt(false)
+        if (PASSPORT_ASR_ERROR_CODES.has(code) || ['passport-recording-too-long', 'passport-recognition-cancelled', 'passport-no-speech'].includes(code)) {
+          this.fail(code); this.interrupt(false, code === 'passport-recording-too-long')
         } else { this.fail('passport-invalid-event'); this.close(1008, 'invalid-event') }
       }
     })
@@ -262,13 +309,18 @@ class PassportConnection {
     this.ws.send(JSON.stringify({ type, event_id: randomUUID(), ...fields }))
   }
 
+  private trySend(type: string, fields: Record<string, unknown> = {}): boolean {
+    try { this.send(type, fields); return true }
+    catch { return false }
+  }
+
   private receive(event: Event): void {
     if (event.type === 'session.hello') {
       if (this.hello) throw new Error('passport-duplicate-hello')
       this.hello = true
       void this.bridge.track(this.negotiate(event)).catch(error => {
         if (!this.disposed) {
-          const code = error instanceof Error && (/^passport-asr-[a-z-]+$/u.test(error.message) || ['passport-protocol-mismatch',
+          const code = error instanceof Error && (PASSPORT_ASR_ERROR_CODES.has(error.message) || ['passport-protocol-mismatch',
             'passport-preset-unavailable', 'passport-preset-changed'].includes(error.message)) ? error.message : 'passport-session-unavailable'
           this.fail(code); this.close(1013, 'service-unavailable')
         }
@@ -276,8 +328,8 @@ class PassportConnection {
       return
     }
     if (!this.available) return
-    if (event.type === 'session.ping') { this.send('session.pong', { request_event_id: event.event_id }); return }
-    if (event.type === 'wake') { this.send('voice.state', { state: this.busy ? 'processing' : 'listening' }); return }
+    if (event.type === 'session.ping') { this.trySend('session.pong', { request_event_id: event.event_id }); return }
+    if (event.type === 'wake') { this.trySend('voice.state', { state: this.busy ? 'processing' : 'listening' }); return }
     if (event.type === 'input.mute') { this.muted = true; this.interrupt(); return }
     if (event.type === 'input.unmute') { this.muted = false; this.capture.reset(); return }
     if (event.type === 'response.cancel') { this.interrupt(); return }
@@ -290,7 +342,7 @@ class PassportConnection {
       this.manualCapture = true
       this.transcript = ''; this.replyText = ''; this.phase = 'capturing'
       this.manualId = event.captureId
-      this.send('voice.ptt.started', { captureId: this.manualId })
+      this.trySend('voice.ptt.started', { captureId: this.manualId })
       return
     }
     if (event.type === 'input_audio_buffer.commit' && this.manualCapture) {
@@ -300,7 +352,7 @@ class PassportConnection {
       this.manualId = ''
       const wave = this.capture.commit()
       if (wave) this.recognize(wave)
-      else if (this.available && !this.disposed) { this.phase = 'idle'; this.send('voice.ptt.empty', { captureId }) }
+      else if (this.available && !this.disposed) { this.phase = 'idle'; this.trySend('voice.ptt.empty', { captureId }) }
       return
     }
     if (event.type === 'input_audio_buffer.commit' && this.pushToTalk && event.captureId !== undefined) return
@@ -340,13 +392,13 @@ class PassportConnection {
     this.feedback = capabilities.includes('voice.feedback')
     this.pushToTalk = capabilities.includes('input.push_to_talk')
     if (this.bridge.options.deviceId && this.deviceId !== this.bridge.options.deviceId) { this.close(4003, 'device-rejected'); return }
-    if (!this.bridge.claim(this)) { this.send('voice.ownership', { state: 'busy' }); this.close(4002, 'occupied'); return }
+    if (!this.bridge.claim(this)) { this.trySend('voice.ownership', { state: 'busy' }); this.close(4002, 'occupied'); return }
     this.bridge.checkRecognition()
     const { agent } = await this.bridge.session.acquire()
     if (this.disposed) return
+    clearTimeout(this.handshake)
     this.muted = (event.connection as { input_enabled?: unknown } | undefined)?.input_enabled !== true
     this.available = true
-    clearTimeout(this.handshake)
     this.send('session.ready', { protocol_version: '7.0.0', session_id: agent.id,
       request_event_id: event.event_id, capabilities: ['input.audio', 'playback.receipts', ...(this.feedback ? ['voice.feedback'] : []), ...(this.pushToTalk ? ['input.push_to_talk'] : [])] })
     this.send('voice.ready', { inputSampleRate: 16000, outputSampleRate: 24000 })
@@ -358,7 +410,7 @@ class PassportConnection {
     const signal = this.cycle.signal
     this.timeout = setTimeout(() => { this.fail('passport-request-timeout'); this.interrupt() }, this.bridge.options.requestTimeoutMs)
     this.timeout.unref()
-    this.send('voice.state', { state: 'processing' })
+    this.trySend('voice.state', { state: 'processing' })
     this.progress('recognizing'); this.mark('capture-ended')
     const run = async () => {
       this.bridge.checkRecognition()
@@ -374,7 +426,7 @@ class PassportConnection {
       this.bridge.session.submit(text.trim())
     }
     void this.bridge.track(run()).catch(error => { if (!signal.aborted) {
-      const code = error instanceof Error && /^(?:passport-asr-[a-z-]+|passport-no-speech)$/u.test(error.message) ? error.message : 'passport-recognition-failed'
+      const code = error instanceof Error && (PASSPORT_ASR_ERROR_CODES.has(error.message) || error.message === 'passport-no-speech') ? error.message : 'passport-recognition-failed'
       this.fail(code); this.interrupt(false)
     } })
   }
@@ -415,8 +467,7 @@ class PassportConnection {
     // A cancellation can reject the receipt while paced sends are still in progress.
     void receipt.promise.catch(() => {})
     const aborted = () => receipt.reject(new Error('passport-playback-cancelled'))
-    const timeout = setTimeout(() => receipt.reject(new Error('passport-playback-timeout')), this.bridge.options.maxReplySeconds * 1000 + 15000)
-    timeout.unref()
+    let receiptTimer: ReturnType<typeof setTimeout> | undefined
     this.playback = { id, doneSent: false, resolve: () => receipt.resolve(), reject: receipt.reject }
     signal.addEventListener('abort', aborted, { once: true })
     let first = true
@@ -430,6 +481,8 @@ class PassportConnection {
       if (this.playback?.id !== id) throw new Error('passport-playback-cancelled')
       this.playback.doneSent = true
       this.send('audio.done', { responseId: id })
+      receiptTimer = setTimeout(() => receipt.reject(new Error('passport-playback-timeout')), 15000)
+      receiptTimer.unref()
       await receipt.promise
       this.mark('playback-ended')
       signal.throwIfAborted()
@@ -443,7 +496,7 @@ class PassportConnection {
       }
       throw error
     } finally {
-      clearTimeout(timeout)
+      clearTimeout(receiptTimer)
       signal.removeEventListener('abort', aborted)
       if (this.playback?.id === id) this.playback = undefined
     }
@@ -452,25 +505,23 @@ class PassportConnection {
   private fail(code: string): void {
     this.bridge.report(code)
     if (!this.disposed && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        if (this.feedback && this.turnId) this.result('failed', code)
-        else this.send('error', { code, message: code })
-      } catch { this.close(1011, 'transport-error') }
+      if (this.feedback && this.turnId) this.result('failed', code)
+      else if (!this.trySend('error', { code, message: code })) this.close(1011, 'transport-error')
     }
   }
 
-  private finish(): void {
+  private finish(preserveDiscarding = false): void {
     if (!this.outcomeSent && this.turnId) this.result('completed')
     clearTimeout(this.timeout)
     this.input?.cancel(); this.input = undefined
     this.turnId = ''
     this.phase = 'idle'
     this.busy = false; this.submitted = false; this.turn = undefined; this.hasReply = false; this.manualCapture = false; this.manualId = ''
-    this.capture.reset()
-    if (this.available && !this.disposed && this.ws.readyState === WebSocket.OPEN) this.send('voice.state', { state: 'listening' })
+    this.capture.reset(preserveDiscarding)
+    if (this.available && !this.disposed && this.ws.readyState === WebSocket.OPEN) this.trySend('voice.state', { state: 'listening' })
   }
 
-  private interrupt(notify = true): void {
+  private interrupt(notify = true, preserveDiscarding = false): void {
     if (notify && this.turnId) this.result('cancelled')
     this.cycle.abort()
     // A late cancellation receipt for an interrupted response must never cancel
@@ -479,8 +530,8 @@ class PassportConnection {
     const agent = this.bridge.session.agent
     if (agent) this.speech.release(agent)
     if (this.submitted) this.bridge.session.cancel()
-    if (this.available && !this.disposed) this.send('playback.clear')
-    this.finish()
+    if (this.available && !this.disposed) this.trySend('playback.clear')
+    this.finish(preserveDiscarding)
   }
 
   private mark(stage: string): void {
@@ -488,12 +539,12 @@ class PassportConnection {
   }
   private progress(phase: NonNullable<PassportConnectionStatus['activity']>['phase']): void {
     this.phase = phase
-    if (this.feedback) this.send('voice.progress', { turnId: this.turnId, phase })
+    if (this.feedback) this.trySend('voice.progress', { turnId: this.turnId, phase })
   }
   private result(status: string, code?: string): void {
     if (this.outcomeSent) return
     this.outcomeSent = true
-    if (this.feedback && !this.disposed) this.send('voice.result', { turnId: this.turnId, status, ...(code ? { code } : {}) })
+    if (this.feedback && !this.disposed) this.trySend('voice.result', { turnId: this.turnId, status, ...(code ? { code } : {}) })
     this.mark(status)
   }
 

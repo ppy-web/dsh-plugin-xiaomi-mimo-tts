@@ -30,6 +30,9 @@ export function buildQqbotPersona(root = whalePackageRoot(), persona: WhalePerso
 export async function sendQqbotFile(ctx: Context, path: string, context: SpeechDeliveryContext): Promise<SpeechDeliveryResult> {
   const { agent, signal } = context
   signal.throwIfAborted()
+  if (!path || path.includes('\0') || agent.session?.header?.origin === 'subagent') {
+    throw new TtsProviderError('qqbot-agent-required', 'Send files from a QQ agent conversation.', 400)
+  }
   ctx.logger.debug(`dsh-xiaomi-tts: QQ file delivery start agent=${agent.id} file=${path}`)
   if (!ctx.tools.get(QQBOT_FILE_TOOL, agent)) throw new TtsProviderError('qqbot-send-tool-unavailable', 'Enable QQBot before sending files.', 409)
   const pipeline = new ToolExecutionPipeline(ctx, { get: (name, scope) => ctx.tools.get(name, scope) })

@@ -38,13 +38,92 @@ export function normalizeBaseURL(value: string): string {
 
 /** Restrict browser management routes to the host origin and approved desktop writes. */
 export function sameOriginRequest(req: IncomingMessage, write = false): boolean {
-  const origin = req.headers.origin
-  let allowed = origin === undefined && (!write || (req.headers['sec-fetch-site'] === undefined && req.headers[TTS_DESKTOP_WRITE_HEADER] === '1'))
+  const headers = req.headers ?? {}
+  const origin = headers.origin
+  let allowed = origin === undefined && (!write || (headers['sec-fetch-site'] === undefined && headers[TTS_DESKTOP_WRITE_HEADER] === '1'))
   if (origin !== undefined) {
     try {
       const url = new URL(origin)
-      allowed = ['http:', 'https:'].includes(url.protocol) && url.host === req.headers.host
+      allowed = ['http:', 'https:'].includes(url.protocol) && url.host === headers.host
     } catch { allowed = false }
   }
-  return allowed && !['cross-site', 'same-site'].includes(String(req.headers['sec-fetch-site']))
+  return allowed && !['cross-site', 'same-site'].includes(String(headers['sec-fetch-site']))
+}
+
+export function isJsonContentType(req: IncomingMessage): boolean {
+  const value = req.headers?.['content-type']
+  return typeof value === 'string' && value.split(';')[0]!.trim().toLowerCase() === 'application/json'
+}
+
+type LimitedBodyResponse = {
+  body: ReadableStream<Uint8Array> | {
+    getReader(): {
+      read(): Promise<{ done: boolean; value?: Uint8Array }>
+      cancel(reason?: unknown): Promise<unknown>
+      releaseLock(): void
+    }
+  } | null
+  arrayBuffer(): Promise<ArrayBuffer>
+  text(): Promise<string>
+}
+
+export async function readLimitedResponseBytes(
+  response: LimitedBodyResponse,
+  limit: number,
+  createLimitError: () => Error = () => new Error('response-too-large'),
+): Promise<Buffer> {
+  if (!response.body) {
+    const bytes = Buffer.from(await response.arrayBuffer())
+    if (bytes.length > limit) throw createLimitError()
+    return bytes
+  }
+  const reader = response.body.getReader()
+  const chunks: Buffer[] = []
+  let total = 0
+  try {
+    for (;;) {
+      const next = await reader.read()
+      if (next.done) break
+      if (!next.value) continue
+      const chunk = Buffer.from(next.value)
+      total += chunk.length
+      if (total > limit) {
+        await reader.cancel().catch(() => {})
+        throw createLimitError()
+      }
+      chunks.push(chunk)
+    }
+    return Buffer.concat(chunks, total)
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+export async function readLimitedResponseText(response: LimitedBodyResponse, limit: number): Promise<string> {
+  if (!response.body) {
+    const text = await response.text()
+    return Buffer.byteLength(text) > limit ? new TextDecoder().decode(Buffer.from(text).subarray(0, limit)) : text
+  }
+  const reader = response.body.getReader()
+  const chunks: Buffer[] = []
+  let total = 0
+  try {
+    for (;;) {
+      const next = await reader.read()
+      if (next.done) break
+      if (!next.value) continue
+      const chunk = Buffer.from(next.value)
+      const remaining = limit - total
+      if (chunk.length > remaining) {
+        if (remaining > 0) chunks.push(chunk.subarray(0, remaining))
+        await reader.cancel().catch(() => {})
+        break
+      }
+      chunks.push(chunk)
+      total += chunk.length
+    }
+    return new TextDecoder('utf-8', { fatal: false }).decode(Buffer.concat(chunks))
+  } finally {
+    reader.releaseLock()
+  }
 }

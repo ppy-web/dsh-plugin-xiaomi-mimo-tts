@@ -33,11 +33,14 @@ test('key status reads each provider with legacy profile fields without exposing
     const handler = routes.get('/plugins/xiaomi-mimo-tts/api-key-status')
     for (const provider of ['xiaomi', 'doubao', 'breeze', 'deepseek', undefined, 'invalid']) {
       const response = { statusCode: 0, setHeader() {}, end(value) { this.body = JSON.parse(value) } }
-      handler({ method: 'GET', url: `/plugins/xiaomi-mimo-tts/api-key-status${provider ? `?provider=${provider}` : ''}` }, response)
+      handler({ method: 'GET', headers: {}, url: `/plugins/xiaomi-mimo-tts/api-key-status${provider ? `?provider=${provider}` : ''}` }, response)
       assert.equal(response.statusCode, provider === 'invalid' ? 400 : 200)
       if (provider !== 'invalid') assert.deepEqual(response.body, { provider: provider ?? 'doubao', configured: true, supported: true })
       assert.equal(JSON.stringify(response.body).includes('private'), false)
     }
+    const denied = { statusCode: 0, setHeader() {}, end(value) { this.body = JSON.parse(value) } }
+    handler({ method: 'GET', headers: { origin: 'https://foreign.example' }, url: '/plugins/xiaomi-mimo-tts/api-key-status' }, denied)
+    assert.equal(denied.statusCode, 403)
   } finally { for (const dispose of disposers.reverse()) dispose() }
 })
 
@@ -73,7 +76,9 @@ async function withRoutes(run, connectDoubao, extra = {}, connectDeepseek) {
   }
 }
 
-const post = (base, path, body) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+const post = (base, path, body, extra = { 'x-dsh-speech-adapter': '1' }) => fetch(base + path, {
+  method: 'POST', headers: { 'content-type': 'application/json', ...extra }, body: JSON.stringify(body),
+})
 
 test('Doubao HTTP routes return playable WAV and compatible PCM SSE without exposing the key', async () => {
   await withDoubaoServer(async ({ connect, frames }) => withRoutes(async ({ base }) => {

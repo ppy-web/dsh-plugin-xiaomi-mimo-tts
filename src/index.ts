@@ -33,7 +33,7 @@ import {
   ANNOUNCEMENT_SOURCES,
   isSupportedTtsApiKey,
 } from './types/index.js'
-import { registerStaticAsset, json } from './host/index.js'
+import { registerStaticAsset, json, sameOriginRequest } from './host/index.js'
 import { registerSynthesisRoutes } from './host/synthesis-routes.js'
 import { registerMossRoutes } from './host/moss-routes.js'
 import { registerVoiceInputProviders } from './host/voice-input-providers.js'
@@ -298,14 +298,14 @@ export function apply(ctx: Context, config: Config): void {
   registerStaticAsset(ctx, {
     path: TTS_TOGGLE_CHARACTER_ASSET_ROUTE,
     data: toggleCharacterAsset,
-    contentType: 'image/png',
+    contentType: 'image/webp',
     description: 'character toggle asset',
   })
 
   registerStaticAsset(ctx, {
     path: TTS_API_KEY_WHALE_ASSET_ROUTE,
     data: apiKeyWhaleAsset,
-    contentType: 'image/png',
+    contentType: 'image/webp',
     description: 'API key whale asset',
   })
 
@@ -313,6 +313,10 @@ export function apply(ctx: Context, config: Config): void {
     kind: 'exact',
     path: TTS_API_KEY_STATUS_ROUTE,
     handler(req, res) {
+      if (!sameOriginRequest(req)) {
+        json(res, 403, { error: 'cross-origin-denied' })
+        return
+      }
       if (req.method !== 'GET') {
         res.setHeader('allow', 'GET')
         json(res, 405, { error: 'method-not-allowed' })

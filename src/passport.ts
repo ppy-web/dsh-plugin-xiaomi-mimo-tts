@@ -8,7 +8,9 @@ import { PassportBridge } from './passport/bridge.js'
 import { PassportSession } from './passport/session.js'
 import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_ASR_TEST_ROUTE, PASSPORT_ASR_PROVIDERS, PASSPORT_NUMBER_FIELDS, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from './types/passport.js'
 import type { PassportSettings } from './types/passport.js'
-import { json, readJsonBody, sameOriginRequest } from './host/http.js'
+import { json, readJsonBody, sameOriginRequest, isJsonContentType } from './host/http.js'
+import { registerStaticAsset } from './host/assets.js'
+import { PASSPORT_ASR_ERROR_CODES } from './passport/asr-error.js'
 import { passportAddresses } from './passport/network.js'
 import { hostRecognizer } from './passport/recognition.js'
 
@@ -19,9 +21,6 @@ export { pcmWave, playbackPcm, PcmUtterances } from './passport/audio.js'
 export { PassportRecognition, hostRecognizer } from './passport/recognition.js'
 
 export const name = 'speech-delivery-passport'
-const ASR_TEST_ERRORS = new Set(['passport-asr-unavailable', 'passport-asr-disabled', 'passport-asr-key-required', 'passport-asr-auth-failed',
-  'passport-asr-permission-denied', 'passport-asr-quota-exceeded', 'passport-asr-rate-limited', 'passport-asr-timeout',
-  'passport-asr-network-failed', 'passport-asr-invalid-response', 'passport-asr-input-overflow', 'passport-recognition-failed'])
 // Keep the configuration owner alive before ASR or the conversation services are ready.
 export const inject: string[] = []
 const messages = (language: string) => JSON.parse(readFileSync(new URL(`./locale/passport/${language}.json`, import.meta.resolve('dsh-xiaomi-tts/package.json')), 'utf8')).config
@@ -53,18 +52,29 @@ export function apply(ctx: Context, config: Config): void {
   let lastError: string | undefined
   let sessionError: string | undefined
   ctx.inject(['webServer'], child => {
+    const asrTestControllers = new Set<AbortController>()
+    let asrTestsClosed = false
+    child.effect(() => () => {
+      asrTestsClosed = true
+      for (const controller of asrTestControllers) controller.abort()
+      asrTestControllers.clear()
+    }, 'speech-delivery-passport: cleanup ASR tests')
     child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_ASR_TEST_ROUTE, async handler(req, res) {
       if (req.method !== 'POST') { res.setHeader('allow', 'POST'); json(res, 405, { error: 'method-not-allowed' }); return }
       if (!sameOriginRequest(req, true)) { json(res, 403, { error: 'cross-origin-denied' }); return }
-      if (!String(req.headers['content-type']).startsWith('application/json')) { json(res, 415, { error: 'invalid-content-type' }); return }
+      if (!isJsonContentType(req)) { json(res, 415, { error: 'invalid-content-type' }); return }
       let source: PassportSettings['asrProvider']
       try {
         const body = await readJsonBody(req, 1024) as Record<string, unknown>
         const selected = PASSPORT_ASR_PROVIDERS.find(provider => provider === body?.source)
         if (!selected || Object.keys(body).length !== 1) throw new Error('invalid')
         source = selected
-      } catch { json(res, 400, { error: 'passport-asr-test-invalid' }); return }
+      } catch { if (!res.destroyed) json(res, 400, { error: 'passport-asr-test-invalid' }); return }
+      if (res.destroyed) return
+      if (asrTestsClosed) { json(res, 503, { error: 'passport-asr-unavailable' }); return }
+      if (asrTestControllers.size >= 4) { json(res, 429, { error: 'passport-asr-rate-limited' }); return }
       const controller = new AbortController()
+      asrTestControllers.add(controller)
       const timer = setTimeout(() => controller.abort(), 15000)
       const close = () => { if (!res.writableEnded) controller.abort() }
       res.once('close', close)
@@ -88,14 +98,15 @@ export function apply(ctx: Context, config: Config): void {
         if (code === 'passport-no-speech' && !controller.signal.aborted) json(res, 200, { ok: true })
         else {
           const details = error instanceof Error ? error as Error & { upstreamStatus?: unknown; upstreamCode?: unknown } : undefined
-          json(res, 502, { error: controller.signal.aborted ? 'passport-asr-timeout' : ASR_TEST_ERRORS.has(code) ? code : error instanceof TypeError ? 'passport-asr-network-failed' : 'passport-recognition-failed',
+          json(res, 502, { error: controller.signal.aborted ? 'passport-asr-timeout' : PASSPORT_ASR_ERROR_CODES.has(code) ? code : error instanceof TypeError ? 'passport-asr-network-failed' : 'passport-recognition-failed',
             ...(typeof details?.upstreamStatus === 'number' && Number.isInteger(details.upstreamStatus) && details.upstreamStatus >= 100 && details.upstreamStatus <= 599 ? { upstreamStatus: details.upstreamStatus } : {}),
             ...(typeof details?.upstreamCode === 'number' && Number.isSafeInteger(details.upstreamCode) && details.upstreamCode >= 0 && details.upstreamCode <= 0xffffffff ? { upstreamCode: details.upstreamCode } : {}) })
         }
-      } finally { clearTimeout(timer); res.off('close', close); input?.cancel() }
+      } finally { clearTimeout(timer); res.off('close', close); asrTestControllers.delete(controller); input?.cancel() }
     } }))
     child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_PRESETS_ROUTE, async handler(req, res) {
       if (req.method !== 'GET') { res.setHeader('allow', 'GET'); json(res, 405, { error: 'method-not-allowed' }); return }
+      if (!sameOriginRequest(req)) { json(res, 403, { error: 'cross-origin-denied' }); return }
       try {
         const registry = ctx.get('agentPresets')
         if (!registry) { json(res, 503, { error: 'passport-preset-unavailable' }); return }
@@ -103,11 +114,14 @@ export function apply(ctx: Context, config: Config): void {
         json(res, 200, { presets })
       } catch { json(res, 503, { error: 'passport-preset-unavailable' }) }
     } }))
-    for (const [path, filename] of [[PASSPORT_DEVICE_ASSET_ROUTE, 'passport-device.webp'], [PASSPORT_SCREEN_ASSET_ROUTE, 'passport-screen.webp']] as const) child.effect(() => child.webServer.register({ kind: 'exact', path, handler(req, res) {
-      if (req.method !== 'GET') { res.writeHead(405); res.end(); return }
-      res.setHeader('content-type', 'image/webp')
-      res.end(readFileSync(new URL(`../assets/ui/${filename}`, import.meta.url)))
-    } }))
+    for (const [path, filename] of [[PASSPORT_DEVICE_ASSET_ROUTE, 'passport-device.webp'], [PASSPORT_SCREEN_ASSET_ROUTE, 'passport-screen.webp']] as const) {
+      registerStaticAsset(child, {
+        path,
+        data: readFileSync(new URL(`../assets/ui/${filename}`, import.meta.url)),
+        contentType: 'image/webp',
+        description: `passport asset ${filename}`,
+      })
+    }
     child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_STATUS_ROUTE, handler(req, res) {
       if (req.method !== 'GET') { res.setHeader('allow', 'GET'); json(res, 405, { error: 'method-not-allowed' }); return }
       if (!sameOriginRequest(req)) { json(res, 403, { error: 'cross-origin-denied' }); return }

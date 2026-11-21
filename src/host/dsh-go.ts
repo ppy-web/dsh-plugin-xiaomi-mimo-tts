@@ -362,8 +362,13 @@ export function registerDshGo({ dshGo, speech, current }: DshGoRegistration): ()
         }
       }, CAPTION_TICK_MS)
       timer.unref()
-      const stop = () => clearInterval(timer)
-      captions.set(scopeKey(scope), stop)
+      const key = scopeKey(scope)
+      captions.get(key)?.()
+      const stop = () => {
+        clearInterval(timer)
+        if (captions.get(key) === stop) captions.delete(key)
+      }
+      captions.set(key, stop)
       return stop
     },
   })

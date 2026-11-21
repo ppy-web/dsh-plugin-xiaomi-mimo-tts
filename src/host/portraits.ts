@@ -5,12 +5,17 @@ import { join } from 'node:path'
 import { TTS_PORTRAITS_ROUTE, TTS_PORTRAIT_IMAGE_ROUTE } from '../constants.js'
 import { PORTRAIT_IMAGE_TYPES, PORTRAIT_MAX_BYTES, PORTRAIT_SLOTS, clampPortraitScale, isPortraitSlot } from '../types/portrait.js'
 import type { PortraitImageType, PortraitManifest, PortraitSlot } from '../types/portrait.js'
-import { json, readJsonBody, sameOriginRequest } from './http.js'
+import { json, readJsonBody, sameOriginRequest, isJsonContentType } from './http.js'
+import { writeAtomicJson } from './atomic-json.js'
 import { SPEECH_DATA_ROOT } from './speech-files.js'
 
 /** Custom portrait files live beside the plugin's other local data. */
 export const PORTRAIT_ROOT = join(SPEECH_DATA_ROOT, 'portraits')
-const INDEX_FILE = join(PORTRAIT_ROOT, 'portrait-index.json')
+const INDEX_FILE_NAME = 'portrait-index.json'
+
+function indexFile(root: string): string {
+  return join(root, INDEX_FILE_NAME)
+}
 
 const EXTENSION_CONTENT_TYPE: Record<string, PortraitImageType> = {
   png: 'image/png',
@@ -19,15 +24,15 @@ const EXTENSION_CONTENT_TYPE: Record<string, PortraitImageType> = {
   webp: 'image/webp',
   gif: 'image/gif',
 }
-const STORED_EXTENSIONS = Object.values(PORTRAIT_IMAGE_TYPES)
+const STORED_EXTENSIONS = [...new Set([...Object.values(PORTRAIT_IMAGE_TYPES), 'jpeg'])]
 const SLOT_FILE = /^(voice|autoplay|sound|provider)\.(png|jpe?g|webp|gif)$/u
 /** Matches the reference plugin's accepted data URL shape. */
 const DATA_URL = /^data:image\/(png|jpeg|webp|gif);base64,([A-Za-z0-9+/=]+)$/u
 
 type PortraitIndex = Partial<Record<PortraitSlot, { scale?: number }>>
 
-async function readIndex(): Promise<PortraitIndex> {
-  const raw = await readFile(INDEX_FILE, 'utf8').catch(() => null)
+async function readIndex(root: string): Promise<PortraitIndex> {
+  const raw = await readFile(indexFile(root), 'utf8').catch(() => null)
   if (raw === null) return {}
   try {
     const parsed = JSON.parse(raw) as PortraitIndex
@@ -42,23 +47,30 @@ async function readIndex(): Promise<PortraitIndex> {
   }
 }
 
-async function writeIndex(index: PortraitIndex): Promise<void> {
-  await mkdir(PORTRAIT_ROOT, { recursive: true })
-  await writeFile(INDEX_FILE, JSON.stringify(index), { mode: 0o600 })
+let writeQueue = Promise.resolve()
+
+function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+  const run = writeQueue.then(task, task)
+  writeQueue = run.then(() => undefined, () => undefined)
+  return run
+}
+
+async function writeIndex(root: string, index: PortraitIndex): Promise<void> {
+  await writeAtomicJson(root, indexFile(root), index)
 }
 
 /** Read the current slot -> version/scale manifest; newest mtime wins if an old file lingers. */
-async function readManifest(): Promise<PortraitManifest> {
-  const index = await readIndex()
+async function readManifest(root: string): Promise<PortraitManifest> {
+  const index = await readIndex(root)
   const slots = Object.fromEntries(PORTRAIT_SLOTS.map(slot => [slot, null])) as PortraitManifest['slots']
-  const entries = await readdir(PORTRAIT_ROOT).catch((error: NodeJS.ErrnoException) => {
+  const entries = await readdir(root).catch((error: NodeJS.ErrnoException) => {
     if (error.code === 'ENOENT') return [] as string[]
     throw error
   })
   await Promise.all(entries.map(async name => {
     const match = SLOT_FILE.exec(name)
     if (match === null) return
-    const info = await stat(join(PORTRAIT_ROOT, name)).catch(() => null)
+    const info = await stat(join(root, name)).catch(() => null)
     if (info === null || !info.isFile()) return
     const slot = match[1] as PortraitSlot
     const version = String(Math.round(info.mtimeMs))
@@ -78,39 +90,54 @@ function sniffImageType(data: Buffer): PortraitImageType | null {
   return null
 }
 
-async function findSlotFile(slot: PortraitSlot): Promise<{ path: string; contentType: PortraitImageType } | null> {
+async function findSlotFile(root: string, slot: PortraitSlot): Promise<{ path: string; contentType: PortraitImageType } | null> {
   for (const [extension, contentType] of Object.entries(EXTENSION_CONTENT_TYPE)) {
-    const path = join(PORTRAIT_ROOT, `${slot}.${extension}`)
+    const path = join(root, `${slot}.${extension}`)
     const info = await stat(path).catch(() => null)
     if (info !== null && info.isFile()) return { path, contentType }
   }
   return null
 }
 
-async function removeSlotFiles(slot: PortraitSlot): Promise<void> {
-  await Promise.all(STORED_EXTENSIONS.map(extension => rm(join(PORTRAIT_ROOT, `${slot}.${extension}`), { force: true })))
+async function removeSlotFiles(root: string, slot: PortraitSlot): Promise<void> {
+  await Promise.all(STORED_EXTENSIONS.map(extension => rm(join(root, `${slot}.${extension}`), { force: true })))
 }
 
-/** Decode the reference-style data URL; returns null on any unsupported payload. */
-function decodeImage(image: string): { data: Buffer; contentType: PortraitImageType } | null {
+type DecodedImage =
+  | { ok: true; data: Buffer; contentType: PortraitImageType }
+  | { ok: false; error: 'upload-too-large' | 'unsupported-image' }
+
+/** Decode the reference-style data URL; distinguishes oversized payloads from unsupported images. */
+function decodeImage(image: string): DecodedImage {
   const match = DATA_URL.exec(image)
-  if (match === null) return null
+  if (match === null) return { ok: false, error: 'unsupported-image' }
   const data = Buffer.from(match[2], 'base64')
-  if (data.length === 0 || data.length > PORTRAIT_MAX_BYTES) return null
+  if (data.length === 0) return { ok: false, error: 'unsupported-image' }
+  if (data.length > PORTRAIT_MAX_BYTES) return { ok: false, error: 'upload-too-large' }
   const sniffed = sniffImageType(data)
-  return sniffed === null ? null : { data, contentType: sniffed }
+  return sniffed === null ? { ok: false, error: 'unsupported-image' } : { ok: true, data, contentType: sniffed }
 }
 
-async function handleLibrary(req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handleLibrary(req: IncomingMessage, res: ServerResponse, root: string): Promise<void> {
   // Writes come from the local web client, which may omit Origin in the desktop shell;
-  // sameOriginRequest() still rejects explicit cross-origin/cross-site requests.
-  if (!sameOriginRequest(req)) {
+  // sameOriginRequest() still rejects explicit cross-origin/cross-site requests and missing desktop headers on writes.
+  if (!sameOriginRequest(req, req.method === 'POST' || req.method === 'DELETE')) {
     json(res, 403, { error: 'cross-origin-denied' })
     return
   }
 
   if (req.method === 'GET' || req.method === 'HEAD') {
-    json(res, 200, await readManifest())
+    const manifest = await readManifest(root)
+    if (req.method === 'HEAD') {
+      const payload = Buffer.from(JSON.stringify(manifest), 'utf8')
+      res.statusCode = 200
+      res.setHeader('content-type', 'application/json; charset=utf-8')
+      res.setHeader('content-length', String(payload.byteLength))
+      res.setHeader('cache-control', 'no-store')
+      res.end()
+      return
+    }
+    json(res, 200, manifest)
     return
   }
 
@@ -124,11 +151,16 @@ async function handleLibrary(req: IncomingMessage, res: ServerResponse): Promise
   let image: string | null = null
   let scale: number | null = null
   if (req.method === 'POST') {
+    if (!isJsonContentType(req)) {
+      json(res, 415, { error: 'unsupported-media-type' })
+      return
+    }
     let body: unknown
     try {
       body = await readJsonBody(req, PORTRAIT_MAX_BYTES * 2)
-    } catch {
-      json(res, 413, { error: 'upload-too-large' })
+    } catch (error) {
+      const large = error instanceof Error && error.message === 'request-body-too-large'
+      json(res, large ? 413 : 400, { error: large ? 'upload-too-large' : 'invalid-json' })
       return
     }
     const record = (body ?? {}) as Record<string, unknown>
@@ -146,11 +178,14 @@ async function handleLibrary(req: IncomingMessage, res: ServerResponse): Promise
   }
 
   if (req.method === 'DELETE') {
-    await removeSlotFiles(slot)
-    const index = await readIndex()
-    delete index[slot]
-    await writeIndex(index)
-    json(res, 200, { ok: true, ...(await readManifest()) })
+    const manifest = await enqueueWrite(async () => {
+      await removeSlotFiles(root, slot)
+      const index = await readIndex(root)
+      delete index[slot]
+      await writeIndex(root, index)
+      return readManifest(root)
+    })
+    json(res, 200, { ok: true, ...manifest })
     return
   }
 
@@ -160,33 +195,40 @@ async function handleLibrary(req: IncomingMessage, res: ServerResponse): Promise
       json(res, 400, { error: 'missing-image' })
       return
     }
-    if (await findSlotFile(slot) === null) {
+    const result = await enqueueWrite(async () => {
+      if (await findSlotFile(root, slot) === null) return null
+      const index = await readIndex(root)
+      index[slot] = { scale }
+      await writeIndex(root, index)
+      return readManifest(root)
+    })
+    if (result === null) {
       json(res, 404, { error: 'portrait-missing' })
       return
     }
-    const index = await readIndex()
-    index[slot] = { scale }
-    await writeIndex(index)
-    json(res, 200, { ok: true, ...(await readManifest()) })
+    json(res, 200, { ok: true, ...result })
     return
   }
 
   const decoded = decodeImage(image)
-  if (decoded === null) {
-    json(res, 415, { error: 'unsupported-image' })
+  if (!decoded.ok) {
+    json(res, decoded.error === 'upload-too-large' ? 413 : 415, { error: decoded.error })
     return
   }
 
-  await mkdir(PORTRAIT_ROOT, { recursive: true })
-  await removeSlotFiles(slot)
-  await writeFile(join(PORTRAIT_ROOT, `${slot}.${PORTRAIT_IMAGE_TYPES[decoded.contentType]}`), decoded.data, { mode: 0o600 })
-  const index = await readIndex()
-  index[slot] = { scale: scale ?? index[slot]?.scale ?? 1 }
-  await writeIndex(index)
-  json(res, 200, { ok: true, ...(await readManifest()) })
+  const manifest = await enqueueWrite(async () => {
+    await mkdir(root, { recursive: true })
+    await removeSlotFiles(root, slot)
+    await writeFile(join(root, `${slot}.${PORTRAIT_IMAGE_TYPES[decoded.contentType]}`), decoded.data, { mode: 0o600 })
+    const index = await readIndex(root)
+    index[slot] = { scale: scale ?? index[slot]?.scale ?? 1 }
+    await writeIndex(root, index)
+    return readManifest(root)
+  })
+  json(res, 200, { ok: true, ...manifest })
 }
 
-async function handleImage(req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handleImage(req: IncomingMessage, res: ServerResponse, root: string): Promise<void> {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.setHeader('allow', 'GET, HEAD')
     json(res, 405, { error: 'method-not-allowed' })
@@ -201,7 +243,7 @@ async function handleImage(req: IncomingMessage, res: ServerResponse): Promise<v
     json(res, 400, { error: 'invalid-slot' })
     return
   }
-  const found = await findSlotFile(slot)
+  const found = await findSlotFile(root, slot)
   const data = found === null ? null : await readFile(found.path).catch(() => null)
   if (found === null || data === null) {
     json(res, 404, { error: 'portrait-missing' })
@@ -216,12 +258,12 @@ async function handleImage(req: IncomingMessage, res: ServerResponse): Promise<v
 }
 
 /** Register the custom portrait library routes; failures stay JSON instead of escaping the handler. */
-export function registerPortraitRoutes(ctx: Context): void {
+export function registerPortraitRoutes(ctx: Context, root = PORTRAIT_ROOT): void {
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: TTS_PORTRAITS_ROUTE,
     async handler(req, res) {
-      try { await handleLibrary(req, res) } catch { json(res, 500, { error: 'portrait-store-failed' }) }
+      try { await handleLibrary(req, res, root) } catch { if (!res.headersSent) json(res, 500, { error: 'portrait-store-failed' }); else res.end() }
     },
   }), 'xiaomi-mimo-tts: custom portrait library')
 
@@ -229,7 +271,7 @@ export function registerPortraitRoutes(ctx: Context): void {
     kind: 'exact',
     path: TTS_PORTRAIT_IMAGE_ROUTE,
     async handler(req, res) {
-      try { await handleImage(req, res) } catch { json(res, 500, { error: 'portrait-store-failed' }) }
+      try { await handleImage(req, res, root) } catch { if (!res.headersSent) json(res, 500, { error: 'portrait-store-failed' }); else res.end() }
     },
   }), 'xiaomi-mimo-tts: custom portrait image')
 }

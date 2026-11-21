@@ -6,7 +6,10 @@ import type { XiaomiAudioResponse } from './synthesis.js'
 import { chatCompletionsEndpoint, completeAudioJsonLimit } from './validation.js'
 import type { CompleteAudioFormat } from './validation.js'
 import { readLimitedXiaomiResponse, decodeCompleteAudio } from './audio-decode.js'
+import { readLimitedResponseText } from './http.js'
 import { TtsProviderError } from './provider-error.js'
+
+const STREAM_ERROR_BODY_LIMIT = 64 * 1024
 
 function request(settings: ResolvedTtsSettings, text: string, format: string, stream: boolean, signal: AbortSignal): Promise<Response> {
   // TTS shares the chat URL, but model-oriented global fetch hooks must not rewrite its messages.
@@ -35,7 +38,10 @@ export async function streamXiaomi(settings: ResolvedTtsSettings, text: string, 
   const response = await request(settings, text, 'pcm16', true, signal)
   if (!response.ok) {
     let parsed: XiaomiAudioResponse | undefined
-    try { parsed = await response.json() as XiaomiAudioResponse } catch { /* use status */ }
+    try {
+      const raw = await readLimitedResponseText(response, STREAM_ERROR_BODY_LIMIT)
+      if (raw) parsed = JSON.parse(raw) as XiaomiAudioResponse
+    } catch { /* use status */ }
     throw new TtsProviderError('xiaomi-api-error', apiErrorMessage(response.status, parsed), response.status)
   }
   if (!response.body) throw new TtsProviderError('invalid-xiaomi-response')

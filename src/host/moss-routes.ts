@@ -1,9 +1,10 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { TTS_MOSS_PROBE_ROUTE, TTS_MOSS_SYNTH_ROUTE } from '../constants.js'
+import { normalizeMossBaseURL } from '../moss.js'
 import { prepareTtsText } from '../shared.js'
 import type { ResolvedTtsSettings } from '../shared.js'
-import { json, readJsonBody } from './http.js'
+import { json, readJsonBody, sameOriginRequest, isJsonContentType } from './http.js'
 import { probeMoss, synthesizeMoss } from './moss.js'
 import { TtsProviderError } from './provider-error.js'
 
@@ -11,23 +12,26 @@ const PROBE_TIMEOUT_MS = 15_000
 const PROBE_BODY_LIMIT = 16 * 1024
 /** Long replies are split before synthesis, but direct callers may send a full settings-sized text. */
 const SYNTH_BODY_LIMIT = 128 * 1024
-
-function contentType(req: IncomingMessage): string {
-  const value = req.headers['content-type']
-  return Array.isArray(value) ? value.join(',') : value ?? ''
-}
+const DRAFT_PROBE_TTL_MS = 5 * 60 * 1000
+const MAX_DRAFT_PROBES = 16
 
 function requireJson(req: IncomingMessage, res: ServerResponse): boolean {
-  if (/^application\/json(?:\s*;|$)/iu.test(contentType(req))) return true
+  if (isJsonContentType(req)) return true
   json(res, 415, { error: 'unsupported-media-type', message: 'Expected application/json.' })
   return false
 }
 
 function requirePost(req: IncomingMessage, res: ServerResponse): boolean {
-  if (req.method === 'POST') return true
-  res.setHeader('allow', 'POST')
-  json(res, 405, { error: 'method-not-allowed' })
-  return false
+  if (req.method !== 'POST') {
+    res.setHeader('allow', 'POST')
+    json(res, 405, { error: 'method-not-allowed' })
+    return false
+  }
+  if (!sameOriginRequest(req, true)) {
+    json(res, 403, { error: 'cross-origin-denied' })
+    return false
+  }
+  return true
 }
 
 function errorBody(error: unknown): { status: number; body: { error: string; message: string } } {
@@ -42,6 +46,27 @@ function bodyRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>
 }
 
+function isLoopbackHost(hostname: string): boolean {
+  const host = hostname.replace(/^\[|\]$/gu, '').toLowerCase()
+  return host === 'localhost' || host === '::1' || host === '0:0:0:0:0:0:0:1' || /^127\.(?:\d{1,3}\.){2}\d{1,3}$/u.test(host)
+}
+
+function mossEndpoint(raw: string): string {
+  try { return normalizeMossBaseURL(raw) }
+  catch { throw new TtsProviderError('moss-invalid-url', 'Enter a valid http:// or https:// MOSS service URL.', 400) }
+}
+
+async function readJsonObject(req: IncomingMessage, limit: number): Promise<Record<string, unknown>> {
+  let parsed: unknown
+  try {
+    parsed = await readJsonBody(req, limit)
+  } catch (error) {
+    const large = error instanceof Error && error.message === 'request-body-too-large'
+    throw new TtsProviderError(large ? 'request-body-too-large' : 'invalid-json', large ? 'MOSS request body is too large.' : 'Expected a JSON object.', large ? 413 : 400)
+  }
+  return bodyRecord(parsed)
+}
+
 function readString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key]
   return typeof value === 'string' ? value : undefined
@@ -52,6 +77,7 @@ function timeout(controller: AbortController, ms: number): ReturnType<typeof set
 }
 
 export function registerMossRoutes(ctx: Context, current: () => ResolvedTtsSettings): void {
+  const draftProbes = new Map<string, { expiresAt: number; voices: Set<string> }>()
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: TTS_MOSS_PROBE_ROUTE,
@@ -63,10 +89,20 @@ export function registerMossRoutes(ctx: Context, current: () => ResolvedTtsSetti
       res.once('close', disconnect)
       const timer = timeout(controller, PROBE_TIMEOUT_MS)
       try {
-        const body = bodyRecord(await readJsonBody(req, PROBE_BODY_LIMIT))
-        const baseURL = readString(body, 'baseURL')?.trim() || current().mossBaseURL
-        const result = await probeMoss(baseURL, controller.signal)
+        const body = await readJsonObject(req, PROBE_BODY_LIMIT)
+        const saved = current().mossBaseURL
+        const target = mossEndpoint(readString(body, 'baseURL')?.trim() || saved)
+        const loopback = isLoopbackHost(new URL(target).hostname)
+        if (!loopback && target !== mossEndpoint(saved)) {
+          throw new TtsProviderError('moss-invalid-url', 'Save the remote MOSS address before probing.', 400)
+        }
+        const result = await probeMoss(target, controller.signal)
         if (res.destroyed || res.writableEnded) return
+        if (loopback && result.voices.length > 0) {
+          draftProbes.delete(target)
+          if (draftProbes.size >= MAX_DRAFT_PROBES) draftProbes.delete(draftProbes.keys().next().value!)
+          draftProbes.set(target, { expiresAt: Date.now() + DRAFT_PROBE_TTL_MS, voices: new Set(result.voices.map(voice => voice.id)) })
+        }
         json(res, 200, { ok: true, ...result })
       } catch (error) {
         if (res.destroyed || res.writableEnded) return
@@ -91,16 +127,24 @@ export function registerMossRoutes(ctx: Context, current: () => ResolvedTtsSetti
       res.once('close', disconnect)
       let timer: ReturnType<typeof setTimeout> | undefined
       try {
-        const body = bodyRecord(await readJsonBody(req, SYNTH_BODY_LIMIT))
+        const body = await readJsonObject(req, SYNTH_BODY_LIMIT)
         const settings = current()
         if (body.format !== undefined && body.format !== 'wav') throw new TtsProviderError('invalid-audio-format', 'MOSS synthesis returns WAV audio.', 400)
         const text = typeof body.text === 'string' ? prepareTtsText(body.text) : ''
         if (text.length === 0) throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)
         if (text.length > settings.maxTextLength) throw new TtsProviderError('text-too-long', 'Text exceeds the configured limit.', 413)
-        const baseURL = readString(body, 'baseURL')?.trim() || settings.mossBaseURL
+        const configured = mossEndpoint(settings.mossBaseURL)
+        const requested = readString(body, 'baseURL')?.trim()
+        const target = requested ? mossEndpoint(requested) : configured
         const voice = readString(body, 'voice')?.trim() || settings.mossVoice
+        if (target !== configured) {
+          const probe = draftProbes.get(target)
+          if (!probe || probe.expiresAt <= Date.now() || !probe.voices.has(voice)) {
+            throw new TtsProviderError('moss-invalid-url', 'Probe the local MOSS address and select a listed voice, or save the address first.', 400)
+          }
+        }
         timer = timeout(controller, settings.requestTimeoutMs)
-        const audio = await synthesizeMoss(baseURL, voice, text, controller.signal, { maxAudioBytes: settings.maxWavAudioBytes })
+        const audio = await synthesizeMoss(target, voice, text, controller.signal, { maxAudioBytes: settings.maxWavAudioBytes })
         if (res.destroyed || res.writableEnded) return
         res.statusCode = 200
         res.setHeader('content-type', 'audio/wav')

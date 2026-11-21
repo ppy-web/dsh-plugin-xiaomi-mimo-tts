@@ -59,9 +59,14 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
     kind: 'exact', path: TTS_CAPABILITIES_ROUTE,
     handler(req, res) {
       if (!method(req, res, ['GET']) || !authorize(req, res, currentToken())) return
+      const capabilities = ctx.speechSynthesis.capabilities()
       json(res, 200, {
-        ...ctx.speechSynthesis.capabilities(),
-        http: { formats: ctx.speechSynthesis.capabilities().formats.filter(format => format !== 'silk'), exportFormats: ctx.speechSynthesis.capabilities().formats, downloadTtlMs: SPEECH_FILE_TTL_MS },
+        ...capabilities,
+        http: {
+          formats: capabilities.formats.filter(format => format !== 'silk'),
+          exportFormats: capabilities.formats,
+          downloadTtlMs: SPEECH_FILE_TTL_MS,
+        },
       })
     },
   }))
@@ -117,12 +122,13 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
   }))
 
   ctx.effect(() => ctx.webServer.register({
-    kind: 'prefix', path: `${TTS_DOWNLOAD_ROUTE}/`,
+    kind: 'prefix', path: TTS_DOWNLOAD_ROUTE,
     async handler(req, res) {
       if (!method(req, res, ['GET', 'HEAD'])) return
       const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
       const prefix = `${TTS_DOWNLOAD_ROUTE}/`
-      const audioId = pathname.slice(pathname.lastIndexOf(prefix) + prefix.length)
+      const prefixIndex = pathname.lastIndexOf(prefix)
+      const audioId = prefixIndex === -1 ? '' : pathname.slice(prefixIndex + prefix.length)
       if (!/^[a-f0-9]{64}$/u.test(audioId)) { json(res, 404, { error: 'audio-not-found' }); return }
       try {
         const artifact = await downloads.get(audioId)

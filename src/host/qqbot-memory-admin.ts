@@ -34,10 +34,17 @@ export class QqMemoryAdmin {
 
   async list(): Promise<QqMemoryAdminPeer[]> {
     const peers = await this.identity.list()
-    return Promise.all(peers.map(async peer => {
+    const now = Date.now()
+    const settled = await Promise.allSettled(peers.map(async peer => {
       const state = await this.store.load(peer.key)
-      return { ...peer, memoryEnabled: state.memoryEnabled, entries: state.entries, topics: state.topics }
+      return {
+        ...peer,
+        memoryEnabled: state.memoryEnabled,
+        entries: state.entries,
+        topics: state.topics.filter(topic => topic.expiresAt > now),
+      }
     }))
+    return settled.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])
   }
 
   async update(input: QqMemoryAdminInput): Promise<QqMemoryAdminPeer> {
@@ -58,11 +65,13 @@ export class QqMemoryAdmin {
       const kind = input.kind ?? fail('qqbot-memory-input-invalid')
       if (!text) fail('qqbot-memory-input-invalid')
       if (kind === 'topic') {
+        const now = Date.now()
+        current.topics = current.topics.filter(item => item.expiresAt > now)
         if ([...text].length > 80 || (input.expiresInDays !== undefined && (!Number.isFinite(input.expiresInDays) || input.expiresInDays <= 0 || input.expiresInDays > 30))) fail('qqbot-memory-input-invalid')
         const existing = input.id ? current.topics.find(item => item.id === input.id) : undefined
         if (input.id && !existing) fail('qqbot-memory-not-found')
         if (!existing && current.topics.length >= 8) fail('qqbot-memory-full')
-        const now = Date.now(), id = existing?.id ?? randomUUID(), days = input.expiresInDays ?? (existing ? Math.max(1, (existing.expiresAt - now) / 86400000) : 7)
+        const id = existing?.id ?? randomUUID(), days = input.expiresInDays ?? (existing ? Math.max(1, (existing.expiresAt - now) / 86400000) : 7)
         current.topics = [...current.topics.filter(item => item.id !== id), { id, title: text, updatedAt: now, expiresAt: now + Math.round(days * 86400000) }]
       } else {
         if ([...text].length > 300 || (kind !== 'preference' && kind !== 'requirement')) fail('qqbot-memory-input-invalid')

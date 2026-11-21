@@ -42,6 +42,9 @@ export class DoubaoRecognition implements RecognitionInput {
       const status = response.statusCode ?? 502
       if (retry && (status === 401 || status === 403)) {
         ws.removeAllListeners(); ws.on('error', () => {}); ws.terminate()
+        clearTimeout(this.timer)
+        this.timer = setTimeout(() => this.fail(new Error('passport-asr-timeout')), 10000)
+        this.timer.unref()
         this.connect(true, false)
       } else this.fail(recognitionError(status))
     })
@@ -49,6 +52,10 @@ export class DoubaoRecognition implements RecognitionInput {
       if (this.settled) return
       try {
       clearTimeout(this.timer)
+      if (this.ending) {
+        this.timer = setTimeout(() => this.fail(new Error('passport-asr-timeout')), 30000)
+        this.timer.unref()
+      }
       this.remember(plan)
       this.opened = true
       this.send(1, Buffer.from(JSON.stringify({ user: { uid: 'dsh-passport' },
@@ -84,7 +91,11 @@ export class DoubaoRecognition implements RecognitionInput {
         if (flags & 2) {
           if (!this.ending || this.bytes || (value.result !== undefined && typeof value.result.text !== 'string')) throw new Error('passport-asr-invalid-response')
           const text = value.result?.text
-          this.settled = true; this.cleanup(); this.result.resolve(typeof text === 'string' ? text.trim() : ''); ws.close()
+          this.settled = true; this.cleanup(); this.result.resolve(typeof text === 'string' ? text.trim() : '')
+          const closeTimer = setTimeout(() => ws.terminate(), 1000)
+          closeTimer.unref()
+          ws.once('close', () => clearTimeout(closeTimer))
+          ws.close()
         }
       } catch (error) { this.fail(error instanceof Error ? error : new Error('passport-asr-invalid-response')) }
     })
@@ -111,15 +122,22 @@ export class DoubaoRecognition implements RecognitionInput {
   private flush(): void {
     if (!this.opened || this.settled) return
     try {
-      // Keep the last 20 ms so the terminal frame always contains real audio.
-      while (this.bytes >= 7040 || this.ending && this.bytes > 6400) {
-        const all = Buffer.concat(this.chunks), length = Math.min(6400, all.length - 640)
-        this.send(2, all.subarray(0, length))
-        this.chunks = all.length > length ? [all.subarray(length)] : []; this.bytes -= length
+      if (this.bytes > 0 && (this.ending || this.bytes >= 7040)) {
+        const all = this.chunks.length === 1 ? this.chunks[0]! : Buffer.concat(this.chunks, this.bytes)
+        let offset = 0
+        // Keep the last 20 ms so the terminal frame always contains real audio.
+        while (this.bytes - offset >= 7040 || (this.ending && this.bytes - offset > 6400)) {
+          const length = Math.min(6400, this.bytes - offset - 640)
+          this.send(2, all.subarray(offset, offset + length))
+          offset += length
+        }
+        const remaining = all.length - offset
+        this.chunks = remaining > 0 ? [all.subarray(offset)] : []
+        this.bytes = remaining
       }
       if (this.ending) {
         if (!this.bytes) throw new Error('passport-no-speech')
-        this.send(2, Buffer.concat(this.chunks), true)
+        this.send(2, this.chunks.length === 1 ? this.chunks[0]! : Buffer.concat(this.chunks, this.bytes), true)
         this.chunks = []; this.bytes = 0
       }
     } catch (error) { this.fail(error instanceof Error ? error : new Error('passport-asr-network-failed')) }

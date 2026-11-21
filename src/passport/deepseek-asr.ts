@@ -46,14 +46,20 @@ export async function recognizeDeepseek(pcm: Buffer, key: string, signal: AbortS
       chunks.push(Buffer.from(item.value))
     }
     checkAbort()
-    const value: unknown = JSON.parse(Buffer.concat(chunks).toString())
-    if (value === null || typeof value !== 'object' || !('text' in value) || typeof value.text !== 'string') throw new Error('passport-asr-invalid-response')
-    return value.text
-  } catch {
+  } catch (error) {
     checkAbort()
-    throw new Error('passport-asr-invalid-response')
+    if (error instanceof Error && error.message === 'passport-asr-invalid-response') throw error
+    throw new Error('passport-asr-network-failed')
   } finally {
     await reader.cancel().catch(() => {})
     reader.releaseLock()
   }
+  let value: unknown
+  try {
+    value = JSON.parse(Buffer.concat(chunks, length).toString())
+  } catch {
+    throw new Error('passport-asr-invalid-response')
+  }
+  if (value === null || typeof value !== 'object' || !('text' in value) || typeof value.text !== 'string') throw new Error('passport-asr-invalid-response')
+  return value.text
 }

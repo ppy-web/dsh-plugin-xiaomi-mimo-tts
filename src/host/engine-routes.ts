@@ -1,7 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { TTS_API_KEY_STATUS_EVENT, TTS_ENGINE_EVENTS_ROUTE, TTS_ENGINE_STATE_ROUTE, TTS_ENGINE_SELECTION_ROUTE } from '../constants.js'
-import { json, readJsonBody, sameOriginRequest } from './http.js'
+import { json, readJsonBody, sameOriginRequest, isJsonContentType } from './http.js'
 import { TtsProviderError } from './provider-error.js'
+
+const MAX_ENGINE_SSE_CONNECTIONS = 32
 
 /** Browser-only metadata: reject cross-origin reads, including requests without an Origin but marked cross-site. */
 export function registerEngineRoutes(ctx: Context, credentials?: { read: () => Record<string, string>; subscribe: (listener: () => void) => () => void }): void {
@@ -20,7 +22,7 @@ export function registerEngineRoutes(ctx: Context, credentials?: { read: () => R
     async handler(req, res) {
       if (req.method !== 'POST') { res.setHeader('allow', 'POST'); json(res, 405, { error: 'method-not-allowed' }); return }
       if (!sameOriginRequest(req, true)) { json(res, 403, { error: 'cross-origin-denied' }); return }
-      if (!String(req.headers['content-type']).startsWith('application/json')) { json(res, 415, { error: 'invalid-content-type' }); return }
+      if (!isJsonContentType(req)) { json(res, 415, { error: 'invalid-content-type' }); return }
       const controller = new AbortController()
       const close = () => { if (!res.writableEnded) controller.abort() }
       res.once('close', close)
@@ -51,6 +53,7 @@ export function registerEngineRoutes(ctx: Context, credentials?: { read: () => R
       if (!sameOriginRequest(req)) { json(res, 403, { error: 'cross-origin-denied' }); return }
       res.setHeader('cache-control', 'no-store')
       if (!events) { json(res, 200, ctx.speechSynthesis.engineState()); return }
+      if (connections.size >= MAX_ENGINE_SSE_CONNECTIONS) { json(res, 429, { error: 'too-many-connections' }); return }
       res.setHeader('content-type', 'text/event-stream; charset=utf-8')
       res.setHeader('x-accel-buffering', 'no')
       const write = (message: string) => {

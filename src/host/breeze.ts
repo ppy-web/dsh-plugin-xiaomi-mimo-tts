@@ -1,8 +1,11 @@
 import { hasMp3Header, hasWavHeader } from './audio-format.js'
 import type { ResolvedTtsSettings } from '../types/settings.js'
 import { BREEZE_TTS_MODEL } from '../types/providers.js'
+import { readLimitedResponseBytes, readLimitedResponseText } from './http.js'
 import { TtsProviderError } from './provider-error.js'
 import type { CompleteAudioFormat } from './validation.js'
+
+const ERROR_BODY_LIMIT = 64 * 1024
 
 const BREEZE_BASE_URL = 'https://api.breeze.blue/v1'
 
@@ -14,7 +17,8 @@ async function upstreamError(response: Response): Promise<never> {
   let code = `HTTP_${response.status}`
   let message = `Breeze TTS request failed (HTTP ${response.status})`
   try {
-    const body = await response.json() as { code?: unknown; detail?: unknown; error?: unknown }
+    const raw = await readLimitedResponseText(response, ERROR_BODY_LIMIT)
+    const body = raw ? JSON.parse(raw) as { code?: unknown; detail?: unknown; error?: unknown } : {}
     if (typeof body.code === 'string' && body.code) code = body.code
     if (typeof body.detail === 'string' && body.detail) message = body.detail
     else if (typeof body.error === 'string' && body.error) message = body.error
@@ -41,20 +45,15 @@ export async function synthesizeBreeze(settings: ResolvedTtsSettings, text: stri
   if (!response.ok) await upstreamError(response)
   if (!response.body) throw new TtsProviderError('invalid-breeze-response', 'Breeze returned an empty audio response.')
   const length = response.headers.get('content-length')
-  if (length && /^\d+$/u.test(length) && Number(length) > limit) throw new TtsProviderError('audio-too-large', 'Breeze audio exceeds the configured limit.', 413)
-  const reader = response.body.getReader()
-  const chunks: Buffer[] = []
-  let size = 0
-  try {
-    while (true) {
-      const part = await reader.read()
-      if (part.done) break
-      size += part.value.byteLength
-      if (size > limit) throw new TtsProviderError('audio-too-large', 'Breeze audio exceeds the configured limit.', 413)
-      chunks.push(Buffer.from(part.value))
-    }
-  } finally { reader.releaseLock() }
-  const audio = Buffer.concat(chunks, size)
+  if (length && /^\d+$/u.test(length) && Number(length) > limit) {
+    await response.body.cancel().catch(() => {})
+    throw new TtsProviderError('audio-too-large', 'Breeze audio exceeds the configured limit.', 413)
+  }
+  const audio = await readLimitedResponseBytes(
+    response,
+    limit,
+    () => new TtsProviderError('audio-too-large', 'Breeze audio exceeds the configured limit.', 413),
+  )
   const valid = format === 'wav' ? hasWavHeader(audio) : hasMp3Header(audio)
   if (!valid) throw new TtsProviderError('invalid-audio-format', 'Breeze returned an invalid audio format.')
   return audio

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { createRequire } from 'node:module'
@@ -103,6 +103,23 @@ test('memory is isolated by profile, bot and peer, survives /new, and does not s
     assert.equal((await new QqMemoryStore('another-profile', directory).load(key)).entries.length, 0)
     assert.equal((await store.load(key)).entries[0].text, '称呼我小林')
     await assert.rejects(companion.memory(agent('missing'), { action: 'save', kind: 'preference', text: 'not shared' }, signal()), { code: 'qqbot-identity-unavailable' })
+  })
+})
+
+test('concurrent stores recover an old lock and preserve every completed edit', async () => {
+  await fixture(async ({ store, directory, key }) => {
+    const lock = `${store.path(key)}.lock`
+    await mkdir(store.directory, { recursive: true })
+    await writeFile(lock, randomUUID())
+    const old = new Date(Date.now() - 10 * 60 * 1000)
+    await utimes(lock, old, old)
+
+    const texts = ['调整称呼', '记住语速', '保留偏好', '保留要求']
+    const stores = texts.map(() => new QqMemoryStore('profile-one:qq-component', directory))
+    await Promise.all(stores.map((instance, index) => instance.update(key, state => {
+      state.entries.push({ id: randomUUID(), kind: 'preference', text: texts[index], updatedAt: Date.now() })
+    })))
+    assert.deepEqual((await store.load(key)).entries.map(entry => entry.text).sort(), texts.sort())
   })
 })
 

@@ -106,8 +106,14 @@ export function registerQqbotMemeTool(ctx: Context, options: { directory?: strin
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     async execute(args, exec) {
-      if (!exec.agent) throw new TtsProviderError('qqbot-agent-required', 'Send memes from a QQ agent conversation.', 400)
+      if (!exec.agent || exec.agent.session?.header?.origin === 'subagent') {
+        throw new TtsProviderError('qqbot-agent-required', 'Send memes from a QQ agent conversation.', 400)
+      }
       if (!enabled()) throw new TtsProviderError('qqbot-memes-disabled', 'QQ Whale Girl memes are disabled in settings.', 409)
+      if (exec.agent.session && ctx.qqbotCompanion?.identity) {
+        const route = await ctx.qqbotCompanion.identity.inspect(exec.agent.id, exec.signal)
+        if (route.kind !== 'qqbot') throw new TtsProviderError('qqbot-agent-required', 'Send memes from a QQ agent conversation.', 400)
+      }
       const meme = memes.find(entry => entry.id === (args as { meme?: unknown } | null)?.meme)
       if (!meme) throw new TtsProviderError('qqbot-meme-unavailable', 'Choose an available meme from the catalog.', 400)
       const signal = AbortSignal.any([exec.signal, lifetime.signal])

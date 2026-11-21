@@ -5,7 +5,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-settings'
 import type { ServerResponse } from 'node:http'
 import { TTS_QQ_MEMORY_ROUTE } from './constants.js'
-import { json, readJsonBody } from './host/http.js'
+import { json, readJsonBody, sameOriginRequest, isJsonContentType } from './host/http.js'
 import { QqMemoryAdmin } from './host/qqbot-memory-admin.js'
 import { QqMemoryStore } from './host/qqbot-memory.js'
 import { QqIdentityReader, qqCompanionNamespace } from './host/qqbot-identity.js'
@@ -74,20 +74,38 @@ export function apply(ctx: Context, config: Config): void {
   const companion = createQqCompanion(ctx, current)
   ctx.provide('qqbotCompanion', companion)
   ctx.effect(() => () => companion.dispose())
-  const admin = new QqMemoryAdmin(new QqMemoryStore(qqCompanionNamespace(ctx, 'speech-delivery-qqbot')), new QqIdentityReader())
+  const admin = new QqMemoryAdmin(companion.store, companion.identity)
   ctx.provide('qqbotMemoryAdmin', admin)
-  const webServer = ctx.get('webServer')
-  if (webServer) ctx.effect(() => webServer.register({
-    kind: 'exact', path: TTS_QQ_MEMORY_ROUTE,
-    async handler(req, res: ServerResponse) {
-      if (req.method === 'GET') { json(res, 200, { peers: await admin.list() }); return }
-      if (req.method !== 'POST') { res.setHeader('allow', 'GET, POST'); json(res, 405, { error: 'method-not-allowed' }); return }
-      try {
-        const body = await readJsonBody(req, 64 * 1024)
-        json(res, 200, await admin.update(body as Parameters<typeof admin.update>[0]))
-      } catch (error) { json(res, 400, { error: error instanceof Error ? error.message : 'qqbot-memory-update-failed' }) }
-    },
-  }), 'dsh-xiaomi-tts: QQ memory route')
+  ctx.inject(['webServer'], child => {
+    child.effect(() => child.webServer.register({
+      kind: 'exact', path: TTS_QQ_MEMORY_ROUTE,
+      async handler(req, res: ServerResponse) {
+        if (!sameOriginRequest(req, req.method === 'POST')) {
+          json(res, 403, { error: 'cross-origin-denied' })
+          return
+        }
+        if (req.method === 'GET') { json(res, 200, { peers: await admin.list() }); return }
+        if (req.method !== 'POST') { res.setHeader('allow', 'GET, POST'); json(res, 405, { error: 'method-not-allowed' }); return }
+        if (!isJsonContentType(req)) {
+          json(res, 415, { error: 'unsupported-media-type' })
+          return
+        }
+        try {
+          const body = await readJsonBody(req, 64 * 1024)
+          const updated = await admin.update(body as Parameters<typeof admin.update>[0])
+          companion.invalidate(updated.key)
+          json(res, 200, updated)
+        } catch (error) {
+          if (error instanceof TtsProviderError) {
+            json(res, error.status, { error: error.code })
+            return
+          }
+          const large = error instanceof Error && error.message === 'request-body-too-large'
+          json(res, large ? 413 : 400, { error: large ? 'request-body-too-large' : 'qqbot-memory-update-failed' })
+        }
+      },
+    }), 'dsh-xiaomi-tts: QQ memory route')
+  })
   ctx.provide('qqbotMemes', loadWhaleMemes())
   ctx.effect(() => ctx.speechSynthesis.registerDelivery(createQqbotSpeechDelivery(ctx)))
   ctx.inject(['agents'], child => { registerQqbotSpeech(child, companion.identity) })

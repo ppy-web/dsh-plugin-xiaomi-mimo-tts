@@ -1,3 +1,18 @@
+export const PASSPORT_ASR_ERROR_CODES = new Set([
+  'passport-asr-unavailable',
+  'passport-asr-disabled',
+  'passport-asr-key-required',
+  'passport-asr-auth-failed',
+  'passport-asr-permission-denied',
+  'passport-asr-quota-exceeded',
+  'passport-asr-rate-limited',
+  'passport-asr-timeout',
+  'passport-asr-network-failed',
+  'passport-asr-invalid-response',
+  'passport-asr-input-overflow',
+  'passport-recognition-failed',
+])
+
 export function recognitionError(status: number, code = ''): Error {
   return Object.assign(new Error(status === 402 || /quota|balance|credit|额度|余额/iu.test(code) ? 'passport-asr-quota-exceeded'
     : status === 401 ? 'passport-asr-auth-failed'

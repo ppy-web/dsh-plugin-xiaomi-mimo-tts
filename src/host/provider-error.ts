@@ -18,11 +18,11 @@ export function safeProviderError(error: unknown, secrets: string[] = []): { err
     for (const secret of secrets) {
       if (secret.trim()) text = text.split(secret.trim()).join('[redacted]')
     }
-    return text.replace(/(?:Bearer\s+\S+|(?:X-Api-Key|authorization)\s*[:=]\s*\S+)/giu, '[redacted]')
+    return text.replace(/(?:Bearer\s+\S+|(?:x-api-key|xi-api-key|authorization)\s*[:=]\s*\S+)/giu, '[redacted]')
   }
   const message = redact(known ? error.message : 'Speech synthesis failed.').slice(0, 500)
   return {
-    error: known ? error.code : 'doubao-request-failed', message,
+    error: known ? error.code : 'tts-request-failed', message,
     ...(known && error.upstreamCode !== undefined ? { upstreamCode: redact(error.upstreamCode).slice(0, 80) } : {}),
     ...(known && error.requestId !== undefined ? { requestId: redact(error.requestId).slice(0, 128) } : {}),
   }

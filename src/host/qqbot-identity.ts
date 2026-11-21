@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { parseQqIdentity, type QqIdentity } from './qqbot-memory.js'
@@ -13,36 +13,49 @@ export function qqCompanionNamespace(ctx: Context, owner?: string): string {
 
 export type QqConversation = { kind: 'qqbot'; identity: QqIdentity } | { kind: 'dsh' } | { kind: 'unknown'; reason: 'missing' | 'invalid' }
 
+interface CachedIdentityMapping {
+  mtimeMs: number
+  size: number
+  identities: QqIdentity[]
+  sessions: Map<string, QqIdentity | 'ambiguous'>
+}
+
 /** Read-only QQBot 0.5.x session mapping used for identity checks. */
 export class QqIdentityReader {
+  private cached: CachedIdentityMapping | undefined
   constructor(readonly path = join(homedir(), '.dsh-qqbot', 'model-prefs.json')) {}
-  private async readMapping(signal?: AbortSignal): Promise<Record<string, unknown>> {
+  private async readMapping(signal?: AbortSignal): Promise<CachedIdentityMapping> {
+    const info = await stat(this.path)
+    signal?.throwIfAborted()
+    if (info.size > 8 * 1024 * 1024) throw new Error('oversized mapping')
+    if (this.cached && this.cached.mtimeMs === info.mtimeMs && this.cached.size === info.size) return this.cached
     const data = await readFile(this.path, { encoding: 'utf8', signal })
     signal?.throwIfAborted()
     if (Buffer.byteLength(data) > 8 * 1024 * 1024) throw new Error('oversized mapping')
     const value = JSON.parse(data) as { sessionIds?: Record<string, unknown> }
     if (!value.sessionIds || typeof value.sessionIds !== 'object' || Array.isArray(value.sessionIds)) throw new Error('missing mapping')
-    return value.sessionIds
+    const unique = new Map<string, QqIdentity>()
+    const sessions = new Map<string, QqIdentity | 'ambiguous'>()
+    for (const [key, sessionId] of Object.entries(value.sessionIds)) {
+      if (typeof sessionId !== 'string' || !sessionId) continue
+      const identity = parseQqIdentity(key)
+      if (identity) unique.set(identity.key, identity)
+      sessions.set(sessionId, sessions.has(sessionId) ? 'ambiguous' : (identity ?? 'ambiguous'))
+    }
+    this.cached = { mtimeMs: info.mtimeMs, size: info.size, identities: [...unique.values()], sessions }
+    return this.cached
   }
   async list(): Promise<QqIdentity[]> {
     try {
-      const mapping = await this.readMapping()
-      const result = new Map<string, QqIdentity>()
-      for (const [key, sessionId] of Object.entries(mapping)) {
-        if (typeof sessionId !== 'string' || !sessionId) continue
-        const identity = parseQqIdentity(key)
-        if (identity) result.set(identity.key, identity)
-      }
-      return [...result.values()]
+      return (await this.readMapping()).identities
     } catch { return [] }
   }
   async inspect(sessionId: string, signal?: AbortSignal): Promise<QqConversation> {
     try {
       const mapping = await this.readMapping(signal)
-      const matches = Object.entries(mapping).filter(([, id]) => id === sessionId)
-      const identity = matches.length === 1 ? parseQqIdentity(matches[0]![0]) : undefined
-      if (identity) return { kind: 'qqbot', identity }
-      if (matches.length === 0) return { kind: 'dsh' }
+      const matched = mapping.sessions.get(sessionId)
+      if (matched === undefined) return { kind: 'dsh' }
+      if (matched !== 'ambiguous') return { kind: 'qqbot', identity: matched }
     } catch (error) {
       signal?.throwIfAborted()
       return { kind: 'unknown', reason: (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'missing' : 'invalid' }

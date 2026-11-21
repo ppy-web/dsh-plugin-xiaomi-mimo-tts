@@ -3,6 +3,8 @@ import type { SpeechArtifact, SpeechDownload } from '../host-api.js'
 import { SPEECH_FILE_TTL_MS } from './speech-files.js'
 import { TtsProviderError } from './provider-error.js'
 
+const MAX_DOWNLOAD_ENTRIES = 256
+
 /** Only explicitly published artifacts can be downloaded; IDs never resolve filesystem paths. */
 export class AudioDownloads {
   private readonly entries = new Map<string, { artifact: SpeechArtifact; expiresAt: number }>()
@@ -11,9 +13,15 @@ export class AudioDownloads {
   constructor(private readonly now: () => number = Date.now) {}
 
   async publish(artifact: SpeechArtifact): Promise<SpeechDownload> {
-    if (this.closed) {
+    try {
+      if (!this.closed && this.entries.size >= MAX_DOWNLOAD_ENTRIES) await this.sweep()
+      if (this.closed) throw new TtsProviderError('speech-service-disposed', 'Speech service stopped.', 503)
+      if (this.entries.size >= MAX_DOWNLOAD_ENTRIES) {
+        throw new TtsProviderError('speech-download-limit', 'Too many active speech downloads.', 503)
+      }
+    } catch (error) {
       await artifact.remove()
-      throw new TtsProviderError('speech-service-disposed', 'Speech service stopped.', 503)
+      throw error
     }
     const audioId = randomBytes(32).toString('hex')
     const expiresAt = this.now() + SPEECH_FILE_TTL_MS

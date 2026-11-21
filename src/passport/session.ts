@@ -54,7 +54,16 @@ export class PassportSession {
   }
 
   private async open(): Promise<AgentHandle> {
-    const saved = await this.store.load()
+    let saved: SessionIdentity | undefined
+    try {
+      saved = await this.store.load()
+    } catch (error) {
+      if (this.revision && error instanceof Error && (error instanceof SyntaxError || error.message === 'passport-invalid-session-state')) {
+        saved = undefined
+      } else {
+        throw error
+      }
+    }
     // An explicit refresh requests a new conversation. Commit its routing
     // identity only after successful startup; the old session log is retained.
     const identity = (saved?.revision ?? '') === this.revision ? saved : undefined

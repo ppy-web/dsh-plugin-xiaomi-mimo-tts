@@ -301,7 +301,11 @@ async function withRoutes(run) {
 test('Web routes use the same external engine for audio, PCM and authenticated exports', async () => {
   await withRoutes(async ({ base, service }) => {
     const body = { text: 'hello', engineRevision: service.engineState().revision }
-    const post = (route, args = body, extra = {}) => fetch(`${base}/${route}`, { method: 'POST', headers: { 'content-type': 'application/json', ...extra }, body: JSON.stringify(args) })
+    const post = (route, args = body, extra = {}) => fetch(`${base}/${route}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(route === 'export-audio' ? {} : { 'x-dsh-speech-adapter': '1' }), ...extra },
+      body: JSON.stringify(args),
+    })
     const audio = await post('synthesize')
     assert.equal(audio.headers.get('content-type'), 'audio/wav')
     assert.equal(Buffer.from(await audio.arrayBuffer()).toString('ascii', 8, 12), 'WAVE')

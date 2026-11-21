@@ -4,7 +4,7 @@ import WebSocket, { WebSocketServer } from 'ws'
 import { TTS_ROUTE, TTS_STREAM_ROUTE, TTS_DUPLEX_ROUTE } from '../constants.js'
 import { prepareTtsText, resolveTtsSettings } from '../shared.js'
 import type { ResolvedTtsSettings } from '../shared.js'
-import { json, readJsonBody } from './http.js'
+import { json, readJsonBody, sameOriginRequest, isJsonContentType } from './http.js'
 import type { SynthesizeBody } from './synthesis.js'
 import type { SpeechProviderId, SpeechRequest, SpeechSynthesisService } from '../host-api.js'
 import { synthesisOptions, validateSynthesisSettings, completeAudioFormat, CompleteAudioResponseError } from './validation.js'
@@ -27,33 +27,43 @@ function responseError(res: ServerResponse, error: unknown, settings: ResolvedTt
 
 export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTtsSettings, runtime: SynthesisRuntime = {}): void {
   const connection = runtime.connectDoubao ? { connect: runtime.connectDoubao } : {}
-  for (const stream of [false, true]) ctx.effect(() => ctx.webServer.register({
-    kind: 'exact', path: stream ? TTS_STREAM_ROUTE : TTS_ROUTE,
-    async handler(req, res) {
-      if (req.method !== 'POST') { res.setHeader('allow', 'POST'); json(res, 405, { error: 'method-not-allowed' }); return }
-      let settings = resolveTtsSettings(current())
-      let effectiveProvider: SpeechProviderId = settings.provider
-      const controller = new AbortController()
-      let timeout: ReturnType<typeof setTimeout> | undefined
-      let disconnected = false
-      let offEngine = () => {}
-      const abort = () => { disconnected = true; controller.abort() }
-      req.once('aborted', abort)
-      res.once('close', abort)
-      try {
-        let body: SynthesizeBody
-        try { body = await readJsonBody(req) as SynthesizeBody } catch (error) {
-          throw new TtsProviderError(error instanceof Error && error.message === 'request-body-too-large' ? 'request-body-too-large' : 'invalid-json', 'Invalid synthesis request.', error instanceof Error && error.message === 'request-body-too-large' ? 413 : 400)
-        }
-        if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TtsProviderError('invalid-request', undefined, 400)
-        const service = (typeof ctx.get === 'function' ? ctx.get('speechSynthesis') : undefined) as SpeechSynthesisService | undefined
-        const request = { ...body, signal: controller.signal } as SpeechRequest
-        const selected = service?.resolveProvider(request)
-        effectiveProvider = selected ?? TTS_PROVIDERS.find(provider => provider === body.provider) ?? settings.provider
-        if (service && (body.provider === undefined || body.engineRevision !== undefined)) offEngine = service.subscribeEngine(() => controller.abort(new TtsProviderError('speech-engine-changed', undefined, 409)))
-        if (service && selected?.startsWith('external:')) {
-          if (!stream && body.format !== undefined && body.format !== 'mp3' && body.format !== 'wav') throw new TtsProviderError('invalid-audio-format', undefined, 400)
-          if (stream) {
+  for (const stream of [false, true]) ctx.effect(() => {
+    const controllers = new Set<AbortController>()
+    const remove = ctx.webServer.register({
+      kind: 'exact', path: stream ? TTS_STREAM_ROUTE : TTS_ROUTE,
+      async handler(req, res) {
+        if (req.method !== 'POST') { res.setHeader('allow', 'POST'); json(res, 405, { error: 'method-not-allowed' }); return }
+        if (!sameOriginRequest(req, true)) { json(res, 403, { error: 'cross-origin-denied' }); return }
+        if (!isJsonContentType(req)) { json(res, 415, { error: 'unsupported-media-type' }); return }
+        let settings = resolveTtsSettings(current())
+        let effectiveProvider: SpeechProviderId = settings.provider
+        const controller = new AbortController()
+        controllers.add(controller)
+        let timeout: ReturnType<typeof setTimeout> | undefined
+        let disconnected = false
+        let offEngine = () => {}
+        const abort = () => { disconnected = true; controller.abort() }
+        req.once('aborted', abort)
+        res.once('close', abort)
+        try {
+          let body: SynthesizeBody
+          try { body = await readJsonBody(req) as SynthesizeBody } catch (error) {
+            throw new TtsProviderError(error instanceof Error && error.message === 'request-body-too-large' ? 'request-body-too-large' : 'invalid-json', 'Invalid synthesis request.', error instanceof Error && error.message === 'request-body-too-large' ? 413 : 400)
+          }
+          if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TtsProviderError('invalid-request', undefined, 400)
+          const service = (typeof ctx.get === 'function' ? ctx.get('speechSynthesis') : undefined) as SpeechSynthesisService | undefined
+          const request = { ...body, signal: controller.signal } as SpeechRequest
+          const selected = service?.resolveProvider(request)
+          effectiveProvider = selected ?? TTS_PROVIDERS.find(provider => provider === body.provider) ?? settings.provider
+          if (service && (body.provider === undefined || body.engineRevision !== undefined)) offEngine = service.subscribeEngine(() => controller.abort(new TtsProviderError('speech-engine-changed', undefined, 409)))
+          if (service && !stream) {
+            if (body.format !== undefined && body.format !== 'mp3' && body.format !== 'wav') throw new TtsProviderError('invalid-audio-format', 'Select MP3 or WAV.', 400)
+            const audio = await service.synthesize(request)
+            res.setHeader('content-type', audio.contentType); res.setHeader('content-length', audio.data.length); res.setHeader('cache-control', 'no-store')
+            res.end(audio.data)
+            return
+          }
+          if (service && selected?.startsWith('external:')) {
             await service.streamPcm(request, bytes => {
               if (res.destroyed) throw new TtsProviderError('tts-canceled', undefined, 499)
               if (res.writableLength + bytes.byteLength * 2 > settings.maxPausedPcmBytes) throw new TtsProviderError('stream-buffer-limit')
@@ -64,13 +74,8 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
               res.write(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: Buffer.from(bytes).toString('base64') } } }] })}\n\n`)
             })
             res.end('data: [DONE]\n\n')
-          } else {
-            const audio = await service.synthesize(request)
-            res.setHeader('content-type', audio.contentType); res.setHeader('content-length', audio.data.length); res.setHeader('cache-control', 'no-store')
-            res.end(audio.data)
+            return
           }
-          return
-        }
         settings = resolveTtsSettings(current())
         const prepared = prepareSpeechRequest(settings, { ...body, ...(selected ? { provider: selected } : {}) })
         settings = prepared.settings
@@ -131,16 +136,19 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
           res.end(audio)
         }
       } catch (error) {
-        if (!disconnected) responseError(res, controller.signal.reason instanceof TtsProviderError ? controller.signal.reason : controller.signal.aborted && !(error instanceof CompleteAudioResponseError) ? new TtsProviderError('xiaomi-timeout', 'Synthesis timed out.', 504) : error, settings, effectiveProvider)
+        if (!disconnected) responseError(res, controller.signal.reason instanceof TtsProviderError ? controller.signal.reason : controller.signal.aborted && !(error instanceof CompleteAudioResponseError) ? new TtsProviderError('tts-timeout', 'Synthesis timed out.', 504) : error, settings, effectiveProvider)
       } finally {
         clearTimeout(timeout)
         offEngine()
+        controllers.delete(controller)
         controller.abort()
         req.off('aborted', abort)
         res.off('close', abort)
       }
     },
-  }), `xiaomi-mimo-tts: ${stream ? 'streaming ' : ''}synthesis route`)
+    })
+    return () => { remove(); for (const controller of controllers) controller.abort(); controllers.clear() }
+  }, `xiaomi-mimo-tts: ${stream ? 'streaming ' : ''}synthesis route`)
 
   ctx.effect(() => {
     // Older DSH versions can keep using the HTTP Xiaomi routes.
@@ -187,11 +195,9 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
               clearTimeout(initialTimer)
               settings = synthesisOptions(resolveTtsSettings(current()), command.selection as SynthesizeBody)
               if (!supportsDuplexTts(settings.provider)) throw new TtsProviderError('streaming-model-unsupported', undefined, 409)
-              if (settings.provider === 'deepseek') {
-                const service = (typeof ctx.get === 'function' ? ctx.get('speechSynthesis') : undefined) as SpeechSynthesisService | undefined
-                service?.resolveProvider({ provider: settings.provider, ...(command.engineRevision === undefined ? {} : { engineRevision: command.engineRevision as number }) })
-                if (service) offEngine = service.subscribeEngine(() => fail(new TtsProviderError('speech-engine-changed', undefined, 409)))
-              }
+              const service = (typeof ctx.get === 'function' ? ctx.get('speechSynthesis') : undefined) as SpeechSynthesisService | undefined
+              service?.resolveProvider({ provider: settings.provider, ...(command.engineRevision === undefined ? {} : { engineRevision: command.engineRevision as number }) })
+              if (service) offEngine = service.subscribeEngine(() => fail(new TtsProviderError('speech-engine-changed', undefined, 409)))
               validateSynthesisSettings(settings)
               state = 'starting'
               const options = { settings, signal: controller.signal, onAudio: (bytes: Buffer) => {

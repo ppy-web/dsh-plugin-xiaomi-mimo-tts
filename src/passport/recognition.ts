@@ -37,7 +37,7 @@ export function hostRecognizer(host?: Pick<SpeechToText, 'snapshot' | 'resolve' 
     create: (signal, maxBytes) => bufferedRecognition(signal, maxBytes, async pcm => {
       check()
       const audio = pcmWave(pcm)
-      return (await host!.transcribe(host!.resolve({ audio }), signal)).text
+      return (await abortableRecognition(host!.transcribe(host!.resolve({ audio }), signal).then(item => item.text), signal))
     }),
   }
 }
@@ -107,6 +107,7 @@ export class PassportRecognition implements PassportRecognitionService {
     const check = () => {
       if (!this.enabled()) throw new Error(this.disposed ? 'passport-asr-unavailable' : 'passport-asr-disabled')
       if (!key()) throw new Error('passport-asr-key-required')
+      if (/[\r\n\0\u0080-\uffff]/u.test(key())) throw new Error('passport-asr-auth-failed')
       if (source === 'deepseek' && !isSupportedTtsApiKey(key(), 'deepseek')) throw new Error('passport-asr-auth-failed')
     }
     return { check, create: (signal, maxBytes) => {
@@ -124,12 +125,22 @@ export class PassportRecognition implements PassportRecognitionService {
       } else if (source === 'deepseek') {
         input = bufferedRecognition(activeSignal, Math.min(maxBytes, DEEPSEEK_ASR_MAX_PCM), pcm => recognizeDeepseek(pcm, savedKey, activeSignal, this.current().requestTimeoutMs))
       } else input = bufferedRecognition(activeSignal, maxBytes, async pcm => {
-        const response = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {
-          method: 'POST', redirect: 'error', signal: activeSignal,
-          headers: { 'api-key': savedKey, 'content-type': 'application/json' },
-          body: JSON.stringify({ model: 'mimo-v2.5-asr', stream: false, asr_options: { language: 'auto' },
-            messages: [{ role: 'user', content: [{ type: 'input_audio', input_audio: { data: `data:audio/wav;base64,${pcmWave(pcm).toString('base64')}` } }] }] }),
-        })
+        const timeout = AbortSignal.timeout(this.current().requestTimeoutMs)
+        const requestSignal = AbortSignal.any([activeSignal, timeout])
+        let response: Response
+        try {
+          response = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {
+            method: 'POST', redirect: 'error', signal: requestSignal,
+            headers: { 'api-key': savedKey, 'content-type': 'application/json' },
+            body: JSON.stringify({ model: 'mimo-v2.5-asr', stream: false, asr_options: { language: 'auto' },
+              messages: [{ role: 'user', content: [{ type: 'input_audio', input_audio: { data: `data:audio/wav;base64,${pcmWave(pcm).toString('base64')}` } }] }] }),
+          })
+        } catch (error) {
+          activeSignal.throwIfAborted()
+          if (timeout.aborted) throw new Error('passport-asr-timeout')
+          if (error instanceof Error && error.name === 'AbortError') throw error
+          throw new Error('passport-asr-network-failed')
+        }
         // Bound both successful and rejected response bodies, and never expose upstream prose.
         const reader = response.body?.getReader()
         if (!reader) throw recognitionError(response.status)
@@ -139,13 +150,28 @@ export class PassportRecognition implements PassportRecognitionService {
             const item = await reader.read()
             if (item.done) break
             size += item.value.length
-            if (size > 256 * 1024) throw new Error('passport-asr-invalid-response')
+            if (size > 256 * 1024) {
+              await reader.cancel().catch(() => {})
+              throw new Error('passport-asr-invalid-response')
+            }
             chunks.push(Buffer.from(item.value))
           }
+        } catch (error) {
+          activeSignal.throwIfAborted()
+          if (timeout.aborted) throw new Error('passport-asr-timeout')
+          if (error instanceof Error && error.message === 'passport-asr-invalid-response') throw error
+          throw new Error('passport-asr-network-failed')
         } finally { await reader.cancel().catch(() => {}); reader.releaseLock() }
-        const data = JSON.parse(Buffer.concat(chunks).toString()) as { error?: { code?: string }; choices?: { finish_reason?: string; message?: { content?: unknown } }[] }
-        if (!response.ok) throw recognitionError(response.status, String(data.error?.code ?? ''))
-        const result = data.choices?.[0]
+        const raw = Buffer.concat(chunks, size).toString()
+        let data: { error?: { code?: string }; choices?: { finish_reason?: string; message?: { content?: unknown } }[] } | undefined
+        try {
+          data = raw ? JSON.parse(raw) as typeof data : undefined
+        } catch {
+          if (!response.ok) throw recognitionError(response.status)
+          throw new Error('passport-asr-invalid-response')
+        }
+        if (!response.ok) throw recognitionError(response.status, String(data?.error?.code ?? ''))
+        const result = data?.choices?.[0]
         if (result?.finish_reason !== 'stop' || typeof result.message?.content !== 'string') throw new Error('passport-asr-invalid-response')
         return result.message.content
       })

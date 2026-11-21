@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { SpeechDeliveryResult, SpeechRequest } from '../host-api.js'
 import { observeSpeech, qqSpeechPolicy, registerSpeak, speechOwner } from '../speech-agent.js'
+import { abortable } from './abortable.js'
 import type { QqIdentityReader } from './qqbot-identity.js'
 import { QQBOT_FILE_TOOL } from './qqbot-delivery-signal.js'
 import { TtsProviderError } from './provider-error.js'
@@ -50,6 +51,8 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
     if (claimed && (claimed.turn < event.data.turn || (event.type === 'turn/end' && claimed.turn === event.data.turn))) input.delete(agent)
   })
   ctx.on('agent/disposed', ({ agent }) => { input.delete(agent) })
+  const lifecycle = new AbortController()
+  ctx.effect(() => () => lifecycle.abort())
   async function admit(agent: Agent, signal: AbortSignal): Promise<boolean> {
     signal.throwIfAborted()
     if (available(agent)) return true
@@ -57,23 +60,25 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
     if (!candidate?.candidate) return false
     const delivery = speech.conversationDelivery?.('qqbot')
     if (!delivery) return false
-    return candidate.pending ??= (async () => {
-      if (!await delivery.policy.supports(agent, signal)) return false
-      const route = await identity.inspect(agent.id, signal)
+    const routeSignal = lifecycle.signal
+    const check = candidate.pending ??= (async () => {
+      if (!await delivery.policy.supports(agent, routeSignal)) return false
+      const route = await identity.inspect(agent.id, routeSignal)
       if (route.kind !== 'qqbot') return false
-      signal.throwIfAborted()
+      routeSignal.throwIfAborted()
       if (input.get(agent) !== candidate || !candidate.candidate) return false
-      return session.admit(agent, candidate.turn, async signal => {
-        const current = await identity.inspect(agent.id, signal)
+      return session.admit(agent, candidate.turn, async admitSignal => {
+        const current = await identity.inspect(agent.id, admitSignal)
         if (ctx.agents.get(agent.id) !== agent || current.kind !== 'qqbot' || current.identity.key !== route.identity.key) {
           throw new TtsProviderError('qqbot-identity-unavailable')
         }
       })
     })().catch((error: unknown) => {
-      signal.throwIfAborted()
+      if (routeSignal.aborted) return false
       ctx.logger.warn(`QQ speech route check failed for agent=${agent.id}`, error)
       return false
     })
+    return abortable(check, signal)
   }
   ctx.on('agent/pre-step', async ({ agent, signal, turn }, next) => {
     if (input.get(agent)?.turn === turn) await admit(agent, signal)

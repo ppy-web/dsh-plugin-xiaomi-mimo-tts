@@ -1,5 +1,5 @@
 import { pcmDeltaFromSse } from './utils/pcm-delta.js'
-import { TTS_STREAM_ROUTE } from './constants.js'
+import { TTS_DESKTOP_WRITE_HEADER, TTS_STREAM_ROUTE } from './constants.js'
 import { hostRoute } from './client/host-route.js'
 import { parseSseRecords } from './utils/index.js'
 import type { TtsSelection } from './types/providers.js'
@@ -14,7 +14,7 @@ export async function streamPcmAudio(text: string, signal: AbortSignal, consume:
   }
   const response = await fetch(hostRoute(TTS_STREAM_ROUTE), {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
     body: JSON.stringify(speechRequestBody({ text, ...(selection ?? {}) })),
     signal,
   })

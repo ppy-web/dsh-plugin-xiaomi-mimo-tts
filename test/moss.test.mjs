@@ -170,8 +170,8 @@ test('Host MOSS routes probe and synthesize over same-origin JSON', async () => 
       register(route) { routes.set(route.path, route.handler); return () => routes.delete(route.path) },
     },
   }
-  const settings = resolveTtsSettings({ mossVoice: 'demo-1' })
   await withMossServer(async ({ baseURL }) => {
+    const settings = resolveTtsSettings({ mossVoice: 'demo-1', mossBaseURL: `${baseURL}/saved` })
     registerMossRoutes(ctx, () => settings)
     const server = createServer((req, res) => {
       const handler = routes.get(new URL(req.url, 'http://localhost').pathname)
@@ -182,9 +182,23 @@ test('Host MOSS routes probe and synthesize over same-origin JSON', async () => 
     await once(server, 'listening')
     const base = `http://127.0.0.1:${server.address().port}`
     try {
-      const probe = await fetch(`${base}/plugins/xiaomi-mimo-tts/moss/probe`, {
+      const csrf = await fetch(`${base}/plugins/xiaomi-mimo-tts/moss/probe`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ baseURL }),
+      })
+      assert.equal(csrf.status, 403)
+
+      const ssrf = await fetch(`${base}/plugins/xiaomi-mimo-tts/moss/probe`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-dsh-speech-adapter': '1' },
+        body: JSON.stringify({ baseURL: 'http://169.254.169.254' }),
+      })
+      assert.equal(ssrf.status, 400)
+
+      const probe = await fetch(`${base}/plugins/xiaomi-mimo-tts/moss/probe`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-dsh-speech-adapter': '1' },
         body: JSON.stringify({ baseURL }),
       })
       assert.equal(probe.status, 200)
@@ -192,18 +206,34 @@ test('Host MOSS routes probe and synthesize over same-origin JSON', async () => 
       assert.equal(probeBody.ok, true)
       assert.deepEqual(probeBody.voices.map(voice => voice.id), ['demo-1', 'demo-2'])
 
+      const override = await fetch(`${base}/plugins/xiaomi-mimo-tts/moss/synthesize`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-dsh-speech-adapter': '1' },
+        body: JSON.stringify({ text: '你好', baseURL: 'http://127.0.0.1:1', voice: 'demo-2' }),
+      })
+      assert.equal(override.status, 400)
+
       const synth = await fetch(`${base}/plugins/xiaomi-mimo-tts/moss/synthesize`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-dsh-speech-adapter': '1' },
         body: JSON.stringify({ text: '你好', baseURL, voice: 'demo-2' }),
       })
       assert.equal(synth.status, 200)
       assert.equal(synth.headers.get('content-type'), 'audio/wav')
       assert.deepEqual(Buffer.from(await synth.arrayBuffer()), WAV)
 
+      settings.mossBaseURL = baseURL
+      const saved = await fetch(`${base}/plugins/xiaomi-mimo-tts/moss/synthesize`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-dsh-speech-adapter': '1' },
+        body: JSON.stringify({ text: '你好', voice: 'demo-2' }),
+      })
+      assert.equal(saved.status, 200)
+      assert.deepEqual(Buffer.from(await saved.arrayBuffer()), WAV)
+
       const plain = await fetch(`${base}/plugins/xiaomi-mimo-tts/moss/probe`, {
         method: 'POST',
-        headers: { 'content-type': 'text/plain' },
+        headers: { 'content-type': 'text/plain', 'x-dsh-speech-adapter': '1' },
         body: '{}',
       })
       assert.equal(plain.status, 415)
