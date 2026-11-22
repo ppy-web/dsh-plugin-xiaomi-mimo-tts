@@ -18,6 +18,7 @@ const { PcmAudioQueue } = await loadClientModule('src/client/playback/pcm-audio-
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
 const { AnnouncementSettings, ANNOUNCEMENT_TOGGLE_FIELDS } = await loadClientModule('src/client/settings/announcement-settings.tsx')
 const { PreviewModule } = await loadClientModule('src/client/settings/preview-module.tsx')
+const { SoundEffectsPanel } = await loadClientModule('src/client/settings/sound-effects-module.tsx')
 const { VoiceReadingSection } = await loadClientModule('src/client/settings/voice-reading-section.tsx')
 
 function captionClock() {
@@ -260,7 +261,7 @@ test('captions and audio response styles save and reset independently', async ()
   assert.equal(user.voiceRate, 1.3)
 })
 
-test('host integration keeps captions and audio response controls off the voice reading page', context => {
+test('host integration and personalization keep captions and audio response controls off the voice reading page', context => {
   const report = console.error
   context.mock.method(console, 'error', (...args) => {
     if (typeof args[0] === 'string' && args[0].startsWith('Warning: useLayoutEffect does nothing on the server')) return
@@ -271,11 +272,19 @@ test('host integration keeps captions and audio response controls off the voice 
   assert.equal(defaults.showReadingCaptions, false)
   assert.equal(defaults.showAudioResponse, false)
   for (const showReadingCaptions of [false, true]) for (const showAudioResponse of [false, true]) {
-    const value = { showReadingCaptions, showAudioResponse, audioResponseStyle: 'siri-wave-line' }
+    const value = { showReadingCaptions, showAudioResponse, audioResponseStyle: 'siri-wave-line', avatarStyle: 'sunrise' }
+    const resolved = resolveTtsSettings(value)
     const snapshot = { status: 'ready', writable: true, value }
     const scope = { getSnapshot: () => snapshot, subscribe: () => () => {}, mutate: async () => true }
     const plugin = renderToStaticMarkup(createElement(PreviewModule, {
-      t, draft: resolveTtsSettings(value), overrides: [], writable: true, enabled: true, open: true, text: '', status: 'idle', source: null, recording: null,
+      t, draft: resolved, overrides: [], writable: true, enabled: true, open: true, text: '', status: 'idle', source: null, recording: null,
+    }))
+    const personalization = renderToStaticMarkup(createElement(SoundEffectsPanel, {
+      t, controller: { play() {}, preview() {}, previewVolume() {}, setVolume() {}, update() {}, dispose: async () => {} },
+      enabled: false, volume: 0.5, pack: 'soft', taskSounds: true, clickSounds: true,
+      avatarStyle: resolved.avatarStyle, showReadingCaptions: resolved.showReadingCaptions, showAudioResponse: resolved.showAudioResponse, audioResponseStyle: resolved.audioResponseStyle,
+      writable: true, minimal: false, provider: 'xiaomi', open: true,
+      onToggle() {}, onScopeChange() {}, onVolumeChange() {}, onPackChange() {},
     }))
     const voiceReading = renderToStaticMarkup(createElement(VoiceReadingSection, { scope, t, close() {}, openPluginSettings() {} }))
     const hostSettings = plugin.match(/<section\b[^>]*aria-label="settings\.hostIntegration"[^>]*>([\s\S]*?)<\/section>/u)?.[1]
@@ -283,14 +292,21 @@ test('host integration keeps captions and audio response controls off the voice 
     const hostInputs = hostSettings.match(/<input\b[^>]*>/gu) ?? []
     const hostCaptions = hostInputs.find(input => input.includes('aria-label="settings.readingCaptions"'))
     const hostResponse = hostInputs.find(input => input.includes('aria-label="settings.audioResponse"'))
-    assert.ok(hostCaptions)
-    assert.ok(hostResponse)
-    assert.equal(hostCaptions.includes('checked=""'), showReadingCaptions)
-    assert.equal(hostResponse.includes('checked=""'), showAudioResponse)
+    assert.equal(hostCaptions, undefined)
+    assert.equal(hostResponse, undefined)
+    const personalizationInputs = personalization.match(/<input\b[^>]*>/gu) ?? []
+    const personalizationCaptions = personalizationInputs.find(input => input.includes('aria-label="settings.readingCaptions"'))
+    const personalizationResponse = personalizationInputs.find(input => input.includes('aria-label="settings.audioResponse"'))
+    assert.ok(personalizationCaptions)
+    assert.ok(personalizationResponse)
+    assert.equal(personalizationCaptions.includes('checked=""'), showReadingCaptions)
+    assert.equal(personalizationResponse.includes('checked=""'), showAudioResponse)
+    const avatarChoice = personalizationInputs.find(input => input.includes('type="radio"') && input.includes('value="sunrise"'))
+    assert.ok(avatarChoice?.includes('checked=""'))
     assert.doesNotMatch(voiceReading, /settings\.readingCaptions/u)
     assert.doesNotMatch(voiceReading, /settings\.audioResponse/u)
     assert.doesNotMatch(hostSettings, /<input\b[^>]*type="radio"/u)
-    const pluginStyle = (plugin.match(/<input\b[^>]*>/gu) ?? []).find(input => input.includes('type="radio"') && input.includes('value="siri-wave-line"'))
+    const pluginStyle = personalizationInputs.find(input => input.includes('type="radio"') && input.includes('value="siri-wave-line"'))
     const voiceStyle = (voiceReading.match(/<input\b[^>]*>/gu) ?? []).find(input => input.includes('type="radio"') && input.includes('value="siri-wave-line"'))
     if (showAudioResponse) assert.ok(pluginStyle?.includes('checked=""'))
     else assert.equal(pluginStyle, undefined)

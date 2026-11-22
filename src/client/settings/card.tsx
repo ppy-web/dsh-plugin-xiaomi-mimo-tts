@@ -29,7 +29,7 @@ import { resolveApiKeyViewState } from './api-key-state.js'
 import { AvatarStyleContext } from './controls/voice-avatar.js'
 import { DETAIL_FIELDS, DetailsModule } from './details-module.js'
 import { BROADCAST_FIELDS, PreviewModule } from './preview-module.js'
-import { SoundEffectsPanel } from './sound-effects-module.js'
+import { PERSONALIZATION_FIELDS, SoundEffectsPanel } from './sound-effects-module.js'
 import { SidebarSettings } from './sidebar-settings.js'
 import { withSidebarLoading } from './sidebar-loading.js'
 import { SwitchModule } from './switch-module.js'
@@ -107,7 +107,10 @@ function compareModuleProps<T extends { draft: Partial<DraftSettings>; overrides
 
 const SettingsDetails = memo(DetailsModule, compareModuleProps)
 const SettingsBroadcast = memo(PreviewModule, compareModuleProps)
-const SettingsSounds = memo(SoundEffectsPanel)
+const SettingsSounds = memo(SoundEffectsPanel, (
+  { overrides: previousOverrides = [], ...previousProps }: Parameters<typeof SoundEffectsPanel>[0],
+  { overrides: nextOverrides = [], ...nextProps }: Parameters<typeof SoundEffectsPanel>[0],
+) => settingsValueEqual(previousOverrides, nextOverrides) && settingsSliceEqual(previousProps, nextProps))
 
 function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement> }): ReactElement {
   const view = useSyncExternalStore(history.subscribe, history.getSnapshot, history.getSnapshot)
@@ -140,7 +143,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   }, [snapshot, edits.values])
   const { enabled, autoPlay, soundEnabled, voiceVolume, voiceRate, soundVolume, soundPack, taskSounds, clickSounds,
     mossEnabled, localVoiceEngine, model, provider, doubaoEnabled, breezeEnabled,
-    deepseekEnabled, avatarStyle } = draft
+    deepseekEnabled, avatarStyle, showReadingCaptions, showAudioResponse, audioResponseStyle } = draft
   const apiKey = apiKeys[provider]
   const apiKeyField = API_KEY_BY_PROVIDER[provider]
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
@@ -366,9 +369,11 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     changeVoiceRate(next: number) { change('voiceRate', next) },
     changeSoundVolume(next: number) { change('soundVolume', next) },
     changeSoundPack(next: DraftSettings['soundPack']) { change('soundPack', next) },
+    changeAvatarStyle(next: DraftSettings['avatarStyle']) { change('avatarStyle', next) },
+    changeShowReadingCaptions(next: boolean) { change('showReadingCaptions', next) },
+    changeShowAudioResponse(next: boolean) { change('showAudioResponse', next) },
     changeAcceptExternalProviders(next: boolean) { change('acceptExternalProviders', next) },
     changeAudioResponseStyle(next: DraftSettings['audioResponseStyle']) { change('audioResponseStyle', next) },
-    resetAudioResponseStyle() { resetField('audioResponseStyle') },
     changeQqbotEnabled(next: boolean) { change('qqbotEnabled', next) },
     changeAnnouncementSources(next: DraftSettings['announcementSources']) { change('announcementSources', next) },
     resetAnnouncementSources() { resetField('announcementSources') },
@@ -471,13 +476,11 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           onSourcesChange={actions.changeAnnouncementSources}
           onSourcesReset={actions.resetAnnouncementSources}
           onQqbotChange={actions.changeQqbotEnabled}
-          onAudioResponseStyleChange={actions.changeAudioResponseStyle}
-          onAudioResponseStyleReset={actions.resetAudioResponseStyle}
           onAcceptExternalProvidersChange={actions.changeAcceptExternalProviders}
           onMossEnabledChange={actions.changeMossEnabled}
           onProviderEnabledChange={actions.changeProviderEnabled}
         />
-        {!minimalMode || soundEnabled ? <SettingsSounds
+        {!minimalMode || soundEnabled || search?.visible.has('avatarStyle') || search?.visible.has('settings.readingCaptions') || search?.visible.has('settings.audioResponse') ? <SettingsSounds
           t={t}
           controller={controller}
           enabled={soundEnabled}
@@ -485,6 +488,11 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           pack={soundPack}
           taskSounds={draft.taskSounds}
           clickSounds={draft.clickSounds}
+          avatarStyle={avatarStyle}
+          showReadingCaptions={showReadingCaptions}
+          showAudioResponse={showAudioResponse}
+          audioResponseStyle={audioResponseStyle}
+          overrides={PERSONALIZATION_FIELDS.filter(fieldOverridden)}
           writable={writable}
           minimal={minimalMode}
           provider={provider}
@@ -493,6 +501,11 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           onScopeChange={actions.changeSoundScope}
           onVolumeChange={actions.changeSoundVolume}
           onPackChange={actions.changeSoundPack}
+          onAvatarStyleChange={actions.changeAvatarStyle}
+          onShowReadingCaptionsChange={actions.changeShowReadingCaptions}
+          onShowAudioResponseChange={actions.changeShowAudioResponse}
+          onAudioResponseStyleChange={actions.changeAudioResponseStyle}
+          onResetField={actions.resetField}
         /> : null}
         <div className="xmimo-tts-card-footer">
           <div className="xmimo-tts-card-actions">

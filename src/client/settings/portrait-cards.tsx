@@ -20,7 +20,7 @@ import type { LocaleKey, Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
 import { useSettingsSearch } from './settings-search-context.js'
 import { LensSlider } from './controls/lens-slider.js'
-import { portraitView, resetPortrait, setPortraitScale, uploadPortrait, usePortraitManifest } from '../portraits/store.js'
+import { portraitView, previewPortraitScale, resetPortrait, setPortraitScale, uploadPortrait, usePortraitManifest } from '../portraits/store.js'
 
 const SLOT_LABELS: Record<PortraitSlot, LocaleKey> = {
   voice: 'settings.portraitSlotVoice',
@@ -70,6 +70,8 @@ export function PortraitCards({ t, provider, writable }: PortraitCardsProps): Re
   const [dragging, setDragging] = useState<PortraitSlot | null>(null)
   const [error, setError] = useState<{ slot: PortraitSlot; message: LocaleKey } | null>(null)
   const inputs = useRef<Partial<Record<PortraitSlot, HTMLInputElement | null>>>({})
+
+  const committedScale = useRef<Partial<Record<PortraitSlot, number>>>({})
 
   const pick = (slot: PortraitSlot): void => {
     if (!writable || busy !== null) return
@@ -165,7 +167,21 @@ export function PortraitCards({ t, provider, writable }: PortraitCardsProps): Re
             formatValue={(value) => `${Math.round(value * 100)}%`}
             disabled={!writable || busy !== null}
             commitOnEnd
-            onChange={(value) => { void setPortraitScale(slot, value).catch(() => setError({ slot, message: 'settings.portraitUploadFailed' })) }}
+            onInteractionStart={() => { committedScale.current[slot] = view.scale }}
+            onPreviewChange={(value) => { previewPortraitScale(slot, value) }}
+            onInteractionCancel={() => {
+              const previous = committedScale.current[slot]
+              if (previous !== undefined) previewPortraitScale(slot, previous)
+            }}
+            onInteractionEnd={(value) => {
+              const previous = committedScale.current[slot]
+              if (previous !== undefined && value === previous) return
+              void setPortraitScale(slot, value).catch(() => {
+                if (previous !== undefined) previewPortraitScale(slot, previous)
+                setError({ slot, message: 'settings.portraitUploadFailed' })
+              })
+            }}
+            onChange={() => {}}
           />}
           <input ref={node => { inputs.current[slot] = node }} type="file" accept={ACCEPT} hidden onChange={(event) => { onPick(slot, event) }} />
           {error?.slot === slot ? <span className="xmimo-tts-portrait-error" role="alert">{t(error.message)}</span> : null}

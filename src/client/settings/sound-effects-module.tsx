@@ -1,18 +1,26 @@
-import { SegmentedControl } from '@deepseek-ai/dsh-client-ui-primitives'
+import { SegmentedControl, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import { useRef } from 'react'
 import { RiDiscLine } from 'react-icons/ri'
 import { resolveSoundEffectsMode, resolveSoundEffectsScope, SOUND_PACKS, SOUND_EFFECTS_SCOPES } from '../shared.js'
-import type { SoundEffectsMode, SoundEffectsScope, SoundPack } from '../shared.js'
+import type { SoundEffectsMode, SoundEffectsScope, SoundPack, TtsAvatarStyle } from '../shared.js'
+import type { AudioResponseStyle } from '../../types/settings.js'
 import type { Translate } from '../localization.js'
 import type { TtsProvider } from '../../types/providers.js'
+import { CaptionVisualPicker } from '../conversation/caption-visual.js'
+import { AvatarStyleCards } from './controls/avatar-style-cards.js'
 import { LensSlider } from './controls/lens-slider.js'
+import { SettingFieldHeading } from './field-heading.js'
 import type { SoundEffectsController, SoundCue } from '../sound-effects/types.js'
 import { CollapsibleModule } from './collapsible-module.js'
 import { PortraitCards } from './portrait-cards.js'
 import { SoundEffectIcon } from '../sound-effects/sound-effect-icon.js'
 import { SoundPackIcon } from '../sound-effects/sound-pack-icon.js'
 import { useSettingsSearch } from './settings-search-context.js'
+import type { SettingField } from './types.js'
+
+export const PERSONALIZATION_FIELDS = ['avatarStyle', 'showReadingCaptions', 'showAudioResponse', 'audioResponseStyle'] as const satisfies readonly SettingField[]
+export type PersonalizationField = typeof PERSONALIZATION_FIELDS[number]
 
 interface SoundEffectsPanelProps {
   t: Translate
@@ -22,6 +30,11 @@ interface SoundEffectsPanelProps {
   pack: SoundPack
   taskSounds: boolean
   clickSounds: boolean
+  avatarStyle?: TtsAvatarStyle | undefined
+  showReadingCaptions?: boolean | undefined
+  showAudioResponse?: boolean | undefined
+  audioResponseStyle?: AudioResponseStyle | undefined
+  overrides?: readonly SettingField[] | undefined
   writable: boolean
   minimal: boolean
   provider: TtsProvider
@@ -30,6 +43,11 @@ interface SoundEffectsPanelProps {
   onScopeChange: (scope: SoundEffectsScope) => void
   onVolumeChange: (volume: number) => void
   onPackChange: (pack: SoundPack) => void
+  onAvatarStyleChange?: ((style: TtsAvatarStyle) => void) | undefined
+  onShowReadingCaptionsChange?: ((enabled: boolean) => void) | undefined
+  onShowAudioResponseChange?: ((enabled: boolean) => void) | undefined
+  onAudioResponseStyleChange?: ((style: AudioResponseStyle) => void) | undefined
+  onResetField?: ((field: PersonalizationField) => void) | undefined
 }
 
 const PREVIEW_CUES = ['start', 'complete', 'success', 'error', 'notification', 'press', 'select', 'toggle-on', 'toggle-off', 'send', 'open', 'close', 'delete', 'stop', 'queued'] as const satisfies readonly SoundCue[]
@@ -49,9 +67,15 @@ const SOUND_PACK_COLORS: Record<SoundPack, string> = {
   zen: '#58a6b0',
 }
 
-/** Collapsible sound library, followed by the Broadcast Desk. */
-export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSounds, clickSounds, writable, minimal, provider, open, onToggle, onScopeChange, onVolumeChange, onPackChange }: SoundEffectsPanelProps): ReactElement {
-  const { hide } = useSettingsSearch()
+/** Collapsible personalization and sound library module. */
+export function SoundEffectsPanel({
+  t, controller, enabled, volume, pack, taskSounds, clickSounds,
+  avatarStyle = 'default', showReadingCaptions = false, showAudioResponse = false, audioResponseStyle = 'aura-field', overrides = [],
+  writable, minimal, provider, open, onToggle, onScopeChange, onVolumeChange, onPackChange,
+  onAvatarStyleChange, onShowReadingCaptionsChange, onShowAudioResponseChange, onAudioResponseStyleChange, onResetField,
+}: SoundEffectsPanelProps): ReactElement {
+  const { result: search, hide } = useSettingsSearch()
+  const fieldOverridden = (field: PersonalizationField): boolean => overrides.includes(field)
   const packOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const mode: SoundEffectsMode = resolveSoundEffectsMode(enabled, taskSounds, clickSounds)
   const modeLabel = mode === 'all'
@@ -100,8 +124,10 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
     className="xmimo-tts-settings-module xmimo-tts-sound-effects xmimo-ui-module"
     title={<span className="xmimo-ui-module-title"><RiDiscLine size={14} aria-hidden="true" focusable="false" />{t(minimal ? 'settings.soundEffectsTitle' : 'settings.personalizationTitle')}</span>}
     ariaLabel={t(minimal ? 'settings.soundEffectsTitle' : 'settings.personalizationTitle')}
-    searchGroups={minimal ? ['sound'] : ['sound', 'portraits']}
+    searchGroups={minimal ? ['sound', 'portraits'] : ['sound', 'portraits']}
     summary={<span className="xmimo-tts-sound-summary xmimo-ui-summary">
+      {showReadingCaptions ? <span>{t('settings.readingCaptions')}</span> : null}
+      {showAudioResponse ? <span>{t('settings.audioResponse')}</span> : null}
       <span>{modeLabel}</span>
       <span>{t('settings.soundEffectsVolume')} {Math.round(volume * 100)}%</span>
       <span>{pack}</span>
@@ -111,6 +137,40 @@ export function SoundEffectsPanel({ t, controller, enabled, volume, pack, taskSo
   >
     <div className="xmimo-tts-sound-body xmimo-ui-module-body">
       {minimal ? null : <PortraitCards t={t} provider={provider} writable={writable} />}
+      {!minimal || search?.visible.has('avatarStyle') ? <div className="xmimo-tts-format" hidden={hide('avatarStyle')}>
+        <SettingFieldHeading label={t('settings.avatarStyle')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')}
+          overridden={fieldOverridden('avatarStyle')} resettable disabled={!writable} onReset={() => { onResetField?.('avatarStyle') }} />
+        <AvatarStyleCards value={avatarStyle} disabled={!writable} t={t} onChange={(next) => { onAvatarStyleChange?.(next) }} />
+      </div> : null}
+      {!minimal || search?.visible.has('settings.readingCaptions') || search?.visible.has('settings.audioResponse') ? <div className="xmimo-tts-format" hidden={hide('settings.readingCaptions', 'settings.audioResponse')}>
+        <div className="xmimo-tts-switch-grid">
+          {(fieldOverridden('showReadingCaptions') || fieldOverridden('showAudioResponse')) ? <SettingFieldHeading label="" overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')}
+            overridden resettable disabled={!writable} onReset={() => {
+              if (fieldOverridden('showReadingCaptions')) onResetField?.('showReadingCaptions')
+              if (fieldOverridden('showAudioResponse')) onResetField?.('showAudioResponse')
+            }} /> : null}
+          <div className="xmimo-tts-announcement-source" hidden={hide('settings.readingCaptions')}>
+            <div>
+              <span>{t('settings.readingCaptions')}</span>
+              <small>{t('settings.readingCaptionsHint')}</small>
+            </div>
+            <Switch checked={showReadingCaptions} disabled={!writable} label={t('settings.readingCaptions')} onChange={(next) => { onShowReadingCaptionsChange?.(next) }} />
+          </div>
+          <div className="xmimo-tts-announcement-source" hidden={hide('settings.audioResponse')}>
+            <div>
+              <span>{t('settings.audioResponse')}</span>
+              <small>{t('settings.audioResponseHint')}</small>
+            </div>
+            <Switch checked={showAudioResponse} disabled={!writable} label={t('settings.audioResponse')} onChange={(next) => { onShowAudioResponseChange?.(next) }} />
+          </div>
+        </div>
+        {showAudioResponse && !hide('settings.audioResponse') ? <>
+          <SettingFieldHeading label={t('settings.audioResponseEffects')} disabled={!writable} overridden={fieldOverridden('audioResponseStyle')}
+            resettable overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} onReset={() => { onResetField?.('audioResponseStyle') }} />
+          <CaptionVisualPicker label={t('settings.audioResponseEffects')} hideLabel value={audioResponseStyle}
+            disabled={!writable} onChange={(next) => { onAudioResponseStyleChange?.(next) }} />
+        </> : null}
+      </div> : null}
       {enabled ? <div className="xmimo-tts-sound-layout">
       <div className="xmimo-tts-sound-scope-section" hidden={hide('soundScope')}>
         <span>{t('settings.soundEffectsScope')}</span>

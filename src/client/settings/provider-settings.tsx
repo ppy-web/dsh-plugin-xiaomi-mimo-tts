@@ -52,7 +52,6 @@ export function ProviderSettings({
     <div className="xmimo-tts-announcement-source" hidden={hide('breezeEnabled')}>
       <span className="xmimo-tts-provider-settings-brand">
         <img src={hostRoute(TTS_PROVIDER_LOGO_ASSET_ROUTES.breeze)} alt="" /><span>Breeze Blue</span>
-        <Tag tone="info" className="xmimo-tts-experimental-tag">{t('settings.experimental')}</Tag>
       </span>
       <Switch checked={breezeEnabled} disabled={locked(breezeEnabled)} label={t('settings.breezeEnabled')} onChange={next => onProviderEnabledChange('breeze', next)} />
     </div>

@@ -7,6 +7,7 @@
 }
 
 .xmimo-tts-sound-body {
+  container: xmimo-broadcast / inline-size;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

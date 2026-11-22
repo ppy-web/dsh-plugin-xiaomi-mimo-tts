@@ -13,7 +13,7 @@ import {
   TTS_MODELS,
   TTS_VOICE_DESIGN_PRESETS,
 } from '../shared.js'
-import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope, TtsAvatarStyle } from '../shared.js'
+import type { TtsLocalSpeechMode, TtsLocalVoiceEngine, TtsModel, TtsReadScope } from '../shared.js'
 import type { Translate } from '../localization.js'
 import { BuiltInVoicePicker } from './controls/built-in-voice-picker.js'
 import { LensSlider } from './controls/lens-slider.js'
@@ -36,7 +36,6 @@ import { useNestedDisclosure } from './use-nested-disclosure.js'
 import { useSettingsSearch } from './settings-search-context.js'
 import { SettingFieldHeading } from './field-heading.js'
 import { formatVoiceRate, readScopeLabelKey, VOICE_RATE_RANGE } from './voice-reading-options.js'
-import { AvatarStyleCards } from './controls/avatar-style-cards.js'
 import { ReadScopeCards } from './controls/read-scope-cards.js'
 import type { EditableSettingField, SettingField, SettingsValues } from './types.js'
 
@@ -98,7 +97,7 @@ export const DETAIL_FIELDS = [
   'provider', 'doubaoModel', 'doubaoVoice', 'doubaoClonedVoice', 'deepseekVoice', 'breezeVoice', 'breezeInstruction',
   'doubaoInstruction', 'instruction', 'model', 'localSpeechMode', 'localVoiceURI', 'localVoiceEngine', 'mossEnabled',
   'mossBaseURL', 'mossVoice', 'mossVoiceName', 'voice', 'voiceDesignPrompt', 'voiceDesignCustomPrompt', 'voiceVolume',
-  'voiceRate', 'avatarStyle', 'readScope', 'autoPlay',
+  'voiceRate', 'readScope', 'autoPlay',
 ] as const satisfies readonly EditableSettingField[]
 
 export interface DetailsModuleProps {
@@ -127,7 +126,7 @@ export function DetailsModule({ draft, externalSelection, onExternalSelectionCha
   const {
     provider, doubaoModel, doubaoVoice, doubaoClonedVoice, deepseekVoice, breezeVoice, breezeInstruction,
     instruction, model, localSpeechMode, localVoiceURI, localVoiceEngine, mossEnabled, mossBaseURL, mossVoice,
-    mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, voiceVolume, voiceRate, avatarStyle, readScope, autoPlay,
+    mossVoiceName, voice, voiceDesignPrompt, voiceDesignCustomPrompt, voiceVolume, voiceRate, readScope, autoPlay,
   } = draft
   const fieldOverridden = useCallback((field: SettingField) => overrides.includes(field), [overrides])
   useEngineState()
@@ -280,10 +279,6 @@ export function DetailsModule({ draft, externalSelection, onExternalSelectionCha
             onBrowserAvailabilityChange={onLocalVoicesAvailabilityChange}
           /> : null}
           {readScopeControl}
-          <div className="xmimo-tts-format" hidden={hide('avatarStyle')}>
-            <SettingFieldHeading label={t('settings.avatarStyle')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('avatarStyle')} resettable disabled={!writable} onReset={() => { resetField('avatarStyle') }} />
-            <AvatarStyleCards value={avatarStyle} disabled={!writable} t={t} onChange={(next) => { onChange('avatarStyle', next) }} />
-          </div>
           {!minimal || search?.visible.has('localSpeechMode') ? <div className="xmimo-tts-format" hidden={hide('localSpeechMode')}>
             <SettingFieldHeading label={t('settings.localSpeechMode')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} overridden={fieldOverridden('localSpeechMode')} resettable disabled={!writable} onReset={() => { resetField('localSpeechMode') }} />
             <div className="xmimo-tts-settings-segmented-wrap" data-xmimo-select-option="true">

@@ -96,7 +96,14 @@ export async function uploadPortrait(slot: PortraitSlot, file: Blob, scale?: num
   await request({ slot, image, ...(scale === undefined ? {} : { scale }) })
 }
 
+export function previewPortraitScale(slot: PortraitSlot, scale: number): void {
+  const current = manifest.slots[slot]
+  if (current === null || current.scale === scale) return
+  apply({ slots: { ...manifest.slots, [slot]: { ...current, scale } } })
+}
+
 export async function setPortraitScale(slot: PortraitSlot, scale: number): Promise<void> {
+  previewPortraitScale(slot, scale)
   await request({ slot, scale })
 }
 

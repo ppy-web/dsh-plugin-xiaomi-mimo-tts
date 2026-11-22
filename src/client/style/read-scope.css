@@ -182,16 +182,30 @@
   .xmimo-read-scope-radio { grid-column: 2; grid-row: 1; }
 }
 
+.xmimo-avatar-style-options {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr));
+  row-gap: clamp(8px, 1.5cqi, 12px);
+}
+
+.xmimo-avatar-style-options .xmimo-read-scope-card {
+  min-height: 92px;
+  justify-content: space-between;
+  padding: clamp(8px, 2.2cqi, 13px) clamp(7px, 2cqi, 12px);
+}
+
 .xmimo-avatar-style-samples {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 36px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  gap: clamp(2px, 2cqi, 15px);
+  gap: clamp(4px, 1.6cqi, 12px);
+  padding-block: 4px 2px;
   min-width: 0;
 }
 
 .xmimo-avatar-style-samples .xmimo-tts-voice-avatar {
-  width: 100%;
+  flex: 0 1 38px;
+  width: clamp(28px, 8cqi, 38px);
   min-width: 0;
   height: auto;
   aspect-ratio: 1;

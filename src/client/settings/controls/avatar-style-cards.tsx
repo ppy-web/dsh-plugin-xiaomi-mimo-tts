@@ -11,6 +11,8 @@ const LABELS: Record<TtsAvatarStyle, LocaleKey> = {
   sunrise: 'settings.avatarSunrise',
 }
 
+const SAMPLE_IDS = ['b', 'c', 'd', 'e'] as const
+
 export function AvatarStyleCards({ value, disabled, t, onChange }: {
   value: TtsAvatarStyle
   disabled: boolean
@@ -26,7 +28,7 @@ export function AvatarStyleCards({ value, disabled, t, onChange }: {
         <span className="xmimo-read-scope-card">
           <span className="xmimo-read-scope-heading">{t(LABELS[style])}<span className="xmimo-read-scope-radio" aria-hidden="true" /></span>
           <span className="xmimo-avatar-style-samples" aria-hidden="true">
-            {['a', 'b', 'c'].map(id => <VoiceAvatar key={id} avatarStyle={style} voice={{ provider: 'preview', id }} label="" />)}
+            {SAMPLE_IDS.map(id => <VoiceAvatar key={id} avatarStyle={style} voice={{ provider: 'preview', id }} label="" />)}
           </span>
         </span>
       </label>)}

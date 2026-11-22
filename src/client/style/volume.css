@@ -29,7 +29,8 @@
   --slider-fill: color-mix(in srgb, var(--slider-accent) 26%, var(--slider-surface));
   --slider-mark: color-mix(in srgb, var(--slider-text) 29%, transparent);
   /* Native range thumbs travel between their two half-width insets. */
-  --slider-thumb-distance: calc(var(--slider-thumb-size) / 2 + (100% - var(--slider-thumb-size)) * var(--slider-progress));
+  --slider-current-width: calc(var(--slider-lens-width) * var(--xmimo-slider-zoom));
+  --slider-thumb-distance: calc(var(--slider-current-width) / 2 + (100% - var(--slider-current-width)) * var(--slider-progress));
   --slider-thumb-at: var(--slider-thumb-distance);
   position: relative;
   display: block;
@@ -86,6 +87,7 @@
   --lens-inline-radius: calc(var(--slider-lens-width) * var(--xmimo-slider-zoom) / 2);
   --lens-block-inset: calc((100% - var(--slider-lens-height) * var(--xmimo-slider-zoom)) / 2);
   inset: 0;
+  overflow: hidden;
   clip-path: inset(var(--lens-block-inset) calc(100% - var(--slider-thumb-at) - var(--lens-inline-radius)) var(--lens-block-inset) calc(var(--slider-thumb-at) - var(--lens-inline-radius)) round 999px);
 }
 
@@ -102,7 +104,7 @@
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  width: calc(var(--slider-lens-width) * var(--xmimo-slider-zoom));
+  width: var(--slider-current-width);
   height: calc(var(--slider-lens-height) * var(--xmimo-slider-zoom));
   border: 1px solid color-mix(in srgb, var(--slider-text) 24%, var(--slider-control-surface));
   border-radius: 999px;
