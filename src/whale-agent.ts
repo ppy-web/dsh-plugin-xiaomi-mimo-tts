@@ -15,7 +15,10 @@ export function apply(ctx: Context): void {
     return undefined
   })
   ctx.systemPrompt.section({
-    name: 'deployment:persona-prefix', order: 0, complete: true, interpolate: false,
+    name: 'deployment:persona-prefix',
+    order: ctx.systemPrompt.getSectionOrder?.('DEPLOYMENT_PERSONA_PREFIX') ?? 0,
+    complete: true,
+    interpolate: false,
     text: cachedWhalePersona('dsh', () => ctx.whaleSettings.current()),
   })
 }

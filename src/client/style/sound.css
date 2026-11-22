@@ -240,9 +240,8 @@
   min-width: 0;
   grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
   gap: 4px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  padding: 0 1px 4px
+  overflow: visible;
+  padding: 2px 1px 4px
 }
 
 .xmimo-tts-sound-previews button {

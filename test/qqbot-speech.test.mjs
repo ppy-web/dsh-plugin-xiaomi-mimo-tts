@@ -308,20 +308,39 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
     await settle()
     assert.equal(sends.length, 4)
 
+    // Mid-turn QQ steer (interrupt mode) arriving during a desktop-started turn adopts QQ voice admission.
+    turn = await start(qq, { kind: 'user', rpcId: randomUUID() })
+    assert.equal(ctx.tools.get('speak', qq, turn.toolSet), undefined)
+    {
+      const steerTurn = turns.get(qq)
+      const steerSignal = new AbortController().signal
+      const steerMsg = createUserMessage({ content: [{ type: 'text', text: 'QQ 插话' }], source: { kind: 'user' } })
+      const events = agentEvents(ctx, qq)
+      events.emit('agent/inbox/claimed', { turn: steerTurn, message: steerMsg })
+      const steerTools = await ctx.tools.resolve({ agent: qq, modelSelection: { provider: 'test', model: 'test' }, signal: steerSignal })
+      try {
+        await events.waterfall('agent/pre-step', { turn: steerTurn, step: 2, messages: [steerMsg], signal: steerSignal, modelSelection: { provider: 'test', model: 'test' } }, async () => ({ kind: 'enter', messages: [steerMsg] }))
+        assert.ok(ctx.tools.get('speak', qq, steerTools), 'QQ steer mid-turn must enable speak tool')
+      } finally { steerTools.dispose() }
+    }
+    turn.finish('插话后自动语音')
+    await delivered(6)
+    assert.deepEqual(sends[4], { agent: qq, text: '插话后自动语音' })
+
     automatic = false
     turn = await start(qq)
     const voice = await turn.speak('按需发送')
     assert.equal(voice.value.adapter, 'qqbot')
     assert.equal(voice.concludesTurn, true)
     turn.finish()
-    await delivered(6)
+    await delivered(7)
     turn = await start(qq)
     duringSynthesis = () => map({ ...peers, 'qqbot:bot:group:room': 'new-session' })
     assert.equal((await turn.speak('已换会话')).isError, true)
     assert.equal((await failure.promise).code, 'qqbot-identity-unavailable')
     duringSynthesis = undefined
     turn.finish('保留文字回复')
-    assert.equal(sends.length, 5)
+    assert.equal(sends.length, 6)
     assert.deepEqual(await readdir(directory), ['model-prefs.json'])
     await plugin.dispose()
     assert.equal(ctx.speechSynthesis.conversationDelivery('qqbot'), undefined)

@@ -229,6 +229,22 @@ test('the composer dock only renders when there is a visible caption or audio re
   const audioOnly = render('first', { showAudioResponse: true })
   assert.notEqual(audioOnly, '')
   assert.doesNotMatch(audioOnly, /正在读/u)
+  const sidebarIdle = renderToStaticMarkup(createElement(ReadingCaptionBar, {
+    sessionId: 'sidebar-session', captions, t: () => 'Reading captions',
+    useSession: selector => selector({ running: false }),
+    useSessionRetainInfo: selector => selector({ retainedBy: { sidebarChat: 1 } }),
+    playback: { getSnapshot: () => ({ sessionId: 'first', status: 'idle' }), subscribe: () => () => {} },
+    settings: { getSnapshot: () => ({ status: 'ready', value: { showAudioResponse: true } }), subscribe: () => () => {} },
+  }))
+  assert.equal(sidebarIdle, '', 'embedded sidebar chats must not render an idle duplicate audio response visualizer')
+  const sidebarSpeaking = renderToStaticMarkup(createElement(ReadingCaptionBar, {
+    sessionId: 'first', captions, t: () => 'Reading captions',
+    useSession: selector => selector({ running: false }),
+    useSessionRetainInfo: selector => selector({ retainedBy: { sidebarChat: 1 } }),
+    playback: { getSnapshot: () => ({ sessionId: 'first', status: 'playing' }), subscribe: () => () => {} },
+    settings: { getSnapshot: () => ({ status: 'ready', value: { showAudioResponse: true, showReadingCaptions: true } }), subscribe: () => () => {} },
+  }))
+  assert.match(sidebarSpeaking, /&lt;unsafe&gt; 正在读/u)
 })
 
 test('captions and audio response styles save and reset independently', async () => {

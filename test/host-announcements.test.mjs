@@ -56,6 +56,14 @@ test('approval observation baselines, deduplicates request identity and cancels 
   off()
   assert.equal(source.listeners.size, 0)
   assert.equal(scope.list.listeners.size, 0)
+
+  const direct = store(new Map([['main', pending('direct-old')]])), directRun = options()
+  const offDirect = observeApprovals(scope, { pendingInteractions: direct }, t, directRun)
+  assert.equal(directRun.events.length, 0)
+  direct.set(new Map([['main', pending('direct-new', '直接来源')]]))
+  assert.equal(directRun.events.length, 1)
+  offDirect()
+  assert.equal(direct.listeners.size, 0)
 })
 
 test('approval observation scopes to the selected conversation and rebaselines on switch or reconnection', () => {

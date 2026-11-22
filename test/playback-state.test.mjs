@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { resolveTtsSettings } from '../lib/shared.js'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { pcmEvent, withBrowserPlayback } from './helpers/browser-playback.mjs'
 
@@ -277,5 +278,35 @@ test('a late resume from an old message cannot unpause the new PCM playback', as
       assert.equal(playback.getSnapshot().messageId, 'new')
       assert.equal(playback.getSnapshot().status, 'paused')
     } finally { await live.dispose(); playback.dispose() }
+  })
+})
+
+test('manually clicking read aloud in an embedded sidebar session switches active playback to that session', async () => {
+  await withBrowserPlayback(async state => {
+    const live = new LiveSpeechController()
+    const local = new LocalSpeechController()
+    const playback = new PlaybackController()
+    playback.activateSession('main-session')
+    live.activateSession('main-session')
+    local.activateSession('main-session')
+    live.setStateChangeListener((s, m, status) => playback.updateLivePlayback(s, m, status))
+    local.setStateChangeListener((s, m, status, error) => playback.updateLivePlayback(s, m, status, 'system', error))
+    try {
+      handleReadAloudClick({
+        sessionId: 'sidebar-session',
+        messageId: 'sidebar-msg',
+        text: '侧边栏手动朗读',
+        turn: 1,
+        settings: resolveTtsSettings({ localSpeechMode: 'local-first', readScope: 'full' }),
+        apiKeySupported: true,
+        playback,
+        live,
+        local,
+      }, playback.getSnapshot())
+      state.utterances[0].onstart()
+      assert.equal(playback.getSnapshot().sessionId, 'sidebar-session')
+      assert.equal(playback.getSnapshot().messageId, 'sidebar-msg')
+      assert.equal(playback.getSnapshot().status, 'playing')
+    } finally { await live.dispose(); local.dispose(); playback.dispose() }
   })
 })

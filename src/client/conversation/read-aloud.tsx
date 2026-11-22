@@ -23,6 +23,7 @@ import { handleReadAloudClick, playCompletedReply } from '../playback/read-aloud
 import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
 import type { AutomaticReading } from './automatic-reading.js'
 import type { AudioFocus } from '../playback/tab-audio-focus.js'
+import { useIsMainSessionView, type SessionRetainInfoSelector } from './session-retain-info.js'
 
 const PLAYBACK_ERROR_KEYS: Record<string, Parameters<Translate>[0]> = {
   'api-key-rejected': 'error.apiKeyRejected',
@@ -59,6 +60,7 @@ interface ReadAloudActionProps {
   sessionId: string
   messageId: string
   useSession: <T>(selector: (snapshot: SessionSnapshot) => T) => T
+  useSessionRetainInfo?: SessionRetainInfoSelector
   useChat: <T>(selector: (snapshot: ChatSnapshot) => T) => T
   playback: PlaybackController
   live: LiveSpeechController
@@ -70,7 +72,8 @@ interface ReadAloudActionProps {
   automaticAudioFocus?: AudioFocus
 }
 
-export function ReadAloudAction({ sessionId, messageId, useSession, useChat, playback, live, local, settings, t, automaticReading, audioFocus = unrestrictedAudioFocus, automaticAudioFocus = audioFocus }: ReadAloudActionProps): ReactElement | null {
+export function ReadAloudAction({ sessionId, messageId, useSession, useSessionRetainInfo, useChat, playback, live, local, settings, t, automaticReading, audioFocus = unrestrictedAudioFocus, automaticAudioFocus = audioFocus }: ReadAloudActionProps): ReactElement | null {
+  const isMainSession = useIsMainSessionView(useSessionRetainInfo)
   const ownsAudio = useSyncExternalStore(automaticAudioFocus.subscribe, automaticAudioFocus.canPlay, automaticAudioFocus.canPlay)
   const sessionSnapshot = useSession(snapshot => snapshot)
   const legacy = useChat(chat => chat.legacy)
@@ -104,16 +107,16 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useChat, pla
   }
 
   useEffect(() => {
-    if (!engineCanRequest() || !automaticReading.allowed(sessionId) || !ownsAudio || !automaticAudioFocus.canPlay() || text.length === 0 || settingsSlice.enabled !== true || settingsSlice.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
+    if (!isMainSession || !engineCanRequest() || !automaticReading.allowed(sessionId) || !ownsAudio || !automaticAudioFocus.canPlay() || text.length === 0 || settingsSlice.enabled !== true || settingsSlice.autoPlay !== true || (live.hasHandled(sessionId, message.identity) || local.hasHandled(sessionId, message.identity)) || running || latestMessageId !== messageId || message.time === null || message.time < playback.autoPlayArmedAt) return
     let active = true
     const cancel = window.setTimeout(() => {
       const pending = latestRequest()
-      playCompletedReply({ ...pending, canStart: () => active && pending.canStart() && resolvedSettingsSnapshot(settings.getSnapshot()).autoPlay
+      playCompletedReply({ ...pending, canStart: () => active && isMainSession && pending.canStart() && resolvedSettingsSnapshot(settings.getSnapshot()).autoPlay
         && automaticAudioFocus.canPlay() && !live.hasHandled(sessionId, message.identity) && !local.hasHandled(sessionId, message.identity)
         && automaticReading.allowed(sessionId) && playback.claimAutomaticPlayback(sessionId, messageId) }, true, () => automaticReading.markAutomatic())
     }, 0)
     return () => { active = false; window.clearTimeout(cancel) }
-  }, [engineView, automaticReading, latestMessageId, audioFocus, automaticAudioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.time, messageId, playback, running, sessionId, settings, settingsSlice, text])
+  }, [engineView, isMainSession, automaticReading, latestMessageId, audioFocus, automaticAudioFocus, ownsAudio, apiKeySupported, live, local, message.identity, message.time, messageId, playback, running, sessionId, settings, settingsSlice, text])
 
   if (settingsSlice.enabled !== true || text.length === 0) return null
 

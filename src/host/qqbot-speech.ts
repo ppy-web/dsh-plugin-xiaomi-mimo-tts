@@ -29,19 +29,28 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
   }
   ctx.provide('qqbotSpeech', { admitted: (agent, turn) => session.admitted(agent, turn), say })
 
-  // Remember the first claimed input before the loop resolves its tool set.
+  // Remember claimed inputs in this turn before the loop resolves its tool set.
+  // A QQ steer arriving mid-turn during a desktop-started turn switches ownership
+  // to QQ (matching QQBot's TurnTracker); a desktop prompt with rpcId revokes QQ.
   ctx.on('agent/inbox/claimed', ({ agent, turn, message }) => {
     const existing = input.get(agent)
     if (agent.session.header.origin === 'subagent' || (existing?.turn ?? -1) > turn) return
     const source = message.source
-    if ((source.kind === 'user' || source.kind === 'retry') && 'rpcId' in source && existing?.turn === turn) {
-      existing.candidate = false
-      session.revoke(agent, turn)
+    const isRpcUser = (source.kind === 'user' || source.kind === 'retry') && 'rpcId' in source
+    const isPlainQqUser = source.kind === 'user' && !('rpcId' in source)
+    if (existing?.turn === turn) {
+      if (isRpcUser) {
+        existing.candidate = false
+        delete existing.pending
+        session.revoke(agent, turn)
+      } else if (isPlainQqUser && !existing.candidate) {
+        existing.candidate = true
+        delete existing.pending
+      }
       return
     }
-    if (existing?.turn === turn) return
     // QQBot 0.5.x submits a plain user message; the DSH Web/API prompt carries rpcId.
-    input.set(agent, { turn, candidate: source.kind === 'user' && !('rpcId' in source) })
+    input.set(agent, { turn, candidate: isPlainQqUser })
   })
   ctx.on('session/event', (source, event) => {
     if (event.type !== 'turn/start' && event.type !== 'turn/end') return

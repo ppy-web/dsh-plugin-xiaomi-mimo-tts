@@ -4,8 +4,6 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
-import { load } from 'js-yaml'
-import { entryListSchema, applyEntryPatches } from '@deepseek-ai/cordis-plugin-include'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const require = createRequire(import.meta.url)

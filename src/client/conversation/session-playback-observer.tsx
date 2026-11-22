@@ -18,11 +18,13 @@ import { engineCanRequest, engineSupportsRealtime, externalEngine } from '../eng
 import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
 import type { AudioFocus } from '../playback/tab-audio-focus.js'
 import type { QuestionTitleCollector } from '../announcements/question-titles.js'
+import { useIsMainSessionView, type SessionRetainInfoSelector } from './session-retain-info.js'
 
 interface SessionPlaybackObserverProps {
   sessionId: string
   messageId?: string
   useSession: <T>(selector: (snapshot: SessionSnapshot) => T) => T
+  useSessionRetainInfo?: SessionRetainInfoSelector
   useChat: <T>(selector: (snapshot: ChatSnapshot) => T) => T
   playback: PlaybackController
   live: LiveSpeechController
@@ -35,8 +37,9 @@ interface SessionPlaybackObserverProps {
 }
 
 /** Own the active-session boundary and feed its partial assistant output into realtime speech. */
-export function SessionPlaybackObserver({ sessionId, useSession, useChat, playback, live, local, settings, questions, automaticReading, audioFocus = unrestrictedAudioFocus, automaticAudioFocus = audioFocus }: SessionPlaybackObserverProps): null {
-  useEffect(() => questions?.activateSession(sessionId), [questions, sessionId])
+export function SessionPlaybackObserver({ sessionId, useSession, useSessionRetainInfo, useChat, playback, live, local, settings, questions, automaticReading, audioFocus = unrestrictedAudioFocus, automaticAudioFocus = audioFocus }: SessionPlaybackObserverProps): null {
+  const isMainSession = useIsMainSessionView(useSessionRetainInfo)
+  useEffect(() => isMainSession ? questions?.activateSession(sessionId) : undefined, [isMainSession, questions, sessionId])
   const ownsAudio = useSyncExternalStore(automaticAudioFocus.subscribe, automaticAudioFocus.canPlay, automaticAudioFocus.canPlay)
   const settingsSlice = useSettingsSlice(settings, selectConversationSettings)
   const resolvedSettings = resolvedSettingsSnapshot(settings.getSnapshot())
@@ -73,17 +76,20 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
     attachedMidRun.current = runningSnapshot
     resumeCheckpoint.current = runningSnapshot ? partial : null
     awaitingOpen.current = runningSnapshot && openState !== 'open'
-    playback.activateSession(sessionId)
-    speech.activate(sessionId)
+    if (isMainSession) {
+      playback.activateSession(sessionId)
+      speech.activate(sessionId)
+    }
     return () => {
       active.current = null
       automaticReading.release(sessionId)
       speech.deactivate(sessionId)
       playback.deactivateSession(sessionId)
     }
-  }, [automaticReading, playback, sessionId, speech])
+  }, [automaticReading, isMainSession, playback, sessionId, speech])
 
   useEffect(() => {
+    if (!isMainSession) return
     if (previousSelection.current !== selectionKey) {
       previousSelection.current = selectionKey
       const previousTurn = active.current?.turn
@@ -101,6 +107,8 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       attachedMidRun.current = false
       resumeCheckpoint.current = null
       awaitingOpen.current = false
+      playback.activateSession(sessionId)
+      speech.activate(sessionId)
       speech.cancel()
       playback.cancelPlayback(sessionId)
       active.current = null
@@ -159,7 +167,7 @@ export function SessionPlaybackObserver({ sessionId, useSession, useChat, playba
       }
       // Keep the cursor across a gap between the partial and durable message snapshots.
     }
-  }, [automaticReading, replyMode, concise, audioFocus, automaticAudioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, openState, speech, turn])
+  }, [automaticReading, isMainSession, replyMode, concise, audioFocus, automaticAudioFocus, ownsAudio, selectionKey, apiKeySupported, legacy, latestMessageId, live, local, partial, partialText, playback, resolvedSettings.autoPlay, resolvedSettings.enabled, resolvedSettings.localSpeechMode, resolvedSettings.localVoiceEngine, resolvedSettings.mossBaseURL, resolvedSettings.mossVoice, resolvedSettings.model, resolvedSettings.provider, resolvedSettings.doubaoModel, resolvedSettings.doubaoVoice, resolvedSettings.doubaoClonedVoice, resolvedSettings.readScope, runningSnapshot, sessionId, openState, speech, turn])
 
   return null
 }

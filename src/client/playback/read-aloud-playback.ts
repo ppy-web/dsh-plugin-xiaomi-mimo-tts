@@ -125,5 +125,8 @@ export function handleReadAloudClick(request: ReadAloudRequest, view: PlaybackVi
     }
     return
   }
+  playback.activateSession?.(sessionId)
+  live.activateSession?.(sessionId)
+  local.activateSession?.(sessionId)
   playCompletedReply(request, false)
 }

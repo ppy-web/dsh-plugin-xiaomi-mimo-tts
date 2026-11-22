@@ -8,14 +8,16 @@ import Sessions from '@deepseek-ai/dsh-session'
 import Projections from '@deepseek-ai/dsh-session-projection'
 import Agents from '@deepseek-ai/dsh-agent'
 import Presets from '@deepseek-ai/dsh-agent-preset-registry'
-import { entryListSchema, applyEntryPatches } from '@deepseek-ai/cordis-plugin-include'
+import * as includeModule from '@deepseek-ai/cordis-plugin-include'
 import * as child from 'dsh-xiaomi-tts/whale-girl'
 
 const specifier = 'dsh-xiaomi-tts/whale-girl'
-// The host's Schema must be consumed by the same js-yaml major that created it.
-const { load } = createRequire(import.meta.resolve('@deepseek-ai/cordis-plugin-include'))('js-yaml')
-const patch = load(await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8'), { schema: entryListSchema })
-const presetRow = applyEntryPatches([], patch, message => assert.fail(message))
+const rawPatch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
+const patch = includeModule.parseEntryYaml
+  ? includeModule.parseEntryYaml(rawPatch)
+  : createRequire(import.meta.resolve('@deepseek-ai/cordis-plugin-include'))('js-yaml').load(rawPatch, { schema: includeModule.entryListSchema })
+const patched = includeModule.applyEntryPatches([], patch, message => assert.fail(message))
+const presetRow = (Array.isArray(patched) ? patched : patched.data)
   .find(row => row.name === specifier)
 
 function flattenPlugins(rows) {

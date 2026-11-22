@@ -22,7 +22,10 @@ export function apply(ctx: Context): void {
 
 function registerQqbotFeatures(ctx: Context): void {
   ctx.systemPrompt.section({
-    name: 'deployment:persona-prefix', order: 0, complete: true, interpolate: false,
+    name: 'deployment:persona-prefix',
+    order: ctx.systemPrompt.getSectionOrder?.('DEPLOYMENT_PERSONA_PREFIX') ?? 0,
+    complete: true,
+    interpolate: false,
     text: cachedWhalePersona('qq', () => ctx.qqbotSettings.current()),
   })
   ctx.systemPrompt.context({

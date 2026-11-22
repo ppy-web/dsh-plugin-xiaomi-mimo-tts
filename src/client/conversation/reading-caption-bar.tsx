@@ -8,10 +8,12 @@ import type { Translate } from '../localization.js'
 import { CaptionVisual } from './caption-visual.js'
 import type { ReadingCaptions } from '../playback/reading-captions.js'
 import { resolvedSettingsSnapshot, useSettingsSlice } from '../settings/scope.js'
+import { useIsMainSessionView, type SessionRetainInfoSelector } from './session-retain-info.js'
 
 interface ReadingCaptionBarProps {
   sessionId: string
   useSession: <T>(selector: (snapshot: SessionSnapshot) => T) => T
+  useSessionRetainInfo?: SessionRetainInfoSelector
   playback: PlaybackController
   captions: ReadingCaptions
   settings: ConfigForm<TtsSettings>
@@ -33,7 +35,8 @@ export function ReadingCaptionLines({ text, previousText, label }: { text: strin
 }
 
 /** Adds a caption row to the host composer while the reader follows the bottom. */
-export function ReadingCaptionBar({ sessionId, useSession, playback, captions, settings, t }: ReadingCaptionBarProps): ReactElement | null {
+export function ReadingCaptionBar({ sessionId, useSession, useSessionRetainInfo, playback, captions, settings, t }: ReadingCaptionBarProps): ReactElement | null {
+  const isMainSession = useIsMainSessionView(useSessionRetainInfo)
   const { showReadingCaptions, showAudioResponse, audioResponseStyle } = useSettingsSlice(settings, selectCaptionSettings)
   const subscribe = useCallback((listener: () => void) => showReadingCaptions ? captions.subscribe(listener) : () => {}, [captions, showReadingCaptions])
   const view = useSyncExternalStore(subscribe, captions.getSnapshot, captions.getSnapshot)
@@ -75,9 +78,11 @@ export function ReadingCaptionBar({ sessionId, useSession, playback, captions, s
     return () => window.clearTimeout(timer)
   }, [showText, sessionId, view.text, view.previousText])
   const visibleText = showText ? view : showReadingCaptions && retained?.sessionId === sessionId ? retained : null
-  if (!showAudioResponse && visibleText === null) return null
+  const activeInSession = input.phase !== 'idle' || (playbackView.sessionId === sessionId && playbackView.status !== 'idle')
+  const showVisual = showAudioResponse && (isMainSession || activeInSession)
+  if (!showVisual && visibleText === null) return null
   return <div ref={anchor} className="xmimo-reading-caption-integrated">
-    {showAudioResponse && <CaptionVisual variant={audioResponseStyle} captions={captions} state={status} control={control} hoverable
+    {showVisual && <CaptionVisual variant={audioResponseStyle} captions={captions} state={status} control={control} hoverable
       readRecordingLevel={input.phase === 'recording' ? readRecordingLevel : undefined} />}
     {visibleText && <div className={showText ? 'xmimo-caption-text' : 'xmimo-caption-text xmimo-caption-text-exiting'}>
       <ReadingCaptionLines text={visibleText.text} previousText={visibleText.previousText} label={t('settings.readingCaptions')} />
