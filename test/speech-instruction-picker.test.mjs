@@ -4,7 +4,7 @@ import { createElement, isValidElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
-const { SpeechInstructionPicker } = await loadClientModule('src/client/settings/controls/speech-instruction-picker.tsx')
+const { SpeechInstructionPicker, speechInstructionLabel } = await loadClientModule('src/client/settings/controls/speech-instruction-picker.tsx')
 const locales = await loadClientModule('src/client/localization.ts')
 
 function elements(node, type) {
@@ -89,4 +89,27 @@ function checkBreezeInstructions(locale) {
 
 test('Breeze presets replace and clear custom instructions in both display modes and every language', () => {
   for (const locale of ['zh', 'en']) checkBreezeInstructions(locale)
+})
+
+test('Storyteller preset is selectable and resolves its label across instruction-capable providers', () => {
+  for (const locale of ['zh', 'en']) {
+    const t = key => {
+      assert.equal(typeof locales[locale][key], 'string', `missing ${locale} translation: ${key}`)
+      return locales[locale][key]
+    }
+    const cases = [
+      ['xiaomi', 'settings.speechInstructionStoryteller', 'settings.mimoInstructionStorytellerPrompt'],
+      ['doubao', 'settings.speechInstructionStoryteller', 'settings.speechInstructionStorytellerPrompt'],
+      ['breeze', 'settings.breezeInstructionLabelStoryteller', 'settings.breezeInstructionTextStoryteller'],
+    ]
+    for (const [provider, labelKey, promptKey] of cases) {
+      let value = ''
+      const props = { provider, value, disabled: false, t, onChange: next => { value = next } }
+      const button = elements(SpeechInstructionPicker(props), 'button').find(item => item.props.children === t(labelKey))
+      assert.ok(button, `missing storyteller preset for ${provider} (${locale})`)
+      button.props.onClick()
+      assert.equal(value, t(promptKey))
+      assert.equal(speechInstructionLabel(provider, value, t), t(labelKey))
+    }
+  }
 })

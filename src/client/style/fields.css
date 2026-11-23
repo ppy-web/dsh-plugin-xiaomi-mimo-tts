@@ -107,7 +107,7 @@
   line-height: 17px
 }
 
-.xmimo-tts-reset {
+.xmimo-tts-field-badges .xmimo-tts-reset {
   padding: 0;
   border: 0;
   color: var(--dsw-alias-label-secondary, #5f6875);
@@ -117,11 +117,11 @@
   cursor: pointer
 }
 
-.xmimo-tts-reset:hover:not(:disabled) {
+.xmimo-tts-field-badges .xmimo-tts-reset:hover:not(:disabled) {
   color: var(--dsw-alias-label-primary, #1f2328)
 }
 
-.xmimo-tts-reset:disabled {
+.xmimo-tts-field-badges .xmimo-tts-reset:disabled {
   cursor: not-allowed;
   opacity: .45
 }

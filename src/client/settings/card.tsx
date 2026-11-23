@@ -37,6 +37,7 @@ import { readMinimalMode, subscribeMinimalMode, writeMinimalMode } from './minim
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { DraftChanges, EditableSettingField, SettingField } from './types.js'
 import type { AudioHistory } from '../history/audio-history.js'
+import type { ActivationGuideProps } from './activation-guide.js'
 import { lazyPanel } from '../lazy-panel.js'
 import { unrestrictedAudioFocus } from '../playback/tab-audio-focus.js'
 import type { SpeechActivity } from '../announcements/speech-activity.js'
@@ -48,6 +49,12 @@ import { WORKBENCH_CLIENT_STYLES } from '../style/workbench.js'
 import { useClientStyle } from '../style/inject.js'
 
 const AudioHistoryPage = lazyPanel(() => import('../history/audio-history-page.js').then(module => module.AudioHistoryPage))
+const ActivationGuide = lazyPanel<ActivationGuideProps>(() => import('./activation-guide.js').then(module => module.ActivationGuide), { silentLoading: true })
+
+/** Re-enabling the feature guide switch opens the guide modal immediately. */
+export function shouldOpenFeatureGuide(field: EditableSettingField, previous: boolean, next: unknown): boolean {
+  return field === 'showFeatureGuide' && previous === false && next === true
+}
 
 export interface SettingsCardProps {
   view: 'summary' | 'page'
@@ -169,6 +176,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   const apiKeyStatus = useApiKeyStatus(snapshot.status === 'ready' && !changing, provider)
   const minimalMode = useSyncExternalStore(subscribeMinimalMode, readMinimalMode, () => false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
   const historyLinkRef = useRef<HTMLButtonElement>(null)
   const historyWasOpen = useRef(false)
 
@@ -335,6 +343,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     changeExternal(next: Parameters<typeof externalDraft.change>[0]) { previewPlayer.stop(); externalDraft.change(next); clearSaveMessage() },
     update<K extends EditableSettingField>(field: K, next: DraftSettings[K]) {
       if (VOICE_FIELDS.has(field)) previewPlayer.stop()
+      if (shouldOpenFeatureGuide(field, draft.showFeatureGuide, next)) setGuideOpen(true)
       change(field, next)
     },
     changeVoiceDesignPrompt(next: string) { edit({ voiceDesignPrompt: next, voiceDesignCustomPrompt: next }) },
@@ -547,5 +556,16 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
       </div>
     </div>
     </SettingsSearchContext.Provider>
+    {guideOpen ? <ActivationGuide
+      packageName="dsh-xiaomi-tts"
+      t={t}
+      scope={scope}
+      preview
+      changes={pluginChanges}
+      onOpenWorkbench={() => {}}
+      onOpenDetails={() => { setGuideOpen(false) }}
+      onNeverRemind={() => { edit({ showFeatureGuide: false }) }}
+      onDismiss={() => { setGuideOpen(false) }}
+    /> : null}
   </AvatarStyleContext.Provider>
 })

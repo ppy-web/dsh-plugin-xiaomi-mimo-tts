@@ -69,7 +69,7 @@
   transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 120ms ease
 }
 
-.xmimo-tts-card-actions :is(button, a):where(:hover, :focus-visible):not(:disabled) {
+.xmimo-tts-card-actions :is(button, a):is(:hover, :focus-visible):not(:disabled) {
   border-color: color-mix(in srgb, var(--xmimo-ui-brand) 68%, var(--xmimo-ui-border));
   background: var(--xmimo-skeuo-key-hover-bg, var(--xmimo-ui-hover));
   box-shadow: var(--xmimo-skeuo-key-hover-shadow, none);

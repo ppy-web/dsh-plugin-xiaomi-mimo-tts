@@ -6,7 +6,7 @@ import type { TtsProvider } from '../../../types/providers.js'
  * https://mimo.mi.com/docs/zh-CN/quick-start/usage-guide/audio/speech-synthesis-v2.5
  */
 const XIAOMI_PRESETS = [
-  'Natural', 'Gentle', 'Cheerful', 'Calm', 'Story', 'Argument', 'Whisper', 'Cute',
+  'Natural', 'Gentle', 'Cheerful', 'Calm', 'Story', 'Storyteller', 'Argument', 'Whisper', 'Cute',
   'Cantonese', 'Henan', 'Sichuan', 'Dongbei',
 ] as const
 
@@ -14,14 +14,14 @@ const XIAOMI_PRESETS = [
  * https://docs.volcengine.com/docs/DoubaoVoice/DoubaoTextToSpeech20CapabilityIntroduction?lang=zh
  */
 const DOUBAO_PRESETS = [
-  'Natural', 'Gentle', 'Cheerful', 'Calm', 'Story', 'Argument', 'Whisper',
+  'Natural', 'Gentle', 'Cheerful', 'Calm', 'Story', 'Storyteller', 'Argument', 'Whisper',
   'Shy', 'Weary', 'Tearful', 'Coy', 'Cute',
   'Cantonese', 'Shanghai', 'Henan', 'Beijing', 'Tianjin', 'Sichuan', 'Shaanxi', 'Dongbei',
 ] as const
 
 const BREEZE_PRESETS = [
   'Natural', 'WhisperFear', 'ExcitedSurprise', 'SarcasticDisbelief', 'NervousHumor', 'RestrainedGrief',
-  'CalmNarration', 'WarmCompanion', 'PlayfulTeasing', 'SeriousAnnouncement', 'EncouragingSupport', 'SleepyBedtime',
+  'CalmNarration', 'Storyteller', 'WarmCompanion', 'PlayfulTeasing', 'SeriousAnnouncement', 'EncouragingSupport', 'SleepyBedtime',
 ] as const
 
 function speechInstructionPresets(provider: TtsProvider, t: Translate) {

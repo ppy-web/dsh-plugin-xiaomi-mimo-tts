@@ -40,7 +40,7 @@ import { installTaskSoundWatcher } from './sound-effects/task-watcher.js'
 import { CORE_CLIENT_STYLES } from './style/core.js'
 import { ensureClientStyle } from './style/inject.js'
 
-const ActivationGuide = lazyPanel<ActivationGuideProps>(() => import('./settings/activation-guide.js').then(module => module.ActivationGuide))
+const ActivationGuide = lazyPanel<ActivationGuideProps>(() => import('./settings/activation-guide.js').then(module => module.ActivationGuide), { silentLoading: true })
 import { AudioHistory } from './history/audio-history.js'
 import { TabAudioFocus } from './playback/tab-audio-focus.js'
 import { SpeechActivity, isSpeechBusy } from './announcements/speech-activity.js'

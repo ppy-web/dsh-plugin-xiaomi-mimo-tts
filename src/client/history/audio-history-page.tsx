@@ -13,6 +13,7 @@ import { isSpeechBusy } from '../announcements/speech-activity.js'
 import { hostRoute } from '../host-route.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { VoiceReadingSelect } from '../settings/voice-reading-select.js'
+import { PanelStatusView } from '../lazy-panel.js'
 import { HISTORY_CLIENT_STYLES } from '../style/history-styles.js'
 import { useClientStyle } from '../style/inject.js'
 
@@ -116,7 +117,7 @@ export function AudioHistoryPage({ history, t, volume, voiceRate, minimalMode, s
     {view.skipped ? <p className="xmimo-tts-history-warning" role="status">{t('history.skipped')}</p> : null}
     {actionError ? <p className="xmimo-tts-failed" role="alert">{t('history.actionFailed')}</p> : null}
     <div className="xmimo-tts-history-results">
-      {view.status === 'loading' ? <p className="xmimo-tts-history-empty" role="status">{t('history.loading')}</p>
+      {view.status === 'loading' ? <PanelStatusView message={t('history.loading')} compact />
         : view.entries.length === 0 ? <div className="xmimo-tts-history-empty" role="status">
           {!minimalMode ? <img className="xmimo-tts-history-empty-whale" src={hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)} width={144} height={144} alt="" aria-hidden="true" /> : null}
           <p>{t('history.empty')}</p>

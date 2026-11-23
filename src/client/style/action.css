@@ -3,6 +3,7 @@
  */
 
 .xmimo-tts-action {
+  box-sizing: border-box;
   width: calc(28px + var(--dsh-content-font-delta, 0px));
   height: calc(28px + var(--dsh-content-font-delta, 0px));
   border-radius: var(--dsw-radius-sm);
@@ -16,9 +17,17 @@
   display: inline-flex;
 }
 
-.xmimo-tts-action:hover {
-  background: var(--dsw-alias-interactive-bg-hover) !important;
-  color: var(--dsw-alias-label-secondary);
+.xmimo-tts-action svg {
+  flex: none;
+  width: calc(16px + var(--dsh-content-font-delta, 0px));
+  height: calc(16px + var(--dsh-content-font-delta, 0px));
+}
+
+@media (hover: hover) {
+  .xmimo-tts-action:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-secondary);
+  }
 }
 
 .xmimo-tts-action.xmimo-tts-failed {

@@ -61,6 +61,7 @@
 .xmimo-tts-history-empty p { margin: 0; }
 .xmimo-tts-history-player { display: flex; flex-direction: column; min-width: 0; margin-top: 4px; gap: 4px; }
 .xmimo-tts-history-page .xmimo-tts-history-player-toggle { width: var(--xmimo-history-play-size); min-width: var(--xmimo-history-play-size); padding: 0; }
+.xmimo-tts-history-page .xmimo-tts-history-player-toggle > svg { flex: none; }
 .xmimo-tts-history-player-controls { display: flex; min-width: 0; align-items: center; gap: 6px; flex: none; width: 100%; }
 .xmimo-tts-history-player-controls input[type='range'] { appearance: none; -webkit-appearance: none; flex: 1 1 auto; min-width: 30px; width: 100%; height: 20px; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .xmimo-tts-history-player-controls input[type='range']::-webkit-slider-runnable-track { height: 3px; border-radius: 8px; background: linear-gradient(to right, var(--xmimo-ui-brand) 0% var(--xmimo-history-progress), var(--xmimo-ui-border) var(--xmimo-history-progress) 100%); }
@@ -86,7 +87,8 @@
 }
 
 @container xmimo-audio-history (max-width: 520px) {
-  .xmimo-tts-history-search, .xmimo-tts-history-limit { display: none; }
+  .xmimo-tts-history-page .xmimo-tts-history-search,
+  .xmimo-tts-history-page .xmimo-tts-history-limit { display: none; }
   .xmimo-tts-history-toolbar { flex: 1 1 auto; }
   .xmimo-tts-history-source .xmimo-voice-reading-button-selector { max-width: 100%; }
   .xmimo-tts-history-page .xmimo-tts-history-action { width: 44px; min-width: 44px; padding: 0; }

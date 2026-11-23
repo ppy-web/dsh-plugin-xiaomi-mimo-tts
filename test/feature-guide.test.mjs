@@ -6,6 +6,7 @@ import { loadClientModule } from './helpers/client-modules.mjs'
 import { resolveTtsSettings } from '../lib/shared.js'
 
 const { ActivationGuide } = await loadClientModule('src/client/settings/activation-guide.tsx')
+const { shouldOpenFeatureGuide } = await loadClientModule('src/client/settings/card.tsx')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
 
 function fixture(initial = {}) {
@@ -33,10 +34,21 @@ test('feature guide defaults on and its preference saves and resets', async () =
   assert.equal(resolveTtsSettings(scope.getSnapshot().value).showFeatureGuide, true)
 })
 
-test('disabled preference suppresses automatic activation guide', () => {
+test('disabled preference suppresses automatic activation guide but still allows manual reopen', () => {
   const scope = fixture({ showFeatureGuide: false })
-  const html = renderToStaticMarkup(createElement(ActivationGuide, { scope, t: key => key, packageName: 'dsh-xiaomi-tts', onDismiss() {}, onOpenWorkbench() {} }))
-  assert.equal(html, '')
+  const automatic = renderToStaticMarkup(createElement(ActivationGuide, { scope, t: key => key, packageName: 'dsh-xiaomi-tts', onDismiss() {}, onOpenDetails() {}, onOpenWorkbench() {} }))
+  assert.equal(automatic, '')
+
+  const reopened = renderToStaticMarkup(createElement(ActivationGuide, { scope, preview: true, t: key => key, packageName: 'dsh-xiaomi-tts', onDismiss() {}, onOpenDetails() {}, onOpenWorkbench() {} }))
+  assert.match(reopened, /onboarding\.title/)
+})
+
+test('re-enabling the feature guide switch opens the guide only on false-to-true transitions', () => {
+  assert.equal(shouldOpenFeatureGuide('showFeatureGuide', false, true), true)
+  assert.equal(shouldOpenFeatureGuide('showFeatureGuide', true, false), false)
+  assert.equal(shouldOpenFeatureGuide('showFeatureGuide', true, true), false)
+  assert.equal(shouldOpenFeatureGuide('showFeatureGuide', false, false), false)
+  assert.equal(shouldOpenFeatureGuide('showInHostSettings', false, true), false)
 })
 
 test('activation guide renders multi-paragraph diary notes and optional star postscript', () => {

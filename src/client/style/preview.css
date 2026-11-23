@@ -243,7 +243,8 @@
 }
 .xmimo-tts-breeze-audio-tags-panel > small { color: var(--xmimo-ui-text-muted); line-height: 18px; }
 .xmimo-tts-breeze-audio-tags-panel > .xmimo-tts-settings-segmented-wrap { display: flex; gap: 6px; }
-.xmimo-tts-audio-tags-continuous { display: inline-flex; align-items: center; justify-content: center; width: 28px; margin-inline-start: auto; padding: 0; }
+.xmimo-tts-breeze-audio-tags-panel .xmimo-tts-audio-tags-continuous { display: inline-flex; align-items: center; justify-content: center; width: 28px; margin-inline-start: auto; padding: 0; }
+.xmimo-tts-breeze-audio-tags-panel .xmimo-tts-audio-tags-continuous > svg { flex: none; }
 .xmimo-tts-breeze-audio-tag-group { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
 .xmimo-tts-breeze-audio-tag-group > strong { color: var(--xmimo-ui-text-subtle); font-size: 12px; font-weight: 600; }
 .xmimo-tts-breeze-audio-tag-list { display: flex; flex-wrap: wrap; gap: 6px; }

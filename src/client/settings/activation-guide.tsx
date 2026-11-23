@@ -27,11 +27,12 @@ export interface ActivationGuideProps extends PluginActivationOwnerProps {
   scope: ConfigForm<TtsSettings>
   preview?: boolean
   onOpenWorkbench: () => void
+  onNeverRemind?: (() => void) | undefined
   changes?: SnapshotSource<boolean> | undefined
 }
 
 /** Displayed by the host only for an explicit activation, with host-owned dismissal. */
-export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, onDismiss, changes = IDLE_PLUGIN_CHANGES }: ActivationGuideProps): ReactElement | null {
+export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, onNeverRemind, onDismiss, changes = IDLE_PLUGIN_CHANGES }: ActivationGuideProps): ReactElement | null {
   const dismissed = useRef(false)
   const dismiss = (): void => { if (!dismissed.current) { dismissed.current = true; onDismiss() } }
   const [artReady, setArtReady] = useState(false)
@@ -46,6 +47,7 @@ export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, on
     setFailed(false)
     try {
       if (!await scope.mutate([{ op: 'set', path: ['showFeatureGuide'], value: false }])) throw new Error('host-rejected')
+      onNeverRemind?.()
       dismiss()
     } catch {
       setFailed(true)

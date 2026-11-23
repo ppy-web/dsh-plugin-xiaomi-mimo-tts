@@ -1,9 +1,6 @@
 import type { ReactElement } from 'react'
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
-import {
-  Button,
-  Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import { RiVoiceAiFill } from 'react-icons/ri'
 import type { TtsSettings } from '../shared.js'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
@@ -140,10 +137,8 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useSessionRe
 
   return (
     <Tooltip label={tooltipLabel} side="bottom" portal>
-      <Button
+      <button
         type="button"
-        variant="toolbar"
-        size="sm"
         className={errorText === null ? 'xmimo-tts-action' : 'xmimo-tts-action xmimo-tts-failed'}
         aria-label={label}
         aria-description={statusText ?? undefined}
@@ -154,7 +149,7 @@ export function ReadAloudAction({ sessionId, messageId, useSession, useSessionRe
         {status === 'playing'
           ? <AnimatedAudioLines size={16} />
           : <RiVoiceAiFill className={status === 'loading' ? 'xmimo-tts-pulse' : undefined} size={16} />}
-      </Button>
+      </button>
     </Tooltip>
   )
 }
