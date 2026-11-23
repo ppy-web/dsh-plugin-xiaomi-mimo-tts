@@ -4,7 +4,7 @@ import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, readFile } from 'node:fs/promises'
+import { mkdir, readFile, realpath } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { SPEECH_DATA_ROOT } from '../host/speech-files.js'
@@ -85,6 +85,8 @@ export class PassportSession {
       workspace = resolve(path)
       this.lifetime.signal.throwIfAborted()
       await mkdir(workspace, { recursive: true })
+      this.lifetime.signal.throwIfAborted()
+      workspace = await realpath(workspace).catch(() => workspace)
       this.lifetime.signal.throwIfAborted()
     }
     const handle = identity
