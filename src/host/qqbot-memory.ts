@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, open, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { renameWithRetry } from './atomic-json.js'
 import { SPEECH_DATA_ROOT } from './speech-files.js'
 import { TtsProviderError } from './provider-error.js'
+import { releaseFileLock, staleFileLockOwner } from './file-lock.js'
 
 export interface QqIdentity { key: string; appId: string; scope: 'c2c' | 'group'; peerId: string }
 export function parseQqIdentity(key: string): QqIdentity | undefined {
@@ -27,41 +28,6 @@ const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const boundedText = (value: unknown, limit: number): value is string => typeof value === 'string' && [...value].length <= limit
 const timestamp = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 const LOCK_STALE_MS = 5 * 60 * 1000
-
-async function staleLockOwner(lock: string): Promise<string | undefined> {
-  try {
-    await using file = await open(lock, 'r')
-    if (Date.now() - (await file.stat()).mtimeMs <= LOCK_STALE_MS) return
-    const holder = await file.readFile('utf8')
-    const pid = Number(/^([1-9][0-9]*):/u.exec(holder)?.[1])
-    if (Number.isSafeInteger(pid) && pid <= 0x7fffffff) {
-      try { process.kill(pid, 0); return }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') return }
-    }
-    return holder
-  } catch (error) {
-    if (!['ENOENT', 'EPERM', 'EBUSY'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error
-  }
-}
-
-/** Serialize removals of this generation, then recheck it before removing the shared lock path. */
-async function releaseLock(lock: string, holder: string): Promise<boolean> {
-  const guard = `${lock}.${hash(holder)}.release`
-  try { await writeFile(guard, '', { flag: 'wx', mode: 0o600 }) }
-  catch (error) {
-    if (['EEXIST', 'EPERM', 'EBUSY'].includes((error as NodeJS.ErrnoException).code ?? '')) return false
-    throw error
-  }
-  try {
-    const current = await readFile(lock, 'utf8').catch(error => {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
-      throw error
-    })
-    if (current !== holder) return false
-    await rm(lock, { force: true })
-    return true
-  } finally { await rm(guard, { force: true }) }
-}
 
 /** Reject corrupt state rather than silently replacing a saved user's memories. */
 export function validateQqState(value: unknown, key: string): QqPeerState {
@@ -126,8 +92,8 @@ export class QqMemoryStore {
             continue
           }
           if (code !== 'EEXIST') throw error
-          const holder = await staleLockOwner(lock)
-          if (holder !== undefined && await releaseLock(lock, holder)) continue
+          const holder = await staleFileLockOwner(lock, LOCK_STALE_MS)
+          if (holder !== undefined && await releaseFileLock(lock, holder)) continue
           await delay(50, undefined, signal ? { signal } : {})
         }
       }

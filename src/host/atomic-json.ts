@@ -19,10 +19,14 @@ export async function renameWithRetry(from: string, to: string): Promise<void> {
 
 /** Replace a JSON file only after its private temporary file has been written. */
 export async function writeAtomicJson(directory: string, path: string, value: unknown): Promise<void> {
+  await writeAtomicFile(directory, path, JSON.stringify(value))
+}
+
+export async function writeAtomicFile(directory: string, path: string, value: string | Uint8Array): Promise<void> {
   await mkdir(directory, { recursive: true })
   const temporary = `${path}.${randomUUID()}.tmp`
   try {
-    await writeFile(temporary, JSON.stringify(value), { flag: 'wx', mode: 0o600 })
+    await writeFile(temporary, value, { flag: 'wx', mode: 0o600 })
     await renameWithRetry(temporary, path)
   } finally { await rm(temporary, { force: true }) }
 }
