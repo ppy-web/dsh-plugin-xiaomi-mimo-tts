@@ -41,6 +41,7 @@ import { registerOpenApiRoutes } from './host/open-api-routes.js'
 import { registerEngineRoutes } from './host/engine-routes.js'
 import { registerPortraitRoutes } from './host/portraits.js'
 import { registerStudioRoutes } from './host/studio-routes.js'
+import { registerStudioDirectorCommand } from './host/studio-director-command.js'
 import SpeechHost from './host/speech-service.js'
 import { registerDshGo } from './host/dsh-go.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, DEEPSEEK_VOICES, ttsApiKey } from './shared.js'
@@ -210,6 +211,9 @@ export function apply(ctx: Context, config: Config): void {
   })
   ctx.inject(['speechStudio'], host => {
     registerStudioRoutes(host)
+  })
+  ctx.inject(['speechStudio', 'speechSynthesis', 'commands', 'tools', 'systemPrompt'] as never, host => {
+    host.effect(() => registerStudioDirectorCommand(host), 'xiaomi-mimo-tts: studio director command')
   })
   // Native read-aloud in the dsh-go app; absent on hosts without its bridge.
   ctx.inject(['dshGo', 'speechSynthesis'], host => {

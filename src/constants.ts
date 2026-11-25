@@ -106,6 +106,10 @@ export const MAX_STUDIO_REQUEST_BODY_BYTES = 2 * 1024 * 1024
 /** Bearer-authenticated Open API route for external Studio automation. */
 export const TTS_OPEN_STUDIO_ROUTE = '/plugins/xiaomi-mimo-tts/open-studio'
 
+/** Host slash command name for entering and exiting Audio Drama Director mode. */
+export const STUDIO_DIRECTOR_COMMAND_NAME = 'director'
+export const STUDIO_DIRECTOR_SLASH_COMMAND = `/${STUDIO_DIRECTOR_COMMAND_NAME}`
+
 /** Public QQ discussion group the plugin links to. */
 export const TTS_QQ_GROUP_NUMBER = '1104616387'
 

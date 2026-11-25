@@ -219,6 +219,7 @@ URL 最长有效 24 小时。过期后立即拒绝下载，文件由定期任务
 | `synthesize_speech` | 生成 MP3 / WAV / SILK，返回 `{ path, format, size }`，不会自行发送到聊天，也不会生成下载 URL。 |
 | `speak` | 在已接入传声筒的 QQ 回合中发送语音，其他会话按预设配置交付。返回 `{ adapter, path?, messageId?, target? }`，默认 `file` 适配器导出 WAV。 |
 | `speech_mode` | `mode` 为 `manual` / `auto` / `status`，控制当前会话的通用自动语音。QQ 自动发送使用宿主的 QQ Bot 来源开关。 |
+| `studio_inspect` / `studio_save_role` / `studio_save_script` / `studio_import_script` / `studio_task_control` | 通过宿主 `/director` 斜杠指令按会话渐进披露（亦可通过 `dsh-xiaomi-tts/studio-agent` 单独组合），用于查询已配置引擎与录音棚状态、维护全局角色库与多角色剧本，以及启停或查询常驻后台合成任务。 |
 
 QQ 的 `speak` 接受 `text` 和可选的 `provider`、`speechInstruction`、`replyWithText`。语音发送成功后默认结束本轮；用户同时要求文字时，传 `replyWithText: true` 留出文字回复。其他会话的工具还允许模型、音色等参数。切换供应商重试需使用另一供应商已保存的凭据，不能借导出接口绕过渠道权限。
 

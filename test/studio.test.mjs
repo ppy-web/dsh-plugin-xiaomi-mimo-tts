@@ -8,6 +8,8 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from 'undici'
 import {
+  STUDIO_DIRECTOR_COMMAND_NAME,
+  STUDIO_DIRECTOR_SLASH_COMMAND,
   STUDIO_MAX_LINES_PER_SCRIPT,
   STUDIO_MAX_LINE_CHARACTERS,
   TTS_DESKTOP_WRITE_HEADER,
@@ -22,6 +24,7 @@ import {
   parseStudioScriptLines,
   resolveTtsSettings,
 } from '../lib/shared.js'
+import * as studioAgent from '../lib/studio-agent.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 import { createTestProvider } from './helpers/external-provider.mjs'
 import { listenLoopback } from './helpers/loopback.mjs'
@@ -32,6 +35,7 @@ const { HostSpeechStudioService } = await loadClientModule('src/host/studio-serv
 const { HostSpeechService } = await loadClientModule('src/host/speech-service.ts')
 const { registerStudioRoutes } = await loadClientModule('src/host/studio-routes.ts')
 const { registerOpenApiRoutes } = await loadClientModule('src/host/open-api-routes.ts')
+const { registerStudioDirectorCommand } = await loadClientModule('src/host/studio-director-command.ts')
 const { AudioDownloads } = await loadClientModule('src/host/audio-downloads.ts')
 const { createBuiltinStudioRoles } = await loadClientModule('src/types/studio.ts')
 const { findMatchingStudioRole } = await loadClientModule('src/text/studio-script-parser.ts')
@@ -631,6 +635,205 @@ test('Studio HTTP routes enforce same-origin, serve Range audio, and Open API en
     await studio.dispose()
     await downloads.dispose()
     await close(server)
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('studio /director slash command discloses tools per session, steers requests, exits, and replays log state', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-director-cmd-'))
+  try {
+    const store = new StudioDiskStore(dir)
+    const mockSpeech = {
+      engineState: () => ({ provider: 'xiaomi', revision: 1, name: 'xiaomi', ready: true, formats: ['wav'], maxTextLength: 2000, streaming: false }),
+      capabilities: () => ({ provider: 'xiaomi', formats: ['wav'], providers: [] }),
+      async synthesize(req) {
+        return { data: makeSineWav(24000, 100), text: req.text, provider: 'xiaomi', format: 'wav', contentType: 'audio/wav', durationMs: 100 }
+      },
+    }
+    const studio = new HostSpeechStudioService(mockSpeech, () => resolveTtsSettings({}), store)
+
+    const registeredTools = new Map()
+    const registeredCommands = new Map()
+    const promptSections = new Map()
+    const sessionListeners = new Set()
+    const ctx = {
+      speechStudio: studio,
+      speechSynthesis: mockSpeech,
+      tools: {
+        register(tool, options) {
+          registeredTools.set(tool.name, { tool, options })
+          return () => registeredTools.delete(tool.name)
+        },
+      },
+      commands: {
+        register(definition) {
+          registeredCommands.set(definition.name, definition)
+          return () => registeredCommands.delete(definition.name)
+        },
+      },
+      systemPrompt: {
+        getSectionOrder: () => 500,
+        section(spec) {
+          promptSections.set(spec.name, spec)
+          return () => promptSections.delete(spec.name)
+        },
+      },
+      on(event, listener) {
+        if (event === 'session/event') sessionListeners.add(listener)
+        return () => sessionListeners.delete(listener)
+      },
+    }
+
+    const dispose = registerStudioDirectorCommand(ctx)
+    const directorCommand = registeredCommands.get(STUDIO_DIRECTOR_COMMAND_NAME)
+    assert.ok(directorCommand)
+    assert.equal(directorCommand.input?.attachments, true)
+
+    const expectedTools = ['studio_inspect', 'studio_save_role', 'studio_save_script', 'studio_import_script', 'studio_task_control']
+    for (const toolName of expectedTools) {
+      assert.ok(registeredTools.has(toolName), `Expected tool ${toolName}`)
+    }
+
+    const sessionA = { id: 'session-a', snapshotEvents: () => [] }
+    const sessionB = { id: 'session-b', snapshotEvents: () => [] }
+    const steeredA = []
+    const agentA = { id: 'session-a', session: sessionA, steer: msg => steeredA.push(msg) }
+    const agentB = { id: 'session-b', session: sessionB, steer: () => assert.fail('session B must not be steered') }
+    const signal = new AbortController().signal
+
+    // Before entering /director, neither session sees director prompt or studio tools.
+    assert.equal(promptSections.get('studio-director:policy').text({ agent: agentA }), '')
+    assert.equal(promptSections.get('studio-director:status').text({ agent: agentA }), '')
+    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: agentA }), false)
+
+    // Entering /director with text + attachment activates only session A and steers the prompt.
+    const attachment = {
+      type: 'file',
+      attachment: { attachmentId: `sha256:${'a'.repeat(64)}`, name: '第一章.txt', bytes: 128 },
+    }
+    const enterResult = await directorCommand.handler({
+      commandId: 'cmd-1',
+      agent: agentA,
+      rawInput: ' 改编成三人悬疑广播剧',
+      attachments: [attachment],
+      signal,
+    })
+    assert.equal(enterResult.kind, 'success')
+    assert.equal(steeredA.length, 1)
+    assert.equal(steeredA[0].content.length, 2)
+    assert.deepEqual(steeredA[0].content[0], attachment)
+    assert.equal(steeredA[0].content[1].text, '改编成三人悬疑广播剧')
+
+    assert.ok(promptSections.get('studio-director:policy').text({ agent: agentA }).includes('studio_inspect'))
+    assert.ok(promptSections.get('studio-director:status').text({ agent: agentA }).length > 0)
+    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: agentA }), true)
+    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: agentB }), false)
+    assert.equal(promptSections.get('studio-director:policy').text({ agent: agentB }), '')
+
+    // Uploaded documents can be the entire request, with every file forwarded in upload order.
+    const steeredDocuments = []
+    const sessionDocuments = { id: 'session-documents', snapshotEvents: () => [] }
+    const agentDocuments = { id: 'session-documents', session: sessionDocuments, steer: msg => steeredDocuments.push(msg) }
+    const documents = [attachment, {
+      type: 'file',
+      attachment: { attachmentId: `sha256:${'b'.repeat(64)}`, name: '第二章.txt', bytes: 256 },
+    }]
+    const documentsResult = await directorCommand.handler({
+      commandId: 'cmd-documents',
+      agent: agentDocuments,
+      rawInput: '   ',
+      attachments: documents,
+      signal,
+    })
+    assert.equal(documentsResult.kind, 'success')
+    assert.deepEqual(steeredDocuments.map(message => message.content), [documents])
+    assert.equal(steeredDocuments[0].source.kind, 'user')
+
+    // Bare /director (no args or attachments) still activates the session and steers a notice turn so DSH asks clarifying questions.
+    const steeredBare = []
+    const sessionBare = { id: 'session-bare', snapshotEvents: () => [] }
+    const agentBare = { id: 'session-bare', session: sessionBare, steer: msg => steeredBare.push(msg) }
+    const bareResult = await directorCommand.handler({
+      commandId: 'cmd-bare',
+      agent: agentBare,
+      rawInput: '   ',
+      attachments: [],
+      signal,
+    })
+    assert.equal(bareResult.kind, 'success')
+    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: agentBare }), true)
+    assert.equal(steeredBare.length, 1)
+    assert.equal(steeredBare[0].source.kind, 'studio-director')
+    assert.ok(steeredBare[0].content[0].text.includes('studio_inspect'))
+
+    // Disclosed tools execute end-to-end against HostSpeechStudioService and reuse roles on duplicate save names.
+    const savedRole = await registeredTools.get('studio_save_role').tool.execute({ name: '导演旁白', provider: 'xiaomi', voice: '冰糖' }, { signal })
+    const reusedRole = await registeredTools.get('studio_save_role').tool.execute({ name: '导演旁白', provider: 'xiaomi', voice: '白桦' }, { signal })
+    assert.equal(reusedRole.role.id, savedRole.role.id)
+    assert.equal(reusedRole.role.voice, '白桦')
+    const savedScript = await registeredTools.get('studio_save_script').tool.execute({
+      title: 'AI导演样片',
+      lines: [{ roleId: savedRole.role.id, text: '第一场，开拍！', pauseAfterMs: 300 }],
+    }, { signal })
+    const started = await registeredTools.get('studio_task_control').tool.execute({ action: 'start', scriptId: savedScript.script.id, autoStart: false }, { signal })
+    assert.equal(started.task.status, 'paused')
+
+    // /director off rejects attachments and preserves active mode.
+    const badOff = await directorCommand.handler({
+      commandId: 'cmd-2',
+      agent: agentA,
+      rawInput: ' off',
+      attachments: [attachment],
+      signal,
+    })
+    assert.equal(badOff.kind, 'error')
+    assert.notEqual(promptSections.get('studio-director:status').text({ agent: agentA }), '')
+
+    // Clean /director off deactivates director status while keeping tool catalog stable.
+    const offResult = await directorCommand.handler({
+      commandId: 'cmd-3',
+      agent: agentA,
+      rawInput: ' off',
+      attachments: [],
+      signal,
+    })
+    assert.equal(offResult.kind, 'success')
+    assert.notEqual(
+      promptSections.get('studio-director:status').text({ agent: agentA }),
+      promptSections.get('studio-director:status').text({ agent: { id: 'session-c', session: { id: 'session-c', snapshotEvents: () => [
+        { type: 'command/run', data: { commandId: 'r1', name: STUDIO_DIRECTOR_COMMAND_NAME, args: ' 写剧' } },
+        { type: 'command/done', data: { commandId: 'r1', kind: 'success' } },
+      ] } } }),
+    )
+
+    // Cold resumed/forked session replays logged /director command lifecycle.
+    const resumedSession = {
+      id: 'session-resumed',
+      snapshotEvents: () => [
+        { type: 'command/run', data: { commandId: 'r1', name: STUDIO_DIRECTOR_COMMAND_NAME, args: '' } },
+        { type: 'command/done', data: { commandId: 'r1', kind: 'success' } },
+      ],
+    }
+    const resumedAgent = { id: 'session-resumed', session: resumedSession }
+    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: resumedAgent }), true)
+    assert.ok(promptSections.get('studio-director:policy').text({ agent: resumedAgent }).includes('studio_inspect'))
+
+    // Standalone studio-agent module remains composable independently.
+    const standaloneTools = new Map()
+    studioAgent.apply({
+      speechStudio: studio,
+      speechSynthesis: mockSpeech,
+      tools: { register(tool) { standaloneTools.set(tool.name, tool) } },
+    })
+    for (const toolName of expectedTools) assert.ok(standaloneTools.has(toolName))
+
+    dispose()
+    assert.equal(registeredCommands.size, 0)
+    assert.equal(registeredTools.size, 0)
+    assert.equal(promptSections.size, 0)
+    assert.equal(sessionListeners.size, 0)
+    await studio.dispose()
+  } finally {
     await rm(dir, { recursive: true, force: true })
   }
 })

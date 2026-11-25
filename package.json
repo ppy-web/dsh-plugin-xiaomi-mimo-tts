@@ -48,6 +48,10 @@
       "types": "./lib/speech-agent.d.ts",
       "default": "./lib/speech-agent.js"
     },
+    "./studio-agent": {
+      "types": "./lib/studio-agent.d.ts",
+      "default": "./lib/studio-agent.js"
+    },
     "./qqbot": {
       "types": "./lib/qqbot.d.ts",
       "default": "./lib/qqbot.js"
@@ -88,6 +92,7 @@
     "lib/host/session-speech.d.ts",
     "lib/speech-host.d.ts",
     "lib/speech-agent.d.ts",
+    "lib/studio-agent.d.ts",
     "lib/qqbot.d.ts",
     "lib/passport.d.ts",
     "lib/passport/*.d.ts",
