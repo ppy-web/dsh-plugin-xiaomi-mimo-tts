@@ -212,6 +212,7 @@
   box-shadow: none;
   gap: 6px;
   padding: 6px;
+  animation: none;
 }
 
 .xmimo-tts-card-minimal .xmimo-tts-builtin-voice-option:not(.xmimo-tts-external-catalog *) {

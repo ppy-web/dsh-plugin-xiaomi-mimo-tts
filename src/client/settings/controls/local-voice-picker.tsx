@@ -54,13 +54,13 @@ export function LocalVoicePicker({ value, disabled = false, label, minimal = fal
   }, [])
 
   useEffect(() => {
-    if (typeof document === 'undefined') return
+    if (!open || typeof document === 'undefined') return
     const close = (event: PointerEvent): void => {
       if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false)
     }
     document.addEventListener('pointerdown', close)
     return () => document.removeEventListener('pointerdown', close)
-  }, [])
+  }, [open])
 
   useEffect(() => { if (disabled) setOpen(false) }, [disabled])
 

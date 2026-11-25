@@ -3,6 +3,7 @@ import { once } from 'node:events'
 import { createServer } from 'node:http'
 import test from 'node:test'
 import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { resolveTtsSettings } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
 import { renderCompleted } from './helpers/render-completed.mjs'
@@ -29,6 +30,8 @@ const {
   hasPendingProviderKey,
 } = await loadClientModule('src/client/settings/draft.ts')
 const { default: GeneratedVoiceAvatar } = await loadClientModule('src/client/settings/controls/generated-voice-avatar.tsx')
+const { lazyPanel } = await loadClientModule('src/client/lazy-panel.tsx')
+const { ensureClientStyle, disposePersistentClientStyles } = await loadClientModule('src/client/style/inject.ts')
 
 function startRouteServer(routes) {
   const server = createServer((req, res) => {
@@ -259,4 +262,80 @@ test('GeneratedVoiceAvatar renders every selectable style as an independent imag
     return svg
   }))
   assert.equal(new Set(images).size, styles.length)
+})
+
+test('lazyPanel renders synchronously on revisit and after preload without re-running loader', async () => {
+  let loads = 0
+  const Loaded = ({ t }) => createElement('section', null, t('loaded.view'))
+  const Panel = lazyPanel(async () => {
+    loads += 1
+    return Loaded
+  })
+
+  const first = await renderCompleted(createElement(Panel, { t: key => key }))
+  assert.match(first, /loaded\.view/u)
+  assert.equal(loads, 1)
+
+  const revisit = renderToStaticMarkup(createElement(Panel, { t: key => key }))
+  assert.match(revisit, /loaded\.view/u)
+  assert.doesNotMatch(revisit, /panel\.loading/u)
+  assert.equal(loads, 1)
+
+  let preloads = 0
+  const Preloaded = lazyPanel(async () => {
+    preloads += 1
+    return Loaded
+  })
+  Preloaded.preload()
+  await new Promise(resolve => setTimeout(resolve, 0))
+  const afterPreload = renderToStaticMarkup(createElement(Preloaded, { t: key => key }))
+  assert.match(afterPreload, /loaded\.view/u)
+  assert.equal(preloads, 1)
+})
+
+test('persistent client styles survive panel unmount and clean up on plugin disposal', () => {
+  const originalDocument = globalThis.document
+  const nodes = []
+  const head = {
+    querySelector: () => null,
+    appendChild(node) {
+      node.isConnected = true
+      nodes.push(node)
+      return node
+    },
+  }
+  globalThis.document = {
+    head,
+    createElement(tag) {
+      const node = {
+        tagName: tag.toUpperCase(),
+        dataset: {},
+        textContent: '',
+        isConnected: false,
+        remove() {
+          node.isConnected = false
+          const index = nodes.indexOf(node)
+          if (index >= 0) nodes.splice(index, 1)
+        },
+      }
+      return node
+    },
+  }
+  try {
+    const offFirst = ensureClientStyle('test-persistent-panel', '.demo{opacity:1}', true)
+    assert.equal(nodes.length, 1)
+    offFirst()
+    assert.equal(nodes.length, 1, 'persistent panel style stays mounted across tab switches')
+
+    const offSecond = ensureClientStyle('test-persistent-panel', '.demo{opacity:1}', true)
+    assert.equal(nodes.length, 1, 're-entering the panel reuses the existing style tag')
+    offSecond()
+    assert.equal(nodes.length, 1)
+
+    disposePersistentClientStyles()
+    assert.equal(nodes.length, 0, 'plugin unload removes retained panel styles')
+  } finally {
+    if (originalDocument === undefined) delete globalThis.document
+    else globalThis.document = originalDocument
+  }
 })

@@ -85,7 +85,7 @@
 .xmimo-live2d-actions button { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding-block: 6px; overflow-wrap: anywhere; }
 .xmimo-live2d-actions button:disabled { color: var(--preview-muted); cursor: default; }
 .xmimo-live2d-actions button[aria-pressed='true'] { border-color: var(--preview-link); color: var(--preview-link); }
-.xmimo-live2d-device-indicator { flex: none; width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 50%; }
+.xmimo-live2d-device-indicator { flex: none; width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 50%; corner-shape: round; }
 .xmimo-live2d-actions button[aria-pressed='true'] .xmimo-live2d-device-indicator { background: currentColor; }
 .xmimo-live2d-devices { padding-block-start: 20px; border-block-start: 1px solid var(--xmimo-live2d-divider); }
 .xmimo-live2d-device-status:not(:empty) { margin-block-start: 8px; }

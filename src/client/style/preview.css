@@ -41,7 +41,7 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 152px;
+  min-height: 112px;
   resize: vertical;
   border: 1px solid var(--xmimo-ui-border);
   border-radius: var(--xmimo-ui-control-radius);
@@ -59,6 +59,7 @@
   min-height: 34px;
   border: 1px solid var(--xmimo-ui-border-soft);
   border-radius: 999px;
+  corner-shape: round;
   padding: 6px 8px;
   color: var(--xmimo-ui-text);
   background: var(--xmimo-skeuo-key-bg, var(--xmimo-ui-control-surface));
@@ -107,6 +108,7 @@
   min-height: 32px;
   border: 1px solid var(--xmimo-ui-border);
   border-radius: 999px;
+  corner-shape: round;
   padding: 5px 10px;
   color: var(--xmimo-ui-text);
   background: var(--xmimo-skeuo-key-bg, var(--xmimo-ui-surface));
@@ -172,6 +174,7 @@
   min-height: 32px;
   border: 1px solid var(--xmimo-ui-border);
   border-radius: 999px;
+  corner-shape: round;
   padding: 5px 8px 5px 10px;
   color: var(--xmimo-ui-text);
   background: var(--xmimo-skeuo-key-bg, var(--xmimo-ui-surface));
@@ -230,6 +233,14 @@
   box-shadow: var(--xmimo-skeuo-popover-shadow, none);
   font-family: inherit;
   font-size: 12px;
+  animation: xmimo-tts-popover-in 160ms cubic-bezier(.22, 1, .36, 1);
+}
+@keyframes xmimo-tts-popover-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-breeze-audio-tags-panel { animation: none; }
 }
 @position-try --xmimo-audio-tags-above {
   top: 12px;
@@ -252,6 +263,7 @@
   flex: none;
   border: 1px solid var(--xmimo-ui-border-soft);
   border-radius: 999px;
+  corner-shape: round;
   background: var(--xmimo-skeuo-key-bg, var(--xmimo-ui-surface));
   box-shadow: var(--xmimo-skeuo-key-shadow, none);
   font-size: 12px;
@@ -259,7 +271,7 @@
 
 @media (max-width: 600px) {
   .xmimo-tts-preview-input { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .xmimo-tts-preview-input > textarea { min-height: 128px; }
+  .xmimo-tts-preview-input > textarea { min-height: 96px; }
   .xmimo-tts-preview-tools { gap: 12px; }
 }
 

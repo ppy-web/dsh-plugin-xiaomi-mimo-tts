@@ -28,15 +28,15 @@
   --slider-surface: color-mix(in srgb, var(--slider-accent) 11%, var(--slider-control-surface));
   --slider-fill: color-mix(in srgb, var(--slider-accent) 26%, var(--slider-surface));
   --slider-mark: color-mix(in srgb, var(--slider-text) 29%, transparent);
-  /* Native range thumbs travel between their two half-width insets. */
-  --slider-current-width: calc(var(--slider-lens-width) * var(--xmimo-slider-zoom));
-  --slider-thumb-distance: calc(var(--slider-current-width) / 2 + (100% - var(--slider-current-width)) * var(--slider-progress));
+  /* Native range thumbs travel between their two half-width insets, so anchoring on
+   * --slider-thumb-size keeps the visual knob locked to pointer math without layout reflow. */
+  --slider-thumb-distance: calc(var(--slider-thumb-size) / 2 + (100% - var(--slider-thumb-size)) * var(--slider-progress));
   --slider-thumb-at: var(--slider-thumb-distance);
   position: relative;
   display: block;
   min-width: 0;
   height: 44px;
-  transition: --xmimo-slider-zoom 150ms ease-out;
+  transition: --xmimo-slider-zoom 180ms cubic-bezier(.22, 1, .36, 1);
 }
 
 .xmimo-tts-slider[data-dragging=true],
@@ -61,6 +61,7 @@
   inset: calc((100% - var(--slider-rail-height)) / 2) 0;
   overflow: hidden;
   border-radius: 999px;
+  corner-shape: round;
 }
 
 .xmimo-tts-slider:not(.xmimo-tts-slider-minimal) .xmimo-tts-slider-rail::after {
@@ -69,6 +70,7 @@
   inset: 0;
   border: 1px solid color-mix(in srgb, var(--xmimo-ui-border, #d7dbe2) 78%, transparent);
   border-radius: inherit;
+  corner-shape: inherit;
   box-shadow: var(--xmimo-skeuo-well-shadow, inset 0 1px 3px rgb(0 0 0 / 12%));
   pointer-events: none;
 }
@@ -97,17 +99,34 @@
   transform-origin: var(--slider-thumb-at) center;
 }
 
+.xmimo-tts-slider-knob-track {
+  position: absolute;
+  inset: 0 calc(var(--slider-thumb-size) / 2);
+  pointer-events: none;
+}
+
+.xmimo-tts-slider-knob-pos {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(calc(var(--slider-progress) * 100%), 0, 0);
+}
+
+.xmimo-tts-slider:dir(rtl) .xmimo-tts-slider-knob-pos {
+  transform: translate3d(calc(var(--slider-progress) * -100%), 0, 0);
+}
+
 .xmimo-tts-slider-knob {
   position: absolute;
   top: 50%;
-  left: var(--slider-thumb-at);
+  inset-inline-start: 0;
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  width: var(--slider-current-width);
-  height: calc(var(--slider-lens-height) * var(--xmimo-slider-zoom));
+  width: var(--slider-lens-width);
+  height: var(--slider-lens-height);
   border: 1px solid color-mix(in srgb, var(--slider-text) 24%, var(--slider-control-surface));
   border-radius: 999px;
+  corner-shape: round;
   background:
     linear-gradient(180deg, light-dark(rgb(255 255 255 / 88%), rgb(255 255 255 / 20%)), light-dark(rgb(255 255 255 / 44%), rgb(0 0 0 / 18%))),
     color-mix(in srgb, var(--slider-control-surface) 74%, transparent);
@@ -119,14 +138,24 @@
     0 1px 2px var(--xmimo-skeuo-drop-tight, rgb(0 0 0 / 14%));
   color: var(--slider-text);
   pointer-events: none;
-  transform: translate(-50%, -50%);
+  transform: translate3d(-50%, -50%, 0) scale(var(--xmimo-slider-zoom));
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.xmimo-tts-slider:dir(rtl) .xmimo-tts-slider-knob {
+  transform: translate3d(50%, -50%, 0) scale(var(--xmimo-slider-zoom));
+}
+
+.xmimo-tts-slider[data-dragging=true] .xmimo-tts-slider-knob-pos,
+.xmimo-tts-slider[data-dragging=true] .xmimo-tts-slider-knob {
+  will-change: transform;
 }
 
 .xmimo-tts-slider-value {
-  font-size: calc(11px * var(--xmimo-slider-zoom));
+  font-size: 11px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-  line-height: calc(14px * var(--xmimo-slider-zoom));
+  line-height: 14px;
   white-space: nowrap;
 }
 
@@ -262,6 +291,7 @@
   justify-content: center;
   border: 0;
   border-radius: 50%;
+  corner-shape: round;
   padding: 0;
   color: var(--xmimo-ui-text-muted);
   background: transparent;
@@ -293,5 +323,15 @@
   font-weight: 400;
   line-height: 1.6;
   white-space: pre-line;
-  overflow-wrap: anywhere
+  overflow-wrap: anywhere;
+  animation: xmimo-tts-tooltip-in 150ms cubic-bezier(.22, 1, .36, 1)
+}
+
+@keyframes xmimo-tts-tooltip-in {
+  from { opacity: 0; transform: translateY(-3px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-tts-field-info-tooltip { animation: none }
 }

@@ -99,6 +99,7 @@
 .xmimo-tts-overridden {
   border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 66%, transparent);
   border-radius: 999px;
+  corner-shape: round;
   padding: 1px 7px;
   color: var(--dsw-alias-label-secondary, #5f6875);
   background: var(--xmimo-skeuo-chip-bg, var(--dsw-alias-bg-module-platform, #eef0f3));

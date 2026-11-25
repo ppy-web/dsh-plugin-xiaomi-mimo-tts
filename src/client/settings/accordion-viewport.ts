@@ -18,7 +18,10 @@ export function useAccordionViewport(open: boolean, onToggle: () => void) {
     }
     const page = document.scrollingElement as HTMLElement | null
     if (page && !/hidden|clip/.test(getComputedStyle(page).overflowY)) scrollers.push(page)
-    const bounds = () => {
+    const header = section.querySelector<HTMLElement>('.xmimo-ui-module-header')
+    const siblings = Array.from(section.parentElement?.querySelectorAll<HTMLElement>('.xmimo-ui-accordion-collapse') ?? [])
+    let cachedBounds = { top: 12, bottom: window.innerHeight - 12 }
+    const measureBounds = () => {
       const viewport = window.visualViewport
       let top = viewport?.offsetTop ?? 0
       let bottom = top + (viewport?.height ?? window.innerHeight)
@@ -28,29 +31,39 @@ export function useAccordionViewport(open: boolean, onToggle: () => void) {
         top = Math.max(top, rect.top + scroller.clientTop)
         bottom = Math.min(bottom, rect.top + scroller.clientTop + scroller.clientHeight)
       }
-      return { top: top + 12, bottom: bottom - 12 }
+      cachedBounds = { top: top + 12, bottom: bottom - 12 }
+      return cachedBounds
     }
     const sizeContent = () => {
-      const { top, bottom } = bounds()
-      const header = section.querySelector<HTMLElement>('.xmimo-ui-module-header')!
-      content.style.maxHeight = `${Math.max(0, bottom - top - header.offsetHeight - 2)}px`
+      const { top, bottom } = measureBounds()
+      const headerHeight = header?.offsetHeight ?? 0
+      content.style.maxHeight = `${Math.max(0, bottom - top - headerHeight - 2)}px`
     }
     sizeContent()
     let frame = 0
     let cancelled = false
+    const startedAt = performance.now()
     const cancel = () => { cancelled = true; cancelAnimationFrame(frame) }
-    const align = () => {
+    const align = (now: number) => {
       if (cancelled || anchor.current === null) return
-      const { top, bottom } = bounds()
+      const { top, bottom } = cachedBounds
       const rect = section.getBoundingClientRect()
       const target = Math.max(top, Math.min(anchor.current, bottom - rect.height))
-      for (const scroller of scrollers) {
-        const delta = section.getBoundingClientRect().top - target
-        if (Math.abs(delta) < 1) break
-        scroller.scrollTo({ top: scroller.scrollTop + delta, behavior: 'instant' })
+      let remaining = rect.top - target
+      if (Math.abs(remaining) >= 1) {
+        for (const scroller of scrollers) {
+          if (Math.abs(remaining) < 1) break
+          const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+          const current = scroller.scrollTop
+          const next = Math.max(0, Math.min(maxScroll, current + remaining))
+          const applied = next - current
+          if (Math.abs(applied) >= 0.5) {
+            scroller.scrollTo({ top: next, behavior: 'instant' })
+            remaining -= applied
+          }
+        }
       }
-      const siblings = section.parentElement?.querySelectorAll<HTMLElement>('.xmimo-ui-accordion-collapse') ?? []
-      if (Array.from(siblings).some(element => element.getAnimations().some(animation => animation.playState === 'running'))) {
+      if (now - startedAt < 450 && siblings.some(element => element.getAnimations().some(animation => animation.playState === 'running'))) {
         frame = requestAnimationFrame(align)
       }
     }

@@ -85,6 +85,7 @@
   flex: none;
   border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 26%, transparent);
   border-radius: 999px;
+  corner-shape: round;
   padding: 1px 7px;
   color: var(--dsw-alias-brand-primary, #4f6ef7);
   background: var(--xmimo-skeuo-chip-bg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 12%, transparent));
@@ -194,7 +195,7 @@
   max-width: 100%;
   height: 36px;
   margin: 2px auto 0;
-  --slider-thumb-size: 48px;
+  --slider-thumb-size: 52px;
   --slider-lens-width: 40px;
   --slider-rail-height: 20px;
   --slider-lens-height: 20px

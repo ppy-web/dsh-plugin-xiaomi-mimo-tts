@@ -47,23 +47,79 @@ export function PanelStatusView({ message, failed = false, compact = false, retr
   </div>
 }
 
-export function lazyPanel<Props extends PanelProps>(load: () => Promise<ComponentType<Props>>, options?: LazyPanelOptions): (props: Props) => ReactElement {
-  return function DeferredPanel(props) {
-    const [attempt, setAttempt] = useState(0)
-    const Panel = useMemo(() => lazy(async () => {
+export interface LazyPanelComponent<Props extends PanelProps> {
+  (props: Props): ReactElement
+  preload: () => void
+}
+
+export function lazyPanel<Props extends PanelProps>(load: () => Promise<ComponentType<Props>>, options?: LazyPanelOptions): LazyPanelComponent<Props> {
+  let resolved: ComponentType<Props> | null = null
+  let inFlight: Promise<ComponentType<Props>> | null = null
+  let sharedLazy: ReturnType<typeof createLazy> | null = null
+
+  const loadOnce = (): Promise<ComponentType<Props>> => {
+    if (resolved !== null) return Promise.resolve(resolved)
+    if (inFlight !== null) return inFlight
+    inFlight = load().then(Loaded => {
+      resolved = Loaded
+      inFlight = null
+      return Loaded
+    }, error => {
+      inFlight = null
+      throw error
+    })
+    return inFlight
+  }
+
+  function createLazy() {
+    return lazy(async () => {
       try {
-        const Loaded = await load()
-        return { default: ({ panelProps }: { panelProps: Props }) => <Loaded {...panelProps} /> }
+        const Loaded = await loadOnce()
+        return { default: ({ panelProps }: { panelProps: Props; onRetry: () => void }) => <Loaded {...panelProps} /> }
       } catch {
         return {
-          default: ({ panelProps }: { panelProps: Props }) => (
-            <PanelStatus {...panelProps} failed onRetry={() => setAttempt(current => current + 1)} />
+          default: ({ panelProps, onRetry }: { panelProps: Props; onRetry: () => void }) => (
+            <PanelStatus {...panelProps} failed onRetry={onRetry} />
           ),
         }
       }
-    }), [attempt])
-    return <Suspense fallback={options?.silentLoading ? null : <PanelStatus {...props} />}><Panel panelProps={props} /></Suspense>
+    })
   }
+
+  function DeferredPanel(props: Props): ReactElement {
+    const [attempt, setAttempt] = useState(0)
+    // Once a deferred chunk has resolved, render synchronously on revisit to avoid
+    // flashing the loading view every time the user switches panels.
+    const Panel = useMemo(() => {
+      if (resolved !== null) return null
+      if (attempt === 0) {
+        sharedLazy ??= createLazy()
+        return sharedLazy
+      }
+      return createLazy()
+    }, [attempt])
+
+    if (resolved !== null) {
+      const Loaded = resolved
+      return <Loaded {...props} />
+    }
+
+    const retry = (): void => {
+      sharedLazy = null
+      setAttempt(current => current + 1)
+    }
+
+    const ActivePanel = Panel!
+    return <Suspense fallback={options?.silentLoading ? null : <PanelStatus {...props} />}><ActivePanel panelProps={props} onRetry={retry} /></Suspense>
+  }
+
+  DeferredPanel.preload = (): void => {
+    if (resolved === null && inFlight === null) {
+      void loadOnce().catch(() => {})
+    }
+  }
+
+  return DeferredPanel
 }
 
 function PanelStatus({ t, onBack, failed = false, onRetry }: PanelProps & { failed?: boolean; onRetry?: () => void }): ReactElement {

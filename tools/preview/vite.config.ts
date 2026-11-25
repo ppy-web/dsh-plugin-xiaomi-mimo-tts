@@ -95,6 +95,18 @@ export default defineConfig(({ command }) => ({
   base: pagesBase,
   publicDir: false,
   plugins: [previewAssets()],
+  resolve: {
+    alias: [
+      {
+        find: /^@deepseek-ai\/dsh-client-ui-primitives$/,
+        replacement: '@deepseek-ai/dsh-client-ui-primitives/src/index.ts',
+      },
+    ],
+  },
+  optimizeDeps: {
+    exclude: ['@deepseek-ai/dsh-client-ui-primitives'],
+    include: ['anser'],
+  },
   define: {
     'process.env.NODE_ENV': JSON.stringify(command === 'serve' ? 'development' : 'production'),
   },

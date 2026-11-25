@@ -57,7 +57,7 @@ export function VoiceReadingSelect({ label, value, fallbackLabel, options, disab
   >
     {selected?.icon}
     <span className="xmimo-voice-reading-selector-label">{selectedLabel}</span>
-    <IconChevronDownOutlineRegular className="xmimo-voice-reading-chevron" />
+    <IconChevronDownOutlineRegular className={open && !disabled ? 'xmimo-voice-reading-chevron xmimo-voice-reading-chevron-open' : 'xmimo-voice-reading-chevron'} />
   </Trigger>
 
   return <Menu

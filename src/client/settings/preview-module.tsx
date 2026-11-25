@@ -148,7 +148,7 @@ export function PreviewModule({
           <textarea
             ref={textRef}
             value={text}
-            rows={5}
+            rows={4}
             maxLength={100}
             aria-label={t('settings.previewText')}
             placeholder={t('settings.previewPlaceholder')}

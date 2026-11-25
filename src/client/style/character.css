@@ -30,7 +30,10 @@
   filter: blur(18px);
   opacity: calc(var(--xmimo-holo-awake, 0) * .58);
   pointer-events: none;
-  transform: translate3d(var(--xmimo-holo-sx, 0px), var(--xmimo-holo-sy, 0px), 0) scale(var(--xmimo-holo-shadow-scale, .9));
+  transform: translate3d(var(--xmimo-holo-sx, 0px), var(--xmimo-holo-sy, 0px), 0) scale(var(--xmimo-holo-shadow-scale, .9))
+}
+
+.xmimo-tts-character-toggle:is([data-xmimo-holo-spring], [data-xmimo-holo-active]) > .xmimo-tts-holo-shadow {
   will-change: transform, opacity
 }
 
@@ -86,6 +89,7 @@
   width: 100%;
   height: 100%;
   border-radius: inherit;
+  corner-shape: inherit;
   opacity: 0;
   pointer-events: none;
   transition: opacity 240ms ease
@@ -105,6 +109,7 @@
   inset: 0;
   z-index: 1;
   border-radius: inherit;
+  corner-shape: inherit;
   pointer-events: none;
   opacity: 0;
   transition: opacity 180ms ease
@@ -204,8 +209,7 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transform-origin: center;
-  transition: transform 140ms ease
+  transform-origin: center
 }
 
 .xmimo-tts-character-state {
@@ -218,6 +222,7 @@
   gap: 5px;
   border: 1px solid color-mix(in srgb, var(--xmimo-ui-border, var(--dsw-alias-border-l2, #d7dbe2)) 88%, transparent);
   border-radius: 999px;
+  corner-shape: round;
   padding: 2px 8px;
   color: var(--dsw-alias-label-tertiary, #8b93a1);
   background: var(--xmimo-skeuo-chip-bg, color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 88%, transparent));
@@ -231,6 +236,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
+  corner-shape: round;
   background: var(--dsw-alias-label-dimmed, #aeb4bf);
   box-shadow: inset 0 1px 1.5px rgb(0 0 0 / 28%)
 }

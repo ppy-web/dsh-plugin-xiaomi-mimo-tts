@@ -210,6 +210,7 @@ const fallbackRing = (from: string, to: string, size: number): CSSProperties => 
   position: 'absolute',
   inset: '14%',
   borderRadius: '50%',
+  ...({ cornerShape: 'round' } as CSSProperties),
   background: `conic-gradient(from 0deg, ${from}, ${to}, ${from}, ${to}, ${from})`,
   WebkitMask: 'radial-gradient(closest-side, transparent 72%, #000 80%, #000 88%, transparent 100%)',
   mask: 'radial-gradient(closest-side, transparent 72%, #000 80%, #000 88%, transparent 100%)',

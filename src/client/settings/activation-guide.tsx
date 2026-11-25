@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, ReactElement } from 'react'
 import type { PluginActivationOwnerProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import { Button, IconCloseOutlineRegular, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import { LuAudioLines, LuStar } from 'react-icons/lu'
+import { LuAudioLines } from 'react-icons/lu'
 import { TTS_UPDATE_CELEBRATION_ASSET_ROUTE, TTS_VERSION } from '../shared.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { resolveTtsSettings, type TtsSettings } from '../shared.js'
@@ -88,7 +88,7 @@ export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, on
       <div className="xmimo-tts-activation-footer">
         <div className="xmimo-tts-activation-actions">
           <Button type="button" variant="outline" onClick={openWorkbench} disabled={changing}><LuAudioLines size={16} aria-hidden="true" />{t('onboarding.configure')}</Button>
-          <Button type="button" variant="primary" onClick={() => window.open(SOURCE_URL, '_blank', 'noopener,noreferrer')}><LuStar size={16} aria-hidden="true" />{t('onboarding.github')}</Button>
+          <Button type="button" variant="outline" onClick={dismiss}>{t('onboarding.acknowledge')}</Button>
           <Button type="button" variant="outline" disabled={saving} onClick={() => void neverRemind()}>{t('onboarding.never')}</Button>
         </div>
         {failed ? <div className="xmimo-tts-activation-feedback"><p role="alert">{t('settings.failed')}</p></div> : null}

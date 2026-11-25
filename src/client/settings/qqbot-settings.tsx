@@ -105,7 +105,7 @@ function QqbotSpeechPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: QqbotSpeec
       <span role="status">{!snapshot.writable ? t('settings.readOnly') : conflict ? t('whale.conflict') : !valid ? t('qq.error') : state === 'failed' ? t('settings.failed') : state === 'saved' && !dirty ? t('settings.saved') : ''}</span>
       <div className="xmimo-tts-card-action-buttons">
         <Button type="button" variant="outline" size="sm" disabled={!draft || state === 'saving'} onClick={() => { setDraft(null); setState('idle') }}>{t('settings.discard')}</Button>
-        <Button type="submit" variant="primary" size="sm" disabled={disabled || !dirty || conflict || !valid}>{t(state === 'saving' ? 'settings.saving' : 'settings.save')}</Button>
+        <Button type="submit" variant="primary" size="sm" className="xmimo-tts-save" disabled={disabled || !dirty || conflict || !valid}>{t(state === 'saving' ? 'settings.saving' : 'settings.save')}</Button>
       </div>
     </div></div>
   </form>

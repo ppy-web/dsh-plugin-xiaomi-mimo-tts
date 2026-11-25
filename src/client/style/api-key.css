@@ -28,44 +28,55 @@
   z-index: 1
 }
 
-.xmimo-tts-api-key-input-missing::after,
-.xmimo-tts-card-actions .xmimo-tts-save:not(:disabled)::after {
-  content: '';
+.xmimo-tts-shimmer-ring {
+  box-sizing: border-box;
   position: absolute;
   z-index: 2;
   inset: 0;
-  border: 2px solid transparent;
+  overflow: hidden;
   border-radius: var(--xmimo-ui-control-radius);
-  background: linear-gradient(110deg, #d9b885 10%, #f9e5b7 25%, #bd7942 40%, #d9b885 55%, #f9e5b7 75%, #bd7942 90%) border-box;
-  background-size: 250% 100%;
-  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  padding: 2px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
-  pointer-events: none;
+  pointer-events: none
+}
+
+.xmimo-tts-card-actions .xmimo-tts-save > .xmimo-tts-shimmer-ring {
+  border-radius: inherit;
+  corner-shape: inherit
+}
+
+/* Compositor-only transform loop replaces background-position repaints. */
+.xmimo-tts-shimmer-ring::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 260%;
+  background: linear-gradient(110deg, #d9b885 0%, #f9e5b7 12.5%, #bd7942 25%, #d9b885 37.5%, #f9e5b7 50%, #bd7942 62.5%, #d9b885 75%, #f9e5b7 87.5%, #bd7942 100%);
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
   animation: xmimo-tts-api-key-shimmer 4s linear infinite
 }
 
-.xmimo-tts-card-actions .xmimo-tts-save:not(:disabled)::after {
-  border-radius: inherit
-}
-
 @keyframes xmimo-tts-api-key-shimmer {
-  to { background-position: 250% 0 }
+  from { transform: translate3d(-50%, 0, 0) }
+  to { transform: translate3d(0, 0, 0) }
 }
 
-.xmimo-tts-card-minimal .xmimo-tts-api-key-input-missing::after {
+.xmimo-tts-card-minimal .xmimo-tts-api-key-input-missing > .xmimo-tts-shimmer-ring {
   top: auto;
   height: 2px;
-  border: 0;
+  padding: 0;
   border-radius: 0;
   -webkit-mask: none;
   mask: none
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .xmimo-tts-api-key-input-missing::after,
-  .xmimo-tts-card-actions .xmimo-tts-save:not(:disabled)::after { animation: none }
+  .xmimo-tts-shimmer-ring::before { animation: none; will-change: auto }
 }
 
 .xmimo-tts-api-key-whale {

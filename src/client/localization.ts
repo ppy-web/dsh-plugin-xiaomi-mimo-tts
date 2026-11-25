@@ -44,7 +44,7 @@ export const zh = {
   'onboarding.externalVoicesTitle': '在音色工坊挑选声音',
   'onboarding.externalSwitchTitle': '轻松切换供应商',
   'onboarding.configure': '打开工坊',
-  'onboarding.github': '点个Star',
+  'onboarding.acknowledge': '我知道了',
   "onboarding.preview": "试听浏览器语音",
   "onboarding.dismiss": "关闭",
   "onboarding.never": "不再提醒",
@@ -499,9 +499,6 @@ export const zh = {
   "settings.previewText": "试听文本",
   'settings.previewPresets': '快捷文案',
   'settings.previewPresetGreeting': '日常问候',
-  'settings.previewPresetPoetry': '诗意独白',
-  'settings.previewPresetInspiration': '温柔鼓励',
-  'settings.previewPresetReflection': '人生随想',
   'settings.previewPresetHumor': '轻松幽默',
   'settings.previewPresetNews': '新闻播报',
   'settings.previewPresetStory': '情景故事',
@@ -517,12 +514,6 @@ export const zh = {
   'settings.previewDownloadFailed': '下载失败，请重试',
   "settings.previewDefaultText":
     "你好呀，很高兴陪你一起探索声音的世界！这个声音听起来怎么样？",
-  "settings.previewDefaultTextPoetry":
-    "晚风把云揉成一封信，月亮替我落了款。愿你走过的每一段夜路，都有星光相伴。",
-  "settings.previewDefaultTextInspiration":
-    "走得慢一点也没关系。种子不会因为春天迟到，就放弃开花；你也不必因为一次跌倒，就怀疑远方。",
-  "settings.previewDefaultTextReflection":
-    "我们无法留住每一阵风，却可以决定扬起哪一面帆。答案未必在远方，也可能藏在此刻认真生活的你心里。",
   "settings.previewDefaultTextHumor":
     "闹钟响了，我和被窝开了个紧急会议。被窝提议再睡五分钟，我全票通过。结果一睁眼，会议已经开了一个小时。",
   "settings.previewPlaceholder": "输入试听文字",
@@ -658,7 +649,7 @@ export const en: Record<keyof typeof zh, string> = {
   'onboarding.externalVoicesTitle': 'Find your voice in Voice Workbench',
   'onboarding.externalSwitchTitle': 'Switch providers with ease',
   'onboarding.configure': 'Open Studio',
-  'onboarding.github': 'Star',
+  'onboarding.acknowledge': 'Got it',
   "onboarding.preview": "Preview browser speech",
   "onboarding.dismiss": "Close",
   "onboarding.never": "Don’t show again",
@@ -1134,9 +1125,6 @@ export const en: Record<keyof typeof zh, string> = {
   "settings.previewText": "Preview text",
   'settings.previewPresets': 'Sample texts',
   'settings.previewPresetGreeting': 'Greeting',
-  'settings.previewPresetPoetry': 'Poetry',
-  'settings.previewPresetInspiration': 'Encouragement',
-  'settings.previewPresetReflection': 'Reflection',
   'settings.previewPresetHumor': 'Humor',
   'settings.previewPresetNews': 'News',
   'settings.previewPresetStory': 'Story',
@@ -1152,12 +1140,6 @@ export const en: Record<keyof typeof zh, string> = {
   'settings.previewDownloadFailed': 'Download failed. Please try again.',
   "settings.previewDefaultText":
     "Hi! I'm Whale Maid. It's lovely to explore the world of voices with you!",
-  "settings.previewDefaultTextPoetry":
-    "The wind folds clouds into a letter; the moon signs it. May starlight find you on every road home.",
-  "settings.previewDefaultTextInspiration":
-    "Go at your own pace. A seed still blooms after a late spring. One stumble need not end your journey.",
-  "settings.previewDefaultTextReflection":
-    "We cannot keep every breeze, but we can choose our sail. Perhaps the answer is in how we live today.",
   "settings.previewDefaultTextHumor":
     "My alarm rang. I voted for five more minutes in bed. An hour later, the motion was still in effect.",
   "settings.previewPlaceholder": "Enter preview text",

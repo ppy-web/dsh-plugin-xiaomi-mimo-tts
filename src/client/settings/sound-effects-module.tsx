@@ -164,7 +164,7 @@ export function SoundEffectsPanel({
             <Switch checked={showAudioResponse} disabled={!writable} label={t('settings.audioResponse')} onChange={(next) => { onShowAudioResponseChange?.(next) }} />
           </div>
         </div>
-        {showAudioResponse && !hide('settings.audioResponse') ? <>
+        {showAudioResponse && (open || search !== null) && !hide('settings.audioResponse') ? <>
           <SettingFieldHeading label={t('settings.audioResponseEffects')} disabled={!writable} overridden={fieldOverridden('audioResponseStyle')}
             resettable overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} onReset={() => { onResetField?.('audioResponseStyle') }} />
           <CaptionVisualPicker label={t('settings.audioResponseEffects')} hideLabel value={audioResponseStyle}

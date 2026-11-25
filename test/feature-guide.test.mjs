@@ -64,6 +64,7 @@ test('activation guide renders multi-paragraph diary notes and optional star pos
   const html = renderToStaticMarkup(createElement(ActivationGuide, { scope, t, packageName: 'dsh-xiaomi-tts', onDismiss() {}, onOpenWorkbench() {} }))
   assert.match(html, /<p>First observation\.<\/p><p>Second observation\.<\/p>/)
   assert.match(html, /Please star!/)
+  assert.match(html, />onboarding\.acknowledge<\/button>/)
 
   const withoutStar = renderToStaticMarkup(createElement(ActivationGuide, {
     scope,

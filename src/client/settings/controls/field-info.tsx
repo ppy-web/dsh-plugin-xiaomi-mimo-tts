@@ -12,21 +12,26 @@ export function FieldInfo({ label, text }: { label: string; text: string }): Rea
   const [position, setPosition] = useState({ left: 0, top: 0 })
   useIsomorphicLayoutEffect(() => {
     if (!open) return
+    let frame = 0
     const place = (): void => {
+      frame = 0
       if (button.current === null || tooltip.current === null) return
       const anchor = button.current.getBoundingClientRect()
       const box = tooltip.current.getBoundingClientRect()
-      setPosition({
-        left: Math.max(16, Math.min(anchor.left, window.innerWidth - box.width - 16)),
-        top: anchor.bottom + box.height + 6 <= window.innerHeight - 16 ? anchor.bottom + 6 : Math.max(16, anchor.top - box.height - 6),
-      })
+      const left = Math.max(16, Math.min(anchor.left, window.innerWidth - box.width - 16))
+      const top = anchor.bottom + box.height + 6 <= window.innerHeight - 16 ? anchor.bottom + 6 : Math.max(16, anchor.top - box.height - 6)
+      setPosition(current => current.left === left && current.top === top ? current : { left, top })
+    }
+    const schedulePlace = (): void => {
+      if (frame === 0) frame = requestAnimationFrame(place)
     }
     place()
-    window.addEventListener('resize', place)
-    window.addEventListener('scroll', place, true)
+    window.addEventListener('resize', schedulePlace, { passive: true })
+    window.addEventListener('scroll', schedulePlace, { capture: true, passive: true })
     return () => {
-      window.removeEventListener('resize', place)
-      window.removeEventListener('scroll', place, true)
+      if (frame !== 0) cancelAnimationFrame(frame)
+      window.removeEventListener('resize', schedulePlace)
+      window.removeEventListener('scroll', schedulePlace, true)
     }
   }, [open, text])
   return <span className="xmimo-tts-field-info" onMouseEnter={() => setOpen(true)} onMouseLeave={() => { if (document.activeElement !== button.current) setOpen(false) }}>

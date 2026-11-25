@@ -75,6 +75,7 @@ export function ApiKeyModule({ t, provider, value, message, invalid, missing, wr
     />} action={minimal ? undefined : <span className="xmimo-tts-api-key-decoration" aria-hidden="true" />}>
     <form className="xmimo-tts-api-key-content" onSubmit={event => { event.preventDefault(); event.stopPropagation() }}>
       <div className={`xmimo-tts-api-key-input${missing && !external && writable ? ' xmimo-tts-api-key-input-missing' : ''}`}>
+      {missing && !external && writable ? <span className="xmimo-tts-shimmer-ring" aria-hidden="true" /> : null}
       {!minimal ? <span className="xmimo-tts-character-bubble xmimo-tts-api-key-bubble" aria-hidden="true">{t(bubbleKey)}</span> : null}
       {!minimal ? <span
         className="xmimo-tts-api-key-whale"

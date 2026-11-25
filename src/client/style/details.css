@@ -120,6 +120,31 @@
   min-width: 0;
 }
 
+@supports (interpolate-size: allow-keywords) {
+  .xmimo-tts-more-settings {
+    interpolate-size: allow-keywords;
+  }
+  .xmimo-tts-more-settings::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition: block-size 220ms cubic-bezier(.22, 1, .36, 1), opacity 180ms ease, content-visibility 220ms allow-discrete;
+  }
+  .xmimo-tts-more-settings[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+
+@keyframes xmimo-tts-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.xmimo-tts-more-settings[open] > .xmimo-tts-more-settings-body {
+  animation: xmimo-tts-reveal 180ms cubic-bezier(.22, 1, .36, 1);
+}
+
 .xmimo-tts-more-settings > summary {
   box-sizing: border-box;
   display: flex;
@@ -172,7 +197,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .xmimo-tts-more-settings > summary,
-  .xmimo-tts-more-settings > summary .xmimo-tts-voice-picker-chevron { transition: none; }
+  .xmimo-tts-more-settings > summary .xmimo-tts-voice-picker-chevron,
+  .xmimo-tts-more-settings::details-content { transition: none; }
+  .xmimo-tts-more-settings[open] > .xmimo-tts-more-settings-body { animation: none; }
 }
 
 .xmimo-tts-more-settings-body {

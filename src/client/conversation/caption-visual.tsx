@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react'
 import { AUDIO_RESPONSE_STYLES, type AudioResponseStyle } from '../../types/settings.js'
 import type { OrbState } from './voiceorbs/lib/orb-state.js'
+import { observeActivity } from './voiceorbs/lib/use-in-view.js'
+import { prefersReducedMotion, subscribeReducedMotion } from './voiceorbs/lib/use-reduced-motion.js'
 import type { ReadingCaptions } from '../playback/reading-captions.js'
 
 const AuraField = lazy(() => import('./voiceorbs/orbe/aura-field/aura-field.js').then(module => ({ default: module.AuraField })))
@@ -30,25 +32,56 @@ export function CaptionVisual({ variant, captions, state = 'speaking', preview =
   const samples = useRef(new Uint8Array(256))
   useEffect(() => {
     if (state === 'listening') return
-    if (state === 'idle' && !preview && !captions?.getAnalyser()) {
+    const needsLoop = (preview && state === 'speaking') || (state === 'speaking' && captions !== undefined)
+    if (!needsLoop && !captions?.getAnalyser()) {
       level.current = 0
       return
     }
+    const element = container.current
     let frame = 0
+    let active = true
+    let reduced = prefersReducedMotion()
+    const halt = (): void => {
+      if (frame !== 0) {
+        cancelAnimationFrame(frame)
+        frame = 0
+      }
+    }
     const update = (): void => {
+      frame = 0
+      if (!active) return
       const analyser = captions?.getAnalyser()
       if (analyser) {
         analyser.getByteTimeDomainData(samples.current)
         let sum = 0
         for (const sample of samples.current) sum += ((sample - 128) / 128) ** 2
         level.current = Math.min(1, Math.sqrt(sum / samples.current.length) * 5)
+      } else if (preview && state === 'speaking') {
+        if (reduced) {
+          level.current = 0
+          return
+        }
+        level.current = .3 + .2 * Math.sin(performance.now() / 550)
       } else {
-        level.current = preview && state === 'speaking' ? .3 + .2 * Math.sin(performance.now() / 550) : 0
+        level.current = 0
       }
       frame = requestAnimationFrame(update)
     }
-    update()
-    return () => cancelAnimationFrame(frame)
+    const sync = (): void => {
+      if (active && !(preview && !captions && reduced)) {
+        if (frame === 0) frame = requestAnimationFrame(update)
+      } else {
+        halt()
+      }
+    }
+    const unobserve = element ? observeActivity(element, next => { active = next; sync() }) : () => {}
+    const unsubReduced = preview ? subscribeReducedMotion(() => { reduced = prefersReducedMotion(); sync() }) : () => {}
+    sync()
+    return () => {
+      halt()
+      unobserve()
+      unsubReduced()
+    }
   }, [captions, state, preview])
 
   useEffect(() => {
@@ -57,9 +90,18 @@ export function CaptionVisual({ variant, captions, state = 'speaking', preview =
     level.current = -1
     if (!element || (!readRecordingLevel && !preview)) return
     let frame = 0
+    let active = true
     let nextSample = 0
     let previous: number | undefined
+    const halt = (): void => {
+      if (frame !== 0) {
+        cancelAnimationFrame(frame)
+        frame = 0
+      }
+    }
     const sample = (now: number): void => {
+      frame = 0
+      if (!active) return
       if (now >= nextSample) {
         nextSample = now + 32
         const measured = readRecordingLevel ? readRecordingLevel() : (0.5 + 0.5 * Math.sin(now / 220)) ** 3
@@ -72,9 +114,15 @@ export function CaptionVisual({ variant, captions, state = 'speaking', preview =
       }
       frame = requestAnimationFrame(sample)
     }
+    const unobserve = observeActivity(element, next => {
+      active = next
+      if (next) { if (frame === 0) frame = requestAnimationFrame(sample) }
+      else halt()
+    })
     frame = requestAnimationFrame(sample)
     return () => {
-      cancelAnimationFrame(frame)
+      halt()
+      unobserve()
       element.style.removeProperty('--xmimo-recording-level')
     }
   }, [preview, readRecordingLevel, state])

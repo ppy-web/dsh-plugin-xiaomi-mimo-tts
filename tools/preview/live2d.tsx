@@ -46,7 +46,7 @@ type Settings = { character: Character; size: number; position: number; visible:
 const STORAGE_KEY = 'dsh-xiaomi-tts.live2d.v1'
 const MIN_CHARACTER_SIZE = 120
 const MAX_CHARACTER_SIZE = 360
-const DEFAULTS: Settings = { character: 'p01', size: 220, position: 100, visible: true }
+const DEFAULTS: Settings = { character: 'p01', size: 160, position: 100, visible: true }
 const MOTIONS = ['nod', 'tilt', 'shake', 'hop', 'shy'] as const
 const modelUrl = (id: Character): string => `https://livliv-dev.github.io/player/characters/${id}.livliv`
 

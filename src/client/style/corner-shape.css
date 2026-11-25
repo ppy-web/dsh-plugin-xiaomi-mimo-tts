@@ -1,0 +1,48 @@
+/*
+ * Smooth superellipse corner curvature aligned with DSH ui-theme (`superellipse(1.5)`).
+ * Scoped with `:where(...)` (zero specificity) so plugin surfaces remain self-contained
+ * when rendered without ui-theme, while every component `corner-shape: round` override
+ * on circles and capsules wins regardless of stylesheet order.
+ */
+@supports (corner-shape: superellipse(1.5)) {
+  :where(
+    .xmimo-ui-scope,
+    .xmimo-voice-reading,
+    .xmimo-tts-settings-page,
+    .xmimo-tts-panel-state,
+    .xmimo-tts-activation-dialog,
+    .xmimo-tts-sidebar-loading,
+    .xmimo-tts-detail-actions,
+    .xmimo-tts-history-page,
+    .xmimo-qq-settings,
+    .xmimo-passport-settings,
+    .xmimo-reading-caption-integrated,
+    .xmimo-reading-caption,
+    .xmimo-caption-picker,
+    .xmimo-tts-action,
+    .xmimo-tts-voice-avatar,
+    .xmimo-voice-reading-menu,
+    .xmimo-tts-field-info-tooltip
+  ),
+  :where(
+    .xmimo-ui-scope,
+    .xmimo-voice-reading,
+    .xmimo-tts-settings-page,
+    .xmimo-tts-panel-state,
+    .xmimo-tts-activation-dialog,
+    .xmimo-tts-sidebar-loading,
+    .xmimo-tts-detail-actions,
+    .xmimo-tts-history-page,
+    .xmimo-qq-settings,
+    .xmimo-passport-settings,
+    .xmimo-reading-caption-integrated,
+    .xmimo-reading-caption,
+    .xmimo-caption-picker,
+    .xmimo-tts-action,
+    .xmimo-tts-voice-avatar,
+    .xmimo-voice-reading-menu,
+    .xmimo-tts-field-info-tooltip
+  ) :where(*, *::before, *::after) {
+    corner-shape: var(--dsw-corner-shape, superellipse(1.5));
+  }
+}

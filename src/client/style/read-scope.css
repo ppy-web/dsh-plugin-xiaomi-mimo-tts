@@ -43,6 +43,9 @@
 }
 
 .xmimo-read-scope-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: flex;
   flex: 1;
   min-width: 0;
@@ -53,7 +56,22 @@
   border-radius: 12px;
   background: var(--xmimo-skeuo-key-bg, color-mix(in srgb, var(--dsw-alias-bg-layer-1, #fff) 65%, transparent));
   box-shadow: var(--xmimo-skeuo-key-shadow, none);
-  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 120ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 120ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.xmimo-read-scope-card::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  corner-shape: inherit;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--xmimo-scope-accent) 10%, transparent), color-mix(in srgb, var(--xmimo-scope-accent) 3%, transparent)),
+    var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
 }
 
 .xmimo-read-scope-option:hover > input:not(:disabled) + .xmimo-read-scope-card {
@@ -69,14 +87,15 @@
 
 .xmimo-read-scope-option > input:checked + .xmimo-read-scope-card {
   border-color: var(--xmimo-scope-accent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--xmimo-scope-accent) 10%, transparent), color-mix(in srgb, var(--xmimo-scope-accent) 3%, transparent)),
-    var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
   box-shadow:
     inset 0 1px 0 var(--xmimo-skeuo-specular, rgb(255 255 255 / 80%)),
     inset 0 -1px 0 color-mix(in srgb, var(--xmimo-scope-accent) 16%, transparent),
     0 2px 5px var(--xmimo-skeuo-drop-tight, rgb(0 0 0 / 10%)),
     0 0 0 2px color-mix(in srgb, var(--xmimo-scope-accent) 14%, transparent);
+}
+
+.xmimo-read-scope-option > input:checked + .xmimo-read-scope-card::before {
+  opacity: 1;
 }
 
 .xmimo-read-scope-option > input:focus-visible + .xmimo-read-scope-card {
@@ -110,8 +129,10 @@
   margin-inline-start: auto;
   border: 1px solid var(--dsw-alias-label-secondary, #5f6875);
   border-radius: 50%;
+  corner-shape: round;
   background: var(--xmimo-skeuo-well-bg, transparent);
   box-shadow: var(--xmimo-skeuo-well-shadow, none);
+  transition: border-width 150ms cubic-bezier(.22, 1, .36, 1), border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .xmimo-read-scope-option > input:checked + .xmimo-read-scope-card .xmimo-read-scope-radio {
@@ -136,6 +157,7 @@
   height: 5px;
   border-radius: 2px;
   background: color-mix(in srgb, var(--dsw-alias-label-secondary, #5f6875) 22%, transparent);
+  transition: background-color 180ms ease;
 }
 
 .xmimo-read-scope-skeleton-line:first-child {
@@ -209,4 +231,12 @@
   min-width: 0;
   height: auto;
   aspect-ratio: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-read-scope-card::before,
+  .xmimo-read-scope-radio,
+  .xmimo-read-scope-skeleton-line {
+    transition: none;
+  }
 }

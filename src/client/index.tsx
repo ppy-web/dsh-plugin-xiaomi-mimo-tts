@@ -38,7 +38,7 @@ import type { VoiceReadingSectionInjected } from './settings/voice-reading-secti
 import { createSoundEffectsController, installClickSounds } from './sound-effects/index.js'
 import { installTaskSoundWatcher } from './sound-effects/task-watcher.js'
 import { CORE_CLIENT_STYLES } from './style/core.js'
-import { ensureClientStyle } from './style/inject.js'
+import { disposePersistentClientStyles, ensureClientStyle } from './style/inject.js'
 
 const ActivationGuide = lazyPanel<ActivationGuideProps>(() => import('./settings/activation-guide.js').then(module => module.ActivationGuide), { silentLoading: true })
 import { AudioHistory } from './history/audio-history.js'
@@ -270,7 +270,13 @@ export function apply(ctx: Context): void {
   ctx.effect(() => () => live.dispose(), 'xiaomi-mimo-tts: live playback')
   ctx.effect(() => () => local.dispose(), 'xiaomi-mimo-tts: local playback')
 
-  ctx.effect(() => ensureClientStyle('core', CORE_CLIENT_STYLES), 'xiaomi-mimo-tts: styles')
+  ctx.effect(() => {
+    const offCore = ensureClientStyle('core', CORE_CLIENT_STYLES)
+    return () => {
+      offCore()
+      disposePersistentClientStyles()
+    }
+  }, 'xiaomi-mimo-tts: styles')
 
   // The settings shell owns the nav glyph per section id and only falls back to
   // its gear when no `settings.section.icon` entry matches the section.

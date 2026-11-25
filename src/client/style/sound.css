@@ -165,6 +165,7 @@
   height: clamp(13px, 3.8cqi, 16px);
   place-items: center;
   border-radius: 999px;
+  corner-shape: round;
   color: var(--xmimo-sound-pack-accent);
   background: color-mix(in srgb, var(--xmimo-sound-pack-accent) 14%, transparent);
   content: "";

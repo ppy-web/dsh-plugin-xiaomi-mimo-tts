@@ -395,7 +395,7 @@ function PassportForm({ scope, ttsScope, t, changes = IDLE_PLUGIN_CHANGES, token
         : dirty && invalid ? `${t('passport.error')}${t(`passport.${invalid}`)}` : state === 'failed' ? t('settings.failed') : state === 'saved' && !dirty ? t('settings.saved') : ''}</span>
       <div className="xmimo-tts-card-action-buttons">
         <Button type="button" variant="outline" size="sm" disabled={!draft || state === 'saving'} onClick={() => { setDraft(null); setState('idle') }}>{t('settings.discard')}</Button>
-        <Button type="submit" variant="primary" size="sm" disabled={disabled || !dirty || conflict || invalid !== null}>{t(state === 'saving' ? 'settings.saving' : 'settings.save')}</Button>
+        <Button type="submit" variant="primary" size="sm" className="xmimo-tts-save" disabled={disabled || !dirty || conflict || invalid !== null}>{t(state === 'saving' ? 'settings.saving' : 'settings.save')}</Button>
       </div>
     </div></div>
   </form>

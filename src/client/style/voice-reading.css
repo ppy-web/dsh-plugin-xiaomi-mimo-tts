@@ -76,6 +76,11 @@
   border-radius: var(--dsw-radius-sm, 8px);
   background: transparent;
   cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, transform 120ms ease;
+}
+
+.xmimo-voice-reading-actions .xmimo-voice-reading-action:active {
+  transform: scale(.94);
 }
 
 /**
@@ -122,6 +127,13 @@
   background: var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
   box-shadow: var(--xmimo-skeuo-popover-shadow, 0 6px 20px rgb(0 0 0 / 14%));
   color: var(--dsw-alias-label-primary, #1f2328);
+  transform-origin: top right;
+  animation: xmimo-vr-pop 180ms cubic-bezier(.22, 1, .36, 1);
+}
+
+@keyframes xmimo-vr-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .xmimo-voice-reading-qq-close {
@@ -139,6 +151,7 @@
   background: transparent;
   color: var(--dsw-alias-label-tertiary, #66707d);
   cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
 }
 
 .xmimo-voice-reading-qq-close:hover {
@@ -231,6 +244,12 @@
   color: var(--dsw-alias-label-primary, #1f2328);
   font-size: 12px;
   line-height: 20px;
+  animation: xmimo-vr-slide 180ms cubic-bezier(.22, 1, .36, 1);
+}
+
+@keyframes xmimo-vr-slide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .xmimo-voice-reading-warning-message {
@@ -254,6 +273,7 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
+  transition: background-color 140ms ease;
 }
 
 .xmimo-voice-reading-warning-close:hover {
@@ -377,6 +397,9 @@
 }
 
 .xmimo-voice-reading-provider-face {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: flex;
   box-sizing: border-box;
   min-height: 64px;
@@ -392,7 +415,23 @@
   font-size: 16px;
   font-weight: 500;
   line-height: 24px;
-  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 120ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 120ms cubic-bezier(.22, 1, .36, 1);
+}
+
+/* Fade the selected tint layer via opacity so provider switches never snap across gradients. */
+.xmimo-voice-reading-provider-face::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  corner-shape: inherit;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 10%, transparent), color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 3%, transparent)),
+    var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
 }
 
 .xmimo-voice-reading-provider-face img {
@@ -404,13 +443,14 @@
 
 .xmimo-voice-reading-provider-option input:checked + .xmimo-voice-reading-provider-face {
   border-color: var(--dsw-alias-brand-primary, #4f6ef7);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 10%, transparent), color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 3%, transparent)),
-    var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
   box-shadow:
     inset 0 1px 0 var(--xmimo-skeuo-specular, rgb(255 255 255 / 80%)),
     0 2px 5px var(--xmimo-skeuo-drop-tight, rgb(0 0 0 / 10%)),
     0 0 0 2px color-mix(in srgb, var(--dsw-alias-brand-primary, #4f6ef7) 16%, transparent);
+}
+
+.xmimo-voice-reading-provider-option input:checked + .xmimo-voice-reading-provider-face::before {
+  opacity: 1;
 }
 
 .xmimo-voice-reading-provider-option:hover input:not(:disabled) + .xmimo-voice-reading-provider-face {
@@ -458,6 +498,7 @@
 
 .xmimo-voice-reading-takeover-notice > span {
   border-radius: 999px;
+  corner-shape: round;
   padding: 5px 12px;
   color: var(--dsw-alias-label-primary, #1f2328);
   background: var(--dsw-alias-bg-layer-1, #fff);
@@ -591,6 +632,26 @@
 
 .xmimo-voice-reading-chevron {
   flex: none;
+  transition: transform 180ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.xmimo-voice-reading-chevron-open {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmimo-voice-reading-qq-panel,
+  .xmimo-voice-reading-warning {
+    animation: none;
+  }
+
+  .xmimo-voice-reading-action,
+  .xmimo-voice-reading-qq-close,
+  .xmimo-voice-reading-warning-close,
+  .xmimo-voice-reading-provider-face::before,
+  .xmimo-voice-reading-chevron {
+    transition: none;
+  }
 }
 
 @media (max-width: 300px) {

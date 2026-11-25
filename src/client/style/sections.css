@@ -38,7 +38,7 @@
   grid-template-rows: 0fr;
   opacity: 0;
   overflow: hidden;
-  transition: grid-template-rows 220ms ease, opacity 160ms ease;
+  transition: grid-template-rows 240ms cubic-bezier(.22, 1, .36, 1), opacity 180ms ease;
 }
 .xmimo-ui-accordion-collapse-open { grid-template-rows: 1fr; opacity: 1; }
 .xmimo-ui-accordion-content { min-height: 0; overflow: auto; overscroll-behavior-y: auto; }

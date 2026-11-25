@@ -80,7 +80,7 @@
 .xmimo-passport-live-text p { margin: 0; max-height: 8em; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; }
 .xmimo-passport-live-hint { font-size: 12px; }
 .xmimo-passport-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-block: 20px 24px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 78%, transparent); background: var(--xmimo-skeuo-well-bg, var(--xmimo-ui-surface-subtle, var(--xmimo-ui-control-surface))); box-shadow: var(--xmimo-skeuo-well-shadow, none); border-radius: var(--xmimo-ui-control-radius); }
-.xmimo-passport-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--xmimo-ui-text-muted); flex-shrink: 0; }
+.xmimo-passport-status-dot { width: 8px; height: 8px; border-radius: 50%; corner-shape: round; background: var(--xmimo-ui-text-muted); flex-shrink: 0; }
 .xmimo-passport-status[data-tone="connected"] { background: color-mix(in srgb, #23865b 10%, var(--xmimo-ui-surface)); }
 .xmimo-passport-status[data-tone="connected"] .xmimo-passport-status-dot { background: #23865b; }
 .xmimo-passport-status[data-tone="waiting"] .xmimo-passport-status-dot { background: var(--xmimo-ui-brand); }
@@ -128,9 +128,30 @@
 .xmimo-qq-memory-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
 .xmimo-qq-memory-row input { min-width: 0; }
 .xmimo-qq-memory-kind { color: var(--xmimo-ui-text-muted); font-size: 12px; }
-.xmimo-qq-footer { position: sticky; z-index: 1; bottom: 0; padding: 12px 0; border-top: 1px solid var(--xmimo-ui-border-soft); background: var(--xmimo-ui-surface); }
-.xmimo-qq-footer .xmimo-tts-card-action-buttons { grid-column: 2; }
-.xmimo-qq-footer [role="status"] { text-align: start; }
+.xmimo-qq-footer {
+  position: sticky;
+  z-index: 1;
+  bottom: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--xmimo-ui-border-soft);
+  background: var(--xmimo-ui-surface);
+}
+.xmimo-qq-footer .xmimo-tts-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+.xmimo-qq-footer .xmimo-tts-card-actions > [role="status"] {
+  flex: 1 1 160px;
+  min-width: 0;
+  order: 0;
+  text-align: start;
+}
+.xmimo-qq-footer .xmimo-tts-card-action-buttons {
+  margin-inline-start: auto;
+}
 
 @container (max-width: 600px) {
   .xmimo-passport-options { grid-template-columns: minmax(0, 1fr); }

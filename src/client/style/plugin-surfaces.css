@@ -6,10 +6,10 @@
 .xmimo-tts-activation-confetti { position: absolute; inset: 0; pointer-events: none; }
 .xmimo-tts-activation-confetti i { position: absolute; inset-block-start: 65%; inset-inline-start: 50%; width: 6px; height: 10px; border-radius: 2px; background: #e6b749; opacity: 0; }
 .xmimo-tts-activation-confetti i:nth-child(2n) { background: #67b9df; }
-.xmimo-tts-activation-confetti i:nth-child(3n) { width: 7px; height: 7px; border-radius: 50%; background: #7c9de3; }
+.xmimo-tts-activation-confetti i:nth-child(3n) { width: 7px; height: 7px; border-radius: 50%; corner-shape: round; background: #7c9de3; }
 .xmimo-tts-activation-heading { flex: none; text-align: center; }
 .xmimo-tts-activation-heading h2 { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 8px; margin: 0; font-size: 18px; font-weight: 650; line-height: 1.4; }
-.xmimo-tts-activation-heading h2 span { padding: 1px 7px; border: 1px solid var(--xmimo-ui-border-soft); border-radius: 999px; color: var(--xmimo-ui-text-muted); background: var(--xmimo-skeuo-chip-bg, var(--xmimo-ui-surface-subtle)); font-size: 11px; font-weight: 500; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.xmimo-tts-activation-heading h2 span { padding: 1px 7px; border: 1px solid var(--xmimo-ui-border-soft); border-radius: 999px; corner-shape: round; color: var(--xmimo-ui-text-muted); background: var(--xmimo-skeuo-chip-bg, var(--xmimo-ui-surface-subtle)); font-size: 11px; font-weight: 500; line-height: 1.45; font-variant-numeric: tabular-nums; }
 .xmimo-tts-activation-heading > p { margin: 5px 0 0; color: var(--xmimo-ui-text-muted); font-size: 12.5px; line-height: 1.5; text-wrap: pretty; }
 .xmimo-tts-activation-note { flex: 1 1 auto; min-height: 72px; max-height: 296px; padding: 12px 14px; border: 1px solid var(--xmimo-ui-border-soft); border-radius: 12px; background: var(--xmimo-skeuo-well-bg, var(--xmimo-ui-surface-subtle)); box-shadow: var(--xmimo-skeuo-well-shadow, none); overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; scrollbar-color: var(--xmimo-ui-border) transparent; }
 .xmimo-tts-activation-note:focus-visible { outline: 2px solid var(--xmimo-ui-brand); outline-offset: 2px; }
@@ -106,7 +106,7 @@
   width: 72px;
   height: 72px;
   border: 1px solid color-mix(in srgb, var(--xmimo-ui-brand) 18%, var(--xmimo-ui-border));
-  border-radius: 20px;
+  border-radius: 22px;
   background: var(--xmimo-skeuo-panel-bg, var(--xmimo-ui-surface));
   box-shadow: var(--xmimo-skeuo-panel-shadow, 0 8px 24px -12px rgb(0 0 0 / 18%)), 0 8px 24px -14px color-mix(in srgb, var(--xmimo-ui-brand) 42%, transparent);
 }
@@ -135,6 +135,7 @@
   width: 3px;
   height: 6px;
   border-radius: 999px;
+  corner-shape: round;
   background: currentColor;
   opacity: 0.85;
 }
@@ -270,8 +271,8 @@
   box-sizing: border-box;
   width: 64px;
   height: 64px;
-  border: 1px solid var(--xmimo-ui-border);
-  border-radius: 16px;
+  border: 0.5px solid var(--dsw-alias-border-l3, var(--xmimo-ui-border));
+  border-radius: var(--dsw-radius-xl, 20px);
   background: var(--xmimo-skeuo-panel-bg, var(--xmimo-ui-surface));
   box-shadow: var(--xmimo-skeuo-panel-shadow, none);
 }
@@ -281,7 +282,7 @@
 .xmimo-tts-settings-page-title { min-width: 0; font-family: 'Xmimo Voice Studio', ui-rounded, system-ui, sans-serif; overflow-wrap: anywhere; }
 .xmimo-tts-settings-page-heading p { margin: 6px 0 0; color: var(--xmimo-ui-text-muted); font-size: 14px; line-height: 1.6; text-wrap: pretty; }
 .xmimo-tts-settings-page-wave { display: inline-flex; flex: none; align-items: center; gap: 3px; height: 26px; color: var(--xmimo-ui-brand); }
-.xmimo-tts-settings-page-wave > span { width: 3px; height: 8px; border-radius: 999px; background: currentColor; }
+.xmimo-tts-settings-page-wave > span { width: 3px; height: 8px; border-radius: 999px; corner-shape: round; background: currentColor; }
 .xmimo-tts-settings-page-wave > span:nth-child(2) { height: 16px; animation-delay: 70ms; }
 .xmimo-tts-settings-page-wave > span:nth-child(3) { height: 24px; animation-delay: 140ms; }
 .xmimo-tts-settings-page-wave > span:nth-child(4) { height: 18px; animation-delay: 210ms; }
@@ -297,7 +298,7 @@
 .xmimo-tts-sidebar-loading { max-width: calc(100vw - 32px); border: 0; padding: 0; color: var(--xmimo-ui-text); background: transparent; }
 .xmimo-tts-sidebar-loading::backdrop { background: rgb(0 0 0 / 12%); }
 .xmimo-tts-sidebar-loading-status { display: flex; align-items: center; gap: 10px; border-radius: 10px; padding: 16px 20px; background: color-mix(in srgb, var(--xmimo-ui-surface) 92%, transparent); font-size: 14px; line-height: 1.5; }
-.xmimo-tts-sidebar-loading-spinner { flex: none; width: 18px; height: 18px; box-sizing: border-box; border: 2px solid var(--xmimo-ui-border); border-top-color: currentColor; border-radius: 50%; animation: xmimo-tts-sidebar-loading-spin 800ms linear infinite; }
+.xmimo-tts-sidebar-loading-spinner { flex: none; width: 18px; height: 18px; box-sizing: border-box; border: 2px solid var(--xmimo-ui-border); border-top-color: currentColor; border-radius: 50%; corner-shape: round; animation: xmimo-tts-sidebar-loading-spin 800ms linear infinite; }
 @keyframes xmimo-tts-sidebar-loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .xmimo-tts-sidebar-loading-spinner { animation: none; } }
 .xmimo-tts-settings-page-actions { --xmimo-studio-action-size: 36px; position: relative; display: flex; flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
@@ -328,7 +329,7 @@
 @container (max-width: 600px) {
   .xmimo-tts-settings-page-header { align-items: stretch; flex-direction: column; gap: 10px; }
   .xmimo-tts-settings-page-identity { flex-basis: auto; gap: 12px; }
-  .xmimo-tts-settings-page-icon { width: 56px; height: 56px; border-radius: 14px; }
+  .xmimo-tts-settings-page-icon { width: 56px; height: 56px; border-radius: 18px; }
   .xmimo-tts-settings-page-icon img { width: 48px; height: 48px; }
   .xmimo-tts-settings-page-header h1 { gap: 10px; font-size: 26px; }
 }
@@ -361,6 +362,7 @@
   height: 18px;
   padding: 0 7px;
   border-radius: 999px;
+  corner-shape: round;
   color: var(--dsw-alias-state-business-primary);
   background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent);
   font-size: 10px;

@@ -7,6 +7,7 @@ import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
 import { providerLabelKey } from './provider-label.js'
 import { useHoloHover } from './use-holo-hover.js'
+import { HOLO_RENDERER } from './holo-card-renderer.js'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
 import { TTS_EXTERNAL_PROVIDER_CHARACTER_ASSET_ROUTE } from '../shared.js'
@@ -198,7 +199,7 @@ export interface SwitchModuleProps {
 export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, deepseekEnabled, enabled, autoPlay, soundEnabled, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
   const { result } = useSettingsSearch()
   const portraits = usePortraitManifest()
-  const rowRef = useHoloHover(!minimal && writable, { tilt: 14, hoverScale: 1.035 })
+  const rowRef = useHoloHover(!minimal && writable, { tilt: 14, hoverScale: 1.035, holo: HOLO_RENDERER })
   const [switching, setSwitching] = useState(false)
   const [switchFailed, setSwitchFailed] = useState(false)
   const changeExternal = (engine: SpeechEngineState, configurationId: string): void => {

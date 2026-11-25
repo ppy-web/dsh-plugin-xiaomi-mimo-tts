@@ -15,8 +15,12 @@ export function LensSlider({ minimal = false, ...props }: SettingsRangeProps & {
   >
     <span className="xmimo-tts-slider-rail" aria-hidden="true"><span className="xmimo-tts-slider-track" /></span>
     {minimal ? null : <span className="xmimo-tts-slider-lens" aria-hidden="true"><span className="xmimo-tts-slider-track" /></span>}
-    <span className="xmimo-tts-slider-knob" aria-hidden="true">
-      <span className="xmimo-tts-slider-value">{inputProps['aria-valuetext']}</span>
+    <span className="xmimo-tts-slider-knob-track" aria-hidden="true">
+      <span className="xmimo-tts-slider-knob-pos">
+        <span className="xmimo-tts-slider-knob">
+          <span className="xmimo-tts-slider-value">{inputProps['aria-valuetext']}</span>
+        </span>
+      </span>
     </span>
     <input {...inputProps} />
   </span>

@@ -1,3 +1,4 @@
+import voiceStudioTitle from './voice-studio-title.css?raw'
 import apiKey from './api-key.css?raw'
 import card from './card.css?raw'
 import fields from './fields.css?raw'
@@ -11,8 +12,10 @@ import sections from './sections.css?raw'
 import sound from './sound.css?raw'
 import portrait from './portrait.css?raw'
 import minimal from './minimal.css?raw'
+import responsive from './responsive.css?raw'
 
 export const WORKBENCH_CLIENT_STYLES = [
+  voiceStudioTitle,
   apiKey,
   card,
   fields,
@@ -26,4 +29,5 @@ export const WORKBENCH_CLIENT_STYLES = [
   sound,
   portrait,
   minimal,
+  responsive,
 ].join('\n')

@@ -70,7 +70,7 @@ a.preview-source-link::before { margin-inline-end: 0; }
 .preview-sidebar[hidden] { display: none; }
 .preview-sidebar-content { display: flex; flex-direction: column; height: 100%; padding: 20px 12px 16px; gap: 24px; color: var(--preview-foreground); }
 .preview-workspace-brand { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-inline: 4px; }
-.preview-workspace-brand > img { flex: none; width: 32px; height: 32px; object-fit: contain; }
+.preview-workspace-brand > img { flex: none; width: 36px; height: 36px; padding: 3px; border: 0.5px solid var(--preview-rule); border-radius: 12px; background: color-mix(in srgb, var(--preview-hover) 55%, transparent); object-fit: contain; }
 .preview-workspace-brand > div { flex: 1; min-width: 0; }
 .preview-workspace-brand strong { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .preview-workspace-brand span { display: block; margin-top: 3px; color: var(--preview-muted); font-size: 12px; }
@@ -127,6 +127,7 @@ a.preview-source-link::before { margin-inline-end: 0; }
   #preview-main::-webkit-scrollbar-thumb {
     border: 2px solid transparent;
     border-radius: 999px;
+    corner-shape: round;
     background: var(--preview-rule) padding-box;
   }
 }
@@ -139,7 +140,7 @@ a.preview-source-link::before { margin-inline-end: 0; }
 .preview-plugin-surface, .preview-voice-surface { border: 1px solid var(--preview-rule); border-radius: 10px; padding: 20px; background: var(--dsw-alias-bg-layer-1); }
 .preview-plugin-surface { max-width: 900px; }
 .preview-surface-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-.preview-surface-heading img { object-fit: contain; }
+.preview-surface-heading img { width: 48px; height: 48px; padding: 5px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-lg); background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 60%, transparent); object-fit: contain; }
 .preview-surface-heading strong { display: block; font-size: 14px; font-weight: 600; color: var(--dsw-alias-label-primary); }
 .preview-surface-heading div span { display: block; margin-top: 3px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
 .preview-surface-version { margin-inline-start: auto; border: 1px solid var(--preview-rule); border-radius: 5px; padding: 3px 6px; color: var(--preview-muted); font-size: 11px; font-variant-numeric: tabular-nums; }

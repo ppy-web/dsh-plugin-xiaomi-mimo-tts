@@ -308,6 +308,7 @@
   flex: 0 1 auto;
   border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 66%, transparent);
   border-radius: 999px;
+  corner-shape: round;
   padding: 1px 8px;
   color: var(--xmimo-ui-text-muted);
   background: var(--xmimo-skeuo-chip-bg);

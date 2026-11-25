@@ -152,13 +152,22 @@
   border-radius: var(--xmimo-ui-module-radius, 14px);
   padding: 10px;
   background: var(--xmimo-skeuo-panel-bg, var(--dsw-alias-bg-layer-1, #fff));
-  box-shadow: var(--xmimo-skeuo-popover-shadow, 0 10px 28px rgba(15, 23, 42, .12))
+  box-shadow: var(--xmimo-skeuo-popover-shadow, 0 10px 28px rgba(15, 23, 42, .12));
+  transform-origin: top center;
+  animation: xmimo-tts-menu-in 180ms cubic-bezier(.22, 1, .36, 1)
+}
+
+@keyframes xmimo-tts-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.985) }
+  to { opacity: 1; transform: translateY(0) scale(1) }
 }
 
 .xmimo-tts-builtin-voice-option {
   position: relative;
   min-height: 60px;
-  padding: 9px 12px
+  padding: 9px 12px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 60px
 }
 
 .xmimo-tts-builtin-voice-option-selected {
@@ -174,7 +183,13 @@
   top: 6px;
   right: 6px;
   width: 14px;
-  height: 14px
+  height: 14px;
+  animation: xmimo-tts-check-pop 180ms cubic-bezier(.22, 1, .36, 1)
+}
+
+@keyframes xmimo-tts-check-pop {
+  from { opacity: 0; transform: scale(.6) }
+  to { opacity: 1; transform: scale(1) }
 }
 
 .xmimo-tts-builtin-voice-check circle {
@@ -330,6 +345,7 @@
   flex: none;
   padding: 0 6px;
   border-radius: 999px;
+  corner-shape: round;
   color: var(--dsw-alias-label-secondary, #5f6875);
   background: var(--dsw-alias-bg-module-platform, #eef0f3);
   font-size: 11px;
@@ -341,6 +357,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
+  corner-shape: round;
   background: var(--dsw-alias-label-tertiary, #8b93a1)
 }
 
@@ -450,6 +467,7 @@
   padding: 3px 9px;
   border: 1px solid var(--xmimo-ui-border-soft);
   border-radius: 999px;
+  corner-shape: round;
   color: var(--xmimo-ui-text-muted);
   background: var(--xmimo-skeuo-key-bg, var(--xmimo-ui-control-surface));
   box-shadow: var(--xmimo-skeuo-key-shadow, none);
@@ -606,5 +624,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .xmimo-tts-voice-id-tag, .xmimo-tts-voice-id-actions { transition: none; }
-  .xmimo-tts-moss-status[data-state=loading] .xmimo-tts-moss-status-dot { animation: none; }
+  .xmimo-tts-moss-status[data-state=loading] .xmimo-tts-moss-status-dot,
+  .xmimo-tts-builtin-voice-menu,
+  .xmimo-tts-builtin-voice-check { animation: none; }
 }

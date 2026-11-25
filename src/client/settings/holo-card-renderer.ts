@@ -19,8 +19,11 @@ export interface HoloDrawParams {
   edgeSparkle: number
   glare: number
   radius: number
+  cornerExp?: number
   dark: boolean
   foilColor: readonly [number, number, number]
+  clientWidth?: number
+  clientHeight?: number
 }
 
 const PRESET_INDEX: Record<HoloPreset, number> = {
@@ -52,6 +55,7 @@ uniform float uIntensity;
 uniform float uEdge;
 uniform float uFrame;
 uniform float uRadius;
+uniform float uCornerExp;
 uniform float uGlare;
 uniform float uAwake;
 uniform float uDark;
@@ -212,7 +216,10 @@ void main() {
   vec2 p = vec2(uv.x, uv.y * uAspect);
   vec2 center = vec2(0.5, 0.5 * uAspect);
   vec2 q = abs(p - center) - center + uRadius;
-  float outside = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - uRadius;
+  float cornerDist = (q.x > 0.0 && q.y > 0.0)
+    ? pow(pow(q.x, uCornerExp) + pow(q.y, uCornerExp), 1.0 / uCornerExp)
+    : max(max(q.x, 0.0), max(q.y, 0.0));
+  float outside = cornerDist + min(max(q.x, q.y), 0.0) - uRadius;
   float pixel = 1.0 / uSize.x;
   float cardAlpha = clamp(0.5 - outside / pixel, 0.0, 1.0);
   if (cardAlpha <= 0.0) {
@@ -268,20 +275,26 @@ void main() {
     ? foilBase * (0.32 + 0.54 * spotlight + 0.26 * sheen)
     : clamp(foilBase * (0.58 + 0.68 * spotlight + 0.34 * sheen), 0.0, 0.72);
 
-  float sparkWake = smoothstep(0.14, 0.82, uAwake);
-  vec3 rawSpark = sparkles(p, halfway, sweep, mix(0.2, 0.95, sparkWake)) * uEdge * frame * (0.28 * activeFade + 0.72 * sparkWake);
-  vec3 sparkRgb = isDark
-    ? mix(rawSpark, uFoil * max(rawSpark.r, max(rawSpark.g, rawSpark.b)), 0.3)
-    : mix(pow(clamp(rawSpark, 0.0, 1.0), vec3(1.45)) * 0.68, vec3(0.38, 0.42, 0.5), 0.28);
-  float sparkPeak = max(rawSpark.r, max(rawSpark.g, rawSpark.b));
-  float sparkAlpha = isDark ? clamp(sparkPeak * 0.55, 0.0, 0.58) : clamp(sparkPeak * 0.56, 0.0, 0.52);
+  vec3 sparkRgb = vec3(0.0);
+  float sparkAlpha = 0.0;
+  vec3 rimRgb = vec3(0.0);
+  float rimAlpha = 0.0;
+  if (frame > 0.001) {
+    float sparkWake = smoothstep(0.14, 0.82, uAwake);
+    vec3 rawSpark = sparkles(p, halfway, sweep, mix(0.2, 0.95, sparkWake)) * uEdge * frame * (0.28 * activeFade + 0.72 * sparkWake);
+    sparkRgb = isDark
+      ? mix(rawSpark, uFoil * max(rawSpark.r, max(rawSpark.g, rawSpark.b)), 0.3)
+      : mix(pow(clamp(rawSpark, 0.0, 1.0), vec3(1.45)) * 0.68, vec3(0.38, 0.42, 0.5), 0.28);
+    float sparkPeak = max(rawSpark.r, max(rawSpark.g, rawSpark.b));
+    sparkAlpha = isDark ? clamp(sparkPeak * 0.55, 0.0, 0.58) : clamp(sparkPeak * 0.56, 0.0, 0.52);
 
-  vec3 rimRgb = isDark
-    ? uFoil
-    : mix(vec3(0.28, 0.3, 0.36), lightTint * 1.05, 0.24 + 0.22 * sheen);
-  float rimAlpha = isDark
-    ? (0.04 + 0.16 * sheen) * frame * uAwake
-    : (0.07 + 0.18 * sheen) * frame * activeFade;
+    rimRgb = isDark
+      ? uFoil
+      : mix(vec3(0.28, 0.3, 0.36), lightTint * 1.05, 0.24 + 0.22 * sheen);
+    rimAlpha = isDark
+      ? (0.04 + 0.16 * sheen) * frame * uAwake
+      : (0.07 + 0.18 * sheen) * frame * activeFade;
+  }
 
   vec3 prismSweep = pow(clamp(hue(dot(sweep, vec2(0.7, 0.5)) * 1.1 + uv.x * 0.55 + uv.y * 0.35), 0.0, 1.0), vec3(1.5)) * 0.62;
   vec3 glareRgb = isDark ? vec3(1.0) : mix(prismSweep, vec3(1.0), clamp(shine * 1.2, 0.0, 0.82));
@@ -311,6 +324,7 @@ const UNIFORM_NAMES = [
   'uEdge',
   'uFrame',
   'uRadius',
+  'uCornerExp',
   'uGlare',
   'uAwake',
   'uDark',
@@ -329,6 +343,23 @@ function compileShader(gl: WebGL2RenderingContext, type: number, source: string)
   return null
 }
 
+const IDLE_DISPOSE_MS = 60_000
+const SUPERELLIPSE_CORNER_EXP = typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('corner-shape', 'superellipse(1.5)')
+  ? Math.SQRT2 * 2
+  : 2
+const targetContexts = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>()
+
+function getTargetContext(target: HTMLCanvasElement): CanvasRenderingContext2D | null {
+  let ctx = targetContexts.get(target)
+  if (!ctx) {
+    const created = target.getContext('2d')
+    if (!created) return null
+    ctx = created
+    targetContexts.set(target, ctx)
+  }
+  return ctx
+}
+
 class SharedHoloRenderer {
   private readonly canvas: HTMLCanvasElement
   private readonly gl: WebGL2RenderingContext
@@ -336,6 +367,9 @@ class SharedHoloRenderer {
   private readonly buffer: WebGLBuffer
   private readonly uniforms: Record<UniformName, WebGLUniformLocation | null>
   private refs = 0
+  private lost = false
+  private disposeTimer: ReturnType<typeof setTimeout> | null = null
+  private readonly onContextLost: (event: Event) => void
 
   private constructor(
     canvas: HTMLCanvasElement,
@@ -349,6 +383,12 @@ class SharedHoloRenderer {
     this.program = program
     this.buffer = buffer
     this.uniforms = uniforms
+    this.onContextLost = (event: Event) => {
+      event.preventDefault()
+      this.lost = true
+      if (shared === this) shared = null
+    }
+    this.canvas.addEventListener('webglcontextlost', this.onContextLost)
   }
 
   static create(): SharedHoloRenderer | null {
@@ -397,10 +437,13 @@ class SharedHoloRenderer {
       gl.deleteProgram(program)
       return null
     }
+    gl.useProgram(program)
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
     gl.enableVertexAttribArray(0)
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+    gl.clearColor(0, 0, 0, 0)
+    gl.enable(gl.SCISSOR_TEST)
 
     const uniforms = Object.fromEntries(
       UNIFORM_NAMES.map(name => [name, gl.getUniformLocation(program, name)]),
@@ -409,21 +452,43 @@ class SharedHoloRenderer {
     return new SharedHoloRenderer(canvas, gl, program, buffer, uniforms)
   }
 
+  isLost(): boolean {
+    return this.lost || this.gl.isContextLost()
+  }
+
   retain(): void {
+    if (this.disposeTimer !== null) {
+      clearTimeout(this.disposeTimer)
+      this.disposeTimer = null
+    }
     this.refs += 1
   }
 
-  release(): boolean {
+  release(): void {
     this.refs = Math.max(0, this.refs - 1)
-    if (this.refs > 0) return false
-    this.gl.deleteBuffer(this.buffer)
-    this.gl.deleteProgram(this.program)
-    return true
+    if (this.refs > 0 || this.disposeTimer !== null) return
+    this.disposeTimer = setTimeout(() => {
+      this.disposeTimer = null
+      if (this.refs > 0) return
+      this.destroy()
+      if (shared === this) shared = null
+    }, IDLE_DISPOSE_MS)
+  }
+
+  private destroy(): void {
+    this.canvas.removeEventListener('webglcontextlost', this.onContextLost)
+    if (!this.gl.isContextLost()) {
+      this.gl.deleteBuffer(this.buffer)
+      this.gl.deleteProgram(this.program)
+      this.gl.getExtension('WEBGL_lose_context')?.loseContext()
+    }
+    this.lost = true
   }
 
   renderTo(target: HTMLCanvasElement, params: HoloDrawParams): boolean {
-    const clientWidth = target.clientWidth
-    const clientHeight = target.clientHeight
+    if (this.isLost()) return false
+    const clientWidth = params.clientWidth ?? target.clientWidth
+    const clientHeight = params.clientHeight ?? target.clientHeight
     if (!clientWidth || !clientHeight) return false
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     const width = Math.max(1, Math.round(clientWidth * dpr))
@@ -432,22 +497,21 @@ class SharedHoloRenderer {
       target.width = width
       target.height = height
     }
-    if (this.canvas.width !== width || this.canvas.height !== height) {
-      this.canvas.width = width
-      this.canvas.height = height
+    // High-water sizing avoids reallocating the shared WebGL framebuffer when
+    // sibling grid cards differ by 1px due to subpixel column rounding.
+    if (this.canvas.width < width || this.canvas.height < height
+      || this.canvas.width > width * 2 || this.canvas.height > height * 2) {
+      this.canvas.width = Math.max(width, this.canvas.width > width * 2 ? width : this.canvas.width)
+      this.canvas.height = Math.max(height, this.canvas.height > height * 2 ? height : this.canvas.height)
     }
 
-    const ctx = target.getContext('2d')
+    const ctx = getTargetContext(target)
     if (!ctx) return false
 
     const gl = this.gl
     gl.viewport(0, 0, width, height)
-    gl.clearColor(0, 0, 0, 0)
+    gl.scissor(0, 0, width, height)
     gl.clear(gl.COLOR_BUFFER_BIT)
-    gl.useProgram(this.program)
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer)
-    gl.enableVertexAttribArray(0)
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
 
     gl.uniform2f(this.uniforms.uSize, width, height)
     gl.uniform1f(this.uniforms.uAspect, height / width)
@@ -459,6 +523,7 @@ class SharedHoloRenderer {
     gl.uniform1f(this.uniforms.uEdge, params.edgeSparkle)
     gl.uniform1f(this.uniforms.uFrame, 0.028)
     gl.uniform1f(this.uniforms.uRadius, params.radius / Math.max(1, clientWidth))
+    gl.uniform1f(this.uniforms.uCornerExp, params.cornerExp ?? SUPERELLIPSE_CORNER_EXP)
     gl.uniform1f(this.uniforms.uGlare, params.glare)
     gl.uniform1f(this.uniforms.uAwake, params.awake)
     gl.uniform1f(this.uniforms.uDark, params.dark ? 1 : 0)
@@ -467,7 +532,7 @@ class SharedHoloRenderer {
     gl.drawArrays(gl.TRIANGLES, 0, 3)
 
     ctx.clearRect(0, 0, width, height)
-    ctx.drawImage(this.canvas, 0, 0)
+    ctx.drawImage(this.canvas, 0, this.canvas.height - height, width, height, 0, 0, width, height)
     return true
   }
 }
@@ -477,6 +542,7 @@ let unavailable = false
 
 export function acquireHoloRenderer(): SharedHoloRenderer | null {
   if (unavailable) return null
+  if (shared?.isLost()) shared = null
   if (!shared) {
     shared = SharedHoloRenderer.create()
     if (!shared) {
@@ -490,11 +556,18 @@ export function acquireHoloRenderer(): SharedHoloRenderer | null {
 
 export function releaseHoloRenderer(renderer: SharedHoloRenderer | null): void {
   if (!renderer) return
-  if (renderer.release() && shared === renderer) shared = null
+  renderer.release()
 }
 
 export function isHoloPreset(value: string | undefined): value is HoloPreset {
   return value === 'bursts' || value === 'stars' || value === 'cosmos' || value === 'shards'
 }
 
+export const HOLO_RENDERER = {
+  acquire: acquireHoloRenderer,
+  release: releaseHoloRenderer,
+  isPreset: isHoloPreset,
+} as const
+
+export type HoloRendererAdapter = typeof HOLO_RENDERER
 export type { SharedHoloRenderer }

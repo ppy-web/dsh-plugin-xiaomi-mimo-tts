@@ -330,6 +330,7 @@ const fallbackLayer = (from: string, to: string, size: number): CSSProperties =>
   position: 'absolute',
   inset: '7%',
   borderRadius: '50%',
+  ...({ cornerShape: 'round' } as CSSProperties),
   background: `radial-gradient(ellipse 70% 16% at 50% 50%, color-mix(in oklab, ${from} 45%, white) 0%, ${from} 30%, transparent 72%), radial-gradient(ellipse 85% 34% at 50% 52%, color-mix(in oklab, ${to} 70%, transparent) 0%, transparent 70%), radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.18), transparent 38%), radial-gradient(circle at 50% 50%, color-mix(in oklab, ${to} 18%, #07060f) 55%, color-mix(in oklab, ${from} 40%, #07060f) 100%)`,
   boxShadow: `0 0 calc(${Math.round(size * 0.05)}px + var(--orb-level, 0) * ${Math.round(size * 0.14)}px) color-mix(in oklab, ${to} 50%, transparent), inset 0 0 ${Math.round(size * 0.04)}px color-mix(in oklab, ${from} 55%, transparent)`,
   transform: 'scaleY(calc(1 + var(--orb-level, 0) * 0.05))',
@@ -355,6 +356,9 @@ export const SiriSheet = ({
   const support = useWebGLSupport();
   const showCanvas = support === true && !lost;
 
+  const showCanvasRef = useRef(showCanvas);
+  showCanvasRef.current = showCanvas;
+
   const onFrame = useCallback((frame: OrbFrame) => {
     const host = hostRef.current;
     const motion = motionRef.current;
@@ -362,13 +366,15 @@ export const SiriSheet = ({
     motion.prevState = frame.state;
     motion.errorAge = Math.min(SHAKE_TIME, motion.errorAge + frame.dt);
     if (host) {
-      host.style.setProperty('--orb-level', frame.level.toFixed(3));
+      // Only update the CSS fallback custom property when the WebGL canvas is not rendering.
+      if (!showCanvasRef.current) host.style.setProperty('--orb-level', frame.level.toFixed(3));
       const age = motion.errorAge;
       const shake =
         frame.reduced || age >= SHAKE_TIME
           ? 0
           : Math.sin(age * Math.PI * 2 * 7) * Math.sin((Math.PI * age) / SHAKE_TIME) * 0.022;
-      host.style.transform = shake === 0 ? '' : `translateX(${(shake * 100).toFixed(2)}%)`;
+      const nextTransform = shake === 0 ? '' : `translateX(${(shake * 100).toFixed(2)}%)`;
+      if (host.style.transform !== nextTransform) host.style.transform = nextTransform;
     }
     drawRef.current?.(frame);
   }, []);
@@ -445,6 +451,12 @@ export const SiriSheet = ({
     const errFrom = hexToRgb(ERROR_COLOR_FROM);
     const errTo = hexToRgb(ERROR_COLOR_TO);
     const set3 = (name: UniformName, v: Vec3) => gl.uniform3f(loc[name], v[0], v[1], v[2]);
+    let paletteKey = '';
+    let cachedFromHex = '';
+    let cachedToHex = '';
+    let cachedFromRgb: Rgb = [0, 0, 0];
+    let cachedToRgb: Rgb = [0, 0, 0];
+    let cachedPalette: Palette | null = null;
 
     drawRef.current = (frame) => {
       const w = frame.weights;
@@ -456,11 +468,25 @@ export const SiriSheet = ({
       const voice = p.voice * level;
       motion.sheet += dPhase * p.speed * (1 + 0.7 * voice);
 
-      const baseFrom = hexToRgb(colorRef.current.from);
-      const baseTo = hexToRgb(colorRef.current.to);
-      const from = mixRgb(baseFrom, errFrom, w.error);
-      const to = mixRgb(baseTo, errTo, w.error);
-      const pal = buildPalette(from, to, clamp01(p.mute));
+      const { from: fromHex, to: toHex } = colorRef.current;
+      const mute = clamp01(p.mute);
+      const nextPaletteKey = `${fromHex}|${toHex}|${Math.round(w.error * 1000)}|${Math.round(mute * 1000)}`;
+      if (nextPaletteKey !== paletteKey || !cachedPalette) {
+        paletteKey = nextPaletteKey;
+        if (fromHex !== cachedFromHex) { cachedFromHex = fromHex; cachedFromRgb = hexToRgb(fromHex); }
+        if (toHex !== cachedToHex) { cachedToHex = toHex; cachedToRgb = hexToRgb(toHex); }
+        const from = mixRgb(cachedFromRgb, errFrom, w.error);
+        const to = mixRgb(cachedToRgb, errTo, w.error);
+        cachedPalette = buildPalette(from, to, mute);
+        set3('uColA', cachedPalette.a);
+        set3('uColB', cachedPalette.b);
+        set3('uColC', cachedPalette.c);
+        set3('uColD', cachedPalette.d);
+        set3('uHi', cachedPalette.hi);
+        set3('uCool', cachedPalette.cool);
+        set3('uWarm', cachedPalette.warm);
+        set3('uGlowCol', cachedPalette.glow);
+      }
 
       gl.uniform1f(loc.uPhase, motion.sheet);
       gl.uniform1f(loc.uLevel, level);
@@ -473,14 +499,6 @@ export const SiriSheet = ({
       gl.uniform1f(loc.uRim, p.rim);
       gl.uniform1f(loc.uHear, p.hear);
       gl.uniform1f(loc.uFade, p.fade);
-      set3('uColA', pal.a);
-      set3('uColB', pal.b);
-      set3('uColC', pal.c);
-      set3('uColD', pal.d);
-      set3('uHi', pal.hi);
-      set3('uCool', pal.cool);
-      set3('uWarm', pal.warm);
-      set3('uGlowCol', pal.glow);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     };
 

@@ -1,7 +1,6 @@
 import type { RefObject } from 'react'
 import { useEffect, useRef } from 'react'
-import { acquireHoloRenderer, isHoloPreset, releaseHoloRenderer } from './holo-card-renderer.js'
-import type { HoloPreset, SharedHoloRenderer } from './holo-card-renderer.js'
+import type { HoloPreset, HoloRendererAdapter, SharedHoloRenderer } from './holo-card-renderer.js'
 
 const CARD_SELECTOR = '.xmimo-tts-character-toggle'
 const HOLO_CANVAS_SELECTOR = '.xmimo-tts-holo-canvas'
@@ -31,6 +30,8 @@ interface HoloHoverOptions {
   mouseOnly?: boolean
   tilt?: number
   hoverScale?: number
+  /** Optional WebGL2 holo foil renderer; omitted by CSS-only tilt surfaces so the shader stays out of the entry chunk. */
+  holo?: HoloRendererAdapter
 }
 
 interface CardSpring {
@@ -52,6 +53,10 @@ interface CardSpring {
   pointerY: number
   inside: boolean
   calm: number
+  settled: boolean
+  canvas: HTMLCanvasElement | null | undefined
+  width: number
+  height: number
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -90,6 +95,10 @@ function createCardSpring(): CardSpring {
     pointerY: REST_LIGHT_Y,
     inside: false,
     calm: 1,
+    settled: true,
+    canvas: undefined,
+    width: 0,
+    height: 0,
   }
 }
 
@@ -105,9 +114,9 @@ function isDarkScheme(): boolean {
   }
 }
 
-function cardPreset(card: HTMLElement): HoloPreset {
+function cardPreset(card: HTMLElement, holo?: HoloRendererAdapter): HoloPreset {
   const value = card.dataset.xmimoHoloPreset
-  return isHoloPreset(value) ? value : 'bursts'
+  return holo?.isPreset(value) ? value : 'bursts'
 }
 
 function clearCard(card: HTMLElement): void {
@@ -127,7 +136,7 @@ function clearCard(card: HTMLElement): void {
  */
 export function useHoloHover(
   enabled: boolean,
-  { selector = CARD_SELECTOR, allowDisabled = false, mouseOnly = false, tilt = 12, hoverScale = 1.032 }: HoloHoverOptions = {},
+  { selector = CARD_SELECTOR, allowDisabled = false, mouseOnly = false, tilt = 12, hoverScale = 1.032, holo }: HoloHoverOptions = {},
 ): RefObject<HTMLDivElement> {
   const rowRef = useRef<HTMLDivElement>(null)
 
@@ -136,26 +145,48 @@ export function useHoloHover(
     if (!enabled || !row) return
 
     const media = window.matchMedia('(any-hover: hover) and (any-pointer: fine) and (prefers-reduced-motion: no-preference)')
+    const darkSchemeMedia = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null
     const springs = new Map<HTMLElement, CardSpring>()
     let renderer: SharedHoloRenderer | null = null
     let hovered: HTMLElement | null = null
     let frame = 0
     let last = 0
     let alive = true
+    let dark = isDarkScheme()
 
     const writable = (card: HTMLElement): boolean => !card.matches(':disabled') && !card.querySelector('input:disabled')
 
     const cards = (): HTMLElement[] => Array.from(row.querySelectorAll<HTMLElement>(selector))
 
+    const getCanvas = (card: HTMLElement, state: CardSpring): HTMLCanvasElement | null => {
+      if (state.canvas === undefined || (state.canvas !== null && !card.contains(state.canvas))) {
+        state.canvas = card.querySelector<HTMLCanvasElement>(HOLO_CANVAS_SELECTOR)
+      }
+      return state.canvas
+    }
+
+    const measureCanvas = (card: HTMLElement, state: CardSpring): void => {
+      const canvas = getCanvas(card, state)
+      if (!canvas) {
+        state.width = 0
+        state.height = 0
+        return
+      }
+      state.width = canvas.clientWidth
+      state.height = canvas.clientHeight
+    }
+
     const ensureRenderer = (): SharedHoloRenderer | null => {
-      if (renderer) return renderer
+      if (!holo) return null
+      if (renderer && !renderer.isLost()) return renderer
       if (!row.querySelector(HOLO_CANVAS_SELECTOR)) return null
-      renderer = acquireHoloRenderer()
+      renderer = holo.acquire()
       return renderer
     }
 
-    const renderCanvas = (card: HTMLElement, state: CardSpring, dark: boolean): void => {
-      const canvas = card.querySelector<HTMLCanvasElement>(HOLO_CANVAS_SELECTOR)
+    const renderCanvas = (card: HTMLElement, state: CardSpring): void => {
+      if (!holo) return
+      const canvas = getCanvas(card, state)
       if (!canvas) return
       const isOn = card.classList.contains('xmimo-tts-character-toggle-on')
       const restAwake = isOn ? (dark ? 0.22 : 0.32) : 0
@@ -171,8 +202,10 @@ export function useHoloHover(
       }
       const glRenderer = ensureRenderer()
       if (!glRenderer) return
+      if (!state.width || !state.height) measureCanvas(card, state)
+      if (!state.width || !state.height) return
       const drawn = glRenderer.renderTo(canvas, {
-        preset: cardPreset(card),
+        preset: cardPreset(card, holo),
         tiltX: state.tiltX,
         tiltY: state.tiltY,
         lightX: state.lightX,
@@ -184,39 +217,55 @@ export function useHoloHover(
         radius: 16,
         dark,
         foilColor: FOIL_SILVER,
+        clientWidth: state.width,
+        clientHeight: state.height,
       })
-      if (drawn) card.setAttribute('data-xmimo-holo-gl', '')
+      if (drawn && !card.hasAttribute('data-xmimo-holo-gl')) card.setAttribute('data-xmimo-holo-gl', '')
     }
 
     const paintRestAll = (): void => {
       if (!alive || !media.matches || document.hidden) return
-      const dark = isDarkScheme()
-      for (const card of cards()) {
+      dark = isDarkScheme()
+      const list = cards()
+      const entries: Array<[HTMLElement, CardSpring]> = []
+      // Batch DOM measurements before any canvas/style writes to avoid reflow thrashing.
+      for (const card of list) {
         if (!allowDisabled && !writable(card)) continue
         const state = springs.get(card) ?? createCardSpring()
         springs.set(card, state)
-        renderCanvas(card, state, dark)
+        measureCanvas(card, state)
+        entries.push([card, state])
       }
+      for (const [card, state] of entries) renderCanvas(card, state)
     }
 
     const applyStyle = (card: HTMLElement, state: CardSpring, moving: boolean): void => {
-      card.style.setProperty('--xmimo-holo-x', `${(state.lightX * 100).toFixed(2)}%`)
-      card.style.setProperty('--xmimo-holo-y', `${(state.lightY * 100).toFixed(2)}%`)
-      card.style.setProperty('--xmimo-holo-bg-x', `${((1 - state.lightX) * 100).toFixed(2)}%`)
-      card.style.setProperty('--xmimo-holo-bg-y', `${((1 - state.lightY) * 100).toFixed(2)}%`)
-      card.style.setProperty('--xmimo-holo-rx', `${state.tiltX.toFixed(3)}deg`)
-      card.style.setProperty('--xmimo-holo-ry', `${state.tiltY.toFixed(3)}deg`)
-      card.style.setProperty('--xmimo-holo-lift', state.lift.toFixed(4))
-      card.style.setProperty('--xmimo-holo-sx', `${(-state.tiltY * 0.7).toFixed(2)}px`)
-      card.style.setProperty('--xmimo-holo-sy', `${(state.tiltX * 0.7).toFixed(2)}px`)
-      card.style.setProperty('--xmimo-holo-shadow-scale', (0.9 + (state.lift - 1) * 1.6).toFixed(4))
-      card.style.setProperty('--xmimo-holo-awake', state.awake.toFixed(3))
-      card.style.setProperty('--xmimo-holo-px', `${(state.tiltY * 0.2).toFixed(2)}px`)
-      card.style.setProperty('--xmimo-holo-py', `${(-state.tiltX * 0.2).toFixed(2)}px`)
-      if (state.inside) card.setAttribute('data-xmimo-holo-active', '')
-      else card.removeAttribute('data-xmimo-holo-active')
-      if (moving || state.inside) card.setAttribute('data-xmimo-holo-spring', '')
-      else card.removeAttribute('data-xmimo-holo-spring')
+      const style = card.style
+      if (!card.hasAttribute('data-xmimo-holo-gl')) {
+        style.setProperty('--xmimo-holo-x', `${(state.lightX * 100).toFixed(2)}%`)
+        style.setProperty('--xmimo-holo-y', `${(state.lightY * 100).toFixed(2)}%`)
+        style.setProperty('--xmimo-holo-bg-x', `${((1 - state.lightX) * 100).toFixed(2)}%`)
+        style.setProperty('--xmimo-holo-bg-y', `${((1 - state.lightY) * 100).toFixed(2)}%`)
+      }
+      style.setProperty('--xmimo-holo-rx', `${state.tiltX.toFixed(3)}deg`)
+      style.setProperty('--xmimo-holo-ry', `${state.tiltY.toFixed(3)}deg`)
+      style.setProperty('--xmimo-holo-lift', state.lift.toFixed(4))
+      style.setProperty('--xmimo-holo-sx', `${(-state.tiltY * 0.7).toFixed(2)}px`)
+      style.setProperty('--xmimo-holo-sy', `${(state.tiltX * 0.7).toFixed(2)}px`)
+      style.setProperty('--xmimo-holo-shadow-scale', (0.9 + (state.lift - 1) * 1.6).toFixed(4))
+      style.setProperty('--xmimo-holo-awake', state.awake.toFixed(3))
+      style.setProperty('--xmimo-holo-px', `${(state.tiltY * 0.2).toFixed(2)}px`)
+      style.setProperty('--xmimo-holo-py', `${(-state.tiltX * 0.2).toFixed(2)}px`)
+      if (state.inside) {
+        if (!card.hasAttribute('data-xmimo-holo-active')) card.setAttribute('data-xmimo-holo-active', '')
+      } else if (card.hasAttribute('data-xmimo-holo-active')) {
+        card.removeAttribute('data-xmimo-holo-active')
+      }
+      if (moving || state.inside) {
+        if (!card.hasAttribute('data-xmimo-holo-spring')) card.setAttribute('data-xmimo-holo-spring', '')
+      } else if (card.hasAttribute('data-xmimo-holo-spring')) {
+        card.removeAttribute('data-xmimo-holo-spring')
+      }
     }
 
     const resetAll = (): void => {
@@ -237,7 +286,6 @@ export function useHoloHover(
       last = now
       const steps = Math.ceil(dt / (1 / 240))
       const stepDt = dt / steps
-      const dark = isDarkScheme()
       let anyActive = false
 
       for (const [card, state] of springs) {
@@ -246,6 +294,9 @@ export function useHoloHover(
           springs.delete(card)
           continue
         }
+        // Skip resting siblings so hovering one card does not repaint or restyle the other three.
+        if (state.settled && !state.inside) continue
+
         const targetTiltX = state.inside ? state.targetX : 0
         const targetTiltY = state.inside ? state.targetY : 0
         const targetLightX = state.inside ? state.pointerX : REST_LIGHT_X
@@ -288,10 +339,11 @@ export function useHoloHover(
           state.liftV = 0
           state.awake = 0
           state.awakeV = 0
+          state.settled = true
         }
 
+        renderCanvas(card, state)
         applyStyle(card, state, moving)
-        renderCanvas(card, state, dark)
         if (moving) anyActive = true
       }
 
@@ -310,6 +362,7 @@ export function useHoloHover(
       if (!state) return
       state.inside = false
       state.calm = 0
+      state.settled = false
       wake()
     }
 
@@ -334,7 +387,9 @@ export function useHoloHover(
       const y = clamp((event.clientY - rect.top) / rect.height, 0, 1)
       const state = springs.get(card) ?? createCardSpring()
       springs.set(card, state)
+      if (!state.width || !state.height) measureCanvas(card, state)
       state.inside = true
+      state.settled = false
       state.pointerX = x
       state.pointerY = y
       state.targetX = (0.5 - y) * 2 * tilt
@@ -374,7 +429,7 @@ export function useHoloHover(
     }
 
     const scheduleRestPaint = (immediate = false): void => {
-      if (!alive || !media.matches || document.hidden) return
+      if (!holo || !alive || !media.matches || document.hidden) return
       if (!warmedUp && !immediate) {
         if (idleHandle !== null) return
         if (typeof window.requestIdleCallback === 'function') {
@@ -420,20 +475,39 @@ export function useHoloHover(
       }
     }
 
+    const handleThemeChange = (): void => {
+      const nextDark = isDarkScheme()
+      if (nextDark === dark) return
+      dark = nextDark
+      if (warmedUp) scheduleRestPaint(true)
+    }
+
     // Repaint resting holo luster when card sizes, ON/OFF states, or theme attributes change,
     // without blocking initial page paint with synchronous WebGL2 shader compilation.
-    const resizeObserver = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(() => { if (warmedUp) scheduleRestPaint(true) })
+    const resizeObserver = holo && typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+        for (const state of springs.values()) { state.width = 0; state.height = 0 }
+        if (warmedUp) scheduleRestPaint(true)
+      })
       : null
     resizeObserver?.observe(row)
 
-    const mutationObserver = typeof MutationObserver !== 'undefined'
-      ? new MutationObserver(() => { if (warmedUp) scheduleRestPaint(true) })
+    const mutationObserver = holo && typeof MutationObserver !== 'undefined'
+      ? new MutationObserver(records => {
+        const themeChanged = records.some(record => record.target === document.documentElement || record.target === document.body)
+        if (themeChanged) {
+          handleThemeChange()
+          return
+        }
+        if (warmedUp) scheduleRestPaint(true)
+      })
       : null
-    mutationObserver?.observe(row, { attributes: true, subtree: true, attributeFilter: ['class'] })
-    mutationObserver?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] })
-    if (document.body) {
-      mutationObserver?.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
+    if (mutationObserver) {
+      mutationObserver.observe(row, { attributes: true, subtree: true, attributeFilter: ['class'] })
+      mutationObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] })
+      if (document.body) {
+        mutationObserver.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
+      }
     }
 
     const trackWithWarmup = (event: PointerEvent): void => {
@@ -450,6 +524,7 @@ export function useHoloHover(
     row.addEventListener('pointerleave', leaveRow)
     row.addEventListener('pointercancel', leaveRow)
     media.addEventListener('change', handleMediaChange)
+    darkSchemeMedia?.addEventListener('change', handleThemeChange)
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('blur', leaveRow)
 
@@ -467,12 +542,13 @@ export function useHoloHover(
       row.removeEventListener('pointerleave', leaveRow)
       row.removeEventListener('pointercancel', leaveRow)
       media.removeEventListener('change', handleMediaChange)
+      darkSchemeMedia?.removeEventListener('change', handleThemeChange)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('blur', leaveRow)
-      releaseHoloRenderer(renderer)
+      holo?.release(renderer)
       renderer = null
     }
-  }, [enabled, selector, allowDisabled, mouseOnly, tilt, hoverScale])
+  }, [enabled, selector, allowDisabled, mouseOnly, tilt, hoverScale, holo])
 
   return rowRef
 }

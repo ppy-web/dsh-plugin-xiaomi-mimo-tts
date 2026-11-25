@@ -48,6 +48,9 @@
   gap: 8px;
   border-top: 1px solid var(--xmimo-ui-border-soft);
   padding: 5px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 76px;
+  transition: background-color 140ms ease;
 }
 .xmimo-tts-history-row-selected { background: var(--xmimo-ui-control-surface); border-inline-start: 2px solid var(--xmimo-ui-brand); padding-inline-start: 2px; }
 .xmimo-tts-history-copy { min-width: 0; }
@@ -67,8 +70,8 @@
 .xmimo-tts-history-player-controls input[type='range']::-webkit-slider-runnable-track { height: 3px; border-radius: 8px; background: linear-gradient(to right, var(--xmimo-ui-brand) 0% var(--xmimo-history-progress), var(--xmimo-ui-border) var(--xmimo-history-progress) 100%); }
 .xmimo-tts-history-player-controls input[type='range']::-moz-range-track { height: 3px; border-radius: 8px; background: var(--xmimo-ui-border); }
 .xmimo-tts-history-player-controls input[type='range']::-moz-range-progress { height: 3px; border-radius: 8px; background: var(--xmimo-ui-brand); }
-.xmimo-tts-history-player-controls input[type='range']::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 10px; height: 10px; margin-top: -3.5px; border: 0; border-radius: 50%; background: var(--xmimo-ui-brand); }
-.xmimo-tts-history-player-controls input[type='range']::-moz-range-thumb { width: 10px; height: 10px; border: 0; border-radius: 50%; background: var(--xmimo-ui-brand); }
+.xmimo-tts-history-player-controls input[type='range']::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 10px; height: 10px; margin-top: -3.5px; border: 0; border-radius: 50%; corner-shape: round; background: var(--xmimo-ui-brand); }
+.xmimo-tts-history-player-controls input[type='range']::-moz-range-thumb { width: 10px; height: 10px; border: 0; border-radius: 50%; corner-shape: round; background: var(--xmimo-ui-brand); }
 .xmimo-tts-history-player-controls input[type='range']:disabled { opacity: 0.5; cursor: default; }
 .xmimo-tts-history-time { flex: none; white-space: nowrap; color: var(--xmimo-ui-text-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
 .xmimo-tts-history-player-error { display: block; margin: 0; font-size: 11px; }

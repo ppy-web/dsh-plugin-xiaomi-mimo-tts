@@ -1,7 +1,7 @@
 import { availableTtsProviders, TTS_PROVIDER_SWITCH } from '../../types/providers.js'
 import { useExternalSelection } from './external-selection.js'
 import type { ReactElement, RefObject } from 'react'
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { memo, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { GoHistory } from 'react-icons/go'
 import { RiSwitchFill } from 'react-icons/ri'
@@ -119,10 +119,10 @@ const SettingsSounds = memo(SoundEffectsPanel, (
   { overrides: nextOverrides = [], ...nextProps }: Parameters<typeof SoundEffectsPanel>[0],
 ) => settingsValueEqual(previousOverrides, nextOverrides) && settingsSliceEqual(previousProps, nextProps))
 
-function HistoryLink({ history, t, onOpen, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement> }): ReactElement {
+function HistoryLink({ history, t, onOpen, onPreload, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; onPreload: () => void; buttonRef: RefObject<HTMLButtonElement> }): ReactElement {
   const view = useSyncExternalStore(history.subscribe, history.getSnapshot, history.getSnapshot)
   useEffect(() => { void history.ensureLoaded() }, [history])
-  return <Button ref={buttonRef} type="button" className="xmimo-tts-history-link" variant="toolbar" size="sm" onClick={onOpen}>
+  return <Button ref={buttonRef} type="button" className="xmimo-tts-history-link" variant="toolbar" size="sm" onPointerEnter={onPreload} onFocus={onPreload} onClick={onOpen}>
     <GoHistory size={14} aria-hidden="true" focusable="false" />
     <span className="xmimo-tts-action-label">{t('history.shortTitle')} · {view.entries.length}</span>
   </Button>
@@ -159,12 +159,13 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | null>(initialPanel ?? null)
   const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast'): void => setOpenPanel(current => current === panel ? null : panel)
   const [query, setQuery] = useState('')
+  const deferredQuery = useDeferredValue(query)
   const externalName = external?.name
   const doubaoClone = draft.doubaoModel === 'seed-icl-2.0'
-  const search = useMemo(() => renderHeader ? searchSettings(query, t, {
+  const search = useMemo(() => renderHeader ? searchSettings(deferredQuery, t, {
     provider, externalName, voiceDesign: model === 'mimo-v2.5-tts-voicedesign',
     doubaoClone, soundEnabled, mossEnabled, mossSelected: mossEnabled && localVoiceEngine === 'moss',
-  }) : null, [renderHeader, query, t, provider, externalName, model, doubaoClone, soundEnabled, mossEnabled, localVoiceEngine])
+  }) : null, [renderHeader, deferredQuery, t, provider, externalName, model, doubaoClone, soundEnabled, mossEnabled, localVoiceEngine])
   const [previewText, setPreviewText] = useState(() => t('settings.previewDefaultText'))
   const [previewView, setPreviewView] = useState<PreviewView>({ status: 'idle', source: null, error: null })
   const [previewPlayer] = useState(() => new PreviewPlayer(setPreviewView, history))
@@ -521,7 +522,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
             <div className="xmimo-tts-card-action-links">
               {search === null || search.visible.has('sidebar') ? <SidebarSettings t={t} value={snapshot.showInSidebar} disabled={!writable || state === 'saving' || validationError !== null}
                 onToggle={() => { void save(!snapshot.showInSidebar) }} /> : null}
-              {history && search === null ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onOpen={() => {
+              {history && search === null ? <HistoryLink history={history} t={t} buttonRef={historyLinkRef} onPreload={AudioHistoryPage.preload} onOpen={() => {
                 previewPlayer.stop()
                 setHistoryOpen(true)
               }} /> : null}
@@ -548,6 +549,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
                 {t('settings.discard')}
               </Button> : null}
               <Button type="button" variant="primary" size="sm" className="xmimo-tts-save" disabled={!writable || !saveableDirty || state === 'saving' || validationError !== null} onClick={() => { void save() }}>
+                {writable && saveableDirty && state !== 'saving' && validationError === null ? <span className="xmimo-tts-shimmer-ring" aria-hidden="true" /> : null}
                 {state === 'saving' ? t('settings.saving') : t('settings.save')}
               </Button>
             </div>
