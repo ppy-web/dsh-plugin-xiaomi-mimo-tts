@@ -1,5 +1,32 @@
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { TtsProvider } from './types/providers.js'
+import type {
+  StudioLine,
+  StudioLineInput,
+  StudioRole,
+  StudioRoleInput,
+  StudioRoleProvider,
+  StudioScript,
+  StudioScriptInput,
+  StudioSnapshot,
+  StudioTask,
+  StudioTaskLine,
+  StudioTaskStatus,
+} from './types/studio.js'
+
+export type {
+  StudioLine,
+  StudioLineInput,
+  StudioRole,
+  StudioRoleInput,
+  StudioRoleProvider,
+  StudioScript,
+  StudioScriptInput,
+  StudioSnapshot,
+  StudioTask,
+  StudioTaskLine,
+  StudioTaskStatus,
+}
 
 export { TtsProviderError } from './host/provider-error.js'
 
@@ -229,9 +256,28 @@ export interface SpeechSynthesisService {
   deliver(request: SpeechRequest, adapter: string, context: SpeechDeliveryContext): Promise<SpeechDeliveryResult>
 }
 
+export interface SpeechStudioService {
+  subscribe(listener: () => void): () => void
+  snapshot(): Promise<StudioSnapshot>
+  saveRole(input: StudioRoleInput): Promise<StudioRole>
+  deleteRole(roleId: string): Promise<void>
+  saveScript(input: StudioScriptInput): Promise<StudioScript>
+  importScript(input: { id?: string; title: string; description?: string; text: string; defaultNarratorName?: string }): Promise<{ script: StudioScript; createdRoles: StudioRole[] }>
+  deleteScript(scriptId: string): Promise<void>
+  startTask(input: { scriptId?: string; title?: string; lines?: StudioLineInput[]; autoStart?: boolean }): Promise<StudioTask>
+  pauseTask(taskId: string): Promise<StudioTask>
+  resumeTask(taskId: string): Promise<StudioTask>
+  retryTaskLine(taskId: string, lineIndex: number): Promise<StudioTask>
+  cancelTask(taskId: string): Promise<StudioTask>
+  deleteTask(taskId: string): Promise<void>
+  previewLine(input: StudioLineInput, signal: AbortSignal): Promise<Buffer>
+  getTaskAudioFile(taskId: string): Promise<{ path: string; size: number; task: StudioTask }>
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     speechSynthesis: SpeechSynthesisService
+    speechStudio: SpeechStudioService
   }
   interface Events {
     /** Audio was delivered or exported; file consumers may surface the returned path. */

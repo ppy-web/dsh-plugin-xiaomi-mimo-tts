@@ -208,6 +208,9 @@ URL 最长有效 24 小时。过期后立即拒绝下载，文件由定期任务
 | WebSocket `/synthesize-duplex` | 仅豆包；必须发送匹配宿主的 Origin。依次发送 `start`（可带 `selection`）、等待 `ready`、发送多条 `text`、发送 `finish`；二进制消息为 PCM，`done` 表示完成，`cancel` 取消。 |
 | `GET /api-key-status?provider=...` | 查询供应商密钥配置状态，不返回密钥。 |
 | `POST /moss/probe`、`POST /moss/synthesize` | 探测本地 MOSS 服务、合成 WAV，详见用户手册。 |
+| `GET /studio/state`、`GET /studio/events`、`POST/DELETE /studio/roles`、`POST/DELETE /studio/scripts`、`POST/DELETE /studio/tasks`、`GET /studio/audio?taskId=...` | 录音棚同源管理与实时 SSE 状态推送，音频路由支持 HTTP `Range` 分段拖拽回放与 `?download=1` 下载。纯文本导入超限返回 HTTP 413，响应中的 `lineNumber` 是原文行号。 |
+| `POST /studio/preview` | 接受 `roleId`、`text` 和可选的 `speechInstruction`，按指定角色的配置生成试听 WAV。 |
+| `GET/POST /open-studio`（需 Bearer 令牌） | 沿用 `openApiToken` 鉴权的录音棚开放管理接口，支持查询状态/任务、`save-role`、`save-script`、`import-script`、`start-task`、`pause-task`、`resume-task`、`cancel-task`、`delete-task` 与 `export-task-audio`（生成受控下载 URL）。 |
 
 ## Agent 工具
 

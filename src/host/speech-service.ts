@@ -18,6 +18,8 @@ import { externalRequestOptions } from './external-catalog.js'
 import { streamSynthesis } from './stream-synthesis.js'
 import { PcmQueue } from './pcm-queue.js'
 import { PassportRecognition } from '../passport/recognition.js'
+import { HostSpeechStudioService } from './studio-service.js'
+import { StudioDiskStore } from './studio-store.js'
 import type { ExternalSpeechConfigurationChange, SpeechProviderId } from '../host-api.js'
 
 declare module '@deepseek-ai/cordis' {
@@ -396,6 +398,10 @@ export default class SpeechHost {
   constructor(ctx: Context, config: { current: () => ResolvedTtsSettings; updates?: (listener: () => void) => (() => void) }) {
     const service = new HostSpeechService(config.current)
     ctx.provide('speechSynthesis', service)
+    const profileBase = (ctx.get('profileContext') as { dir?: string } | undefined)?.dir ?? ctx.get('loader')?.config.baseUrl
+    const store = profileBase ? StudioDiskStore.forProfile(profileBase) : new StudioDiskStore()
+    const studio = new HostSpeechStudioService(service, config.current, store, undefined, message => ctx.logger.warn(message))
+    ctx.provide('speechStudio', studio)
     const recognition = new PassportRecognition(config.current)
     ctx.provide('passportRecognition', recognition)
     ctx.provide('qqbotSpeechRules', { current: () => ({
@@ -415,7 +421,12 @@ export default class SpeechHost {
       void clean()
       const timer = setInterval(() => { void clean() }, 60 * 60 * 1000)
       timer.unref()
-      return () => { clearInterval(timer); recognition.dispose(); return service.dispose() }
+      return async () => {
+        clearInterval(timer)
+        recognition.dispose()
+        await studio.dispose()
+        await service.dispose()
+      }
     })
   }
 }

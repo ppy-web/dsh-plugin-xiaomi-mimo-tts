@@ -40,6 +40,7 @@ import { registerVoiceInputProviders } from './host/voice-input-providers.js'
 import { registerOpenApiRoutes } from './host/open-api-routes.js'
 import { registerEngineRoutes } from './host/engine-routes.js'
 import { registerPortraitRoutes } from './host/portraits.js'
+import { registerStudioRoutes } from './host/studio-routes.js'
 import SpeechHost from './host/speech-service.js'
 import { registerDshGo } from './host/dsh-go.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, DEEPSEEK_VOICES, ttsApiKey } from './shared.js'
@@ -206,6 +207,9 @@ export function apply(ctx: Context, config: Config): void {
       },
       subscribe: listener => ctx.on('loader/volatile-update', listener),
     })
+  })
+  ctx.inject(['speechStudio'], host => {
+    registerStudioRoutes(host)
   })
   // Native read-aloud in the dsh-go app; absent on hosts without its bridge.
   ctx.inject(['dshGo', 'speechSynthesis'], host => {

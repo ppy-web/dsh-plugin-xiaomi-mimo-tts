@@ -92,6 +92,20 @@ export const TTS_PORTRAITS_ROUTE = '/plugins/xiaomi-mimo-tts/portraits'
 /** Serves one uploaded custom portrait image for a slot. */
 export const TTS_PORTRAIT_IMAGE_ROUTE = '/plugins/xiaomi-mimo-tts/portrait-image'
 
+/** Same-origin routes for the multi-role Voice Studio (drama mode). */
+export const TTS_STUDIO_STATE_ROUTE = '/plugins/xiaomi-mimo-tts/studio/state'
+export const TTS_STUDIO_EVENTS_ROUTE = '/plugins/xiaomi-mimo-tts/studio/events'
+export const TTS_STUDIO_ROLES_ROUTE = '/plugins/xiaomi-mimo-tts/studio/roles'
+export const TTS_STUDIO_SCRIPTS_ROUTE = '/plugins/xiaomi-mimo-tts/studio/scripts'
+export const TTS_STUDIO_TASKS_ROUTE = '/plugins/xiaomi-mimo-tts/studio/tasks'
+export const TTS_STUDIO_PREVIEW_ROUTE = '/plugins/xiaomi-mimo-tts/studio/preview'
+export const TTS_STUDIO_AUDIO_ROUTE = '/plugins/xiaomi-mimo-tts/studio/audio'
+/** Allow 300 full lines with JSON-escaped dialogue and delivery instructions. */
+export const MAX_STUDIO_REQUEST_BODY_BYTES = 2 * 1024 * 1024
+
+/** Bearer-authenticated Open API route for external Studio automation. */
+export const TTS_OPEN_STUDIO_ROUTE = '/plugins/xiaomi-mimo-tts/open-studio'
+
 /** Public QQ discussion group the plugin links to. */
 export const TTS_QQ_GROUP_NUMBER = '1104616387'
 

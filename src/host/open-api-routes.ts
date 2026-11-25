@@ -1,14 +1,15 @@
 import { timingSafeEqual } from 'node:crypto'
-import { open } from 'node:fs/promises'
+import { open, readFile } from 'node:fs/promises'
 import { pipeline } from 'node:stream/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
-import type { SpeechRequest } from '../host-api.js'
-import { TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE } from '../constants.js'
+import type { SpeechRequest, SpeechStudioService, StudioLineInput, StudioRoleInput } from '../host-api.js'
+import { MAX_STUDIO_REQUEST_BODY_BYTES, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE } from '../constants.js'
 import { AudioDownloads } from './audio-downloads.js'
 import { json, readJsonBody } from './http.js'
 import { TtsProviderError } from './provider-error.js'
-import { SPEECH_FILE_TTL_MS } from './speech-files.js'
+import { SPEECH_FILE_TTL_MS, writeSpeechArtifact } from './speech-files.js'
+import { StudioScriptParseError } from '../text/studio-script-parser.js'
 
 /** All management calls require a separate Host token; browser calls also stay same-origin. */
 function authorize(req: IncomingMessage, res: ServerResponse, token: string): boolean {
@@ -150,6 +151,137 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
         if (res.headersSent) { res.destroy(); return }
         const missing = (error as NodeJS.ErrnoException).code === 'ENOENT'
         json(res, missing ? 404 : 500, { error: missing ? 'audio-not-found' : 'audio-download-failed' })
+      }
+    },
+  }))
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: TTS_OPEN_STUDIO_ROUTE,
+    async handler(req, res) {
+      if (!method(req, res, ['GET', 'POST']) || !authorize(req, res, currentToken())) return
+      const studio = (typeof ctx.get === 'function' ? ctx.get('speechStudio') : undefined) as SpeechStudioService | undefined
+      if (!studio) { json(res, 503, { error: 'studio-unavailable' }); return }
+      try {
+        if (req.method === 'GET') {
+          const taskId = new URL(req.url ?? '/', 'http://localhost').searchParams.get('taskId')?.trim()
+          const snap = await studio.snapshot()
+          if (taskId) {
+            const task = snap.tasks.find(item => item.id === taskId)
+            if (!task) { json(res, 404, { error: 'studio-task-not-found' }); return }
+            json(res, 200, { task })
+            return
+          }
+          const { storageRoot: _storageRoot, ...publicSnap } = snap
+          json(res, 200, publicSnap)
+          return
+        }
+
+        if (req.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {
+          json(res, 415, { error: 'json-required' })
+          return
+        }
+        let body: unknown
+        try { body = await readJsonBody(req, MAX_STUDIO_REQUEST_BODY_BYTES) } catch (error) {
+          const large = error instanceof Error && error.message === 'request-body-too-large'
+          throw new TtsProviderError(large ? 'request-body-too-large' : 'invalid-json', undefined, large ? 413 : 400)
+        }
+        if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TtsProviderError('invalid-request', undefined, 400)
+        const input = body as Record<string, unknown>
+        const allowed = [
+          'action', 'id', 'roleId', 'scriptId', 'taskId', 'lineIndex', 'name', 'color',
+          'provider', 'model', 'voice', 'voiceDesignPrompt', 'speechInstruction', 'voiceRate',
+          'title', 'description', 'text', 'defaultNarratorName', 'lines', 'autoStart',
+        ]
+        if (Object.keys(input).some(key => !allowed.includes(key))) throw new TtsProviderError('unknown-request-field', undefined, 400)
+
+        const action = typeof input.action === 'string' ? input.action : ''
+        if (action === 'save-role') {
+          const role = await studio.saveRole({
+            ...(typeof input.id === 'string' ? { id: input.id } : {}),
+            name: typeof input.name === 'string' ? input.name : '',
+            ...(typeof input.color === 'string' ? { color: input.color } : {}),
+            provider: input.provider as StudioRoleInput['provider'],
+            ...(typeof input.model === 'string' ? { model: input.model } : {}),
+            ...(typeof input.voice === 'string' ? { voice: input.voice } : {}),
+            ...(typeof input.voiceDesignPrompt === 'string' ? { voiceDesignPrompt: input.voiceDesignPrompt } : {}),
+            ...(typeof input.speechInstruction === 'string' ? { speechInstruction: input.speechInstruction } : {}),
+            ...(typeof input.voiceRate === 'number' ? { voiceRate: input.voiceRate } : {}),
+          })
+          json(res, 200, { role })
+        } else if (action === 'delete-role') {
+          const roleId = typeof input.roleId === 'string' ? input.roleId : ''
+          await studio.deleteRole(roleId)
+          json(res, 200, { deleted: roleId })
+        } else if (action === 'save-script') {
+          const script = await studio.saveScript({
+            ...(typeof input.id === 'string' ? { id: input.id } : {}),
+            title: typeof input.title === 'string' ? input.title : '',
+            ...(typeof input.description === 'string' ? { description: input.description } : {}),
+            lines: Array.isArray(input.lines) ? input.lines as StudioLineInput[] : [],
+          })
+          json(res, 200, { script })
+        } else if (action === 'import-script') {
+          const imported = await studio.importScript({
+            ...(typeof input.id === 'string' ? { id: input.id } : {}),
+            title: typeof input.title === 'string' ? input.title : '',
+            ...(typeof input.description === 'string' ? { description: input.description } : {}),
+            text: typeof input.text === 'string' ? input.text : '',
+            ...(typeof input.defaultNarratorName === 'string' ? { defaultNarratorName: input.defaultNarratorName } : {}),
+          })
+          json(res, 200, imported)
+        } else if (action === 'delete-script') {
+          const scriptId = typeof input.scriptId === 'string' ? input.scriptId : ''
+          await studio.deleteScript(scriptId)
+          json(res, 200, { deleted: scriptId })
+        } else if (action === 'start-task') {
+          const task = await studio.startTask({
+            ...(typeof input.scriptId === 'string' ? { scriptId: input.scriptId } : {}),
+            ...(typeof input.title === 'string' ? { title: input.title } : {}),
+            ...(Array.isArray(input.lines) ? { lines: input.lines as StudioLineInput[] } : {}),
+            ...(typeof input.autoStart === 'boolean' ? { autoStart: input.autoStart } : {}),
+          })
+          json(res, 201, { task })
+        } else if (action === 'pause-task') {
+          const task = await studio.pauseTask(typeof input.taskId === 'string' ? input.taskId : '')
+          json(res, 200, { task })
+        } else if (action === 'resume-task') {
+          const task = await studio.resumeTask(typeof input.taskId === 'string' ? input.taskId : '')
+          json(res, 200, { task })
+        } else if (action === 'cancel-task') {
+          const task = await studio.cancelTask(typeof input.taskId === 'string' ? input.taskId : '')
+          json(res, 200, { task })
+        } else if (action === 'delete-task') {
+          const taskId = typeof input.taskId === 'string' ? input.taskId : ''
+          await studio.deleteTask(taskId)
+          json(res, 200, { deleted: taskId })
+        } else if (action === 'export-task-audio') {
+          const taskId = typeof input.taskId === 'string' ? input.taskId : ''
+          const audio = await studio.getTaskAudioFile(taskId)
+          const bytes = await readFile(audio.path)
+          const artifact = await writeSpeechArtifact({
+            data: bytes,
+            text: audio.task.title,
+            provider: 'xiaomi',
+            format: 'wav',
+            contentType: 'audio/wav',
+            ...(audio.task.durationMs === undefined ? {} : { durationMs: audio.task.durationMs }),
+          })
+          const download = await downloads.publish(artifact)
+          json(res, 201, download)
+        } else {
+          throw new TtsProviderError('invalid-request', undefined, 400)
+        }
+      } catch (error) {
+        if (!res.destroyed && !res.writableEnded) {
+          if (error instanceof StudioScriptParseError) {
+            json(res, error.status, { error: error.code, lineNumber: error.lineNumber })
+            return
+          }
+          json(res, error instanceof TtsProviderError ? error.status : 500, {
+            error: error instanceof TtsProviderError ? error.code : 'studio-operation-failed',
+          })
+        }
       }
     },
   }))
