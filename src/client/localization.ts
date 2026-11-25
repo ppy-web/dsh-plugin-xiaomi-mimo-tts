@@ -2,6 +2,7 @@ import { sidebarZh, sidebarEn } from './settings/sidebar-copy.js'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { whaleZh, whaleEn } from './settings/whale-copy.js'
 import { passportZh, passportEn } from './settings/passport-copy.js'
+import { studioZh, studioEn } from './studio/studio-copy.js'
 
 export const NS = 'xiaomi-mimo-tts'
 
@@ -19,6 +20,7 @@ export const zh = {
   ...sidebarZh,
   ...whaleZh,
   ...passportZh,
+  ...studioZh,
   'detail.star': 'Star',
   'detail.manual': '手册',
   'detail.workshop': '工坊',
@@ -624,6 +626,7 @@ export const en: Record<keyof typeof zh, string> = {
   ...sidebarEn,
   ...whaleEn,
   ...passportEn,
+  ...studioEn,
   'detail.star': 'Star',
   'detail.manual': 'Manual',
   'detail.workshop': 'Studio',

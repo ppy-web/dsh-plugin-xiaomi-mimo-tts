@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactElement } from 'react'
+import type { CSSProperties, ReactElement, Ref } from 'react'
 import { useId, useState } from 'react'
 import { RiKey2Line } from 'react-icons/ri'
 import type { TtsProvider } from '../../types/providers.js'
@@ -44,10 +44,11 @@ export interface ApiKeyModuleProps {
   writable: boolean
   minimal: boolean
   onChange: (value: string) => void
+  inputRef?: Ref<HTMLInputElement> | undefined
   onOpenProviderSettings?: ((bundle: string) => void) | undefined
 }
 
-export function ApiKeyModule({ t, provider, value, message, invalid, missing, writable, minimal, onChange, onOpenProviderSettings }: ApiKeyModuleProps): ReactElement {
+export function ApiKeyModule({ t, provider, value, message, invalid, missing, writable, minimal, onChange, onOpenProviderSettings, inputRef }: ApiKeyModuleProps): ReactElement {
   const { hide } = useSettingsSearch()
   const engineView = useEngineState()
   const external = externalEngine()
@@ -83,6 +84,7 @@ export function ApiKeyModule({ t, provider, value, message, invalid, missing, wr
         aria-hidden="true"
       /> : null}
       <input
+          ref={inputRef}
           id={inputId}
           type="password"
           value={value}

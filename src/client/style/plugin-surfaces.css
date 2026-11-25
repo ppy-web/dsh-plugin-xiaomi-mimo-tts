@@ -123,26 +123,6 @@
   opacity: 0.72;
   filter: grayscale(0.35);
 }
-.xmimo-tts-panel-state-wave {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  height: 18px;
-  color: var(--xmimo-ui-brand);
-}
-.xmimo-tts-panel-state-wave > span {
-  width: 3px;
-  height: 6px;
-  border-radius: 999px;
-  corner-shape: round;
-  background: currentColor;
-  opacity: 0.85;
-}
-.xmimo-tts-panel-state-wave > span:nth-child(2) { height: 12px; animation-delay: 110ms; }
-.xmimo-tts-panel-state-wave > span:nth-child(3) { height: 16px; animation-delay: 220ms; }
-.xmimo-tts-panel-state-wave > span:nth-child(4) { height: 12px; animation-delay: 330ms; }
-.xmimo-tts-panel-state-wave > span:nth-child(5) { height: 6px; animation-delay: 440ms; }
 .xmimo-tts-panel-state-text {
   margin: 0;
   max-width: 280px;
@@ -170,9 +150,6 @@
   .xmimo-tts-panel-state[data-state='loading'] .xmimo-tts-panel-state-badge {
     animation: xmimo-tts-loading-float 2.2s ease-in-out infinite;
   }
-  .xmimo-tts-panel-state[data-state='loading'] .xmimo-tts-panel-state-wave > span {
-    animation: xmimo-tts-loading-wave 1.05s ease-in-out infinite;
-  }
 }
 @keyframes xmimo-tts-loading-aura {
   0%, 100% { opacity: 0.45; transform: scale(0.92); }
@@ -181,10 +158,6 @@
 @keyframes xmimo-tts-loading-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
-}
-@keyframes xmimo-tts-loading-wave {
-  0%, 100% { transform: scaleY(0.42); opacity: 0.48; }
-  50% { transform: scaleY(1); opacity: 1; }
 }
 
 .xmimo-tts-settings-page {
@@ -198,8 +171,8 @@
   padding-block-start: calc(var(--xmimo-studio-page-inset) + var(--dsh-frame-top-clearance, 0px));
   color: var(--xmimo-ui-text);
 }
-/* Match the Host's plugin manager and task manager content column. */
-.xmimo-tts-settings-page-content { width: 100%; max-width: 960px; margin-inline: auto; container-type: inline-size; }
+/* Match the Host's plugin manager and task manager content column, widened for 2-column modules. */
+.xmimo-tts-settings-page-content { width: 100%; max-width: 1200px; margin-inline: auto; container-type: inline-size; }
 .xmimo-tts-settings-search {
   box-sizing: border-box;
   display: flex;
@@ -327,6 +300,7 @@
 }
 .xmimo-tts-settings-page-actions .xmimo-voice-reading-qq { position: static; }
 @container (max-width: 600px) {
+  .xmimo-tts-settings-page-content:has(> .xmimo-studio-page) > .xmimo-tts-settings-page-header { display: none; }
   .xmimo-tts-settings-page-header { align-items: stretch; flex-direction: column; gap: 10px; }
   .xmimo-tts-settings-page-identity { flex-basis: auto; gap: 12px; }
   .xmimo-tts-settings-page-icon { width: 56px; height: 56px; border-radius: 18px; }

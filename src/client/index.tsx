@@ -39,6 +39,7 @@ import { createSoundEffectsController, installClickSounds } from './sound-effect
 import { installTaskSoundWatcher } from './sound-effects/task-watcher.js'
 import { CORE_CLIENT_STYLES } from './style/core.js'
 import { disposePersistentClientStyles, ensureClientStyle } from './style/inject.js'
+import { buildStudioDirectorDraftInput, launchStudioDirectorSession } from './studio/launch-director-session.js'
 
 const ActivationGuide = lazyPanel<ActivationGuideProps>(() => import('./settings/activation-guide.js').then(module => module.ActivationGuide), { silentLoading: true })
 import { AudioHistory } from './history/audio-history.js'
@@ -321,6 +322,9 @@ export function apply(ctx: Context): void {
 
   const settingsPageProps = { scope, t, localeRevision, controller: soundEffects, history, audioFocus, speechActivity, changes, beforePreview: stopAllPlayback, beforeHistoryPlayback: stopAllPlayback,
     onOpenProviderSettings: (bundle: string) => ctx.pluginNavigation.openBundle(bundle),
+    onWriteWithDsh: () => launchStudioDirectorSession(ctx, {
+      prompt: buildStudioDirectorDraftInput(t('studio.directorDraftGuide')),
+    }),
   }
   registerSlotContribution(ctx, 'plugins.bundle.config', () => registerBundleSettings(ctx, {
     ...settingsPageProps, onSidebarChange: mounted => { if (mounted) ctx.layout.selectPanel(VOICE_SETTINGS_PANEL_ID as MainPanelId) },

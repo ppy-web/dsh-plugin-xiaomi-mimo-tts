@@ -36,9 +36,6 @@ export function PanelStatusView({ message, failed = false, compact = false, retr
         <img src={hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)} width={56} height={56} alt="" />
       </span>
     </div>
-    {!failed ? <span className="xmimo-tts-panel-state-wave" aria-hidden="true">
-      <span /><span /><span /><span /><span />
-    </span> : null}
     <p className="xmimo-tts-panel-state-text" role={failed ? 'alert' : 'status'} aria-live={failed ? undefined : 'polite'}>{message}</p>
     {(failed && onRetry && retryLabel) || (onBack && backLabel) ? <div className="xmimo-tts-panel-state-actions">
       {failed && onRetry && retryLabel ? <Button type="button" variant="outline" size="sm" onClick={onRetry}>{retryLabel}</Button> : null}

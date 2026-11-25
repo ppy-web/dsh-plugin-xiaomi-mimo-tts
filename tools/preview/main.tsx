@@ -37,11 +37,13 @@ import { PreviewSidebar } from './preview-sidebar.js'
 import { PreviewThemeToggle } from './preview-theme-toggle.js'
 import { VoiceReadingSelect } from '../../src/client/settings/voice-reading-select.js'
 import { PreviewExternalTakeover } from './mock-engine.js'
+import { enableStudioDemo } from '../../src/client/studio/studio-client-store.js'
 import './preview.css'
 import './preview-shell.css'
 import './preview-palettes.css'
 
 const scope = new PreviewSettingsScope()
+enableStudioDemo()
 // Inject plugin styles into <head> before first render so there is zero FOUC or duplicate style injection.
 const removePreviewStyles = [
   ensureClientStyle('core', CORE_CLIENT_STYLES),

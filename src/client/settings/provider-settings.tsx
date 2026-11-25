@@ -60,7 +60,7 @@ export function ProviderSettings({
       <Switch checked={deepseekEnabled} disabled={locked(deepseekEnabled)} label={t('settings.deepseekEnabled')} onChange={next => onProviderEnabledChange('deepseek', next)} />
     </div>
     {showLimit ? <small role="status">{t('settings.providerLimit')}</small> : null}
-    <div className="xmimo-tts-announcement-source" hidden={hide('mossEnabled')}>
+    <div className="xmimo-tts-announcement-source" data-studio-moss-setting hidden={hide('mossEnabled')}>
       <span className="xmimo-tts-provider-settings-brand xmimo-tts-provider-settings-local">
         <img src={hostRoute(TTS_MOSS_LOGO_ASSET_ROUTE)} alt="" />
         <span>{t('settings.mossProvider')}</span>

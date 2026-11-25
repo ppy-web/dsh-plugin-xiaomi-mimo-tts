@@ -119,7 +119,7 @@ export function PreviewModule({
   } satisfies AnnouncementToggle])) as Record<AnnouncementToggleField, AnnouncementToggle>
 
   return <CollapsibleModule className="xmimo-tts-settings-module xmimo-tts-broadcast"
-    title={<span className="xmimo-ui-module-title"><RiRadio2Line size={14} aria-hidden="true" focusable="false" />{t('settings.previewTitle')}</span>}
+    title={<span className="xmimo-ui-module-title"><RiRadio2Line size={14} aria-hidden="true" focusable="false" /><span>{t('settings.previewTitle')}</span><span className="xmimo-ui-module-subtitle">{t('settings.broadcastSubtitle')}</span></span>}
     ariaLabel={t('settings.previewTitle')}
     searchGroups={['preview', 'providers', 'host', 'sources', 'integrations']}
     open={open} onToggle={onToggleOpen} interactiveSummary

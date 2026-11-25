@@ -220,6 +220,35 @@ export class PreviewPlayer {
     }
   }
 
+  /** Play a complete WAV whose voice and speed were selected by the caller's Host route. */
+  async playWavRequest(path: string, body: object): Promise<void> {
+    this.stop()
+    const generation = this.generation
+    const controller = new AbortController()
+    this.request = controller
+    this.publish('loading', null)
+    try {
+      const response = await fetch(hostRoute(path), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      if (!response.ok) throw await responseError(response)
+      const audio = await response.blob()
+      if (generation !== this.generation) return
+      this.request = null
+      await this.playBlob(audio, generation, null, 1)
+    } catch (error) {
+      if (generation === this.generation) this.publish('error', null, previewError(error))
+    } finally {
+      if (generation === this.generation) {
+        this.request = null
+        this.musicFocus.release()
+      }
+    }
+  }
+
   /** Audition browser speech without contacting a cloud provider, including on failure. */
   async playBrowserPreview(text: string, settings: Pick<PreviewSettings, 'localVoiceURI' | 'voiceVolume' | 'voiceRate'>): Promise<void> {
     this.stop()
@@ -372,10 +401,14 @@ export class PreviewPlayer {
     const voiceRateApplied = !externalEngine() && settings.provider === 'breeze'
     void this.history?.add({ blob, text, format, source: 'preview', voiceRateApplied })
     this.request = null
+    await this.playBlob(blob, generation, source, voiceRateApplied ? 1 : this.voiceRate)
+  }
+
+  private async playBlob(blob: Blob, generation: number, source: PreviewSource, voiceRate: number): Promise<void> {
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
     audio.volume = this.volume
-    applyMediaVoiceRate(audio, voiceRateApplied ? 1 : this.voiceRate)
+    applyMediaVoiceRate(audio, voiceRate)
     this.audioUrl = url
     this.audio = audio
     await new Promise<void>((resolve, reject) => {

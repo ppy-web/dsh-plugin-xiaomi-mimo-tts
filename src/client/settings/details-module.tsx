@@ -161,7 +161,7 @@ export function DetailsModule({ draft, externalSelection, onExternalSelectionCha
   </div>
   return <CollapsibleModule
     className="xmimo-tts-settings-module xmimo-tts-details xmimo-ui-module"
-    title={<span className="xmimo-ui-module-title"><RiEqualizerLine size={14} aria-hidden="true" focusable="false" />{t('settings.detailedVoiceConfig')}</span>}
+    title={<span className="xmimo-ui-module-title"><RiEqualizerLine size={14} aria-hidden="true" focusable="false" /><span>{t('settings.detailedVoiceConfig')}</span><span className="xmimo-ui-module-subtitle">{t('settings.mixerSubtitle')}</span></span>}
     ariaLabel={t('settings.detailedVoiceConfig')}
     searchGroups={['mixer', 'playback', 'local']}
     summary={<span className="xmimo-tts-details-summary xmimo-ui-summary">

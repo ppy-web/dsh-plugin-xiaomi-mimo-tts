@@ -11,7 +11,7 @@ import {
 import type { TtsSettings } from '../../src/shared.js'
 import { TTS_PROVIDERS, ttsApiKey } from '../../src/types/providers.js'
 import type { TtsProvider } from '../../src/types/providers.js'
-import { TTS_DUPLEX_ROUTE, TTS_ENGINE_SELECTION_ROUTE, TTS_PORTRAITS_ROUTE } from '../../src/constants.js'
+import { TTS_DUPLEX_ROUTE, TTS_ENGINE_SELECTION_ROUTE, TTS_PORTRAITS_ROUTE, TTS_STUDIO_PREVIEW_ROUTE } from '../../src/constants.js'
 import { PORTRAIT_SLOTS } from '../../src/types/portrait.js'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { PcmRecording } from '../../src/client/history/pcm-recording.js'
@@ -181,6 +181,7 @@ export function installPreviewFetch(scope: PreviewSettingsScope): () => void {
       const provider = TTS_PROVIDERS.find(item => item === url.searchParams.get('provider'))
       return jsonResponse(scope.apiKeyStatus(provider))
     }
+    if (pathname === TTS_STUDIO_PREVIEW_ROUTE) return previewAudioResponse(false)
     if (pathname === TTS_ROUTE || pathname === TTS_STREAM_ROUTE) {
       const engine = engineStateStore.getSnapshot().engine
       if (engine?.provider.startsWith('external:') && !engine.ready) return jsonResponse({ error: 'external-provider-not-ready' }, 409)

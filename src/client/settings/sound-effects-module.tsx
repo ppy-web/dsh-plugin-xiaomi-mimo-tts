@@ -122,7 +122,7 @@ export function SoundEffectsPanel({
   const previewLabel = (cue: SoundCue): string => t(`settings.soundEffectsPreview.${cue}` as Parameters<Translate>[0])
   return <CollapsibleModule
     className="xmimo-tts-settings-module xmimo-tts-sound-effects xmimo-ui-module"
-    title={<span className="xmimo-ui-module-title"><RiDiscLine size={14} aria-hidden="true" focusable="false" />{t(minimal ? 'settings.soundEffectsTitle' : 'settings.personalizationTitle')}</span>}
+    title={<span className="xmimo-ui-module-title"><RiDiscLine size={14} aria-hidden="true" focusable="false" /><span>{t(minimal ? 'settings.soundEffectsTitle' : 'settings.personalizationTitle')}</span><span className="xmimo-ui-module-subtitle">{t(minimal ? 'settings.soundEffectsSubtitle' : 'settings.personalizationSubtitle')}</span></span>}
     ariaLabel={t(minimal ? 'settings.soundEffectsTitle' : 'settings.personalizationTitle')}
     searchGroups={minimal ? ['sound', 'portraits'] : ['sound', 'portraits']}
     summary={<span className="xmimo-tts-sound-summary xmimo-ui-summary">

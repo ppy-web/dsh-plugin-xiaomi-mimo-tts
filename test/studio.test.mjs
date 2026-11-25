@@ -15,6 +15,7 @@ import {
   TTS_DESKTOP_WRITE_HEADER,
   TTS_OPEN_STUDIO_ROUTE,
   TTS_STUDIO_AUDIO_ROUTE,
+  TTS_STUDIO_EVENTS_ROUTE,
   TTS_STUDIO_PREVIEW_ROUTE,
   TTS_STUDIO_ROLES_ROUTE,
   TTS_STUDIO_SCRIPTS_ROUTE,
@@ -37,8 +38,32 @@ const { registerStudioRoutes } = await loadClientModule('src/host/studio-routes.
 const { registerOpenApiRoutes } = await loadClientModule('src/host/open-api-routes.ts')
 const { registerStudioDirectorCommand } = await loadClientModule('src/host/studio-director-command.ts')
 const { AudioDownloads } = await loadClientModule('src/host/audio-downloads.ts')
+const { resolveStudioProviderAvailability } = await loadClientModule('src/client/studio/use-studio-provider-statuses.ts')
+const { checkStudioRecording } = await loadClientModule('src/client/studio/studio-recording-check.ts')
+const {
+  buildDirectorPrompt,
+  inspectDirectorPromptRoles,
+} = await loadClientModule('src/client/studio/director-prompt.ts')
 const { createBuiltinStudioRoles } = await loadClientModule('src/types/studio.ts')
 const { findMatchingStudioRole } = await loadClientModule('src/text/studio-script-parser.ts')
+const {
+  buildStudioDirectorDraftInput,
+  launchStudioDirectorSession,
+  resolveDefaultWorkspaceId,
+  STUDIO_DIRECTOR_DRAFT_INPUT,
+} = await loadClientModule('src/client/studio/launch-director-session.ts')
+const { studioScriptKey, studioWorkspaceStore } = await loadClientModule('src/client/studio/studio-workspace-store.ts')
+const {
+  buildDoubaoClonedVoiceChoices,
+  buildDoubaoStandardCustomVoiceChoices,
+  buildDoubaoStandardPresetChoices,
+  buildBreezeCustomVoiceChoices,
+  buildBreezePresetChoices,
+  buildXiaomiVoiceDesignChoices,
+  findVoiceDesignPresetByPrompt,
+  resolveStudioRoleVoiceLabel,
+} = await loadClientModule('src/client/studio/studio-voice-options.ts')
+
 function makeSineWav(sampleRate, durationMs, freq = 440) {
   const count = Math.max(1, Math.round(sampleRate * durationMs / 1000))
   const samples = new Int16Array(count)
@@ -498,6 +523,55 @@ test('Studio isolates profile edits and the first profile keeps the existing arc
   }
 })
 
+test('Studio keeps host mode on a failed load and reconnects after its event stream closes', async () => {
+  const { studioClient, refreshStudioState } = await loadClientModule('src/client/studio/studio-client-store.ts')
+  const originalFetch = globalThis.fetch
+  const eventSource = Object.getOwnPropertyDescriptor(globalThis, 'EventSource')
+  const sources = []
+  class TestEventSource {
+    static CLOSED = 2
+    readyState = 1
+    constructor(url) {
+      assert.equal(url, TTS_STUDIO_EVENTS_ROUTE)
+      sources.push(this)
+    }
+    close() { this.readyState = TestEventSource.CLOSED }
+    deliver(snapshot) { this.onmessage({ data: JSON.stringify(snapshot) }) }
+  }
+  const initial = { instanceId: 'host-one', revision: 2, roles: [], scripts: [], tasks: [], storageBytes: 0, maxStorageBytes: 1000 }
+  let responses = 0
+  Object.defineProperty(globalThis, 'EventSource', { value: TestEventSource, configurable: true, writable: true })
+  globalThis.fetch = async path => {
+    assert.equal(path, TTS_STUDIO_STATE_ROUTE)
+    responses++
+    return responses === 1
+      ? Response.json({ error: 'studio-unavailable' }, { status: 503 })
+      : Response.json(responses === 2 ? initial : { ...initial, instanceId: 'host-two', revision: 1 })
+  }
+  const unsubscribe = studioClient.subscribe(() => {})
+  try {
+    await waitFor(() => studioClient.getSnapshot().status === 'error')
+    assert.deepEqual(studioClient.getSnapshot().roles, [])
+    await refreshStudioState()
+    assert.equal(studioClient.getSnapshot().status, 'ready')
+
+    sources[0].deliver({ ...initial, revision: 3, storageBytes: 100 })
+    sources[0].deliver(initial)
+    assert.equal(studioClient.getSnapshot().storageBytes, 100)
+    sources[0].close()
+    sources[0].onerror()
+    await waitFor(() => sources.length === 2)
+    assert.equal(studioClient.getSnapshot().status, 'ready')
+    sources[1].deliver({ ...initial, instanceId: 'host-two', storageBytes: 125 })
+    assert.equal(studioClient.getSnapshot().storageBytes, 125)
+  } finally {
+    unsubscribe()
+    globalThis.fetch = originalFetch
+    if (eventSource) Object.defineProperty(globalThis, 'EventSource', eventSource)
+    else delete globalThis.EventSource
+  }
+})
+
 test('Studio HTTP routes enforce same-origin, serve Range audio, and Open API enforces Bearer token', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-http-'))
   const routes = []
@@ -838,6 +912,267 @@ test('studio /director slash command discloses tools per session, steers request
   }
 })
 
+test('launchStudioDirectorSession opens Host default workspace with /director draft and preserves custom draft', async () => {
+  const initialized = []
+  let draftValue = ''
+  let focused = 0
+  const opened = []
+  const binding = { sessionId: 'sess-default' }
+  const scope = { id: 'scope-default' }
+
+  const makeCtx = (overrides = {}) => {
+    const services = {
+      workspaces: {
+        list: { getSnapshot: () => ({ items: [{ workspaceId: 'ws-other', path: 'E:/repo', title: 'repo' }, { workspaceId: 'ws-default', path: 'C:/Users/me/Documents/deepseek-harness/default-workspace', title: 'default-workspace' }] }) },
+        async initializeDefault() { return { workspaceId: 'ws-default', path: 'C:/Users/me/Documents/deepseek-harness/default-workspace', title: 'default-workspace' } },
+      },
+      uiWorkspace: {
+        async openWorkspace(workspaceId, beforeOpen) {
+          opened.push(workspaceId)
+          beforeOpen?.('sess-default')
+        },
+        startSession(workspaceId, options) {
+          opened.push({ workspaceId, options })
+        },
+      },
+      sessions: {
+        binding: id => (id === 'sess-default' ? binding : undefined),
+        scope: id => (id === 'sess-default' ? scope : undefined),
+      },
+      conversation: {
+        input: {
+          for: () => ({
+            state: { getSnapshot: () => ({ draft: draftValue }) },
+            focus: () => { focused += 1 },
+          }),
+          requestDraftInitialization: (target, options) => {
+            initialized.push({ target, options })
+            draftValue = options.prompt ?? ''
+            return 'applied'
+          },
+        },
+      },
+      ...overrides,
+    }
+    return { get: key => services[key] }
+  }
+
+  assert.ok(STUDIO_DIRECTOR_DRAFT_INPUT.startsWith(`${STUDIO_DIRECTOR_SLASH_COMMAND} `))
+  assert.ok(STUDIO_DIRECTOR_DRAFT_INPUT.trim().length > STUDIO_DIRECTOR_SLASH_COMMAND.length)
+  assert.ok(STUDIO_DIRECTOR_DRAFT_INPUT.includes('\n'))
+
+  assert.equal(await launchStudioDirectorSession(makeCtx()), true)
+  assert.deepEqual(opened, ['ws-default'])
+  assert.equal(initialized.length, 1)
+  assert.equal(initialized[0].options.prompt, STUDIO_DIRECTOR_DRAFT_INPUT)
+  assert.equal(initialized[0].options.whenDraftExists, 'replace')
+  assert.equal(draftValue, STUDIO_DIRECTOR_DRAFT_INPUT)
+  await new Promise(resolve => setTimeout(resolve, 10))
+  assert.ok(focused >= 1)
+
+  // Bare /director without guided text gets upgraded to the guided template.
+  draftValue = `${STUDIO_DIRECTOR_SLASH_COMMAND}   `
+  assert.equal(await launchStudioDirectorSession(makeCtx()), true)
+  assert.equal(initialized.length, 2)
+  assert.equal(draftValue, STUDIO_DIRECTOR_DRAFT_INPUT)
+
+  // If the user already typed a custom /director prompt, keep it intact.
+  draftValue = `${STUDIO_DIRECTOR_SLASH_COMMAND} 悬疑短剧第二幕`
+  assert.equal(await launchStudioDirectorSession(makeCtx()), true)
+  assert.equal(initialized.length, 2)
+  assert.equal(draftValue, `${STUDIO_DIRECTOR_SLASH_COMMAND} 悬疑短剧第二幕`)
+
+  // If the user started filling in the guided template, keep their edits intact.
+  const partiallyFilled = `${STUDIO_DIRECTOR_DRAFT_INPUT} 深夜灯塔谜案`
+  draftValue = partiallyFilled
+  assert.equal(await launchStudioDirectorSession(makeCtx()), true)
+  assert.equal(initialized.length, 2)
+  assert.equal(draftValue, partiallyFilled)
+
+  // Supports passing a custom localized guide when the existing draft is empty or untouched.
+  const localizedPrompt = buildStudioDirectorDraftInput('Write a short mystery drama\n- Theme:')
+  draftValue = STUDIO_DIRECTOR_DRAFT_INPUT
+  assert.equal(await launchStudioDirectorSession(makeCtx(), { prompt: localizedPrompt }), true)
+  assert.equal(initialized.length, 3)
+  assert.equal(draftValue, localizedPrompt)
+
+  // Falls back to listing default-workspace by path when initializeDefault returns undefined.
+  assert.equal(await resolveDefaultWorkspaceId({
+    list: { getSnapshot: () => ({ items: [{ workspaceId: 'ws-renamed', path: 'C:\\Users\\me\\Documents\\deepseek-harness\\default-workspace', title: '我的默认区' }] }) },
+    async initializeDefault() { return undefined },
+  }), 'ws-renamed')
+
+  // Falls back cleanly to startSession when openWorkspace is absent.
+  opened.length = 0
+  assert.equal(await launchStudioDirectorSession(makeCtx({
+    uiWorkspace: {
+      startSession(workspaceId, options) { opened.push({ workspaceId, options }) },
+    },
+  })), true)
+  assert.deepEqual(opened, [{ workspaceId: 'ws-default', options: { prompt: STUDIO_DIRECTOR_DRAFT_INPUT, whenDraftExists: 'replace' } }])
+
+  // Returns false when Host workspace UI is unavailable (e.g. standalone preview).
+  assert.equal(await launchStudioDirectorSession({ get: () => undefined }), false)
+})
+
+test('studioWorkspaceStore keeps Studio tab, unsaved script draft, role draft, and playback bookmark alive across reloads', async () => {
+  const memoryStorage = new Map()
+  const prevStorage = globalThis.sessionStorage
+  globalThis.sessionStorage = {
+    getItem: key => memoryStorage.get(key) ?? null,
+    setItem: (key, value) => { memoryStorage.set(key, String(value)) },
+    removeItem: key => { memoryStorage.delete(key) },
+  }
+  try {
+    studioWorkspaceStore.reset()
+    studioWorkspaceStore.setOpenTab('scripts')
+    assert.equal(studioWorkspaceStore.getSnapshot().script.selectedId, '')
+    studioWorkspaceStore.syncScriptFromHost({ id: 'saved-script', title: '已保存的剧本', lines: [], updatedAt: 1 })
+    studioWorkspaceStore.setOpenTab('roles')
+    assert.equal(studioWorkspaceStore.getSnapshot().script.selectedId, 'saved-script')
+    studioWorkspaceStore.setOpenTab(null)
+    studioWorkspaceStore.setOpenTab('scripts')
+    assert.equal(studioWorkspaceStore.getSnapshot().script.selectedId, '')
+    studioWorkspaceStore.updateScript(cur => ({
+      ...cur,
+      selectedId: 'script-1',
+      title: '未保存草稿标题',
+      description: '草稿简介',
+      editorMode: 'text',
+      rawText: '旁白（低沉）：夜色渐浓。',
+      lines: [{ id: 'l1', roleId: 'r1', text: '测试台词', pauseAfterMs: 600 }],
+      dirty: true,
+    }))
+    studioWorkspaceStore.setRoleDraft({
+      name: '新演员',
+      color: '#3b82f6',
+      provider: 'xiaomi',
+      model: 'mimo-v2.5-tts',
+      voice: '冰糖',
+      voiceDesignPrompt: '',
+      speechInstruction: '温柔',
+      voiceRate: 1.1,
+    })
+    studioWorkspaceStore.setPlaybackBookmark('task-42', 12.5, true)
+
+    const snap = studioWorkspaceStore.getSnapshot()
+    assert.equal(snap.openTab, 'scripts')
+    assert.equal(snap.script.dirty, true)
+    assert.equal(snap.script.title, '未保存草稿标题')
+    assert.equal(snap.script.rawText, '旁白（低沉）：夜色渐浓。')
+    assert.equal(snap.roleDraft?.name, '新演员')
+    assert.equal(snap.playback.activeTaskId, 'task-42')
+    assert.equal(snap.playback.currentTime, 12.5)
+
+    // Reloading restores drafts and bookmarks from the previous browser session.
+    const rawPersisted = memoryStorage.get('dsh-xiaomi-tts:studio-workspace-v1')
+    assert.ok(rawPersisted)
+    const restored = await loadClientModule('src/client/studio/studio-workspace-store.ts?restore-unsaved-draft')
+    assert.deepEqual(restored.studioWorkspaceStore.getSnapshot(), snap)
+
+    // Closing Studio clears openTab while keeping unsaved draft intact.
+    studioWorkspaceStore.setOpenTab(null)
+    assert.equal(studioWorkspaceStore.getSnapshot().openTab, null)
+    assert.equal(studioWorkspaceStore.getSnapshot().script.title, '未保存草稿标题')
+    assert.equal(studioWorkspaceStore.getSnapshot().roleDraft?.name, '新演员')
+
+    // A stock selection persisted by an older UI should not become the new default.
+    const stored = JSON.parse(rawPersisted)
+    stored.script.dirty = false
+    memoryStorage.set('dsh-xiaomi-tts:studio-workspace-v1', JSON.stringify(stored))
+    const clean = await loadClientModule('src/client/studio/studio-workspace-store.ts?restore-clean-selection')
+    assert.equal(clean.studioWorkspaceStore.getSnapshot().script.selectedId, '')
+    assert.deepEqual(clean.studioWorkspaceStore.getSnapshot().script.lines, [])
+
+    studioWorkspaceStore.reset()
+  } finally {
+    if (prevStorage === undefined) delete globalThis.sessionStorage
+    else globalThis.sessionStorage = prevStorage
+  }
+})
+
+test('Studio restores separate drafts after switching scripts and keeps unapplied text when saving cards', async () => {
+  const memory = new Map()
+  const previous = globalThis.sessionStorage
+  globalThis.sessionStorage = {
+    getItem: key => memory.get(key) ?? null,
+    setItem: (key, value) => memory.set(key, String(value)),
+    removeItem: key => memory.delete(key),
+  }
+  try {
+    studioWorkspaceStore.reset()
+    const script = {
+      id: 'episode-a',
+      title: '第一集',
+      lines: [{ id: 'line-a', roleId: 'narrator', text: '原台词', pauseAfterMs: 400 }],
+      createdAt: 1,
+      updatedAt: 1,
+    }
+    studioWorkspaceStore.openScript(script, '旁白：原台词', 'text')
+    studioWorkspaceStore.updateScript(draft => ({
+      ...draft,
+      rawText: '旁白：保留纯文本',
+      textDirty: true,
+      dirty: true,
+    }))
+    studioWorkspaceStore.setScriptMode('blocks')
+    studioWorkspaceStore.newScript('第二集', 'text', [])
+    studioWorkspaceStore.updateScript(draft => ({
+      ...draft,
+      rawText: '旁白：保留新剧本',
+      textDirty: true,
+      dirty: true,
+    }))
+    const newDraftKey = studioScriptKey(studioWorkspaceStore.getSnapshot().script)
+    studioWorkspaceStore.openScript(script, '旁白：原台词', 'blocks')
+    studioWorkspaceStore.setScriptMode('text', '旁白：来自积木')
+    assert.equal(studioWorkspaceStore.getSnapshot().script.rawText, '旁白：保留纯文本')
+
+    studioWorkspaceStore.setScriptMode('blocks')
+    assert.equal(studioWorkspaceStore.beginScriptOperation('save'), true)
+    studioWorkspaceStore.newScript('试图打断正在保存的剧本', 'text', [])
+    assert.equal(studioWorkspaceStore.getSnapshot().script.selectedId, script.id)
+    studioWorkspaceStore.syncScriptFromHost({ ...script, updatedAt: 2 }, '旁白：已保存的积木', { keepTextDraft: true })
+    studioWorkspaceStore.endScriptOperation()
+    studioWorkspaceStore.setScriptMode('text', '旁白：已保存的积木')
+    assert.equal(studioWorkspaceStore.getSnapshot().script.rawText, '旁白：保留纯文本')
+
+    const { studioWorkspaceStore: reloaded } = await loadClientModule('src/client/studio/studio-workspace-store.ts?restore-multiple-drafts')
+    reloaded.openScriptDraft(newDraftKey)
+    assert.equal(reloaded.getSnapshot().script.rawText, '旁白：保留新剧本')
+    reloaded.openScript(script, '旁白：原台词', 'blocks')
+    assert.equal(reloaded.getSnapshot().script.rawText, '旁白：保留纯文本')
+  } finally {
+    studioWorkspaceStore.reset()
+    if (previous === undefined) delete globalThis.sessionStorage
+    else globalThis.sessionStorage = previous
+  }
+})
+
+test('Studio checks recording readiness for the same assigned roles in either script mode', () => {
+  const roles = [
+    { id: 'xiaomi-role', name: '小米旁白', provider: 'xiaomi' },
+    { id: 'doubao-role', name: '豆包角色', provider: 'doubao' },
+  ]
+  const blocks = {
+    lines: [
+      { roleId: 'doubao-role', text: '开场。' },
+      { roleId: 'xiaomi-role', text: '回应。' },
+      { roleId: 'xiaomi-role', text: '再说一句。' },
+    ],
+  }
+  const text = { rawText: '豆包角色：开场。\n小米旁白：回应。\n小米旁白：再说一句。', narratorName: '旁白' }
+  const statuses = { xiaomi: 'missing', doubao: 'recognized', breeze: 'missing', deepseek: 'missing' }
+  for (const input of [blocks, text]) {
+    const result = checkStudioRecording(input, roles, statuses, false)
+    assert.equal(result.lineCount, 3)
+    assert.deepEqual(result.issues.map(issue => [issue.id, issue.firstLine, issue.reason]), [
+      ['xiaomi-role', 2, 'studio.roles.apiKeyMissing'],
+    ])
+    assert.equal(checkStudioRecording(input, roles, { ...statuses, xiaomi: 'recognized' }, false).issues.length, 0)
+  }
+})
+
 test('the built-in radio, product video and suspense scripts can start recording with their default cast', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-episodes-'))
   const studio = new HostSpeechStudioService({}, () => resolveTtsSettings({}), new StudioDiskStore(dir))
@@ -985,5 +1320,158 @@ test('Studio upgrades the default podcast voice and preserves local library chan
         await rm(dir, { recursive: true, force: true })
       }
     })
+  }
+})
+
+test('fresh Studio roles cover supported cloud providers and show credential availability', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-builtin-'))
+  try {
+    const store = new StudioDiskStore(dir)
+    const loaded = await store.load()
+    for (const provider of ['breeze', 'deepseek', 'doubao', 'xiaomi']) {
+      assert.ok(loaded.roles.some(role => role.provider === provider && role.voice))
+    }
+
+    const statuses = { xiaomi: 'recognized', doubao: 'missing', breeze: 'unrecognized', deepseek: 'missing' }
+    assert.equal(resolveStudioProviderAvailability('xiaomi', statuses, false).available, true)
+    assert.equal(resolveStudioProviderAvailability('doubao', statuses, false).available, false)
+    assert.equal(resolveStudioProviderAvailability('doubao', statuses, false).reasonKey, 'studio.roles.apiKeyMissing')
+    assert.equal(resolveStudioProviderAvailability('breeze', statuses, false).available, false)
+    assert.equal(resolveStudioProviderAvailability('moss', statuses, false).available, false)
+    assert.equal(resolveStudioProviderAvailability('moss', statuses, true).available, true)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('Studio role voice options expose saved custom voice IDs and fall back to empty when none exist', () => {
+  const emptyLibrary = {
+    cloned: { history: [], names: {} },
+    standard: { history: [], names: {} },
+    breeze: { history: [], names: {} },
+  }
+  assert.deepEqual(buildDoubaoClonedVoiceChoices(emptyLibrary, { doubaoClonedVoice: '' }, []), [])
+
+  const library = {
+    cloned: { history: ['S_clone_1', 'S_clone_2'], names: { S_clone_1: '我的复刻音' } },
+    standard: { history: ['zh_female_custom_1', 'zh_female_vv_uranus_bigtts'], names: { zh_female_custom_1: '专属旁白' } },
+    breeze: { history: ['custom-breeze-1'], names: {} },
+  }
+  const roles = [
+    { id: 'r1', name: 'A', color: '#000', provider: 'doubao', model: 'seed-icl-2.0', voice: 'S_clone_3', voiceRate: 1, createdAt: 0, updatedAt: 0 },
+    { id: 'r2', name: 'B', color: '#000', provider: 'doubao', model: 'seed-icl-2.0', voice: 'S_clone_1', voiceRate: 1, createdAt: 0, updatedAt: 0 },
+  ]
+
+  const cloned = buildDoubaoClonedVoiceChoices(library, { doubaoClonedVoice: 'S_clone_2' }, roles)
+  assert.deepEqual(cloned.map(item => item.id), ['S_clone_1', 'S_clone_2', 'S_clone_3'])
+  assert.ok(cloned[0].label.includes('我的复刻音'))
+  assert.equal(resolveStudioRoleVoiceLabel(roles[1], library), '我的复刻音')
+
+  const standardCustom = buildDoubaoStandardCustomVoiceChoices(library, { doubaoVoice: 'zh_female_custom_2' }, [])
+  assert.deepEqual(standardCustom.map(item => item.id), ['zh_female_custom_1', 'zh_female_vv_uranus_bigtts', 'zh_female_custom_2'])
+  assert.ok(standardCustom[0].label.includes('专属旁白'))
+  assert.deepEqual(buildDoubaoStandardCustomVoiceChoices(emptyLibrary, { doubaoVoice: 'zh_female_vv_uranus_bigtts' }, []), [])
+  assert.ok(buildDoubaoStandardPresetChoices(library).length > 0)
+
+  const breezePresets = buildBreezePresetChoices(library)
+  assert.ok(breezePresets.length > 0)
+  const breezeCustom = buildBreezeCustomVoiceChoices(library, { breezeVoice: '' }, [])
+  assert.deepEqual(breezeCustom.map(item => item.id), ['custom-breeze-1'])
+  assert.deepEqual(buildBreezeCustomVoiceChoices(emptyLibrary, { breezeVoice: breezePresets[0].id }, []), [])
+
+  const designChoices = buildXiaomiVoiceDesignChoices()
+  assert.ok(designChoices.length >= 10)
+  const firstDesign = designChoices[0]
+  assert.equal(findVoiceDesignPresetByPrompt(firstDesign.prompt)?.id, firstDesign.id)
+  assert.equal(findVoiceDesignPresetByPrompt('自定义深夜电台女声'), undefined)
+  assert.equal(resolveStudioRoleVoiceLabel({
+    id: 'r-design',
+    name: '鲸鱼娘角色',
+    color: '#000',
+    provider: 'xiaomi',
+    model: 'mimo-v2.5-tts-voicedesign',
+    voice: '冰糖',
+    voiceDesignPrompt: firstDesign.prompt,
+    voiceRate: 1,
+    createdAt: 0,
+    updatedAt: 0,
+  }, library), '鲸鱼娘')
+})
+
+test('buildDirectorPrompt aligns cast readiness, per-engine capabilities, duplicate role IDs, brief injection, and parser-valid examples', () => {
+  const builtin = createBuiltinStudioRoles(1)
+  const roles = [
+    ...builtin,
+    { id: 'dup-a', name: '陈默', color: '#3b82f6', provider: 'xiaomi', model: 'mimo-v2.5-tts', voice: '苏打', voiceRate: 1, createdAt: 1, updatedAt: 1 },
+    { id: 'dup-b', name: '陈默', color: '#f59e0b', provider: 'doubao', model: 'seed-icl-2.0', voice: 'S_clone_1', voiceRate: 1, createdAt: 1, updatedAt: 1 },
+  ]
+  const keyStatuses = { xiaomi: 'recognized', doubao: 'missing', breeze: 'missing', deepseek: 'missing' }
+  const voiceIdLibrary = {
+    cloned: { history: ['S_clone_1'], names: { S_clone_1: '专属克隆音' } },
+    standard: { history: [], names: {} },
+    breeze: { history: [], names: {} },
+  }
+
+  const inspected = inspectDirectorPromptRoles(roles, { keyStatuses, mossEnabled: false, voiceIdLibrary })
+  assert.ok(inspected.ready.length > 0 && inspected.unavailable.length > 0)
+  assert.ok(inspected.ready.every(item => item.role.provider === 'xiaomi'))
+  assert.equal(inspected.all.find(item => item.role.id === 'builtin-narrator')?.capability, 'instruction-and-xiaomi-tags')
+  assert.equal(inspected.all.find(item => item.role.id === 'builtin-podcast-host')?.capability, 'instruction-only')
+  assert.equal(inspected.all.find(item => item.role.id === 'builtin-podcast-host')?.voiceLabel, '梁文峰')
+  assert.equal(inspected.all.find(item => item.role.id === 'builtin-suspense')?.capability, 'instruction-only')
+  assert.equal(inspected.all.find(item => item.role.id === 'builtin-thinker')?.capability, 'instruction-and-breeze-tags')
+  assert.equal(inspected.all.find(item => item.role.id === 'builtin-stella')?.capability, 'text-and-pause')
+  assert.equal(inspected.all.find(item => item.role.id === 'dup-b')?.capability, 'text-and-pause')
+  assert.equal(inspected.all.find(item => item.role.id === 'dup-b')?.voiceLabel, '专属克隆音')
+  assert.equal(inspected.all.find(item => item.role.id === 'dup-a')?.speakerToken, '陈默{dup-a}')
+  assert.equal(inspected.all.find(item => item.role.id === 'dup-b')?.speakerToken, '陈默{dup-b}')
+
+  // Ready-only scope filters out unconfigured providers while preserving ready roles and copy-ready delivery rules.
+  const readyPrompt = buildDirectorPrompt(roles, { keyStatuses, mossEnabled: false, voiceIdLibrary, castScope: 'ready' })
+  assert.ok(readyPrompt.includes('陆远山 · 纪录片旁白'))
+  assert.ok(readyPrompt.includes('许闻川 · 播客主持'))
+  assert.ok(readyPrompt.includes('梁文峰'))
+  assert.ok(readyPrompt.includes('陈默{dup-a}'))
+  assert.equal(readyPrompt.includes('裴沉舟 · 悬疑解说'), false)
+  assert.equal(readyPrompt.includes('Stella · 清澈双语'), false)
+  assert.ok(readyPrompt.includes('```text'))
+  assert.ok(readyPrompt.includes(String(STUDIO_MAX_LINES_PER_SCRIPT)))
+  assert.ok(readyPrompt.includes(String(STUDIO_MAX_LINE_CHARACTERS)))
+
+  // All-roles scope retains both ready and unconfigured roles and custom voice remarks.
+  const allPrompt = buildDirectorPrompt(roles, { keyStatuses, mossEnabled: false, voiceIdLibrary, castScope: 'all' })
+  assert.ok(allPrompt.includes('陆远山 · 纪录片旁白'))
+  assert.ok(allPrompt.includes('裴沉舟 · 悬疑解说'))
+  assert.ok(allPrompt.includes('专属克隆音'))
+
+  // When no provider is ready yet, ready scope falls back to listing the full cast instead of an empty roster.
+  const noneReady = { xiaomi: 'missing', doubao: 'missing', breeze: 'missing', deepseek: 'missing' }
+  const fallbackPrompt = buildDirectorPrompt(builtin, { keyStatuses: noneReady, mossEnabled: false, castScope: 'ready' })
+  assert.ok(fallbackPrompt.includes('陆远山 · 纪录片旁白'))
+  assert.ok(fallbackPrompt.includes('裴沉舟 · 悬疑解说'))
+
+  // Optional brief values are embedded cleanly in both locales, and emitted example lines parse back to real cast roles.
+  for (const locale of ['zh', 'en']) {
+    const promptWithBrief = buildDirectorPrompt(roles, {
+      keyStatuses,
+      mossEnabled: false,
+      castScope: 'ready',
+      locale,
+      brief: { theme: 'Midnight lighthouse mystery', pacingAndTone: '20 lines, tense noir' },
+    })
+    assert.ok(promptWithBrief.includes('Midnight lighthouse mystery'))
+    assert.ok(promptWithBrief.includes('20 lines, tense noir'))
+    assert.ok(promptWithBrief.includes('```text'))
+
+    const exampleMarker = locale === 'en' ? '  Format example:' : '  格式示例：'
+    const lines = promptWithBrief.split('\n')
+    const idx = lines.indexOf(exampleMarker)
+    assert.ok(idx >= 0)
+    const sampleLines = [lines[idx + 1].trim(), lines[idx + 2].trim()]
+    const parsed = parseStudioScriptLines(sampleLines.join('\n'))
+    assert.equal(parsed.length, 2)
+    for (const item of parsed) {
+      assert.ok(findMatchingStudioRole(roles, item.roleName, item.roleId), `Expected example speaker ${item.roleName} to match an existing role`)
+    }
   }
 })

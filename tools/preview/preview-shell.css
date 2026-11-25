@@ -131,14 +131,15 @@ a.preview-source-link::before { margin-inline-end: 0; }
     background: var(--preview-rule) padding-box;
   }
 }
-.preview-page { width: min(1100px, 100%); margin-inline: auto; padding: 32px; }
+.preview-page { width: min(1320px, 100%); margin-inline: auto; padding: 32px; }
 .preview-page-heading { margin-bottom: 28px; }
 .preview-page-heading h1 { margin: 0; color: var(--preview-foreground); font-size: 24px; font-weight: 600; line-height: 1.4; letter-spacing: -.025em; }
 .preview-page-heading h1:focus { outline: none; }
 .preview-page-heading > p { max-width: 72ch; margin: 8px 0 0; color: var(--preview-muted); font-size: 14px; line-height: 1.65; }
 .preview-page-body { min-width: 0; }
+.preview-page-body > .xmimo-tts-settings-page { overflow: visible; }
 .preview-plugin-surface, .preview-voice-surface { border: 1px solid var(--preview-rule); border-radius: 10px; padding: 20px; background: var(--dsw-alias-bg-layer-1); }
-.preview-plugin-surface { max-width: 900px; }
+.preview-plugin-surface { max-width: 1200px; }
 .preview-surface-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
 .preview-surface-heading img { width: 48px; height: 48px; padding: 5px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-lg); background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 60%, transparent); object-fit: contain; }
 .preview-surface-heading strong { display: block; font-size: 14px; font-weight: 600; color: var(--dsw-alias-label-primary); }

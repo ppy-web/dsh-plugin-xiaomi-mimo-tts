@@ -1,7 +1,7 @@
 import type { LocaleKey, Translate } from '../localization.js'
 import type { TtsProvider } from '../../types/providers.js'
 
-export type SearchGroup = 'switches' | 'credentials' | 'mixer' | 'playback' | 'local' | 'preview' | 'providers' | 'host' | 'sources' | 'integrations' | 'sound' | 'portraits' | 'footer'
+export type SearchGroup = 'switches' | 'credentials' | 'mixer' | 'playback' | 'local' | 'preview' | 'providers' | 'host' | 'sources' | 'integrations' | 'studio' | 'sound' | 'portraits' | 'footer'
 
 const GROUPS: Record<SearchGroup, readonly LocaleKey[]> = {
   switches: [],
@@ -14,6 +14,7 @@ const GROUPS: Record<SearchGroup, readonly LocaleKey[]> = {
   host: ['settings.previewTitle', 'settings.hostIntegration'],
   sources: ['settings.previewTitle', 'settings.announcementsTitle'],
   integrations: ['settings.previewTitle', 'settings.announcementsPlugins'],
+  studio: ['studio.title'],
   sound: ['settings.soundEffectsTitle'],
   portraits: ['settings.personalizationTitle', 'settings.portraitCardsTitle'],
   footer: [],
@@ -69,6 +70,7 @@ const ENTRIES = {
   passport: { group: 'integrations', terms: ['settings.passportIntegration', 'settings.passportIntegrationHint'] },
   novel: { group: 'integrations', terms: ['settings.novelIntegration', 'settings.novelIntegrationHint'], aliases: 'dsh-novel 听书 audiobook' },
   'audio-reactive': { group: 'integrations', terms: ['settings.audioReactiveIntegration', 'settings.audioReactiveIntegrationHint'], aliases: 'dsh-audio-reactive 音频响应 频谱' },
+  studio: { group: 'studio', terms: ['studio.title', 'studio.subtitle', 'studio.enter'], aliases: '录音棚 剧情模式 广播剧 剧本 角色 导演 studio drama script cast' },
   soundScope: { group: 'sound', terms: ['settings.soundEffectsScope', 'settings.soundEffectsClickOnly', 'settings.soundEffectsTaskOnly'] },
   soundVolume: { group: 'sound', terms: ['settings.soundEffectsVolume'] },
   soundPack: { group: 'sound', terms: ['settings.soundEffectsPack'] },

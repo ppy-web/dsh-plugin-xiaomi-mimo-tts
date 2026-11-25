@@ -4,6 +4,13 @@ import { Button, IconChevronDownOutlineRegular, Menu } from '@deepseek-ai/dsh-cl
 import type { ButtonVariant } from '@deepseek-ai/dsh-client-ui-primitives'
 import { TactileButton } from './controls/tactile-button.js'
 
+export interface VoiceReadingSelectOption {
+  id: string
+  label: ReactNode
+  icon?: ReactNode
+  disabled?: boolean
+}
+
 interface VoiceReadingSelectProps {
   /** Accessible name of the control (the row title). */
   label: string
@@ -11,10 +18,12 @@ interface VoiceReadingSelectProps {
   value: string
   /** Shown when the value matches no option (a stored custom id). */
   fallbackLabel?: string
-  options: readonly { id: string; label: ReactNode; icon?: ReactElement }[]
+  options: readonly VoiceReadingSelectOption[]
   disabled: boolean
   /** Override the settings-row capsule with a Host button variant or a raised trigger. */
   buttonVariant?: ButtonVariant | 'tactile'
+  align?: 'start' | 'end'
+  className?: string
   onSelect: (id: string) => void
 }
 
@@ -26,13 +35,15 @@ interface VoiceReadingSelectProps {
  * a check on the selected row. Choosing returns focus to the pill before the
  * value is published, exactly like the Host rows.
  */
-export function VoiceReadingSelect({ label, value, fallbackLabel, options, disabled, buttonVariant, onSelect }: VoiceReadingSelectProps): ReactElement {
+export function VoiceReadingSelect({ label, value, fallbackLabel, options, disabled, buttonVariant, align = 'end', className, onSelect }: VoiceReadingSelectProps): ReactElement {
   const [open, setOpen] = useState(false)
   const selectorRef = useRef<HTMLButtonElement>(null)
   const closeMenu = (): void => {
     setOpen(false)
   }
   const choose = (id: string): void => {
+    const picked = options.find(option => option.id === id)
+    if (picked?.disabled) return
     selectorRef.current?.focus({ preventScroll: true })
     closeMenu()
     onSelect(id)
@@ -42,11 +53,13 @@ export function VoiceReadingSelect({ label, value, fallbackLabel, options, disab
   const tactile = buttonVariant === 'tactile'
   const hostVariant = tactile ? undefined : buttonVariant
   const Trigger = tactile ? TactileButton : hostVariant ? Button : 'button'
+  const baseClass = tactile ? undefined : hostVariant ? 'xmimo-voice-reading-button-selector' : 'xmimo-voice-reading-selector'
+  const triggerClass = [baseClass, className].filter(Boolean).join(' ') || undefined
   const selector = <Trigger
     ref={selectorRef}
     type="button"
     {...(hostVariant ? { variant: hostVariant, size: 'sm' as const } : {})}
-    className={tactile ? undefined : hostVariant ? 'xmimo-voice-reading-button-selector' : 'xmimo-voice-reading-selector'}
+    className={triggerClass}
     aria-label={label}
     aria-haspopup="menu"
     aria-expanded={open}
@@ -67,7 +80,7 @@ export function VoiceReadingSelect({ label, value, fallbackLabel, options, disab
     selectedId={value}
     onSelect={choose}
     onClose={closeMenu}
-    align="end"
+    align={align}
     portal
     // The list is portaled to document.body, outside our subtree, so this class
     // is the only style hook that reaches the dropdown card (Menu.tsx

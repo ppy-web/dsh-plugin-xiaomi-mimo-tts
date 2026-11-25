@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Voice Studio (dsh-xiaomi-tts)",
-    "description": "Add Xiaomi MiMo TTS, Doubao Seed TTS, Breeze Blue TTS, DeepSeek voice, and local speech to DSH, with audio downloads, sound effects, desktop pet and QQBot integration, and AI Passport connectivity.",
+    "description": "Give DSH a voice that listens, talks, and even puts on a show! Pick from 10+ cloud & local engines with streaming TTS, live captions, audio orb, fun SFX, and multi-role Recording Studio — ready to jam with desktop pet, audiobooks, QQ Bot & AI Passport.",
     "detail": "intro.md"
   }
 }

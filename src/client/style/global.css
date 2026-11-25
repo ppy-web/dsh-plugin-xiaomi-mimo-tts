@@ -209,8 +209,17 @@
 .xmimo-ui-module-title {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
   vertical-align: middle;
+}
+
+.xmimo-ui-module-subtitle {
+  color: var(--xmimo-ui-text-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
 }
 
 .xmimo-ui-module-title > svg {
@@ -254,7 +263,7 @@
 
 /* Interactive summaries sit beside a trigger whose hit area fills the header. */
 .xmimo-ui-interactive-heading {
-  min-height: 20px;
+  min-height: 26px;
 }
 
 .xmimo-ui-module-title-toggle {
@@ -282,7 +291,7 @@
   width: 100%;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--xmimo-ui-space-1);
+  gap: 8px;
 }
 
 .xmimo-ui-summary {
@@ -320,17 +329,17 @@
   white-space: nowrap;
 }
 
-:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-sound-effects) .xmimo-ui-module-toggle,
-:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-sound-effects) .xmimo-ui-module-title-toggle {
+:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-studio-module, .xmimo-tts-sound-effects) .xmimo-ui-module-toggle,
+:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-studio-module, .xmimo-tts-sound-effects) .xmimo-ui-module-title-toggle {
   padding-block: 12px;
 }
 
-:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-sound-effects) .xmimo-ui-summary {
+:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-studio-module, .xmimo-tts-sound-effects) .xmimo-ui-summary {
   height: auto;
   min-height: 40px;
 }
 
-:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-sound-effects) .xmimo-ui-summary > span {
+:is(.xmimo-tts-details, .xmimo-tts-broadcast, .xmimo-tts-studio-module, .xmimo-tts-sound-effects) .xmimo-ui-summary > span {
   padding-block: 2px;
   font-size: 12px;
   line-height: 18px;

@@ -13,6 +13,8 @@ import sound from './sound.css?raw'
 import portrait from './portrait.css?raw'
 import minimal from './minimal.css?raw'
 import responsive from './responsive.css?raw'
+import splitBar from './split-bar.css?raw'
+import studioCard from './studio-card.css?raw'
 
 export const WORKBENCH_CLIENT_STYLES = [
   voiceStudioTitle,
@@ -30,4 +32,6 @@ export const WORKBENCH_CLIENT_STYLES = [
   portrait,
   minimal,
   responsive,
+  splitBar,
+  studioCard,
 ].join('\n')

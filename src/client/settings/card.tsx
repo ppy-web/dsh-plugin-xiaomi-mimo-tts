@@ -1,4 +1,5 @@
-import { availableTtsProviders, TTS_PROVIDER_SWITCH } from '../../types/providers.js'
+import { availableTtsProviders, TTS_PROVIDERS, TTS_PROVIDER_SWITCH } from '../../types/providers.js'
+import type { StudioRoleProvider } from '../../types/studio.js'
 import { useExternalSelection } from './external-selection.js'
 import type { ReactElement, RefObject } from 'react'
 import { memo, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
@@ -29,6 +30,7 @@ import { resolveApiKeyViewState } from './api-key-state.js'
 import { AvatarStyleContext } from './controls/voice-avatar.js'
 import { DETAIL_FIELDS, DetailsModule } from './details-module.js'
 import { BROADCAST_FIELDS, PreviewModule } from './preview-module.js'
+import { StudioModule } from './studio-module.js'
 import { PERSONALIZATION_FIELDS, SoundEffectsPanel } from './sound-effects-module.js'
 import { SidebarSettings } from './sidebar-settings.js'
 import { withSidebarLoading } from './sidebar-loading.js'
@@ -47,8 +49,10 @@ import { SettingsSearchContext } from './settings-search-context.js'
 import { searchSettings } from './settings-search.js'
 import { WORKBENCH_CLIENT_STYLES } from '../style/workbench.js'
 import { useClientStyle } from '../style/inject.js'
+import { studioWorkspaceStore, useStudioOpenTab } from '../studio/studio-workspace-store.js'
 
 const AudioHistoryPage = lazyPanel(() => import('../history/audio-history-page.js').then(module => module.AudioHistoryPage))
+const StudioPage = lazyPanel(() => import('../studio/studio-page.js').then(module => module.StudioPage))
 const ActivationGuide = lazyPanel<ActivationGuideProps>(() => import('./activation-guide.js').then(module => module.ActivationGuide), { silentLoading: true })
 
 /** Re-enabling the feature guide switch opens the guide modal immediately. */
@@ -62,6 +66,7 @@ export interface SettingsCardProps {
   renderHeader?: (search?: { query: string; onQueryChange: (query: string) => void }) => ReactElement
   onSidebarChange?: ((mounted: boolean) => void) | undefined
   onOpenProviderSettings?: ((bundle: string) => void) | undefined
+  onWriteWithDsh?: (() => Promise<boolean> | boolean | void) | undefined
   scope: ConfigForm<TtsSettings>
   t: Translate
   localeRevision?: SnapshotSource<number> | undefined
@@ -133,7 +138,7 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   return <SettingsPage {...props} />
 }
 
-const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRevision, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, renderHeader, onSidebarChange, onOpenProviderSettings, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRevision, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, renderHeader, onSidebarChange, onOpenProviderSettings, onWriteWithDsh, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const t = useSettingsTranslation(translate, localeRevision)
   useClientStyle('workbench', WORKBENCH_CLIENT_STYLES)
   useEngineState()
@@ -151,13 +156,16 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   const { enabled, autoPlay, soundEnabled, voiceVolume, voiceRate, soundVolume, soundPack, taskSounds, clickSounds,
     mossEnabled, localVoiceEngine, model, provider, doubaoEnabled, breezeEnabled,
     deepseekEnabled, avatarStyle, showReadingCaptions, showAudioResponse, audioResponseStyle } = draft
-  const apiKey = apiKeys[provider]
-  const apiKeyField = API_KEY_BY_PROVIDER[provider]
+  const [studioSetupProvider, setStudioSetupProvider] = useState<StudioRoleProvider | null>(null)
+  const setupKeyProvider = TTS_PROVIDERS.find(item => item === studioSetupProvider)
+  const keyProvider = setupKeyProvider ?? provider
+  const apiKey = apiKeys[keyProvider]
+  const apiKeyField = API_KEY_BY_PROVIDER[keyProvider]
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [saveError, setSaveError] = useState<'api-key-rejected' | 'host-rejected' | 'provider-count' | 'unknown' | null>(null)
   const saveInFlight = useRef(false)
-  const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | null>(initialPanel ?? null)
-  const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast'): void => setOpenPanel(current => current === panel ? null : panel)
+  const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | 'studio' | null>(initialPanel ?? null)
+  const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast' | 'studio'): void => setOpenPanel(current => current === panel ? null : panel)
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const externalName = external?.name
@@ -174,9 +182,12 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   useEffect(() => audioFocus.subscribe(() => {
     if (!audioFocus.canPlay()) previewPlayer.stop()
   }), [audioFocus, previewPlayer])
-  const apiKeyStatus = useApiKeyStatus(snapshot.status === 'ready' && !changing, provider)
+  const apiKeyStatus = useApiKeyStatus(snapshot.status === 'ready' && !changing, keyProvider)
   const minimalMode = useSyncExternalStore(subscribeMinimalMode, readMinimalMode, () => false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const studioTab = useStudioOpenTab()
+  const studioKeyRef = useRef<HTMLInputElement>(null)
+  const studioSetupReturnRef = useRef<HTMLButtonElement>(null)
   const [guideOpen, setGuideOpen] = useState(false)
   const historyLinkRef = useRef<HTMLButtonElement>(null)
   const historyWasOpen = useRef(false)
@@ -195,13 +206,13 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   const dirty = dirtyFields.length > 0 || apiKeyDirty || externalDraft.dirty
   const validationError = external ? null : validateSettingsDraft(draft)
   const saveableDirty = external ? externalDraft.dirty || dirtyFields.some(field => !BUILTIN_SETTING_FIELDS.has(field)) : dirty
-  const apiKeyViewState = resolveApiKeyViewState(apiKey, isSupportedTtsApiKey(apiKey, provider), apiKeyStatus, changes[apiKeyField]?.kind)
+  const apiKeyViewState = resolveApiKeyViewState(apiKey, isSupportedTtsApiKey(apiKey, keyProvider), apiKeyStatus, changes[apiKeyField]?.kind)
   const apiKeyMessage = t(apiKeyViewState === 'loading'
     ? 'settings.apiKeyLoading'
     : apiKeyViewState === 'missing'
       ? 'settings.apiKeyMissing'
       : apiKeyViewState === 'recognized'
-        ? provider === 'doubao' || provider === 'deepseek' ? 'settings.doubaoKeyConfigured' : 'settings.apiKeyRecognized'
+        ? keyProvider === 'doubao' || keyProvider === 'deepseek' ? 'settings.doubaoKeyConfigured' : 'settings.apiKeyRecognized'
         : apiKeyViewState === 'unrecognized'
           ? 'settings.apiKeyUnsupportedSaved'
           : apiKeyViewState === 'unavailable'
@@ -229,6 +240,17 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     if (!historyOpen && historyWasOpen.current) historyLinkRef.current?.focus({ preventScroll: true })
     historyWasOpen.current = historyOpen
   }, [historyOpen])
+
+  useEffect(() => {
+    if (studioTab === null && studioSetupProvider !== null) {
+      const returnButton = studioSetupReturnRef.current
+      const mossSwitch = studioSetupProvider === 'moss'
+        ? returnButton?.parentElement?.querySelector<HTMLButtonElement>('[data-studio-moss-setting] [role="switch"]')
+        : null
+      const target = setupKeyProvider && !external ? studioKeyRef.current : mossSwitch ?? returnButton
+      target?.focus()
+    }
+  }, [studioTab, studioSetupProvider, setupKeyProvider, external])
 
   const clearSaveMessage = (): void => {
     setState(current => current === 'saving' ? current : 'idle')
@@ -338,7 +360,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   const actions = useSettingsActions({
     changeProvider, changeEnabled, changeAutoPlay, changeSoundEnabled, changeSoundScope, resetField,
     changeApiKey(next: string) {
-      setEdits(current => editApiKeyDraft(current, provider, next))
+      setEdits(current => editApiKeyDraft(current, keyProvider, next))
       clearSaveMessage()
     },
     changeExternal(next: Parameters<typeof externalDraft.change>[0]) { previewPlayer.stop(); externalDraft.change(next); clearSaveMessage() },
@@ -362,6 +384,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     toggleMixer() { togglePanel('mixer') },
     toggleSound() { togglePanel('sound') },
     toggleBroadcast() { togglePanel('broadcast') },
+    toggleStudio() { togglePanel('studio') },
     togglePreview() { togglePreview(previewText) },
     changePreviewText(next: string) { previewPlayer.stop(); setPreviewText(next) },
     previewVoiceVolume(next: number) { previewPlayer.setVolume(next) },
@@ -390,6 +413,40 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   })
 
   if (snapshot.status === 'unavailable') return renderHeader?.() ?? null
+
+  if (studioTab !== null) return <AvatarStyleContext.Provider value={avatarStyle}>{renderHeader?.()}
+    {changing ? <p className="xmimo-ui-scope xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p>
+    : <StudioPage
+      t={t}
+      volume={voiceVolume}
+      settings={{ ...resolvedSettingsSnapshot(scope.getSnapshot()), ...draft }}
+      savedMossEnabled={snapshot.mossEnabled}
+      sampleText={previewText}
+      tab={studioTab}
+      onTabChange={next => { studioWorkspaceStore.setOpenTab(next) }}
+      onWriteWithDsh={onWriteWithDsh}
+      onConfigureProvider={target => {
+        if (target === external?.provider && external.managementBundle && onOpenProviderSettings) {
+          onOpenProviderSettings(external.managementBundle)
+          return
+        }
+        setStudioSetupProvider(target)
+        setQuery('')
+        setOpenPanel(target === 'moss' ? 'broadcast' : null)
+        studioWorkspaceStore.setOpenTab(null, true)
+      }}
+      speechActivity={speechActivity}
+      beforePlayback={() => {
+        if (pluginChanges.getSnapshot()) return false
+        audioFocus.claim()
+        if (!audioFocus.canPlay()) return false
+        previewPlayer.stop()
+        beforeHistoryPlayback?.()
+        return true
+      }}
+      onBack={() => { studioWorkspaceStore.setOpenTab(null) }}
+    />}
+  </AvatarStyleContext.Provider>
 
   if (historyOpen && history) return <>{renderHeader?.()}
     {changing ? <p className="xmimo-ui-scope xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p>
@@ -431,10 +488,25 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           onAutoPlayChange={actions.changeAutoPlay}
           onSoundEnabledChange={actions.changeSoundEnabled}
         />
+        {studioSetupProvider ? (
+          <Button
+            ref={studioSetupReturnRef}
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setStudioSetupProvider(null)
+              studioWorkspaceStore.setOpenTab('scripts')
+            }}
+          >
+            {t('studio.recording.returnToScript')}
+          </Button>
+        ) : null}
         <SettingsApiKey
           onOpenProviderSettings={onOpenProviderSettings}
           t={t}
-          provider={provider}
+          provider={keyProvider}
+          inputRef={studioKeyRef}
           value={apiKey}
           message={apiKeyMessage}
           invalid={apiKeyInvalid}
@@ -490,6 +562,26 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           onMossEnabledChange={actions.changeMossEnabled}
           onProviderEnabledChange={actions.changeProviderEnabled}
         />
+        {!minimalMode || search?.visible.has('studio') ? <StudioModule
+          t={t}
+          open={openPanel === 'studio'}
+          volume={voiceVolume}
+          onToggleOpen={actions.toggleStudio}
+          onPreloadStudio={StudioPage.preload}
+          onOpenStudio={tab => {
+            previewPlayer.stop()
+            setStudioSetupProvider(null)
+            studioWorkspaceStore.setOpenTab(tab ?? 'scripts')
+          }}
+          beforePlayback={() => {
+            if (pluginChanges.getSnapshot()) return false
+            audioFocus.claim()
+            if (!audioFocus.canPlay()) return false
+            previewPlayer.stop()
+            beforeHistoryPlayback?.()
+            return true
+          }}
+        /> : null}
         {!minimalMode || soundEnabled || search?.visible.has('avatarStyle') || search?.visible.has('settings.readingCaptions') || search?.visible.has('settings.audioResponse') ? <SettingsSounds
           t={t}
           controller={controller}
