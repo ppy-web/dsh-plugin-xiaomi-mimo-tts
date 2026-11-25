@@ -21,6 +21,7 @@ export interface OrbProps {
   state?: OrbState;
   size?: number;
   speed?: number;
+  paused?: boolean;
   colorFrom?: string;
   colorTo?: string;
   levelRef?: RefObject<number>;

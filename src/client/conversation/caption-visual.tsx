@@ -20,18 +20,23 @@ interface CaptionVisualProps {
   captions?: ReadingCaptions | undefined
   state?: OrbState
   preview?: boolean
+  paused?: boolean
   hoverable?: boolean
   readRecordingLevel?: (() => number | undefined) | undefined
   control?: { label: string; onClick: () => void; disabled?: boolean } | undefined
 }
 
-export function CaptionVisual({ variant, captions, state = 'speaking', preview = false, hoverable = false, readRecordingLevel, control }: CaptionVisualProps): ReactElement {
+export function CaptionVisual({ variant, captions, state = 'speaking', preview = false, paused = false, hoverable = false, readRecordingLevel, control }: CaptionVisualProps): ReactElement {
   const container = useRef<HTMLDivElement>(null)
   const [hovered, setHovered] = useState(false)
-  const level = useRef(0)
+  const level = useRef(preview && state === 'speaking' ? .35 : 0)
   const samples = useRef(new Uint8Array(256))
   useEffect(() => {
     if (state === 'listening') return
+    if (paused) {
+      level.current = preview && state === 'speaking' ? .35 : 0
+      return
+    }
     const needsLoop = (preview && state === 'speaking') || (state === 'speaking' && captions !== undefined)
     if (!needsLoop && !captions?.getAnalyser()) {
       level.current = 0
@@ -82,10 +87,10 @@ export function CaptionVisual({ variant, captions, state = 'speaking', preview =
       unobserve()
       unsubReduced()
     }
-  }, [captions, state, preview])
+  }, [captions, state, preview, paused])
 
   useEffect(() => {
-    if (state !== 'listening') return
+    if (state !== 'listening' || paused) return
     const element = container.current
     level.current = -1
     if (!element || (!readRecordingLevel && !preview)) return
@@ -125,8 +130,8 @@ export function CaptionVisual({ variant, captions, state = 'speaking', preview =
       unobserve()
       element.style.removeProperty('--xmimo-recording-level')
     }
-  }, [preview, readRecordingLevel, state])
-  const props = { state, size: 76, levelRef: level, speed: hovered ? 0.45 : 1 }
+  }, [preview, paused, readRecordingLevel, state])
+  const props = { state, size: 76, levelRef: level, speed: hovered ? 0.45 : 1, paused }
   return <div ref={container} className="xmimo-caption-siri" data-state={state} aria-hidden={control ? undefined : true}
     data-hoverable={hoverable || undefined} data-hovered={hovered || undefined}
     onPointerEnter={hoverable ? event => { if (event.pointerType === 'mouse') setHovered(true) } : undefined}
@@ -153,7 +158,7 @@ export function CaptionVisualPicker({ label, hideLabel = false, value, disabled 
     <div className="xmimo-caption-picker-grid">
       {AUDIO_RESPONSE_STYLES.map(style => <label className="xmimo-caption-choice" key={style}>
         <input type="radio" name={name} value={style} checked={value === style} onChange={() => onChange(style)} />
-        <CaptionVisual variant={style} preview /><span>{STYLE_NAMES[style]}</span>
+        <CaptionVisual variant={style} preview paused={value !== style} /><span>{STYLE_NAMES[style]}</span>
       </label>)}
     </div>
   </fieldset>

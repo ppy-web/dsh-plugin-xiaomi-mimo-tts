@@ -341,6 +341,7 @@ export const SiriSheet = ({
   state = 'idle',
   size = 168,
   speed = 1,
+  paused = false,
   colorFrom = '#82f4ff',
   colorTo = '#8e6cff',
   levelRef,
@@ -379,7 +380,7 @@ export const SiriSheet = ({
     drawRef.current?.(frame);
   }, []);
 
-  const { frameRef } = useOrbAnimator(hostRef, { state, levelRef, speed, onFrame });
+  const { frameRef } = useOrbAnimator(hostRef, { state, levelRef, speed, paused, onFrame });
 
   useEffect(() => {
     if (!showCanvas) return;

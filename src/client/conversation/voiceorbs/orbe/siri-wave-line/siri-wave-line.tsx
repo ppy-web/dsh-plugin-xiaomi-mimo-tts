@@ -73,6 +73,7 @@ export const SiriWaveLine = ({
   state = 'idle',
   size = 168,
   speed = 1,
+  paused = false,
   colorFrom = '#22d3ee',
   colorTo = '#e879f9',
   levelRef,
@@ -86,7 +87,7 @@ export const SiriWaveLine = ({
   const reduced = useReducedMotion();
 
   const onFrame = useCallback((frame: OrbFrame) => rendererRef.current?.(frame, frame.dt), []);
-  const { frameRef } = useOrbAnimator(hostRef, { state, levelRef, speed, onFrame });
+  const { frameRef } = useOrbAnimator(hostRef, { state, levelRef, speed, paused, onFrame });
 
   useEffect(() => {
     colorRef.current = { from: colorFrom, to: colorTo };

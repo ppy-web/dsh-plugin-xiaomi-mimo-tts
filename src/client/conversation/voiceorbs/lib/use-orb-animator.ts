@@ -32,6 +32,7 @@ export interface OrbAnimatorOptions {
   state: OrbState;
   levelRef?: RefObject<number> | undefined;
   speed?: number;
+  paused?: boolean;
   onFrame?: (frame: OrbFrame) => void;
 }
 
@@ -46,9 +47,9 @@ const isSettled = (weights: StateWeights, state: OrbState): boolean => weights[s
 
 export const useOrbAnimator = (
   hostRef: RefObject<HTMLElement | null>,
-  { state, levelRef, speed = 1, onFrame }: OrbAnimatorOptions,
+  { state, levelRef, speed = 1, paused = false, onFrame }: OrbAnimatorOptions,
 ): OrbAnimator => {
-  const optionsRef = useRef({ state, levelRef, speed, onFrame });
+  const optionsRef = useRef({ state, levelRef, speed, paused, onFrame });
   const wakeRef = useRef<() => void>(() => {});
   const frameRef = useRef<OrbFrame>({
     dt: 0,
@@ -63,9 +64,9 @@ export const useOrbAnimator = (
   });
 
   useEffect(() => {
-    optionsRef.current = { state, levelRef, speed, onFrame };
+    optionsRef.current = { state, levelRef, speed, paused, onFrame };
     wakeRef.current();
-  }, [state, levelRef, speed, onFrame]);
+  }, [state, levelRef, speed, paused, onFrame]);
 
   useEffect(() => {
     const el = hostRef.current;
@@ -84,22 +85,23 @@ export const useOrbAnimator = (
       const dt = last === null ? 0 : Math.min((now - last) / 1000, MAX_FRAME_DT);
       last = now;
       const opts = optionsRef.current;
+      const frozen = Boolean(opts.paused);
       const live = opts.levelRef?.current;
       const hasLive = typeof live === 'number' && live >= 0;
       mix.update(opts.state, dt);
-      frame.dPhase = reduced ? 0 : dt * Math.max(0, opts.speed);
-      if (!reduced) {
+      frame.dPhase = reduced || frozen ? 0 : dt * Math.max(0, opts.speed);
+      if (!reduced && !frozen) {
         frame.time += dt;
         frame.phase += frame.dPhase;
       }
       const target = reduced ? 0 : hasLive ? live : blendEnergy(mix.weights, frame.phase);
-      frame.level = smoothLevel(frame.level, target, dt);
+      frame.level = frozen ? target : smoothLevel(frame.level, target, dt);
       frame.dt = dt;
       frame.live = hasLive;
       frame.reduced = reduced;
       frame.state = opts.state;
       opts.onFrame?.(frame);
-      const idle = (reduced || opts.state === 'disabled') && isSettled(mix.weights, opts.state) && frame.level < 0.001;
+      const idle = frozen || ((reduced || opts.state === 'disabled') && isSettled(mix.weights, opts.state) && frame.level < 0.001);
       if (active && !idle) raf = requestAnimationFrame(tick);
       else last = null;
     };

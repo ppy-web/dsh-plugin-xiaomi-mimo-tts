@@ -221,6 +221,7 @@ export const AuraField = ({
   state = 'idle',
   size = 168,
   speed = 1,
+  paused = false,
   colorFrom = '#34d399',
   colorTo = '#60a5fa',
   levelRef,
@@ -307,7 +308,7 @@ export const AuraField = ({
     if (errorLayer) errorLayer.style.opacity = weights.error.toFixed(3);
   }, [speed, fromV, toV]);
 
-  const { frameRef } = useOrbAnimator(hostRef, { state, levelRef, speed, onFrame });
+  const { frameRef } = useOrbAnimator(hostRef, { state, levelRef, speed, paused, onFrame });
   const drawRef = useRef(onFrame);
 
   useEffect(() => {
