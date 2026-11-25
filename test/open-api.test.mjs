@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { once } from 'node:events'
 import { createServer } from 'node:http'
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -11,6 +10,7 @@ import { apply, Config } from '../lib/index.js'
 import { resolveTtsSettings, TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE } from '../lib/shared.js'
 import { withDeepseekServer } from './helpers/deepseek-server.mjs'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
+import { listenLoopback } from './helpers/loopback.mjs'
 
 const { HostSpeechService } = await loadClientModule('src/host/speech-service.ts')
 const { AudioDownloads } = await loadClientModule('src/host/audio-downloads.ts')
@@ -25,12 +25,6 @@ function wav() {
   data.writeUInt16LE(2, 32); data.writeUInt16LE(16, 34)
   data.write('data', 36); data.writeUInt32LE(4800, 40)
   return data
-}
-
-async function listen(server) {
-  server.listen(0, '127.0.0.1')
-  await once(server, 'listening')
-  return `http://127.0.0.1:${server.address().port}`
 }
 
 async function close(server) {
@@ -51,7 +45,7 @@ async function withApi(run, options = {}) {
     const data = input.audio.format === 'mp3' ? Buffer.from('ID3test') : wav()
     res.end(JSON.stringify({ choices: [{ message: { audio: { data: data.toString('base64') } } }] }))
   })
-  const upstreamBase = await listen(upstream)
+  const upstreamBase = await listenLoopback(upstream)
   const settings = resolveTtsSettings({
     apiKey: 'sk-open-api-provider-secret', baseURL: upstreamBase,
     doubaoApiKey: 'doubao-private-key', breezeApiKey: 'breeze-private-key',
@@ -86,7 +80,7 @@ async function withApi(run, options = {}) {
     if (!route) { res.statusCode = 404; res.end(); return }
     Promise.resolve(route.handler(req, res)).catch(() => { res.statusCode = 500; res.end() })
   })
-  const origin = await listen(server)
+  const origin = await listenLoopback(server)
   const base = origin + prefix
   const auth = () => ({ authorization: `Bearer ${token}` })
   const post = (body, extra = {}) => fetch(base + TTS_EXPORT_ROUTE, {

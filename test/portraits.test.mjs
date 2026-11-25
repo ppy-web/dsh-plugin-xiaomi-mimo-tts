@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict'
-import { randomInt } from 'node:crypto'
-import { once } from 'node:events'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { loadClientModule } from './helpers/client-modules.mjs'
+import { listenLoopback } from './helpers/loopback.mjs'
 
 const { registerPortraitRoutes } = await loadClientModule('src/host/portraits.ts')
 const { TTS_PORTRAITS_ROUTE, TTS_PORTRAIT_IMAGE_ROUTE } = await loadClientModule('src/constants.ts')
@@ -37,13 +36,7 @@ async function withPortraitServer(run) {
     else { res.statusCode = 404; res.end() }
   })
   try {
-    // Windows may assign one of Fetch's blocked ports when listening on port zero.
-    for (let attempt = 0; ; attempt += 1) {
-      server.listen(randomInt(49152, 65536), '127.0.0.1')
-      try { await once(server, 'listening'); break }
-      catch (error) { if (error.code !== 'EADDRINUSE' || attempt >= 9) throw error }
-    }
-    const base = `http://127.0.0.1:${server.address().port}`
+    const base = await listenLoopback(server)
     await run({ base, root })
   } finally {
     for (const dispose of disposers.splice(0).reverse()) dispose?.()
