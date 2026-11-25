@@ -10,6 +10,15 @@
   color: var(--dsw-alias-state-error-primary, #dc2626)
 }
 
+button.xmimo-danger-action {
+  --dsh-button-outline-color: var(--dsw-alias-state-error-primary, #dc2626);
+  color: var(--dsh-button-outline-color);
+}
+
+button.xmimo-danger-action:is(:hover, :focus-visible, :active):not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-danger, color-mix(in srgb, currentColor 10%, transparent));
+}
+
 .xmimo-tts-voice-avatar {
   box-sizing: border-box;
   display: block;

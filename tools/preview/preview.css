@@ -47,6 +47,10 @@
   --dsw-alias-interactive-bg-hover: #f0f3f8;
   --dsw-alias-brand-primary: #4f6ef7;
   --dsw-alias-state-error-primary: #c23f4a;
+  --dsw-alias-state-warn-label: #dd8629;
+  --dsw-alias-toast-bg: #353638;
+  --dsw-alias-toast-label: #fff;
+  --dsw-shadow-lv3: var(--dsw-elevation-prominent);
   --preview-focus-ring: #3f5ed8;
   --preview-scrollbar-thumb: rgba(79, 110, 247, .32);
   --preview-scrollbar-thumb-hover: rgba(79, 110, 247, .56);
@@ -80,6 +84,7 @@
   --dsw-alias-interactive-bg-hover: #30353d;
   --dsw-alias-brand-primary: #8ea2ff;
   --dsw-alias-state-error-primary: #ff8585;
+  --dsw-alias-toast-bg: #43454a;
   --preview-focus-ring: #b6c2ff;
   --preview-scrollbar-thumb: rgba(142, 162, 255, .45);
   --preview-scrollbar-thumb-hover: rgba(142, 162, 255, .72);

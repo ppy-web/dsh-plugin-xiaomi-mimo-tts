@@ -68,7 +68,7 @@ export function VoiceIdTag({ voice, name, selected, disabled, t, selectRef, onSe
           else { setDraft(name || ''); setMode('edit') }
         }}
       >{mode === 'edit' ? <RiSaveLine size={14} aria-hidden="true" /> : <RiEditLine size={14} aria-hidden="true" />}</button> : null}
-      {mode !== 'edit' ? <button type="button" className="xmimo-tts-voice-id-action xmimo-tts-voice-id-delete" disabled={disabled}
+      {mode !== 'edit' ? <button type="button" className="xmimo-tts-voice-id-action xmimo-danger-action" disabled={disabled}
         aria-label={`${t(mode === 'confirm' ? 'settings.voiceTagConfirm' : 'settings.voiceTagRemove')}: ${displayName}`}
         title={t(mode === 'confirm' ? 'settings.voiceTagConfirm' : 'settings.voiceTagRemove')}
         onClick={() => {

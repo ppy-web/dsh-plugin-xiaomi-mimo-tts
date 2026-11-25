@@ -13,6 +13,7 @@ export function IconChevronDownOutlineRegular() { return null }
 export function IconChevronDownOutlineMedium() { return null }
 export function IconRefreshOutlineMedium() { return null }
 export function IconCloseOutlineRegular() { return null }
+export function IconWarningOutlineRegular() { return null }
 
 /** Preserve shortcut children while leaving portaled positioning to browser checks. */
 export function Tooltip({ children }: { children: ReactNode }) { return children }
@@ -40,3 +41,6 @@ export function Switch({ checked, disabled, label, onChange }: { checked: boolea
 
 /** Render modal contents without the host portal in component tests. */
 export function Modal({ children }: { children: ReactNode }) { return createElement('div', { role: 'dialog' }, children) }
+
+/** Expose toast text without mounting the host portal or timer. */
+export function Toast({ text }: { text: string }) { return createElement('div', { role: 'alert' }, text) }

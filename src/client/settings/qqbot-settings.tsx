@@ -5,6 +5,7 @@ import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { QQBOT_SPEECH_LIMITS, resolveTtsSettings, type TtsSettings } from '../shared.js'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
+import { useWarningToast } from '../use-warning-toast.js'
 import { useSettingsSnapshot } from './scope.js'
 import { saveQqSpeechDraft, validQqSpeechDraft, type QqSpeechDraft } from './qqbot-speech-draft.js'
 import { loadQqMemory, updateQqMemory, type QqMemoryPeer } from './qqbot-memory.js'
@@ -33,13 +34,15 @@ function QqbotSpeechPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: QqbotSpeec
   const [memoryDrafts, setMemoryDrafts] = useState<Record<string, string>>({})
   const [memoryState, setMemoryState] = useState<string>('')
   const [memoryBusy, setMemoryBusy] = useState(false)
+  const [showDeleteError, deleteErrorToast] = useWarningToast()
+  const reportDeleteError = (): void => showDeleteError(t('qq.memoryError'))
   const refreshMemory = (): void => { void loadQqMemory().then(peers => setMemory({ status: 'ready', peers })).catch(() => setMemory({ status: 'unavailable', peers: [] })) }
-  const runMemoryAction = async (action: () => Promise<unknown>): Promise<void> => {
+  const runMemoryAction = async (action: () => Promise<unknown>, onError = () => setMemoryState('qq.memoryError')): Promise<void> => {
     if (memoryBusy) return
     setMemoryBusy(true)
     setMemoryState('')
     try { await action(); refreshMemory(); setMemoryState('qq.memorySaved') }
-    catch { setMemoryState('qq.memoryError') }
+    catch { onError() }
     finally { setMemoryBusy(false) }
   }
   useEffect(() => { refreshMemory() }, [])
@@ -89,17 +92,21 @@ function QqbotSpeechPage({ scope, t, changes = IDLE_PLUGIN_CHANGES }: QqbotSpeec
         {memory.peers.map(peer => <div className="xmimo-qq-memory-peer" key={peer.key}>
           <div className="xmimo-qq-heading"><strong>{peer.scope === 'group' ? `${t('qq.group')} ${peer.peerId}` : `${t('qq.private')} ${peer.peerId}`}</strong>
             <div className="xmimo-qq-memory-actions"><Button type="button" variant="outline" size="sm" disabled={memoryBusy} onClick={() => { void runMemoryAction(() => updateQqMemory({ key: peer.key, action: peer.memoryEnabled ? 'pause' : 'resume' })) }}>{peer.memoryEnabled ? t('qq.pauseMemory') : t('qq.resumeMemory')}</Button>
-            <Button type="button" variant="outline" size="sm" disabled={memoryBusy} onClick={() => { void runMemoryAction(() => updateQqMemory({ key: peer.key, action: 'clear' })) }}>{t('qq.clearMemory')}</Button></div>
+            <Button type="button" variant="outline" size="sm" className="xmimo-danger-action" disabled={memoryBusy} onClick={() => { void runMemoryAction(() => updateQqMemory({ key: peer.key, action: 'clear' }), reportDeleteError) }}>{t('qq.clearMemory')}</Button></div>
           </div>
           {[...peer.entries.map(item => ({ id: item.id, kind: item.kind, text: item.text })), ...peer.topics.map(item => ({ id: item.id, kind: 'topic' as const, text: item.title }))].map(item => <div className="xmimo-qq-memory-row" key={item.id}>
             <span className="xmimo-qq-memory-kind">{t(`qq.memoryKind.${item.kind}` as never)}</span>
             <input disabled={memoryBusy} value={memoryDrafts[item.id] ?? item.text} maxLength={item.kind === 'topic' ? 80 : 300} onChange={event => setMemoryDrafts(current => ({ ...current, [item.id]: event.currentTarget.value }))} />
             <Button type="button" variant="outline" size="sm" disabled={memoryBusy} onClick={() => { void runMemoryAction(async () => { await updateQqMemory({ key: peer.key, action: 'save', id: item.id, kind: item.kind, text: memoryDrafts[item.id] ?? item.text }); setMemoryDrafts(current => { const next = { ...current }; delete next[item.id]; return next }) }) }}>{t('qq.editMemory')}</Button>
-            <Button type="button" variant="outline" size="sm" disabled={memoryBusy} onClick={() => { void runMemoryAction(async () => { await updateQqMemory({ key: peer.key, action: 'delete', id: item.id }); setMemoryDrafts(current => { const next = { ...current }; delete next[item.id]; return next }) }) }}>{t('qq.deleteMemory')}</Button>
+            <Button type="button" variant="outline" size="sm" className="xmimo-danger-action" disabled={memoryBusy} onClick={() => { void runMemoryAction(async () => {
+              await updateQqMemory({ key: peer.key, action: 'delete', id: item.id })
+              setMemoryDrafts(current => { const next = { ...current }; delete next[item.id]; return next })
+            }, reportDeleteError) }}>{t('qq.deleteMemory')}</Button>
           </div>)}
         </div>)}
       </div>
       {memoryState ? <span role="status">{t(memoryState as never)}</span> : null}
+      {deleteErrorToast}
     </section>
     <div className="xmimo-tts-card-footer xmimo-qq-footer"><div className="xmimo-tts-card-actions">
       <span role="status">{!snapshot.writable ? t('settings.readOnly') : conflict ? t('whale.conflict') : !valid ? t('qq.error') : state === 'failed' ? t('settings.failed') : state === 'saved' && !dirty ? t('settings.saved') : ''}</span>

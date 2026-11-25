@@ -550,7 +550,6 @@
 .xmimo-tts-voice-id-tag:is(:hover, :focus-within):not([data-disabled=true]) .xmimo-tts-voice-id-select { padding-inline-end: 52px; }
 
 .xmimo-tts-voice-id-action:hover:not(:disabled) { background: var(--xmimo-ui-hover); }
-.xmimo-tts-voice-id-tag .xmimo-tts-voice-id-delete { color: var(--dsw-alias-state-error-primary, #c73535); }
 .xmimo-tts-voice-id-tag:not([data-mode=edit]):has(:focus-visible) { outline: var(--xmimo-ui-focus); outline-offset: 2px; }
 .xmimo-tts-voice-id-tag:has(:disabled) { opacity: .55; }
 .xmimo-tts-voice-id-tag button:disabled { cursor: not-allowed; }
