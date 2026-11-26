@@ -1,6 +1,7 @@
 import { TTS_VOICE_DESIGN_PRESETS } from './models.js'
 import { BREEZE_TTS_MODEL, DEEPSEEK_TTS_MODEL } from './providers.js'
 import type { TtsProvider } from './providers.js'
+import { battleThroughHeavensRoles } from '../studio-presets/battle-through-heavens.js'
 
 export const STUDIO_MAX_LINES_PER_SCRIPT = 300
 export const STUDIO_MAX_LINE_CHARACTERS = 500
@@ -144,17 +145,23 @@ export function normalizeStudioPauseMs(value: unknown, fallback = STUDIO_DEFAULT
   return Math.min(STUDIO_MAX_PAUSE_MS, Math.max(0, Math.round(value)))
 }
 
+function xiaomiStudioVoiceDesign(id: typeof TTS_VOICE_DESIGN_PRESETS[number]['id']) {
+  return {
+    provider: 'xiaomi',
+    model: 'mimo-v2.5-tts-voicedesign',
+    voice: '',
+    voiceDesignPrompt: TTS_VOICE_DESIGN_PRESETS.find(preset => preset.id === id)!.prompt,
+  } as const
+}
+
 /** Built-in Studio cast covering all four cloud providers. */
 export function createBuiltinStudioRoles(now = Date.now()): StudioRole[] {
-  const whalePrompt = TTS_VOICE_DESIGN_PRESETS[0].prompt
   return [
     {
       id: 'builtin-narrator',
       name: '陆远山 · 纪录片旁白',
       color: '#3b82f6',
-      provider: 'xiaomi',
-      model: 'mimo-v2.5-tts',
-      voice: '白桦',
+      ...xiaomiStudioVoiceDesign('documentary-narrator'),
       speechInstruction: '沉稳克制，语速舒缓，叙事纵深感强',
       voiceRate: 0.95,
       builtin: true,
@@ -178,10 +185,7 @@ export function createBuiltinStudioRoles(now = Date.now()): StudioRole[] {
       id: 'builtin-whale',
       name: '鲸鱼娘 · 傲娇女仆',
       color: '#06b6d4',
-      provider: 'xiaomi',
-      model: 'mimo-v2.5-tts-voicedesign',
-      voice: '冰糖',
-      voiceDesignPrompt: whalePrompt,
+      ...xiaomiStudioVoiceDesign('energetic-girl'),
       speechInstruction: '轻快灵动，略带小傲娇与自然口语感',
       voiceRate: 1,
       builtin: true,
@@ -218,9 +222,7 @@ export function createBuiltinStudioRoles(now = Date.now()): StudioRole[] {
       id: 'builtin-suspense',
       name: '裴沉舟 · 悬疑解说',
       color: '#6366f1',
-      provider: 'doubao',
-      model: 'seed-tts-2.0',
-      voice: 'zh_male_xuanyijieshuo_uranus_bigtts',
+      ...xiaomiStudioVoiceDesign('suspense-narrator'),
       speechInstruction: '低沉神秘，带压迫与悬念感',
       voiceRate: 0.95,
       builtin: true,
@@ -282,10 +284,7 @@ export function createBuiltinStudioRoles(now = Date.now()): StudioRole[] {
       id: 'builtin-night-host',
       name: '沈听澜 · 深夜电台主播',
       color: '#7c3aed',
-      provider: 'xiaomi',
-      model: 'mimo-v2.5-tts-voicedesign',
-      voice: '茉莉',
-      voiceDesignPrompt: '成年女声，自然的普通话。中低音区温暖通透，气息稳定，吐字柔和清楚。近麦电台音量，句尾轻收，停顿有留白。谈话语气亲切克制，情绪像一盏深夜还亮着的灯。',
+      ...xiaomiStudioVoiceDesign('asmr-whisper'),
       speechInstruction: '像在对一个听众说话，音量平稳，短句轻轻落下',
       voiceRate: 0.92,
       builtin: true,
@@ -296,15 +295,46 @@ export function createBuiltinStudioRoles(now = Date.now()): StudioRole[] {
       id: 'builtin-podcast-host',
       name: '许闻川 · 播客主持',
       color: '#b45309',
-      provider: 'xiaomi',
-      model: 'mimo-v2.5-tts-voicedesign',
-      voice: '',
-      voiceDesignPrompt: TTS_VOICE_DESIGN_PRESETS.find(preset => preset.id === 'liang-wenfeng')!.prompt,
+      ...xiaomiStudioVoiceDesign('liang-wenfeng'),
       speechInstruction: '男声口语，自然随和，追问简短，提到反差时有轻微笑意',
       voiceRate: 1,
       builtin: true,
       createdAt: now,
       updatedAt: now,
     },
+    {
+      id: 'builtin-chloe',
+      name: 'Chloe · 英文女声',
+      color: '#db2777',
+      provider: 'xiaomi',
+      model: 'mimo-v2.5-tts',
+      voice: 'Chloe',
+      speechInstruction: 'Speak clear, natural English with precise diction and conversational intonation.',
+      voiceRate: 1,
+      builtin: true,
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: 'builtin-dean',
+      name: 'Dean · 英文男声',
+      color: '#2563eb',
+      provider: 'xiaomi',
+      model: 'mimo-v2.5-tts',
+      voice: 'Dean',
+      speechInstruction: 'Speak clear, natural English at an even pace, with distinct pronunciation of numbers and times.',
+      voiceRate: 1,
+      builtin: true,
+      createdAt: now,
+      updatedAt: now,
+    },
+    ...battleThroughHeavensRoles.map(role => ({
+      ...role,
+      provider: 'doubao' as const,
+      model: 'seed-tts-2.0',
+      builtin: true,
+      createdAt: now,
+      updatedAt: now,
+    })),
   ]
 }

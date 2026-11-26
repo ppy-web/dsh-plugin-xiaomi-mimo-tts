@@ -59,7 +59,13 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
+}
+
+.xmimo-studio-page .xmimo-studio-outline-button {
+  /* Draw the outline at the same edge as the adjacent filled buttons. */
+  border-color: var(--dsh-button-outline-color, var(--dsw-alias-border-l3));
+  box-shadow: none;
 }
 
 .xmimo-studio-main-tabs[role='tablist'] {
@@ -120,8 +126,7 @@
   padding-block-start: 12px;
 }
 
-.xmimo-studio-samples h3,
-.xmimo-studio-task-group h3 {
+.xmimo-studio-samples h3 {
   margin: 0 0 8px;
   color: var(--xmimo-ui-text);
   font-size: 14px;
@@ -309,23 +314,8 @@
   min-width: 0;
 }
 
-.xmimo-studio-cast-share {
-  color: var(--xmimo-ui-text-muted);
-  font-size: 12px;
-}
-
-.xmimo-studio-cast-share > summary,
 .xmimo-studio-recording-check > summary {
   cursor: pointer;
-}
-
-.xmimo-studio-cast-share > summary {
-  width: fit-content;
-  padding-block: 3px;
-}
-
-.xmimo-studio-cast-share[open] > summary {
-  margin-block-end: 8px;
 }
 
 .xmimo-studio-script-actions {

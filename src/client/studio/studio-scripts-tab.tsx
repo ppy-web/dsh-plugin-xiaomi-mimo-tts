@@ -375,13 +375,14 @@ export function StudioScriptsTab({
       fallbackLabel={t('studio.scripts.select')}
       options={scriptOptions}
       disabled={busy}
+      buttonVariant="outline"
       align="start"
-      className="xmimo-studio-select-inline xmimo-studio-script-select"
+      className="xmimo-studio-select-inline xmimo-studio-script-select xmimo-studio-outline-button"
       onSelect={selectScript}
     />
   ) : null
   const newScriptButton = (
-    <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => createNewScript('blocks')}>
+    <Button type="button" variant="outline" size="sm" className="xmimo-studio-outline-button" disabled={busy} onClick={() => createNewScript('blocks')}>
       <RiAddLine size={15} aria-hidden="true" />
       <span>{t('studio.scripts.new')}</span>
     </Button>
@@ -528,19 +529,17 @@ export function StudioScriptsTab({
         </div>
 
         {editorMode === 'blocks' && castShareSegments.length > 0 ? (
-          <details className="xmimo-studio-cast-share">
-            <summary>{t('studio.share.title')}</summary>
-            <SplitBar
-              segments={castShareSegments}
-              title={t('studio.share.title')}
-              description={t('studio.share.scriptDesc')}
-              totalLabel={t('studio.splitBar.total')}
-              unit={t('studio.splitBar.charsUnit')}
-              offLabel={t('studio.splitBar.off')}
-              lastGuardLabel={t('studio.splitBar.lastGuard')}
-              toggleable
-            />
-          </details>
+          <SplitBar
+            segments={castShareSegments}
+            label={t('studio.share.title')}
+            description={t('studio.share.scriptDesc')}
+            totalLabel={t('studio.splitBar.total')}
+            unit={t('studio.splitBar.charsUnit')}
+            offLabel={t('studio.splitBar.off')}
+            lastGuardLabel={t('studio.splitBar.lastGuard')}
+            compact
+            toggleable
+          />
         ) : null}
       </div>
 

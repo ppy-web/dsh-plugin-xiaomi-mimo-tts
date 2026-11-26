@@ -1173,20 +1173,35 @@ test('Studio checks recording readiness for the same assigned roles in either sc
   }
 })
 
-test('the built-in radio, product video and suspense scripts can start recording with their default cast', async () => {
+test('the built-in scripts can start recording with their default cast', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-episodes-'))
   const studio = new HostSpeechStudioService({}, () => resolveTtsSettings({}), new StudioDiskStore(dir))
   try {
     const first = await studio.snapshot()
     assert.deepEqual(first.tasks, [])
     const roles = new Map(first.roles.map(role => [role.id, role]))
+    const voiceDesigns = [
+      ['builtin-night-host', 'asmr-whisper'],
+      ['builtin-narrator', 'documentary-narrator'],
+      ['builtin-suspense', 'suspense-narrator'],
+      ['builtin-whale', 'energetic-girl'],
+      ['builtin-podcast-host', 'liang-wenfeng'],
+    ]
+    for (const [roleId, presetId] of voiceDesigns) {
+      const role = roles.get(roleId)
+      assert.equal(role?.provider, 'xiaomi')
+      assert.equal(role.model, 'mimo-v2.5-tts-voicedesign')
+      assert.equal(findVoiceDesignPresetByPrompt(role.voiceDesignPrompt)?.id, presetId)
+    }
     const episodes = [
       ['builtin-script-night-radio', 1],
       ['builtin-script-product-video', 2],
       ['builtin-script-daily-comedy', 3],
       ['builtin-script-suspense', 6],
+      ['builtin-script-english-listening-exam', 2],
+      ['builtin-script-battle-through-heavens', 7, ['xiaomi', 'doubao']],
     ]
-    for (const [id, speakers] of episodes) {
+    for (const [id, speakers, providers = ['xiaomi']] of episodes) {
       const script = first.scripts.find(item => item.id === id)
       assert.ok(script, 'the default episode can be opened from the script library')
       assert.equal(new Set(script.lines.map(line => line.roleId)).size, speakers)
@@ -1197,14 +1212,15 @@ test('the built-in radio, product video and suspense scripts can start recording
       }
       const task = await studio.startTask({ scriptId: script.id, autoStart: false })
       assert.equal(task.totalLines, script.lines.length)
-      assert.ok(task.lines.every(line => line.provider === 'xiaomi' && line.voice === roles.get(line.roleId)?.voice))
-      if (id === 'builtin-script-product-video') {
-        const hostLines = task.lines.filter(line => line.roleId === 'builtin-podcast-host')
-        assert.ok(hostLines.length > 0)
-        for (const line of hostLines) {
-          assert.equal(line.model, 'mimo-v2.5-tts-voicedesign')
-          assert.equal(findVoiceDesignPresetByPrompt(line.voiceDesignPrompt)?.id, 'liang-wenfeng')
-        }
+      assert.deepEqual(new Set(task.lines.map(line => line.provider)), new Set(providers))
+      assert.ok(task.lines.every(line => {
+        const role = roles.get(line.roleId)
+        return role && line.provider === role.provider && line.model === role.model
+          && line.voice === role.voice && line.voiceDesignPrompt === role.voiceDesignPrompt
+      }))
+      if (id === 'builtin-script-english-listening-exam') {
+        assert.deepEqual(new Set(task.lines.map(line => line.voice)), new Set(['Chloe', 'Dean']))
+        assert.ok(task.lines.every(line => line.model === 'mimo-v2.5-tts'))
       }
     }
   } finally {
@@ -1294,6 +1310,7 @@ test('Studio upgrades the default podcast voice and preserves local library chan
     { name: 'keeps an edited host', roles: [{ ...oldHost, builtin: false, updatedAt: 2 }], changed: false },
     { name: 'respects a deleted host', roles: [], changed: false },
   ]
+  const deletedScripts = new Set(['builtin-script-night-radio', 'builtin-script-suspense', 'builtin-script-product-video'])
   for (const { name, roles, changed } of cases) {
     await t.test(name, async () => {
       const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-host-voice-'))
@@ -1312,7 +1329,8 @@ test('Studio upgrades the default podcast voice and preserves local library chan
         } else {
           assert.deepEqual(migrated.roles.find(item => item.id === oldHost.id), roles[0])
         }
-        assert.deepEqual(migrated.scripts.map(item => item.id), ['builtin-script-daily-comedy'])
+        assert.ok(migrated.scripts.some(item => item.id === 'builtin-script-daily-comedy'))
+        assert.ok(migrated.scripts.every(item => !deletedScripts.has(item.id)))
         const reopened = await new StudioDiskStore(dir).load()
         assert.deepEqual(reopened.roles, migrated.roles)
         assert.deepEqual(reopened.scripts, migrated.scripts)
@@ -1320,6 +1338,93 @@ test('Studio upgrades the default podcast voice and preserves local library chan
         await rm(dir, { recursive: true, force: true })
       }
     })
+  }
+})
+
+test('Studio upgrades default voices and adds the English listening cast while respecting saved changes', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-english-preset-'))
+  const store = new StudioDiskStore(dir)
+  let studio = new HostSpeechStudioService({}, () => resolveTtsSettings({}), store)
+  try {
+    const defaults = createBuiltinStudioRoles(1)
+    const nightHost = defaults.find(role => role.id === 'builtin-night-host')
+    const suspense = defaults.find(role => role.id === 'builtin-suspense')
+    assert.ok(nightHost && suspense)
+    const oldRoles = [
+      { ...nightHost, voice: '茉莉', voiceDesignPrompt: 'Original radio voice' },
+      { ...suspense, provider: 'doubao', model: 'seed-tts-2.0', voice: 'zh_male_xuanyijieshuo_uranus_bigtts', voiceDesignPrompt: undefined },
+    ]
+    const editedRole = {
+      id: 'builtin-narrator', name: '自定义讲解员', color: '#3b82f6', provider: 'xiaomi',
+      model: 'mimo-v2.5-tts', voice: 'Milo', voiceRate: 1, createdAt: 1, updatedAt: 2,
+    }
+    const editedScript = {
+      id: 'builtin-script-daily-comedy', title: '我的校园剧本',
+      lines: [{ id: 'edited-line', roleId: editedRole.id, text: '这是我的台词。', pauseAfterMs: 600 }],
+      createdAt: 1, updatedAt: 2,
+    }
+    await writeFile(store.manifestPath, JSON.stringify({
+      version: 1, builtinCatalogVersion: 4, roles: [...oldRoles, editedRole], scripts: [editedScript], tasks: [],
+    }))
+
+    const migrated = await studio.snapshot()
+    const exam = migrated.scripts.find(script => script.id === 'builtin-script-english-listening-exam')
+    assert.ok(exam)
+    const persistedRoles = new Map(migrated.roles.map(role => [role.id, role]))
+    for (const [before, presetId] of [[nightHost, 'asmr-whisper'], [suspense, 'suspense-narrator']]) {
+      const role = persistedRoles.get(before.id)
+      assert.equal(role?.provider, 'xiaomi')
+      assert.equal(role.model, 'mimo-v2.5-tts-voicedesign')
+      assert.equal(findVoiceDesignPresetByPrompt(role.voiceDesignPrompt)?.id, presetId)
+    }
+    assert.ok(!persistedRoles.has('builtin-whale'))
+    assert.deepEqual(migrated.roles.find(role => role.id === editedRole.id), editedRole)
+    assert.deepEqual(migrated.scripts.find(script => script.id === editedScript.id), editedScript)
+    assert.ok(!migrated.scripts.some(script => script.id === 'builtin-script-product-video'))
+    const castIds = new Set(exam.lines.map(line => line.roleId))
+    assert.deepEqual(new Set(migrated.roles.filter(role => castIds.has(role.id)).map(role => role.id)), castIds)
+
+    await studio.deleteScript(exam.id)
+    for (const roleId of castIds) await studio.deleteRole(roleId)
+    await studio.dispose()
+
+    studio = new HostSpeechStudioService({}, () => resolveTtsSettings({}), new StudioDiskStore(dir))
+    const reopened = await studio.snapshot()
+    assert.ok(!reopened.scripts.some(script => script.id === exam.id))
+    assert.ok(!reopened.roles.some(role => castIds.has(role.id)))
+  } finally {
+    await studio.dispose()
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('Studio seeds the battle example using a matching role already in an existing library', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-battle-preset-'))
+  const store = new StudioDiskStore(dir)
+  try {
+    const cast = createBuiltinStudioRoles(1)
+    const narrator = cast.find(role => role.id === 'builtin-narrator')
+    const defaultRole = cast.find(role => role.id === 'builtin-battle-xiao-yan')
+    assert.ok(narrator && defaultRole)
+    const savedRole = { ...defaultRole, id: 'saved-xiao-yan', builtin: false }
+    const savedScript = {
+      id: 'my-episode', title: '我的配音剧本',
+      lines: [{ id: 'speaker-line', roleId: savedRole.id, text: '这里是我的台词。', pauseAfterMs: 600 }],
+      createdAt: 1, updatedAt: 1,
+    }
+    await writeFile(store.manifestPath, JSON.stringify({
+      version: 1, builtinCatalogVersion: 6, roles: [narrator, savedRole], scripts: [savedScript], tasks: [],
+    }))
+
+    const migrated = await store.load()
+    const preset = migrated.scripts.find(script => script.id === 'builtin-script-battle-through-heavens')
+    assert.ok(preset?.lines.some(line => line.roleId === savedRole.id))
+    assert.ok(!migrated.roles.some(role => role.id === defaultRole.id))
+    const available = new Set(migrated.roles.map(role => role.id))
+    assert.ok(preset.lines.every(line => available.has(line.roleId)))
+    assert.deepEqual(migrated.scripts.find(script => script.id === savedScript.id), savedScript)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
   }
 })
 
@@ -1413,9 +1518,12 @@ test('buildDirectorPrompt aligns cast readiness, per-engine capabilities, duplic
   }
 
   const inspected = inspectDirectorPromptRoles(roles, { keyStatuses, mossEnabled: false, voiceIdLibrary })
+  const suspense = builtin.find(role => role.id === 'builtin-suspense')
+  const doubaoRole = builtin.find(role => role.id === 'builtin-empress')
+  assert.ok(suspense && doubaoRole)
   assert.ok(inspected.ready.length > 0 && inspected.unavailable.length > 0)
   assert.ok(inspected.ready.every(item => item.role.provider === 'xiaomi'))
-  assert.equal(inspected.all.find(item => item.role.id === 'builtin-narrator')?.capability, 'instruction-and-xiaomi-tags')
+  assert.equal(inspected.all.find(item => item.role.id === 'builtin-bingtang')?.capability, 'instruction-and-xiaomi-tags')
   assert.equal(inspected.all.find(item => item.role.id === 'builtin-podcast-host')?.capability, 'instruction-only')
   assert.equal(inspected.all.find(item => item.role.id === 'builtin-podcast-host')?.voiceLabel, '梁文峰')
   assert.equal(inspected.all.find(item => item.role.id === 'builtin-suspense')?.capability, 'instruction-only')
@@ -1432,7 +1540,8 @@ test('buildDirectorPrompt aligns cast readiness, per-engine capabilities, duplic
   assert.ok(readyPrompt.includes('许闻川 · 播客主持'))
   assert.ok(readyPrompt.includes('梁文峰'))
   assert.ok(readyPrompt.includes('陈默{dup-a}'))
-  assert.equal(readyPrompt.includes('裴沉舟 · 悬疑解说'), false)
+  assert.ok(readyPrompt.includes(suspense.name))
+  assert.ok(!readyPrompt.includes(doubaoRole.name))
   assert.equal(readyPrompt.includes('Stella · 清澈双语'), false)
   assert.ok(readyPrompt.includes('```text'))
   assert.ok(readyPrompt.includes(String(STUDIO_MAX_LINES_PER_SCRIPT)))
@@ -1441,14 +1550,14 @@ test('buildDirectorPrompt aligns cast readiness, per-engine capabilities, duplic
   // All-roles scope retains both ready and unconfigured roles and custom voice remarks.
   const allPrompt = buildDirectorPrompt(roles, { keyStatuses, mossEnabled: false, voiceIdLibrary, castScope: 'all' })
   assert.ok(allPrompt.includes('陆远山 · 纪录片旁白'))
-  assert.ok(allPrompt.includes('裴沉舟 · 悬疑解说'))
+  assert.ok(allPrompt.includes(doubaoRole.name))
   assert.ok(allPrompt.includes('专属克隆音'))
 
   // When no provider is ready yet, ready scope falls back to listing the full cast instead of an empty roster.
   const noneReady = { xiaomi: 'missing', doubao: 'missing', breeze: 'missing', deepseek: 'missing' }
   const fallbackPrompt = buildDirectorPrompt(builtin, { keyStatuses: noneReady, mossEnabled: false, castScope: 'ready' })
   assert.ok(fallbackPrompt.includes('陆远山 · 纪录片旁白'))
-  assert.ok(fallbackPrompt.includes('裴沉舟 · 悬疑解说'))
+  assert.ok(fallbackPrompt.includes(doubaoRole.name))
 
   // Optional brief values are embedded cleanly in both locales, and emitted example lines parse back to real cast roles.
   for (const locale of ['zh', 'en']) {

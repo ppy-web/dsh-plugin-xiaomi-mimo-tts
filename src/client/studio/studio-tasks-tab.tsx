@@ -42,7 +42,7 @@ export interface StudioTasksTabProps {
   onDeleteError: (message: string) => void
 }
 
-const taskPriority: Partial<Record<StudioTaskStatus, number>> = { running: 0, failed: 1, paused: 2, queued: 3 }
+const activeTaskStatuses = new Set<StudioTaskStatus>(['running', 'failed', 'paused', 'queued'])
 
 const lineStatusLabels = {
   pending: 'studio.progress.pending',
@@ -63,7 +63,6 @@ export function StudioTasksTab({
   onGoScripts,
   onDeleteError,
 }: StudioTasksTabProps): ReactElement {
-  const [expandedId, setExpandedId] = useState(() => studioWorkspaceStore.getSnapshot().playback.activeTaskId)
   const [pendingDelete, setPendingDelete] = useState<StudioTask | null>(null)
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
   const [pathCopied, setPathCopied] = useState<'idle' | 'copied' | 'failed'>('idle')
@@ -73,11 +72,14 @@ export function StudioTasksTab({
   const focusTarget = useRef<HTMLElement>(null)
   const panelId = useId()
   const { active, history } = useMemo(() => ({
-    active: tasks.filter(task => taskPriority[task.status] !== undefined)
-      .sort((a, b) => taskPriority[a.status]! - taskPriority[b.status]! || b.createdAt - a.createdAt),
-    history: tasks.filter(task => taskPriority[task.status] === undefined)
+    active: tasks.filter(task => activeTaskStatuses.has(task.status))
+      .sort((a, b) => b.createdAt - a.createdAt),
+    history: tasks.filter(task => !activeTaskStatuses.has(task.status))
       .sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt)),
   }), [tasks])
+  const [expandedId, setExpandedId] = useState<string | null>(
+    () => active[0]?.id ?? studioWorkspaceStore.getSnapshot().playback.activeTaskId,
+  )
   const locale = typeof document === 'undefined' ? undefined : document.documentElement?.lang || undefined
   const dateFormat = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
@@ -303,13 +305,11 @@ export function StudioTasksTab({
       ) : null}
       {active.length > 0 ? (
         <section className="xmimo-studio-task-group" aria-label={t('studio.tasks.active')}>
-          <h3>{t('studio.tasks.active')}</h3>
           {active.map(renderTask)}
         </section>
       ) : null}
       {history.length > 0 ? (
         <section className="xmimo-studio-task-group" aria-label={t('studio.tasks.archive')}>
-          <h3>{t('studio.tasks.archive')}</h3>
           {history.map(renderTask)}
         </section>
       ) : null}

@@ -1,7 +1,8 @@
 import { STUDIO_DEFAULT_PAUSE_MS, createBuiltinStudioRoles } from './types/studio.js'
 import type { StudioRole, StudioScript } from './types/studio.js'
+import { battleThroughHeavens } from './studio-presets/battle-through-heavens.js'
 
-export const STUDIO_BUILTIN_CATALOG_VERSION = 4
+export const STUDIO_BUILTIN_CATALOG_VERSION = 7
 
 type PresetLine = readonly [roleId: string, text: string, pauseAfterMs?: number, speechInstruction?: string]
 
@@ -19,6 +20,9 @@ const moli = 'builtin-moli'
 const suda = 'builtin-suda'
 const bingtang = 'builtin-bingtang'
 const whale = 'builtin-whale'
+const chloe = 'builtin-chloe'
+const dean = 'builtin-dean'
+const sharedVoiceDesignRoles = new Set([nightHost, narrator, 'builtin-suspense', whale])
 
 const nightRadio: ScriptPreset = {
   id: 'builtin-script-night-radio',
@@ -191,7 +195,55 @@ const dailyComedy: ScriptPreset = {
   ],
 }
 
-const scriptPresets = [nightRadio, productVideo, dailyComedy, suspenseDrama]
+const listeningAnswerPauseMs = 5000
+
+const riverSurvey: readonly PresetLine[] = [
+  [chloe, 'Hi, Daniel. Are you coming to Saturday’s river survey? We’re recording where litter collects after it rains.'],
+  [dean, 'I thought you needed people to pick it up. Should I bring gloves and a rubbish bag?'],
+  [chloe, 'Leave those at home. This week we’ll take photos and mark the locations on a map. The council will send a clean-up team next Tuesday.'],
+  [dean, 'All right. Is the old bridge still our meeting point?'],
+  [chloe, 'The bridge is being repaired, so meet outside the visitor centre at nine. Bring a fully charged phone. We’ll work in pairs so one person can take photos while the other checks the map.', 850],
+]
+
+const museumAnnouncement: readonly PresetLine[] = [
+  [chloe, 'Attention, everyone taking part in Friday’s museum visit. Please be at the school gate by eight forty-five. The coach leaves at nine. Bring a packed lunch because the museum café is closed for repairs. We’ll eat in the courtyard before returning to school.'],
+  [chloe, 'You’ll get a sketchbook when you arrive, so there’s no need to bring one. You can sketch in the galleries, but please don’t take photographs there. After the visit, fill in the online feedback form by Monday. We’ll use your suggestions to plan next term’s trip.', 850],
+]
+
+const englishListeningExam: ScriptPreset = {
+  id: 'builtin-script-english-listening-exam',
+  title: '高三英语听力考试',
+  description: 'Chloe 与 Dean 演绎的全英文听力模拟。包含校园情景短对话、河道调查长对话和参观通知，共六道选择题。短对话读一遍，长材料读两遍，每题留出作答时间。',
+  lines: [
+    [dean, 'Grade Twelve English listening practice. For each question, choose the best answer from A, B, and C.', 800],
+    [dean, 'Part One. You will hear two short conversations. Each conversation will be played once.', 800],
+    [dean, 'Question one. Listen to the following conversation.'],
+    [chloe, 'The programme says the science film starts at three thirty. Shall we meet at twenty past three?'],
+    [dean, 'They’ve moved it to a quarter to four. Let’s still meet at three twenty so we have time to get our tickets.', 750],
+    [dean, 'What time will the science film begin? A. Three twenty. B. Three thirty. C. Three forty-five.', listeningAnswerPauseMs],
+    [dean, 'Question two. Listen to the following conversation.'],
+    [chloe, 'Shall I pick up the book we need for history? I can get to the library before it closes.'],
+    [dean, 'Ms. Grant already lent me her copy. Could you print our notes while I finish the slides?'],
+    [chloe, 'Sure. I’ll bring them to the classroom after lunch.', 750],
+    [dean, 'What will the woman do next? A. Pick up a book. B. Print the notes. C. Finish the slides.', listeningAnswerPauseMs],
+    [dean, 'Part Two. You will hear a longer conversation and an announcement. Each recording will be played twice.', 800],
+    [dean, 'Listen to the conversation and answer questions three and four.'],
+    ...riverSurvey,
+    [dean, 'Now listen again.', 700],
+    ...riverSurvey,
+    [dean, 'Question three. What will the volunteers do on Saturday? A. Record where litter collects. B. Pick up litter. C. Help repair a bridge.', listeningAnswerPauseMs],
+    [dean, 'Question four. Where will the volunteers meet? A. At the old bridge. B. At the council offices. C. At the visitor centre.', listeningAnswerPauseMs],
+    [dean, 'Listen to the announcement and answer questions five and six.'],
+    ...museumAnnouncement,
+    [dean, 'Now listen again.', 700],
+    ...museumAnnouncement,
+    [dean, 'Question five. Why should students bring a packed lunch? A. The coach leaves early. B. The museum café is closed. C. They will eat on the coach.', listeningAnswerPauseMs],
+    [dean, 'Question six. What should students do after the visit? A. Complete a feedback form. B. Return their sketchbooks. C. Upload their photographs.', listeningAnswerPauseMs],
+    [dean, 'This is the end of the listening test.'],
+  ],
+}
+
+const scriptPresets: readonly ScriptPreset[] = [nightRadio, productVideo, dailyComedy, suspenseDrama, englishListeningExam, battleThroughHeavens]
 
 export const STUDIO_BUILTIN_SCRIPT_IDS = scriptPresets.map(preset => preset.id)
 
@@ -218,20 +270,20 @@ export function migrateBuiltinStudioPresets(
   previousVersion: number,
   now = Date.now(),
 ): { roles: StudioRole[]; scripts: StudioScript[] } {
-  const builtinRoles = createBuiltinStudioRoles(now)
-  if (previousVersion < 3) {
-    const { model, voice, voiceDesignPrompt } = builtinRoles.find(role => role.id === podcastHost)!
-    roles = roles.map(role => {
-      if (role.id !== podcastHost || !role.builtin || role.createdAt !== role.updatedAt) return role
-      if (role.provider !== 'xiaomi' || role.model !== 'mimo-v2.5-tts') return role
-      if (role.voice !== '白桦' && role.voice !== 'Dean') return role
-      const updated = { ...role, model, voice }
-      if (voiceDesignPrompt === undefined) delete updated.voiceDesignPrompt
-      else updated.voiceDesignPrompt = voiceDesignPrompt
-      return updated
-    })
-  }
   if (previousVersion >= STUDIO_BUILTIN_CATALOG_VERSION) return { roles, scripts }
+  const builtinRoles = createBuiltinStudioRoles(now)
+  roles = roles.map(role => {
+    if (!role.builtin || role.createdAt !== role.updatedAt) return role
+    const upgradePodcast = previousVersion < 3 && role.id === podcastHost
+      && role.provider === 'xiaomi' && role.model === 'mimo-v2.5-tts'
+      && (role.voice === '白桦' || role.voice === 'Dean')
+    const upgradeVoiceDesign = previousVersion < 6 && sharedVoiceDesignRoles.has(role.id)
+    if (!upgradePodcast && !upgradeVoiceDesign) return role
+    const preset = builtinRoles.find(item => item.id === role.id)
+    if (!preset?.voiceDesignPrompt) return role
+    const { provider, model, voice, voiceDesignPrompt } = preset
+    return { ...role, provider, model, voice, voiceDesignPrompt }
+  })
 
   const retainedScripts = previousVersion < 2
     ? scripts.filter(script => script.id !== 'builtin-script-podcast' || script.createdAt !== script.updatedAt)
@@ -243,12 +295,26 @@ export function migrateBuiltinStudioPresets(
     [suspenseDrama.id, 1],
     [productVideo.id, 2],
     [dailyComedy.id, 4],
+    [englishListeningExam.id, 5],
+    [battleThroughHeavens.id, 7],
   ])
   const missingScripts = createBuiltinStudioScripts(now).filter(script =>
     !existingScripts.has(script.id) && (addedInVersion.get(script.id) ?? 1) > previousVersion,
   )
   const existingRoles = new Set(roles.map(role => role.id))
   const cast = new Set(missingScripts.flatMap(script => script.lines.map(line => line.roleId)))
-  const missingRoles = builtinRoles.filter(role => cast.has(role.id) && !existingRoles.has(role.id))
+  const reusedRoleIds = new Map<string, string>()
+  const missingRoles: StudioRole[] = []
+  for (const role of builtinRoles) {
+    if (!cast.has(role.id) || existingRoles.has(role.id)) continue
+    const match = roles.find(saved => saved.name === role.name && saved.provider === role.provider
+      && saved.model === role.model && saved.voice === role.voice && saved.voiceDesignPrompt === role.voiceDesignPrompt
+      && saved.speechInstruction === role.speechInstruction && saved.voiceRate === role.voiceRate)
+    if (match) reusedRoleIds.set(role.id, match.id)
+    else missingRoles.push(role)
+  }
+  for (const script of missingScripts) {
+    for (const line of script.lines) line.roleId = reusedRoleIds.get(line.roleId) ?? line.roleId
+  }
   return { roles: [...roles, ...missingRoles], scripts: [...retainedScripts, ...missingScripts] }
 }

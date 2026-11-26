@@ -190,6 +190,7 @@ export function StudioPage({
                 type="button"
                 variant="outline"
                 size="sm"
+                className="xmimo-studio-outline-button"
                 disabled={studio.status === 'loading' && studio.revision === 0}
                 title={t('studio.directorPrompt.tooltip')}
                 onClick={() => setPromptModalOpen(true)}

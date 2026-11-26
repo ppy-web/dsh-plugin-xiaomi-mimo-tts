@@ -89,6 +89,28 @@ test('StudioTasksTab places archive open/close toggle inline immediately before 
   assert.match(html, /xmimo-studio-storage-copy/)
 })
 
+test('StudioTasksTab opens only the newest active task even when an older one has a more recent update', () => {
+  const time = 1_760_000_000_000
+  const older = { ...makeCompletedTask('older', 'Older recording', time + 10_000), createdAt: time, status: 'running', completedAt: undefined }
+  const newest = { ...makeCompletedTask('newest', 'Newest recording', time + 6_000), createdAt: time + 5_000, status: 'paused', completedAt: undefined }
+  const archive = makeCompletedTask('archive', 'Finished recording', time + 20_000)
+  const html = renderToStaticMarkup(createElement(StudioTasksTab, {
+    t: key => key,
+    tasks: [older, archive, newest],
+    storageBytes: archive.audioSize,
+    maxStorageBytes: 1024 * 1024 * 1024,
+    volume: 1,
+    beforePlayback: () => true,
+    onGoScripts: () => {},
+    onDeleteError: () => {},
+  }))
+
+  const expanded = Array.from(html.matchAll(/<article\b[^>]*aria-label="([^"]+)"[^>]*>([\s\S]*?)<\/article>/g), ([, title, body]) => [
+    title, /\baria-expanded="(true|false)"/.exec(body)?.[1],
+  ])
+  assert.deepEqual(expanded, [[newest.title, 'true'], [older.title, 'false'], [archive.title, 'false']])
+})
+
 test('StudioModule renders recent archive cards without a section heading and marks only the latest archive NEW', () => {
   const prevSnapshot = studioClient.getSnapshot()
   const older = makeCompletedTask('archive-old', '男女对谈播客', 1_760_000_000_000)
