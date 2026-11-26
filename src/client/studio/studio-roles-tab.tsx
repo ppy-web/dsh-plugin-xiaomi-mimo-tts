@@ -17,11 +17,13 @@ import {
 } from '../../shared.js'
 import type { StudioRole, StudioRoleInput, StudioRoleProvider } from '../../shared.js'
 import { externalEngine } from '../engine-state.js'
+import { hostRoute } from '../host-route.js'
 import type { Translate } from '../localization.js'
 import { LensSlider } from '../settings/controls/lens-slider.js'
 import { VoiceAvatar } from '../settings/controls/voice-avatar.js'
 import { VoiceReadingSelect } from '../settings/voice-reading-select.js'
 import type { VoiceReadingSelectOption } from '../settings/voice-reading-select.js'
+import { TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../shared.js'
 import {
   readVoiceIdHistory,
   readVoiceIdNames,
@@ -743,108 +745,131 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
         </Modal>
       ) : null}
 
-      {visibleRoles.length === 0 ? (
-        <p className="xmimo-studio-empty-page">{t(roles.length ? 'studio.roles.noMatches' : 'studio.roles.empty')}</p>
-      ) : (
-        <div className="xmimo-studio-role-grid">
-          {visibleRoles.map(({ role, providerName, voiceLabel }) => {
-            const avail = resolveStudioRoleAvailability(role, keyStatuses, mossEnabled)
-            const enabled = role.enabled !== false
-            const toggleLabel = t(enabled ? 'studio.roles.disable' : 'studio.roles.enable')
-            const matchedDesignPreset = role.provider === 'xiaomi' && role.model === 'mimo-v2.5-tts-voicedesign'
-              ? findVoiceDesignPresetByPrompt(role.voiceDesignPrompt)
-              : undefined
-            const avatarVoice = matchedDesignPreset
-              ? { provider: 'xiaomi-design', id: matchedDesignPreset.id }
-              : {
-                  provider: role.provider,
-                  id: role.model === 'mimo-v2.5-tts-voicedesign' ? (role.voiceDesignPrompt || role.id) : (role.voice || role.id),
-                  model: role.model,
-                }
-            return (
-              <div
-                key={role.id}
-                className="xmimo-studio-role-card"
-                data-disabled={enabled && !avail.available ? 'true' : undefined}
-                data-inactive={!enabled ? 'true' : undefined}
-                style={{ '--role-color': role.color } as CSSProperties}
+      <div className="xmimo-studio-role-viewport">
+        {visibleRoles.length === 0 ? (
+          <div className="xmimo-studio-empty-page">
+            <img src={hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)} width={136} height={136} alt="" aria-hidden="true" />
+            <p>{t(roles.length ? 'studio.roles.noMatches' : 'studio.roles.empty')}</p>
+            {roles.length ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setProviderFilter('')
+                  setQuery('')
+                }}
               >
-                <VoiceAvatar
-                  voice={avatarVoice}
-                  label={role.name}
-                />
-                <div className="xmimo-studio-role-body">
-                  <div className="xmimo-studio-role-head">
-                    <div className="xmimo-studio-role-title">
-                      <strong title={role.name}>{role.name}</strong>
-                      {role.builtin ? <span className="xmimo-studio-builtin-tag">{t('studio.roles.builtinTag')}</span> : null}
+                <span>{t('studio.scripts.clearSearch')}</span>
+              </Button>
+            ) : (
+              <Button type="button" variant="primary" size="sm" onClick={openNew}>
+                <RiAddLine size={15} aria-hidden="true" />
+                <span>{t('studio.roles.new')}</span>
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="xmimo-studio-role-grid">
+            {visibleRoles.map(({ role, providerName, voiceLabel }) => {
+              const avail = resolveStudioRoleAvailability(role, keyStatuses, mossEnabled)
+              const enabled = role.enabled !== false
+              const toggleLabel = t(enabled ? 'studio.roles.disable' : 'studio.roles.enable')
+              const matchedDesignPreset = role.provider === 'xiaomi' && role.model === 'mimo-v2.5-tts-voicedesign'
+                ? findVoiceDesignPresetByPrompt(role.voiceDesignPrompt)
+                : undefined
+              const avatarVoice = matchedDesignPreset
+                ? { provider: 'xiaomi-design', id: matchedDesignPreset.id }
+                : {
+                    provider: role.provider,
+                    id: role.model === 'mimo-v2.5-tts-voicedesign' ? (role.voiceDesignPrompt || role.id) : (role.voice || role.id),
+                    model: role.model,
+                  }
+              return (
+                <div
+                  key={role.id}
+                  className="xmimo-studio-role-card"
+                  data-disabled={enabled && !avail.available ? 'true' : undefined}
+                  data-inactive={!enabled ? 'true' : undefined}
+                  style={{ '--role-color': role.color } as CSSProperties}
+                >
+                  <VoiceAvatar
+                    voice={avatarVoice}
+                    label={role.name}
+                  />
+                  <div className="xmimo-studio-role-body">
+                    <div className="xmimo-studio-role-head">
+                      <div className="xmimo-studio-role-title">
+                        <strong title={role.name}>{role.name}</strong>
+                        {role.builtin ? <span className="xmimo-studio-builtin-tag">{t('studio.roles.builtinTag')}</span> : null}
+                      </div>
+                      <div className="xmimo-studio-role-actions">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="xmimo-studio-icon-btn"
+                          disabled={!avail.available}
+                          aria-label={t('studio.roles.testListen')}
+                          title={!avail.available ? t(avail.reasonKey ?? 'studio.roles.apiKeyMissing') : t('studio.roles.testListen')}
+                          onClick={() => onSampleRole(role)}
+                        >
+                          <RiVolumeUpLine size={14} aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="xmimo-studio-icon-btn"
+                          title={t('studio.roles.edit')}
+                          onClick={() => openEdit(role)}
+                        >
+                          <RiEditLine size={14} aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={confirmDeleteId === role.id ? 'outline' : 'ghost'}
+                          size="sm"
+                          className="xmimo-studio-icon-btn xmimo-danger-action"
+                          title={t(confirmDeleteId === role.id ? 'studio.roles.confirmDelete' : 'studio.roles.delete')}
+                          onBlur={() => setConfirmDeleteId(cur => (cur === role.id ? null : cur))}
+                          onClick={() => { void remove(role.id) }}
+                        >
+                          {confirmDeleteId === role.id ? <RiCheckLine size={14} aria-hidden="true" /> : <RiDeleteBinLine size={14} aria-hidden="true" />}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="xmimo-studio-role-actions">
+                    <div className="xmimo-studio-role-meta">
+                      <span>{providerName}</span>
+                      <span className="xmimo-studio-role-voice" title={role.voice || role.model}>{voiceLabel}</span>
+                      <span>{role.voiceRate.toFixed(1)}×</span>
+                      {!enabled ? <span className="xmimo-studio-role-status">{t('studio.roles.disabled')}</span> : !avail.available ? (
+                        <span className="xmimo-studio-key-warn" title={t('studio.roles.apiKeyMissingHint')}>
+                          <RiKey2Line size={12} aria-hidden="true" />
+                          <span>{t(avail.reasonKey ?? 'studio.roles.apiKeyMissing')}</span>
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="xmimo-studio-role-footer">
+                      {role.speechInstruction ? <small className="xmimo-split-bar-desc xmimo-studio-role-desc" title={role.speechInstruction}>{role.speechInstruction}</small> : null}
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="xmimo-studio-icon-btn"
-                        disabled={!avail.available}
-                        aria-label={t('studio.roles.testListen')}
-                        title={!avail.available ? t(avail.reasonKey ?? 'studio.roles.apiKeyMissing') : t('studio.roles.testListen')}
-                        onClick={() => onSampleRole(role)}
+                        aria-label={`${toggleLabel} ${role.name}`}
+                        disabled={changingRoleIds.has(role.id)}
+                        onClick={() => { void toggleRole(role) }}
                       >
-                        <RiVolumeUpLine size={14} aria-hidden="true" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="xmimo-studio-icon-btn"
-                        title={t('studio.roles.edit')}
-                        onClick={() => openEdit(role)}
-                      >
-                        <RiEditLine size={14} aria-hidden="true" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={confirmDeleteId === role.id ? 'outline' : 'ghost'}
-                        size="sm"
-                        className="xmimo-studio-icon-btn xmimo-danger-action"
-                        title={t(confirmDeleteId === role.id ? 'studio.roles.confirmDelete' : 'studio.roles.delete')}
-                        onBlur={() => setConfirmDeleteId(cur => (cur === role.id ? null : cur))}
-                        onClick={() => { void remove(role.id) }}
-                      >
-                        {confirmDeleteId === role.id ? <RiCheckLine size={14} aria-hidden="true" /> : <RiDeleteBinLine size={14} aria-hidden="true" />}
+                        {toggleLabel}
                       </Button>
                     </div>
-                  </div>
-                  <div className="xmimo-studio-role-meta">
-                    <span>{providerName}</span>
-                    <span className="xmimo-studio-role-voice" title={role.voice || role.model}>{voiceLabel}</span>
-                    <span>{role.voiceRate.toFixed(1)}×</span>
-                    {!enabled ? <span className="xmimo-studio-role-status">{t('studio.roles.disabled')}</span> : !avail.available ? (
-                      <span className="xmimo-studio-key-warn" title={t('studio.roles.apiKeyMissingHint')}>
-                        <RiKey2Line size={12} aria-hidden="true" />
-                        <span>{t(avail.reasonKey ?? 'studio.roles.apiKeyMissing')}</span>
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="xmimo-studio-role-footer">
-                    {role.speechInstruction ? <small className="xmimo-split-bar-desc xmimo-studio-role-desc" title={role.speechInstruction}>{role.speechInstruction}</small> : null}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      aria-label={`${toggleLabel} ${role.name}`}
-                      disabled={changingRoleIds.has(role.id)}
-                      onClick={() => { void toggleRole(role) }}
-                    >
-                      {toggleLabel}
-                    </Button>
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

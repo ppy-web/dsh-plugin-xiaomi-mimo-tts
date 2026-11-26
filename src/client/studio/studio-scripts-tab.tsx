@@ -12,6 +12,7 @@ import {
   RiPlayList2Line,
   RiRecordCircleLine,
   RiSaveLine,
+  RiSearchLine,
   RiStopMiniFill,
   RiVolumeUpLine,
 } from 'react-icons/ri'
@@ -649,7 +650,7 @@ export function StudioScriptsTab({
       {error || recordingCheck.error ? <p className="xmimo-tts-failed" role="alert">{error ?? recordingCheck.error}</p> : null}
 
       {editorMode === 'text' ? (
-        <div className="xmimo-studio-card" role="tabpanel" id={editorId + '-text-panel'} aria-labelledby={editorId + '-text'}>
+        <div key="text" className="xmimo-studio-card" role="tabpanel" id={editorId + '-text-panel'} aria-labelledby={editorId + '-text'}>
           <small className="xmimo-split-bar-desc">{t('studio.scripts.importHint')}</small>
           <textarea
             ref={draftTextRef}
@@ -665,23 +666,27 @@ export function StudioScriptsTab({
           <small className="xmimo-split-bar-desc" id={editorId + '-text-hint'}>{t('studio.scripts.textApplyHint')}</small>
         </div>
       ) : (
-        <div className="xmimo-studio-blocks" role="tabpanel" id={editorId + '-blocks-panel'} aria-labelledby={editorId + '-blocks'}>
-          <StudioCastReplacement key={activeKey} t={t} lines={lines} roles={roleOptions} disabled={busy} onReplace={replaceRole} />
+        <div key="blocks" className="xmimo-studio-blocks" role="tabpanel" id={editorId + '-blocks-panel'} aria-labelledby={editorId + '-blocks'}>
           {lines.length > 0 ? (
-            <div className="xmimo-studio-line-search">
-              <Input
-                type="search"
-                aria-label={t('studio.scripts.findLine')}
-                placeholder={t('studio.scripts.findPlaceholder')}
-                value={lineQuery}
-                onChange={event => setLineQuery(event.target.value)}
-              />
-              <small role="status">
-                {t('studio.scripts.lineCount').replace('{count}', lineQuery.trim() ? indexedLines.length + '/' + lines.length : String(lines.length))}
-              </small>
-              {lineQuery ? (
-                <Button type="button" variant="ghost" size="sm" onClick={() => setLineQuery('')}>{t('studio.scripts.clearSearch')}</Button>
-              ) : null}
+            <div className="xmimo-studio-blocks-toolbar">
+              <StudioCastReplacement key={activeKey} t={t} lines={lines} roles={roleOptions} disabled={busy} onReplace={replaceRole} />
+              <div className="xmimo-studio-line-search">
+                <Input
+                  className="xmimo-studio-line-search-input"
+                  type="search"
+                  icon={<RiSearchLine size={14} aria-hidden="true" />}
+                  aria-label={t('studio.scripts.findLine')}
+                  placeholder={t('studio.scripts.findPlaceholder')}
+                  value={lineQuery}
+                  onChange={event => setLineQuery(event.target.value)}
+                />
+                <small className="xmimo-studio-line-count" role="status">
+                  {t('studio.scripts.lineCount').replace('{count}', lineQuery.trim() ? indexedLines.length + '/' + lines.length : String(lines.length))}
+                </small>
+                {lineQuery ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setLineQuery('')}>{t('studio.scripts.clearSearch')}</Button>
+                ) : null}
+              </div>
             </div>
           ) : null}
           {lineQuery.trim() && !indexedLines.length ? <p className="xmimo-studio-no-lines">{t('studio.scripts.findEmpty')}</p> : null}

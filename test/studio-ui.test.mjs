@@ -6,8 +6,10 @@ import { loadClientModule } from './helpers/client-modules.mjs'
 
 const { StudioTasksTab } = await loadClientModule('src/client/studio/studio-tasks-tab.tsx')
 const { StudioScriptsTab } = await loadClientModule('src/client/studio/studio-scripts-tab.tsx')
+const { StudioRolesTab } = await loadClientModule('src/client/studio/studio-roles-tab.tsx')
 const { StudioModule } = await loadClientModule('src/client/settings/studio-module.tsx')
 const { studioClient } = await loadClientModule('src/client/studio/studio-client-store.ts')
+const { studioWorkspaceStore } = await loadClientModule('src/client/studio/studio-workspace-store.ts')
 const { createBuiltinStudioRoles } = await loadClientModule('src/types/studio.ts')
 const { createBuiltinStudioScripts } = await loadClientModule('src/studio-presets.ts')
 
@@ -195,4 +197,53 @@ test('StudioScriptsTab shows up to six recent user scripts ordered by the latest
     scripts.find(script => button.includes(script.title))?.title,
   ).filter(Boolean)
   assert.deepEqual(titles, recent.slice(-6).reverse().map(script => script.title))
+})
+
+test('StudioRolesTab renders an illustrated empty state with a new role action when roles is empty', () => {
+  studioWorkspaceStore.reset()
+  const html = renderToStaticMarkup(createElement(StudioRolesTab, {
+    t: key => key,
+    roles: [],
+    keyStatuses: { xiaomi: 'recognized', doubao: 'missing', breeze: 'missing', deepseek: 'missing' },
+    mossEnabled: false,
+    settings: {
+      doubaoVoice: '',
+      doubaoClonedVoice: '',
+      breezeVoice: '',
+      mossVoice: '',
+      mossVoiceName: '',
+      voiceDesignPrompt: '',
+      voiceDesignCustomPrompt: '',
+    },
+    onSampleRole: () => {},
+    onError: () => {},
+  }))
+
+  assert.match(html, /xmimo-studio-role-viewport/)
+  assert.match(html, /xmimo-studio-empty-page/)
+  assert.match(html, /<img\b/)
+  assert.ok(html.includes('studio.roles.empty'))
+  assert.match(html, /<button\b[^>]*>[\s\S]*studio\.roles\.new[\s\S]*<\/button>/)
+})
+
+test('StudioScriptsTab places cast replacement and line search in the same blocks toolbar', t => {
+  studioWorkspaceStore.reset()
+  t.after(() => studioWorkspaceStore.reset())
+  const roles = createBuiltinStudioRoles(1_760_000_000_000)
+  const firstRole = roles.find(role => role.provider === 'xiaomi')
+  assert.ok(firstRole)
+  studioWorkspaceStore.newScript('工具栏联排剧本', 'blocks', [
+    { id: 'line-1', roleId: firstRole.id, text: '第一句台词', pauseAfterMs: 400 },
+  ])
+
+  const html = renderScriptStart([])
+  const toolbarPos = html.indexOf('xmimo-studio-blocks-toolbar')
+  const replacePos = html.indexOf('xmimo-studio-cast-replacement')
+  const searchPos = html.indexOf('xmimo-studio-line-search')
+  const listPos = html.indexOf('xmimo-studio-line-list')
+
+  assert.ok(toolbarPos >= 0, 'blocks toolbar should render when lines exist')
+  assert.ok(replacePos > toolbarPos, 'cast replacement should sit inside blocks toolbar')
+  assert.ok(searchPos > replacePos, 'line search should follow cast replacement in the same toolbar')
+  assert.ok(listPos > searchPos, 'line list should follow blocks toolbar')
 })

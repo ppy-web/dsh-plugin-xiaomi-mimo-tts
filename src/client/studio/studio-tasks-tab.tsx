@@ -263,7 +263,7 @@ export function StudioTasksTab({
   }
 
   return (
-    <div className="xmimo-studio-panel">
+    <div className="xmimo-studio-panel xmimo-studio-tasks-panel">
       <div className="xmimo-studio-storage-bar">
         {storageRoot ? (
           <div className="xmimo-studio-storage-path">
