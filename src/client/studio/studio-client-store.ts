@@ -282,6 +282,7 @@ export function studioErrorMessage(error: unknown, t: Translate): string {
   if (code === 'invalid-role-name' && line !== undefined) return t('studio.error.invalidSpeaker').replace('{line}', String(line))
   if (code === 'studio-role-in-use') return t('studio.error.roleInUse')
   if (code === 'studio-role-not-found') return t('studio.error.missingRole')
+  if (code === 'studio-role-disabled') return t('studio.error.roleDisabled')
   if (code === 'studio-storage-limit-exceeded') return t('studio.error.storageFull')
   if (code === 'studio-storage-write-failed') return t('studio.error.storageWrite')
   if (code === 'studio-store-busy') return t('studio.error.storeBusy')
@@ -296,9 +297,9 @@ export function studioErrorMessage(error: unknown, t: Translate): string {
   return t('studio.error.failed')
 }
 
-async function postStudioJson<T>(route: string, body: unknown): Promise<T> {
+async function writeStudioJson<T>(route: string, body: unknown, method: 'POST' | 'PATCH' = 'POST'): Promise<T> {
   const response = await fetch(hostRoute(route), {
-    method: 'POST',
+    method,
     headers: {
       'content-type': 'application/json',
       accept: 'application/json',
@@ -352,8 +353,9 @@ export const studioClient = {
       const now = Date.now()
       const roles = structuredClone(state.roles)
       const idx = input.id ? roles.findIndex(r => r.id === input.id) : -1
+      const existing = roles[idx]
       const role: StudioRole = {
-        id: idx >= 0 ? roles[idx]!.id : (input.id ?? randomLocalId()),
+        id: existing?.id ?? input.id ?? randomLocalId(),
         name: input.name.trim() || '新角色',
         color: input.color ?? pickStudioRoleColor(roles.length),
         provider: input.provider,
@@ -362,7 +364,8 @@ export const studioClient = {
         ...(input.voiceDesignPrompt ? { voiceDesignPrompt: input.voiceDesignPrompt } : {}),
         ...(input.speechInstruction ? { speechInstruction: input.speechInstruction } : {}),
         voiceRate: input.voiceRate ?? 1,
-        createdAt: idx >= 0 ? roles[idx]!.createdAt : now,
+        ...(existing?.enabled !== undefined ? { enabled: existing.enabled } : {}),
+        createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       }
       if (idx >= 0) roles[idx] = role
@@ -370,8 +373,19 @@ export const studioClient = {
       applyDemoSnapshot({ ...state, roles })
       return role
     }
-    const res = await postStudioJson<{ role: StudioRole }>(TTS_STUDIO_ROLES_ROUTE, input)
+    const res = await writeStudioJson<{ role: StudioRole }>(TTS_STUDIO_ROLES_ROUTE, input)
     return res.role
+  },
+  async setRoleEnabled(id: string, enabled: boolean): Promise<void> {
+    if (state.status === 'demo') {
+      const role = state.roles.find(item => item.id === id)
+      if (!role) throw new StudioRequestError('studio-role-not-found')
+      if ((role.enabled !== false) === enabled) return
+      const updated = { ...role, enabled, updatedAt: Date.now() }
+      applyDemoSnapshot({ ...state, roles: state.roles.map(item => item.id === id ? updated : item) })
+      return
+    }
+    await writeStudioJson(TTS_STUDIO_ROLES_ROUTE, { id, enabled }, 'PATCH')
   },
   async deleteRole(id: string): Promise<void> {
     if (state.status === 'demo') {
@@ -407,7 +421,7 @@ export const studioClient = {
       applyDemoSnapshot({ ...state, scripts })
       return script
     }
-    const res = await postStudioJson<{ script: StudioScript }>(TTS_STUDIO_SCRIPTS_ROUTE, input)
+    const res = await writeStudioJson<{ script: StudioScript }>(TTS_STUDIO_SCRIPTS_ROUTE, input)
     return res.script
   },
   async importScript(input: { id?: string; title: string; description?: string; text: string; defaultNarratorName?: string }): Promise<{ script: StudioScript; createdRoles: StudioRole[] }> {
@@ -440,7 +454,7 @@ export const studioClient = {
       })
       return { script, createdRoles: materialized.createdRoles }
     }
-    return postStudioJson<{ script: StudioScript; createdRoles: StudioRole[] }>(TTS_STUDIO_SCRIPTS_ROUTE, {
+    return writeStudioJson<{ script: StudioScript; createdRoles: StudioRole[] }>(TTS_STUDIO_SCRIPTS_ROUTE, {
       kind: 'import',
       ...input,
     })
@@ -477,6 +491,7 @@ export const studioClient = {
         lines: sourceLines.map(line => {
           const role = roleMap.get(line.roleId)
           if (!role) throw new StudioRequestError('studio-role-not-found')
+          if (role.enabled === false) throw new StudioRequestError('studio-role-disabled')
           return {
             lineId: line.id,
             roleId: role.id,
@@ -497,7 +512,7 @@ export const studioClient = {
       runDemoWorker()
       return task
     }
-    const res = await postStudioJson<{ task: StudioTask }>(TTS_STUDIO_TASKS_ROUTE, { action: 'start', ...input })
+    const res = await writeStudioJson<{ task: StudioTask }>(TTS_STUDIO_TASKS_ROUTE, { action: 'start', ...input })
     return res.task
   },
   async taskAction(action: 'pause' | 'resume' | 'cancel' | 'retry-line', taskId: string, lineIndex?: number): Promise<StudioTask> {
@@ -513,7 +528,7 @@ export const studioClient = {
       if (task.status === 'queued') runDemoWorker()
       return task
     }
-    const res = await postStudioJson<{ task: StudioTask }>(TTS_STUDIO_TASKS_ROUTE, { action, taskId, ...(lineIndex === undefined ? {} : { lineIndex }) })
+    const res = await writeStudioJson<{ task: StudioTask }>(TTS_STUDIO_TASKS_ROUTE, { action, taskId, ...(lineIndex === undefined ? {} : { lineIndex }) })
     return res.task
   },
   async deleteTask(id: string): Promise<void> {

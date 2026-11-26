@@ -20,6 +20,7 @@ import {
   STUDIO_MAX_LINE_CHARACTERS,
   STUDIO_MAX_LINES_PER_SCRIPT,
   STUDIO_MAX_PAUSE_MS,
+  STUDIO_MAX_SCRIPT_TITLE_LENGTH,
   formatStudioScriptText,
 } from '../../shared.js'
 import type { StudioLine, StudioRole, StudioRoleProvider, StudioScript } from '../../shared.js'
@@ -32,11 +33,13 @@ import { VoiceReadingSelect } from '../settings/voice-reading-select.js'
 import type { VoiceReadingSelectOption } from '../settings/voice-reading-select.js'
 import { SplitBar } from './split-bar.js'
 import type { SplitSegment } from './split-bar.js'
+import { StudioCastReplacement } from './studio-cast-replacement.js'
 import { studioClient, studioErrorMessage } from './studio-client-store.js'
 import { StudioDeleteDialog } from './studio-delete-dialog.js'
 import { checkStudioRecording } from './studio-recording-check.js'
-import { studioScriptKey, studioWorkspaceStore, useStudioWorkspaceState } from './studio-workspace-store.js'
-import { resolveStudioProviderAvailability } from './use-studio-provider-statuses.js'
+import { studioScriptCopyTitle, studioScriptHasEdits, studioScriptKey, studioWorkspaceStore, useStudioWorkspaceState } from './studio-workspace-store.js'
+import type { StudioScriptDraft } from './studio-workspace-store.js'
+import { resolveStudioRoleAvailability } from './use-studio-provider-statuses.js'
 import type { StudioProviderKeyMap } from './use-studio-provider-statuses.js'
 
 export interface StudioScriptsTabProps {
@@ -51,6 +54,7 @@ export interface StudioScriptsTabProps {
   onToggleRehearseAll: (lines: readonly StudioLine[]) => void
   onTaskStarted: (taskId: string) => void
   onConfigureProvider: (provider: StudioRoleProvider) => void
+  onOpenRoles: () => void
   onDeleteError: (message: string) => void
 }
 
@@ -82,17 +86,28 @@ export function StudioScriptsTab({
   onToggleRehearseAll,
   onTaskStarted,
   onConfigureProvider,
+  onOpenRoles,
   onDeleteError,
 }: StudioScriptsTabProps): ReactElement {
   const { script, scriptDrafts, scriptOperation } = useStudioWorkspaceState()
-  const { selectedId, title, description, lines, editorMode, rawText, textDirty, dirty, syncedUpdatedAt } = script
+  const { selectedId, description, lines, editorMode, rawText, textDirty, dirty, syncedUpdatedAt } = script
   const activeKey = studioScriptKey(script)
+  const savedScript = scripts.find(item => item.id === selectedId)
+  const hasEditsToSave = savedScript && studioScriptHasEdits(script, savedScript)
+  const deletableScript = dirty ? undefined : savedScript
+  const copyTitleFor = (draft: StudioScriptDraft): string => {
+    if (draft.dirty && savedScript && draft.title !== savedScript.title) return draft.title
+    const titles = [...scripts.map(item => item.title), ...scriptDrafts.map(item => item.title)]
+    return studioScriptCopyTitle(draft.title, titles, t('studio.scripts.copySuffix'))
+  }
+  const title = hasEditsToSave ? copyTitleFor(script) : script.title
   const busy = scriptOperation !== null
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [issuesOpen, setIssuesOpen] = useState(false)
   const [lineQuery, setLineQuery] = useState('')
   const editorId = useId()
+  const lineListRef = useRef<HTMLFieldSetElement>(null)
   const lineRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map())
   const draftTextRef = useRef<HTMLTextAreaElement>(null)
   const pendingFocus = useRef<{ lineId: string; chooseRole: boolean } | 'text' | null>(null)
@@ -145,9 +160,10 @@ export function StudioScriptsTab({
 
   const roleOptions = useMemo<VoiceReadingSelectOption[]>(
     () => roles.map(role => {
-      const avail = resolveStudioProviderAvailability(role.provider, keyStatuses, mossEnabled)
+      const avail = resolveStudioRoleAvailability(role, keyStatuses, mossEnabled)
       return {
         id: role.id,
+        disabled: role.enabled === false,
         icon: !avail.available
           ? <RiErrorWarningLine size={14} className="xmimo-studio-key-warn-icon" aria-hidden="true" />
           : <span className="xmimo-studio-role-dot" style={{ '--role-color': role.color } as CSSProperties} aria-hidden="true" />,
@@ -163,7 +179,8 @@ export function StudioScriptsTab({
   )
 
   const firstReadyRoleId = useMemo(
-    () => roles.find(role => resolveStudioProviderAvailability(role.provider, keyStatuses, mossEnabled).available)?.id ?? roles[0]?.id ?? '',
+    () => roles.find(role => resolveStudioRoleAvailability(role, keyStatuses, mossEnabled).available)?.id
+      ?? roles.find(role => role.enabled !== false)?.id ?? '',
     [roles, keyStatuses, mossEnabled],
   )
 
@@ -218,6 +235,7 @@ export function StudioScriptsTab({
   const selectScript = (id: string): void => {
     setError(null)
     setLineQuery('')
+    if (lineListRef.current && id !== activeKey) lineListRef.current.scrollTop = 0
     const found = scripts.find(item => item.id === id)
     if (found) {
       const formatted = formatStudioScriptText(found.lines, roles, narratorName)
@@ -246,10 +264,22 @@ export function StudioScriptsTab({
     studioWorkspaceStore.setScriptMode(next, formatted)
   }
 
+  const editScript = (edit: (draft: StudioScriptDraft) => Partial<StudioScriptDraft> | null): void => {
+    studioWorkspaceStore.updateScript(draft => {
+      const changes = edit(draft)
+      if (!changes) return draft
+      const next = { ...draft, ...changes, dirty: true }
+      if (!draft.selectedId) return next
+      return { ...next, selectedId: '', syncedUpdatedAt: null, title: changes.title ?? copyTitleFor(draft) }
+    })
+    setError(null)
+  }
+
   const addLine = (after?: StudioLine): void => {
     if (lines.length >= STUDIO_MAX_LINES_PER_SCRIPT) return
     const preceding = after ?? lines.at(-1)
-    const fallbackRole = preceding && roleMap.has(preceding.roleId) ? preceding.roleId : firstReadyRoleId
+    const previousRole = preceding ? roleMap.get(preceding.roleId) : undefined
+    const fallbackRole = previousRole && previousRole.enabled !== false ? previousRole.id : firstReadyRoleId
     if (!fallbackRole) {
       pendingFocus.current = 'text'
       switchMode('text')
@@ -258,39 +288,42 @@ export function StudioScriptsTab({
     const line = { id: makeLineId(), roleId: fallbackRole, text: '', pauseAfterMs: STUDIO_DEFAULT_PAUSE_MS }
     pendingFocus.current = { lineId: line.id, chooseRole: false }
     setLineQuery('')
-    studioWorkspaceStore.updateScript(cur => {
+    editScript(cur => {
       const index = after ? cur.lines.findIndex(item => item.id === after.id) : cur.lines.length - 1
       const next = [...cur.lines]
       next.splice(index + 1, 0, line)
-      return { ...cur, dirty: true, lines: next }
+      return { lines: next }
     })
   }
 
   const updateLine = (id: string, patch: Partial<StudioLine>): void => {
-    studioWorkspaceStore.updateScript(cur => ({
-      ...cur,
-      dirty: true,
+    editScript(cur => ({
       lines: cur.lines.map(item => (item.id === id ? { ...item, ...patch } : item)),
     }))
+  }
+
+  const replaceRole = (fromId: string, toId: string): void => {
+    const target = roleMap.get(toId)
+    if (fromId === toId || !target || target.enabled === false) return
+    editScript(cur => cur.lines.some(line => line.roleId === fromId) ? {
+      lines: cur.lines.map(line => line.roleId === fromId ? { ...line, roleId: toId } : line),
+    } : null)
+    setLineQuery('')
   }
 
   const moveLine = (index: number, delta: -1 | 1): void => {
     const target = index + delta
     if (target < 0 || target >= lines.length) return
-    studioWorkspaceStore.updateScript(cur => {
+    editScript(cur => {
       const next = [...cur.lines]
       const [removed] = next.splice(index, 1)
       next.splice(target, 0, removed!)
-      return { ...cur, dirty: true, lines: next }
+      return { lines: next }
     })
   }
 
   const removeLine = (id: string): void => {
-    studioWorkspaceStore.updateScript(cur => ({
-      ...cur,
-      dirty: true,
-      lines: cur.lines.filter(item => item.id !== id),
-    }))
+    editScript(cur => ({ lines: cur.lines.filter(item => item.id !== id) }))
   }
 
   const insertAudioTag = (line: StudioLine, tag: string, placement?: 'start'): void => {
@@ -313,11 +346,10 @@ export function StudioScriptsTab({
     setError(null)
     try {
       const fields = {
-        ...(selectedId ? { id: selectedId } : {}),
         title: title.trim() || t('studio.scripts.untitled'),
         ...(description.trim() ? { description: description.trim() } : {}),
       }
-      let saved = !dirty ? scripts.find(item => item.id === selectedId) : undefined
+      let saved = hasEditsToSave ? undefined : savedScript
       if (!saved) {
         saved = editorMode === 'text'
           ? (await studioClient.importScript({ ...fields, text: rawText, defaultNarratorName: narratorName })).script
@@ -350,7 +382,7 @@ export function StudioScriptsTab({
     if (!studioWorkspaceStore.beginScriptOperation('delete')) return
     setError(null)
     try {
-      if (selectedId && scripts.some(item => item.id === selectedId)) await studioClient.deleteScript(selectedId)
+      if (deletableScript) await studioClient.deleteScript(deletableScript.id)
       studioWorkspaceStore.syncScriptFromHost(null)
     } catch (err) {
       onDeleteError(studioErrorMessage(err, t))
@@ -395,7 +427,10 @@ export function StudioScriptsTab({
   )
 
   if (!activeKey) {
-    const samples = STUDIO_BUILTIN_SCRIPT_IDS.flatMap(id => scripts.find(item => item.id === id) ?? [])
+    const untouchedExample = (item: StudioScript): boolean => item.createdAt === item.updatedAt && STUDIO_BUILTIN_SCRIPT_IDS.includes(item.id)
+    const recentScripts = [...scripts].sort((a, b) => {
+      return Number(untouchedExample(a)) - Number(untouchedExample(b)) || b.updatedAt - a.updatedAt
+    }).slice(0, 6)
     return (
       <div className="xmimo-studio-panel xmimo-studio-script-start">
         <div className="xmimo-studio-toolbar-group">
@@ -403,11 +438,10 @@ export function StudioScriptsTab({
           {newScriptButton}
           {scriptOptions.some(option => !STUDIO_BUILTIN_SCRIPT_IDS.includes(option.id)) ? scriptSelector : null}
         </div>
-        {samples.length > 0 ? (
-          <section className="xmimo-studio-samples" aria-label={t('studio.scripts.examples')}>
-            <h3>{t('studio.scripts.examples')}</h3>
+        {recentScripts.length > 0 ? (
+          <section className="xmimo-studio-samples" aria-label={t('studio.scripts.recentScripts')}>
             <ul className="xmimo-studio-samples-grid">
-              {samples.map(sample => {
+              {recentScripts.map(sample => {
                 const castIds: string[] = []
                 for (const line of sample.lines) {
                   if (!castIds.includes(line.roleId)) castIds.push(line.roleId)
@@ -464,9 +498,8 @@ export function StudioScriptsTab({
     )
   }
 
-  const hasSavedScript = scripts.some(item => item.id === selectedId)
-  const deleteLabel = t(hasSavedScript ? 'studio.scripts.delete' : 'studio.scripts.discard')
-  const saveStatus = textDirty && editorMode === 'blocks' ? 'pendingText' : dirty || !hasSavedScript ? 'unsaved' : 'saved'
+  const deleteLabel = t(deletableScript ? 'studio.scripts.delete' : 'studio.scripts.discard')
+  const saveStatus = textDirty && editorMode === 'blocks' ? 'pendingText' : !savedScript || hasEditsToSave ? 'unsaved' : 'saved'
   const canSave = !busy && recordingCheck.lineCount > 0 && !hasMissingLineRole
   const canRecord = canSave && recordingCheck.issues.length === 0
 
@@ -502,14 +535,11 @@ export function StudioScriptsTab({
             <Input
               id={editorId + '-title'}
               type="text"
-              maxLength={80}
+              maxLength={STUDIO_MAX_SCRIPT_TITLE_LENGTH}
               value={title}
               disabled={busy}
               placeholder={t('studio.scripts.titlePlaceholder')}
-              onChange={e => {
-                studioWorkspaceStore.updateScript(cur => ({ ...cur, dirty: true, title: e.target.value }))
-                setError(null)
-              }}
+              onChange={e => editScript(() => ({ title: e.target.value }))}
             />
           </div>
           <div className="xmimo-studio-field">
@@ -521,9 +551,7 @@ export function StudioScriptsTab({
               value={description}
               disabled={busy}
               placeholder={t('studio.scripts.descPlaceholder')}
-              onChange={e => {
-                studioWorkspaceStore.updateScript(cur => ({ ...cur, dirty: true, description: e.target.value }))
-              }}
+              onChange={e => editScript(() => ({ description: e.target.value }))}
             />
           </div>
         </div>
@@ -593,7 +621,11 @@ export function StudioScriptsTab({
                     <small>{provider ? provider + ' · ' : ''}{t(issue.reason)}</small>
                   </div>
                   <div className="xmimo-studio-toolbar-group">
-                    {issue.reason === 'studio.roles.keyStatusUnavailable' ? (
+                    {issue.reason === 'studio.roles.disabled' ? (
+                      <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onOpenRoles}>
+                        {t('studio.roles.openLibrary')}
+                      </Button>
+                    ) : issue.reason === 'studio.roles.keyStatusUnavailable' ? (
                       <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => invalidateApiKeyStatus()}>
                         {t('studio.state.retry')}
                       </Button>
@@ -602,7 +634,7 @@ export function StudioScriptsTab({
                         {t('studio.recording.configure').replace('{provider}', provider)}
                       </Button>
                     ) : null}
-                    {editorMode === 'blocks' && roles.length > 0 ? (
+                    {editorMode === 'blocks' && firstReadyRoleId ? (
                       <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => reassignLine(issue.firstLine)}>
                         {t('studio.recording.reassign').replace('{line}', String(issue.firstLine))}
                       </Button>
@@ -628,15 +660,13 @@ export function StudioScriptsTab({
             aria-label={t('studio.scripts.modeText')}
             aria-describedby={editorId + '-text-hint'}
             placeholder={t('studio.scripts.textPlaceholder')}
-            onChange={e => {
-              studioWorkspaceStore.updateScript(cur => ({ ...cur, dirty: true, textDirty: true, rawText: e.target.value }))
-              setError(null)
-            }}
+            onChange={e => editScript(() => ({ textDirty: true, rawText: e.target.value }))}
           />
           <small className="xmimo-split-bar-desc" id={editorId + '-text-hint'}>{t('studio.scripts.textApplyHint')}</small>
         </div>
       ) : (
         <div className="xmimo-studio-blocks" role="tabpanel" id={editorId + '-blocks-panel'} aria-labelledby={editorId + '-blocks'}>
+          <StudioCastReplacement key={activeKey} t={t} lines={lines} roles={roleOptions} disabled={busy} onReplace={replaceRole} />
           {lines.length > 0 ? (
             <div className="xmimo-studio-line-search">
               <Input
@@ -655,10 +685,16 @@ export function StudioScriptsTab({
             </div>
           ) : null}
           {lineQuery.trim() && !indexedLines.length ? <p className="xmimo-studio-no-lines">{t('studio.scripts.findEmpty')}</p> : null}
-          <fieldset className="xmimo-studio-line-list" disabled={busy}>
+          <fieldset
+            ref={lineListRef}
+            className="xmimo-studio-line-list"
+            aria-label={t('studio.scripts.modeBlocks')}
+            tabIndex={indexedLines.length ? 0 : undefined}
+            disabled={busy}
+          >
             {indexedLines.map(({ line, index }) => {
               const role = roleMap.get(line.roleId)
-              const avail = role ? resolveStudioProviderAvailability(role.provider, keyStatuses, mossEnabled) : { available: false, reasonKey: 'studio.error.missingRole' as const }
+              const avail = role ? resolveStudioRoleAvailability(role, keyStatuses, mossEnabled) : { available: false, reasonKey: 'studio.error.missingRole' as const }
               const tagProvider = role?.provider === 'breeze'
                 ? 'breeze'
                 : role?.provider === 'xiaomi' && role.model === 'mimo-v2.5-tts'
@@ -679,10 +715,10 @@ export function StudioScriptsTab({
                         value={line.roleId}
                         fallbackLabel={role?.name ?? t('studio.error.missingRole')}
                         options={roleOptions}
-                        disabled={busy || roles.length === 0}
+                        disabled={busy || !firstReadyRoleId}
                         align="start"
                         className="xmimo-studio-line-role-select"
-                        onSelect={roleId => updateLine(line.id, { roleId })}
+                        onSelect={roleId => { if (roleId !== line.roleId) updateLine(line.id, { roleId }) }}
                       />
                       {tagProvider ? (
                         <AudioTagPicker
@@ -790,8 +826,8 @@ export function StudioScriptsTab({
           t={t}
           title={deleteLabel}
           name={title.trim() || t('studio.scripts.untitled')}
-          description={t(hasSavedScript ? 'studio.scripts.deleteDescription' : 'studio.scripts.discardDescription')}
-          confirmLabel={hasSavedScript ? t('studio.action.delete') : deleteLabel}
+          description={t(deletableScript ? 'studio.scripts.deleteDescription' : 'studio.scripts.discardDescription')}
+          confirmLabel={deletableScript ? t('studio.action.delete') : deleteLabel}
           onCancel={() => setConfirmDelete(false)}
           onConfirm={() => { void deleteCurrentScript() }}
         />

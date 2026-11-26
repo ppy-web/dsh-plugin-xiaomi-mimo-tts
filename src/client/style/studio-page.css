@@ -126,13 +126,6 @@
   padding-block-start: 12px;
 }
 
-.xmimo-studio-samples h3 {
-  margin: 0 0 8px;
-  color: var(--xmimo-ui-text);
-  font-size: 14px;
-  font-weight: 650;
-}
-
 .xmimo-studio-samples-grid,
 .xmimo-studio-recording-check ul {
   list-style: none;
@@ -397,6 +390,28 @@
   max-width: 320px;
 }
 
+.xmimo-studio-cast-replacement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.xmimo-studio-cast-replacement > span {
+  color: var(--xmimo-ui-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.xmimo-studio-cast-replacement > :has(> .xmimo-studio-cast-select) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.xmimo-studio-cast-select {
+  max-width: min(13rem, 100%);
+}
+
 .xmimo-studio-no-lines {
   margin: 8px 0;
   color: var(--xmimo-ui-text-muted);
@@ -542,9 +557,44 @@
   transform: scale(1.12);
 }
 
+.xmimo-studio-role-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.xmimo-studio-role-filters {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+  width: min(100%, 27rem);
+  min-width: 0;
+}
+
+.xmimo-studio-role-filters > :has(> .xmimo-studio-role-provider-filter) {
+  min-width: 0;
+  max-width: 50%;
+}
+
+.xmimo-studio-role-toolbar > button,
+.xmimo-studio-role-provider-filter {
+  height: 32px;
+}
+
+.xmimo-studio-role-provider-filter {
+  width: 100%;
+  min-width: 0;
+}
+
+.xmimo-studio-role-search {
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .xmimo-studio-role-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
   gap: 10px;
 }
 
@@ -565,6 +615,10 @@
 
 .xmimo-studio-role-card[data-disabled='true'] {
   opacity: 0.72;
+}
+
+.xmimo-studio-role-card[data-inactive='true'] {
+  border-inline-start-color: var(--xmimo-ui-border);
 }
 
 .xmimo-studio-role-body {
@@ -638,7 +692,23 @@
   vertical-align: bottom;
 }
 
+.xmimo-studio-role-status {
+  font-weight: 650;
+}
+
+.xmimo-studio-role-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.xmimo-studio-role-footer > button {
+  flex: none;
+  margin-inline-start: auto;
+}
+
 .xmimo-studio-role-desc {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -649,9 +719,16 @@
   flex-direction: column;
   gap: 7px;
   min-inline-size: 0;
+  max-block-size: min(56dvh, 36rem);
+  overflow-y: auto;
   border: 0;
-  margin: 0;
-  padding: 0;
+  margin: -3px;
+  padding: 3px;
+}
+
+.xmimo-studio-line-list:focus-visible {
+  outline: var(--xmimo-ui-focus);
+  outline-offset: -2px;
 }
 
 .xmimo-studio-line-card {
@@ -1272,7 +1349,9 @@ button.xmimo-studio-timeline-item:hover:not(:disabled) {
   align-items: center;
   gap: 6px;
   flex: 0 1 auto;
+  box-sizing: border-box;
   min-width: 0;
+  max-width: 50%;
   padding: 2px 3px 2px 8px;
   border-radius: 999px;
   corner-shape: round;
@@ -1515,6 +1594,27 @@ li.xmimo-studio-timeline-item {
 }
 
 @container studio (max-width: 560px) {
+  .xmimo-studio-role-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .xmimo-studio-role-toolbar > button {
+    grid-area: 1 / 2;
+  }
+
+  .xmimo-studio-role-filters {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .xmimo-studio-role-title > strong {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .xmimo-studio-samples-grid {
     grid-template-columns: minmax(0, 1fr);
   }

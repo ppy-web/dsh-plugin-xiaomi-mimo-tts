@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, ReactElement } from 'react'
 import { Button, Input, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import { RiAddLine, RiCheckLine, RiDeleteBinLine, RiEditLine, RiErrorWarningLine, RiKey2Line, RiVolumeUpLine } from 'react-icons/ri'
+import { RiAddLine, RiCheckLine, RiDeleteBinLine, RiEditLine, RiErrorWarningLine, RiKey2Line, RiSearchLine, RiVolumeUpLine } from 'react-icons/ri'
 import {
   BREEZE_TTS_MODEL,
   BREEZE_VOICE_PRESETS,
@@ -46,7 +46,7 @@ import {
 } from './studio-voice-options.js'
 import type { StudioRoleSettingsSlice, StudioVoiceChoice, StudioVoiceIdLibrary } from './studio-voice-options.js'
 import { studioWorkspaceStore, useStudioWorkspaceState, type StudioRoleDraft } from './studio-workspace-store.js'
-import { resolveStudioProviderAvailability } from './use-studio-provider-statuses.js'
+import { resolveStudioProviderAvailability, resolveStudioRoleAvailability } from './use-studio-provider-statuses.js'
 import type { StudioProviderKeyMap } from './use-studio-provider-statuses.js'
 
 const CUSTOM_VOICE_OPTION = '__studio_custom_voice__'
@@ -58,7 +58,7 @@ export interface StudioRolesTabProps {
   mossEnabled: boolean
   settings: StudioRoleSettingsSlice
   onSampleRole: (role: StudioRole) => void
-  onDeleteError: (message: string) => void
+  onError: (message: string) => void
 }
 
 type RoleDraft = StudioRoleDraft
@@ -69,6 +69,10 @@ const PROVIDER_DISPLAY: Record<string, string> = {
   breeze: 'Breeze Blue',
   deepseek: 'DeepSeek',
   moss: 'MOSS-Nano (本地)',
+}
+
+function providerLabel(provider: StudioRoleProvider, external: ReturnType<typeof externalEngine>): string {
+  return provider === external?.provider ? external.name : (PROVIDER_DISPLAY[provider] ?? provider)
 }
 
 function defaultModelFor(provider: StudioRoleProvider, externalModel?: string): string {
@@ -99,7 +103,7 @@ function firstAvailableProvider(keyStatuses: StudioProviderKeyMap, mossEnabled: 
   return 'xiaomi'
 }
 
-export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, onSampleRole, onDeleteError }: StudioRolesTabProps): ReactElement {
+export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, onSampleRole, onError }: StudioRolesTabProps): ReactElement {
   const mossVoice = settings.mossVoice
   const external = externalEngine()
   const editing = useStudioWorkspaceState().roleDraft
@@ -108,6 +112,9 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
   const [customVoiceMode, setCustomVoiceMode] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [providerFilter, setProviderFilter] = useState('')
+  const [query, setQuery] = useState('')
+  const [changingRoleIds, setChangingRoleIds] = useState(() => new Set<string>())
   const [error, setError] = useState<string | null>(null)
   const voiceDesignTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const customDesignPromptRef = useRef<string>('')
@@ -118,6 +125,24 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
     standard: { history: readVoiceIdHistory('standard'), names: readVoiceIdNames('standard') },
     breeze: { history: readVoiceIdHistory('breeze'), names: readVoiceIdNames('breeze') },
   }), [voiceIdRev])
+  const roleCards = useMemo(() => roles.map(role => ({
+    role,
+    providerName: providerLabel(role.provider, external),
+    voiceLabel: resolveStudioRoleVoiceLabel(role, voiceIdLibrary),
+  })), [roles, external, voiceIdLibrary])
+  const allProviders = { id: '', label: t('studio.roles.allProviders') }
+  const providerNames = new Map(roleCards.map(({ role, providerName }) => [role.provider, providerName]))
+  const filterOptions = [allProviders, ...Array.from(providerNames, ([id, label]) => ({ id, label }))]
+  const selectedFilter = filterOptions.find(option => option.id === providerFilter) ?? allProviders
+  const activeProvider = selectedFilter.id
+  const terms = query.normalize('NFKC').toLowerCase().trim().split(/\s+/u).filter(Boolean)
+  const visibleRoles = roleCards.filter(({ role, providerName, voiceLabel }) => {
+    if (activeProvider && role.provider !== activeProvider) return false
+    if (!terms.length) return true
+    const text = [role.name, providerName, role.provider, voiceLabel, role.voice, role.model, role.speechInstruction]
+      .join('\n').normalize('NFKC').toLowerCase()
+    return terms.every(term => text.includes(term))
+  })
   const voiceDesignChoices = useMemo(() => buildXiaomiVoiceDesignChoices(), [])
   const doubaoClonedChoices = useMemo(
     () => buildDoubaoClonedVoiceChoices(voiceIdLibrary, settings, roles),
@@ -149,7 +174,7 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
     if (external) ids.push(external.provider)
     return ids.map(id => {
       const avail = resolveStudioProviderAvailability(id, keyStatuses, mossEnabled)
-      const baseName = id.startsWith('external:') ? (external?.name ?? id) : (PROVIDER_DISPLAY[id] ?? id)
+      const baseName = providerLabel(id, external)
       return {
         id,
         disabled: !avail.available,
@@ -274,7 +299,23 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
     try {
       await studioClient.deleteRole(id)
     } catch (err) {
-      onDeleteError(studioErrorMessage(err, t))
+      onError(studioErrorMessage(err, t))
+    }
+  }
+
+  const toggleRole = async (role: StudioRole): Promise<void> => {
+    if (changingRoleIds.has(role.id)) return
+    setChangingRoleIds(current => new Set(current).add(role.id))
+    try {
+      await studioClient.setRoleEnabled(role.id, role.enabled === false)
+    } catch {
+      onError(t('studio.roles.updateStatusFailed'))
+    } finally {
+      setChangingRoleIds(current => {
+        const next = new Set(current)
+        next.delete(role.id)
+        return next
+      })
     }
   }
 
@@ -388,9 +429,30 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
 
   return (
     <div className="xmimo-studio-panel">
-      <div className="xmimo-studio-toolbar">
-        <div className="xmimo-studio-toolbar-group">
-          <strong>{t('studio.tab.roles')} · {roles.length}</strong>
+      <div className="xmimo-studio-toolbar xmimo-studio-role-toolbar">
+        <strong role="status">
+          {t('studio.tab.roles')} · {activeProvider || terms.length ? `${visibleRoles.length}/${roles.length}` : roles.length}
+        </strong>
+        <div className="xmimo-studio-role-filters" role="search" aria-label={t('studio.roles.search')}>
+          <VoiceReadingSelect
+            label={`${t('studio.roles.filterProvider')} · ${selectedFilter.label}`}
+            value={activeProvider}
+            options={filterOptions}
+            disabled={filterOptions.length === 1}
+            buttonVariant="outline"
+            align="start"
+            className="xmimo-studio-role-provider-filter"
+            onSelect={setProviderFilter}
+          />
+          <Input
+            className="xmimo-studio-role-search"
+            type="search"
+            icon={<RiSearchLine size={15} aria-hidden="true" />}
+            aria-label={t('studio.roles.search')}
+            placeholder={t('studio.roles.search')}
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+          />
         </div>
         <Button type="button" variant="primary" size="sm" onClick={openNew}>
           <RiAddLine size={15} aria-hidden="true" />
@@ -681,13 +743,14 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
         </Modal>
       ) : null}
 
-      {roles.length === 0 ? (
-        <p className="xmimo-studio-empty-page">{t('studio.roles.empty')}</p>
+      {visibleRoles.length === 0 ? (
+        <p className="xmimo-studio-empty-page">{t(roles.length ? 'studio.roles.noMatches' : 'studio.roles.empty')}</p>
       ) : (
         <div className="xmimo-studio-role-grid">
-          {roles.map(role => {
-            const avail = resolveStudioProviderAvailability(role.provider, keyStatuses, mossEnabled)
-            const voiceLabel = resolveStudioRoleVoiceLabel(role, voiceIdLibrary)
+          {visibleRoles.map(({ role, providerName, voiceLabel }) => {
+            const avail = resolveStudioRoleAvailability(role, keyStatuses, mossEnabled)
+            const enabled = role.enabled !== false
+            const toggleLabel = t(enabled ? 'studio.roles.disable' : 'studio.roles.enable')
             const matchedDesignPreset = role.provider === 'xiaomi' && role.model === 'mimo-v2.5-tts-voicedesign'
               ? findVoiceDesignPresetByPrompt(role.voiceDesignPrompt)
               : undefined
@@ -702,7 +765,8 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
               <div
                 key={role.id}
                 className="xmimo-studio-role-card"
-                data-disabled={!avail.available ? 'true' : undefined}
+                data-disabled={enabled && !avail.available ? 'true' : undefined}
+                data-inactive={!enabled ? 'true' : undefined}
                 style={{ '--role-color': role.color } as CSSProperties}
               >
                 <VoiceAvatar
@@ -722,6 +786,7 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
                         size="sm"
                         className="xmimo-studio-icon-btn"
                         disabled={!avail.available}
+                        aria-label={t('studio.roles.testListen')}
                         title={!avail.available ? t(avail.reasonKey ?? 'studio.roles.apiKeyMissing') : t('studio.roles.testListen')}
                         onClick={() => onSampleRole(role)}
                       >
@@ -751,17 +816,29 @@ export function StudioRolesTab({ t, roles, keyStatuses, mossEnabled, settings, o
                     </div>
                   </div>
                   <div className="xmimo-studio-role-meta">
-                    <span>{PROVIDER_DISPLAY[role.provider] ?? role.provider}</span>
+                    <span>{providerName}</span>
                     <span className="xmimo-studio-role-voice" title={role.voice || role.model}>{voiceLabel}</span>
                     <span>{role.voiceRate.toFixed(1)}×</span>
-                    {!avail.available ? (
+                    {!enabled ? <span className="xmimo-studio-role-status">{t('studio.roles.disabled')}</span> : !avail.available ? (
                       <span className="xmimo-studio-key-warn" title={t('studio.roles.apiKeyMissingHint')}>
                         <RiKey2Line size={12} aria-hidden="true" />
                         <span>{t(avail.reasonKey ?? 'studio.roles.apiKeyMissing')}</span>
                       </span>
                     ) : null}
                   </div>
-                  {role.speechInstruction ? <small className="xmimo-split-bar-desc xmimo-studio-role-desc" title={role.speechInstruction}>{role.speechInstruction}</small> : null}
+                  <div className="xmimo-studio-role-footer">
+                    {role.speechInstruction ? <small className="xmimo-split-bar-desc xmimo-studio-role-desc" title={role.speechInstruction}>{role.speechInstruction}</small> : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      aria-label={`${toggleLabel} ${role.name}`}
+                      disabled={changingRoleIds.has(role.id)}
+                      onClick={() => { void toggleRole(role) }}
+                    >
+                      {toggleLabel}
+                    </Button>
+                  </div>
                 </div>
               </div>
             )

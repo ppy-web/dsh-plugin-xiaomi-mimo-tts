@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { StudioLine, StudioRoleProvider, StudioScript } from '../../shared.js'
+import { STUDIO_MAX_SCRIPT_TITLE_LENGTH } from '../../types/studio.js'
 
 export type StudioTabId = 'scripts' | 'roles' | 'tasks'
 
@@ -43,6 +44,35 @@ export interface StudioWorkspaceState {
 }
 
 const STORAGE_KEY = 'dsh-xiaomi-tts:studio-workspace-v1'
+const COPY_TITLE_SUFFIX = /(?: -副本| - Copy )([1-9]\d*)$/u
+
+function fitScriptTitle(title: string, suffixLength: number): string {
+  return title.slice(0, STUDIO_MAX_SCRIPT_TITLE_LENGTH - suffixLength).replace(/[\uD800-\uDBFF]$/u, '').trimEnd()
+}
+
+export function studioScriptCopyTitle(title: string, existingTitles: readonly string[], suffixTemplate: string): string {
+  const base = title.replace(COPY_TITLE_SUFFIX, '').trimEnd()
+  let number = 0
+  for (const existing of [title, ...existingTitles]) {
+    const match = COPY_TITLE_SUFFIX.exec(existing)
+    if (!match || existing.slice(0, match.index) !== fitScriptTitle(base, match[0].length)) continue
+    const index = Number(match[1])
+    if (Number.isSafeInteger(index + 1)) number = Math.max(number, index)
+  }
+  const suffix = suffixTemplate.replace('{n}', String(number + 1))
+  return fitScriptTitle(base, suffix.length) + suffix
+}
+
+export function studioScriptHasEdits(draft: StudioScriptDraft, saved: StudioScript): boolean {
+  if (!draft.dirty) return false
+  if (draft.editorMode === 'text' && draft.textDirty) return true
+  if (draft.title !== saved.title || draft.description !== (saved.description ?? '')) return true
+  return draft.lines.length !== saved.lines.length || draft.lines.some((line, index) => {
+    const original = saved.lines[index]!
+    return line.id !== original.id || line.roleId !== original.roleId || line.text !== original.text
+      || line.speechInstruction !== original.speechInstruction || line.pauseAfterMs !== original.pauseAfterMs
+  })
+}
 
 function createInitialScriptDraft(): StudioScriptDraft {
   return {

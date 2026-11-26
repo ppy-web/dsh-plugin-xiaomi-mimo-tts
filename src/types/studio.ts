@@ -4,6 +4,7 @@ import type { TtsProvider } from './providers.js'
 import { battleThroughHeavensRoles } from '../studio-presets/battle-through-heavens.js'
 
 export const STUDIO_MAX_LINES_PER_SCRIPT = 300
+export const STUDIO_MAX_SCRIPT_TITLE_LENGTH = 80
 export const STUDIO_MAX_LINE_CHARACTERS = 500
 export const STUDIO_MAX_PAUSE_MS = 5000
 export const STUDIO_DEFAULT_PAUSE_MS = 400
@@ -37,6 +38,8 @@ export interface StudioRole {
   speechInstruction?: string
   voiceRate: number
   builtin?: boolean
+  /** Roles saved without an explicit status are enabled. */
+  enabled?: boolean
   createdAt: number
   updatedAt: number
 }

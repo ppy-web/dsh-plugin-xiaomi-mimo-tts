@@ -25,7 +25,7 @@ export function registerStudioTools(
 
   register({
     name: 'studio_inspect',
-    description: 'Inspect configured speech providers, available voices, existing Recording Studio roles, scripts, background tasks, and disk usage. Call this before creating roles or scripts.',
+    description: 'Inspect configured speech providers, available voices, existing Recording Studio roles, scripts, background tasks, and disk usage. Call this before creating roles or scripts. Use roles with enabled set to true or omitted when casting new lines.',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     output: {
       schema: { type: 'object', additionalProperties: true },

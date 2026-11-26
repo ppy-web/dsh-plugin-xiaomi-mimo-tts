@@ -269,6 +269,7 @@ export interface SpeechStudioService {
   snapshot(): Promise<StudioSnapshot>
   getDirectorRequest(requestId: string): Promise<StudioDirectorReceipt>
   saveRole(input: StudioRoleInput): Promise<StudioRole>
+  setRoleEnabled(roleId: string, enabled: boolean): Promise<StudioRole>
   deleteRole(roleId: string): Promise<void>
   saveScript(input: StudioScriptInput): Promise<StudioScript>
   importScript(input: { id?: string; title: string; description?: string; text: string; defaultNarratorName?: string }): Promise<{ script: StudioScript; createdRoles: StudioRole[] }>

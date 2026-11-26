@@ -12,7 +12,7 @@ import {
   TTS_STUDIO_STATE_ROUTE,
   TTS_STUDIO_TASKS_ROUTE,
 } from '../constants.js'
-import type { StudioLineInput, StudioRoleInput } from '../host-api.js'
+import type { StudioLineInput, StudioRole, StudioRoleInput } from '../host-api.js'
 import { StudioScriptParseError } from '../text/studio-script-parser.js'
 import { isJsonContentType, json, readJsonBody, sameOriginRequest } from './http.js'
 import { TtsProviderError } from './provider-error.js'
@@ -158,7 +158,7 @@ export function registerStudioRoutes(ctx: Context): void {
     path: TTS_STUDIO_ROLES_ROUTE,
     async handler(req, res) {
       if (!sameOriginRequest(req, true)) { json(res, 403, { error: 'cross-origin-denied' }); return }
-      if (!methodAllowed(req, res, ['POST', 'DELETE'])) return
+      if (!methodAllowed(req, res, ['POST', 'PATCH', 'DELETE'])) return
       try {
         if (req.method === 'DELETE') {
           const id = new URL(req.url ?? '/', 'http://localhost').searchParams.get('id')?.trim() ?? ''
@@ -169,7 +169,16 @@ export function registerStudioRoutes(ctx: Context): void {
         }
         if (!isJsonContentType(req)) { json(res, 415, { error: 'json-required' }); return }
         const body = await readStudioBody(req)
-        const role = await studio.saveRole(body as unknown as StudioRoleInput)
+        let role: StudioRole
+        if (req.method === 'PATCH') {
+          const { id, enabled } = body
+          if (typeof id !== 'string' || typeof enabled !== 'boolean') {
+            throw new TtsProviderError('invalid-request', 'Expected a role ID and enabled status.', 400)
+          }
+          role = await studio.setRoleEnabled(id, enabled)
+        } else {
+          role = await studio.saveRole(body as unknown as StudioRoleInput)
+        }
         json(res, 200, { role, state: await studio.snapshot() })
       } catch (error) {
         sendError(res, error)

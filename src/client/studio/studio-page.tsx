@@ -252,6 +252,7 @@ export function StudioPage({
           onToggleRehearseAll={handleToggleRehearseAll}
           onTaskStarted={id => { setFocusedTaskId(id); setTab('tasks') }}
           onConfigureProvider={provider => { stopRehearsal(); onConfigureProvider(provider) }}
+          onOpenRoles={() => setTab('roles')}
           onDeleteError={showDeleteError}
         /> : tab === 'roles' ? <StudioRolesTab
           t={t}
@@ -260,7 +261,7 @@ export function StudioPage({
           mossEnabled={savedMossEnabled}
           settings={settings}
           onSampleRole={handleSampleRole}
-          onDeleteError={showDeleteError}
+          onError={showDeleteError}
         /> : <StudioTasksTab
           t={t}
           tasks={studio.tasks}

@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import { TTS_PROVIDERS } from '../../types/providers.js'
 import type { TtsProvider } from '../../types/providers.js'
-import type { StudioRoleProvider } from '../../types/studio.js'
+import type { StudioRole, StudioRoleProvider } from '../../types/studio.js'
 import type { ApiKeyStatus } from '../settings/api-key-state.js'
 import { apiKeyStatusStore } from '../settings/api-key-status-store.js'
 import { externalEngine } from '../engine-state.js'
@@ -13,6 +13,11 @@ export interface StudioProviderAvailability {
   available: boolean
   reasonKey: 'studio.roles.apiKeyMissing' | 'studio.roles.apiKeyUnrecognized' | 'studio.roles.keyStatusLoading'
     | 'studio.roles.keyStatusUnavailable' | 'studio.roles.mossDisabled' | 'studio.roles.externalUnavailable' | null
+}
+
+export interface StudioRoleAvailability {
+  available: boolean
+  reasonKey: StudioProviderAvailability['reasonKey'] | 'studio.roles.disabled'
 }
 
 function useSingleKeyStatus(active: boolean, provider: TtsProvider): ApiKeyStatus {
@@ -63,4 +68,14 @@ export function resolveStudioProviderAvailability(
     return { available: true, reasonKey: null }
   }
   return { available: false, reasonKey: 'studio.roles.apiKeyMissing' }
+}
+
+export function resolveStudioRoleAvailability(
+  role: StudioRole,
+  keyStatuses: StudioProviderKeyMap,
+  mossEnabled: boolean,
+): StudioRoleAvailability {
+  return role.enabled === false
+    ? { available: false, reasonKey: 'studio.roles.disabled' }
+    : resolveStudioProviderAvailability(role.provider, keyStatuses, mossEnabled)
 }

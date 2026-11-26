@@ -151,12 +151,9 @@ test('StudioModule renders recent archive cards without a section heading and ma
   }
 })
 
-test('StudioScriptsTab renders an enabled control for each built-in example script', () => {
+function renderScriptStart(scripts) {
   const roles = createBuiltinStudioRoles(1_760_000_000_000)
-  const scripts = createBuiltinStudioScripts(1_760_000_000_000)
-  assert.ok(scripts.length > 0)
-
-  const html = renderToStaticMarkup(createElement(StudioScriptsTab, {
+  return renderToStaticMarkup(createElement(StudioScriptsTab, {
     t: key => key,
     roles,
     scripts,
@@ -170,12 +167,32 @@ test('StudioScriptsTab renders an enabled control for each built-in example scri
     onConfigureProvider: () => {},
     onDeleteError: () => {},
   }))
+}
 
+test('StudioScriptsTab opens built-in examples from the initial script cards', () => {
+  const scripts = createBuiltinStudioScripts(1_760_000_000_000)
+  const html = renderScriptStart(scripts)
   const buttons = Array.from(html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g))
-  for (const script of scripts) {
+  for (const script of scripts.slice(0, 6)) {
     const title = renderToStaticMarkup(script.title)
     assert.ok(buttons.some(([, attributes, content]) =>
       !/\sdisabled(?:=|\s|$)/.test(attributes) && content.includes(title),
     ), `no enabled control for example script: ${script.title}`)
   }
+})
+
+test('StudioScriptsTab shows up to six recent user scripts ordered by the latest save', () => {
+  const recent = Array.from({ length: 8 }, (_, index) => ({
+    id: `user-script-${index}`,
+    title: `Personal script ${index}`,
+    lines: [],
+    createdAt: 1_750_000_000_000 - index,
+    updatedAt: 1_750_000_000_000 + index,
+  }))
+  const scripts = [...createBuiltinStudioScripts(1_760_000_000_000), ...recent]
+  const html = renderScriptStart(scripts)
+  const titles = Array.from(html.matchAll(/<button\b[^>]*>[\s\S]*?<\/button>/g), ([button]) =>
+    scripts.find(script => button.includes(script.title))?.title,
+  ).filter(Boolean)
+  assert.deepEqual(titles, recent.slice(-6).reverse().map(script => script.title))
 })

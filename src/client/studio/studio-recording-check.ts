@@ -1,13 +1,13 @@
 import { findMatchingStudioRole, parseStudioScriptLines } from '../../text/studio-script-parser.js'
 import type { StudioLine, StudioRole } from '../../types/studio.js'
-import { resolveStudioProviderAvailability } from './use-studio-provider-statuses.js'
-import type { StudioProviderAvailability, StudioProviderKeyMap } from './use-studio-provider-statuses.js'
+import { resolveStudioRoleAvailability } from './use-studio-provider-statuses.js'
+import type { StudioRoleAvailability, StudioProviderKeyMap } from './use-studio-provider-statuses.js'
 
 export interface StudioRecordingIssue {
   id: string
   role?: StudioRole
   firstLine: number
-  reason: NonNullable<StudioProviderAvailability['reasonKey']> | 'studio.error.missingRole'
+  reason: NonNullable<StudioRoleAvailability['reasonKey']> | 'studio.error.missingRole'
 }
 
 type RecordingSource = { lines: readonly StudioLine[] } | { rawText: string; narratorName: string }
@@ -21,7 +21,7 @@ export function checkStudioRecording(
   const issues = new Map<string, StudioRecordingIssue>()
   const checkRole = (role: StudioRole, firstLine: number): void => {
     if (issues.has(role.id)) return
-    const availability = resolveStudioProviderAvailability(role.provider, keyStatuses, mossEnabled)
+    const availability = resolveStudioRoleAvailability(role, keyStatuses, mossEnabled)
     if (!availability.available && availability.reasonKey) {
       issues.set(role.id, { id: role.id, role, firstLine, reason: availability.reasonKey })
     }

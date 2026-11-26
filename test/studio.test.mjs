@@ -52,7 +52,7 @@ const {
   resolveDefaultWorkspaceId,
   STUDIO_DIRECTOR_DRAFT_INPUT,
 } = await loadClientModule('src/client/studio/launch-director-session.ts')
-const { studioScriptKey, studioWorkspaceStore } = await loadClientModule('src/client/studio/studio-workspace-store.ts')
+const { studioScriptCopyTitle, studioScriptHasEdits, studioScriptKey, studioWorkspaceStore } = await loadClientModule('src/client/studio/studio-workspace-store.ts')
 const {
   buildDoubaoClonedVoiceChoices,
   buildDoubaoStandardCustomVoiceChoices,
@@ -159,6 +159,46 @@ test('Studio import preserves cast assignments and rejects overflow without repl
     assert.equal(current.roles.some(item => item.name === 'New speaker'), false)
     await assert.rejects(studio.deleteRole(role.id), { code: 'studio-role-in-use' })
     assert.equal((await studio.startTask({ scriptId: script.id, autoStart: false })).totalLines, 4)
+  } finally {
+    await studio.dispose()
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('Studio persists role status across edits and restarts while existing tasks can resume', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-role-status-'))
+  const speech = {
+    async synthesize(req) {
+      return { data: makeSineWav(24000, 120), text: req.text, provider: 'xiaomi', format: 'wav', contentType: 'audio/wav', durationMs: 120 }
+    },
+  }
+  const openStudio = () => new HostSpeechStudioService(speech, () => resolveTtsSettings({}), new StudioDiskStore(dir))
+  let studio = openStudio()
+  try {
+    const role = await studio.saveRole({ name: 'Narrator', provider: 'xiaomi', voice: '冰糖' })
+    const script = await studio.saveScript({ title: 'Episode', lines: [{ roleId: role.id, text: 'An opening line.' }] })
+    const task = await studio.startTask({ scriptId: script.id, autoStart: false })
+
+    await studio.setRoleEnabled(role.id, false)
+    await studio.saveRole({ id: role.id, name: role.name, provider: role.provider, voice: '白桦' })
+    await studio.dispose()
+    studio = openStudio()
+
+    const snapshot = await studio.snapshot()
+    const storedRole = snapshot.roles.find(item => item.id === role.id)
+    assert.equal(storedRole.enabled, false)
+    const storedScript = snapshot.scripts.find(item => item.id === script.id)
+    assert.equal(storedScript.lines[0].roleId, role.id)
+    assert.equal(checkStudioRecording({ lines: storedScript.lines }, snapshot.roles, {}, false).issues[0]?.reason, 'studio.roles.disabled')
+    assert.equal(inspectDirectorPromptRoles(snapshot.roles).all.some(item => item.role.id === role.id), false)
+    await assert.rejects(studio.startTask({ scriptId: script.id, autoStart: false }), { code: 'studio-role-disabled' })
+
+    await studio.resumeTask(task.id)
+    const completed = await waitFor(async () => (await studio.snapshot()).tasks.find(item => item.id === task.id && item.status === 'completed'))
+    assert.equal(completed.lines[0].voice, '冰糖')
+    await studio.setRoleEnabled(role.id, true)
+    const next = await studio.startTask({ scriptId: script.id, autoStart: false })
+    assert.equal(next.lines[0].voice, '白桦')
   } finally {
     await studio.dispose()
     await rm(dir, { recursive: true, force: true })
@@ -633,10 +673,28 @@ test('Studio HTTP routes enforce same-origin, serve Range audio, and Open API en
     })
     assert.equal(importedRes.status, 200)
     const importedBody = await importedRes.json()
+    const roleId = importedBody.script.lines[0].roleId
+    const studioHeaders = { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' }
+    const setRoleEnabled = (enabled, headers = studioHeaders) => fetch(base + TTS_STUDIO_ROLES_ROUTE, {
+      method: 'PATCH', headers, body: JSON.stringify({ id: roleId, enabled }),
+    })
+    assert.equal((await setRoleEnabled(false, { ...studioHeaders, origin: 'https://evil.example' })).status, 403)
+    assert.equal((await setRoleEnabled('false')).status, 400)
+    const disabled = await setRoleEnabled(false)
+    assert.equal(disabled.status, 200)
+    assert.equal((await disabled.json()).state.roles.find(role => role.id === roleId).enabled, false)
+
+    const blockedPreview = await fetch(base + TTS_STUDIO_PREVIEW_ROUTE, {
+      method: 'POST', headers: studioHeaders, body: JSON.stringify({ roleId, text: '试听。' }),
+    })
+    assert.equal(blockedPreview.status, 409)
+    assert.equal((await blockedPreview.json()).error, 'studio-role-disabled')
+    assert.equal((await setRoleEnabled(true)).status, 200)
+
     const sample = await fetch(base + TTS_STUDIO_PREVIEW_ROUTE, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
-      body: JSON.stringify({ roleId: importedBody.script.lines[0].roleId, text: '试听。' }),
+      headers: studioHeaders,
+      body: JSON.stringify({ roleId, text: '试听。' }),
     })
     assert.equal(sample.status, 200)
     assert.ok(decodeWavMono16(Buffer.from(await sample.arrayBuffer())).samples.length > 0)
@@ -1253,8 +1311,10 @@ test('Studio restores separate drafts after switching scripts and keeps unapplie
     assert.equal(studioWorkspaceStore.getSnapshot().script.selectedId, script.id)
     studioWorkspaceStore.syncScriptFromHost({ ...script, updatedAt: 2 }, '旁白：已保存的积木', { keepTextDraft: true })
     studioWorkspaceStore.endScriptOperation()
+    assert.equal(studioScriptHasEdits(studioWorkspaceStore.getSnapshot().script, script), false)
     studioWorkspaceStore.setScriptMode('text', '旁白：已保存的积木')
     assert.equal(studioWorkspaceStore.getSnapshot().script.rawText, '旁白：保留纯文本')
+    assert.equal(studioScriptHasEdits(studioWorkspaceStore.getSnapshot().script, script), true)
 
     const { studioWorkspaceStore: reloaded } = await loadClientModule('src/client/studio/studio-workspace-store.ts?restore-multiple-drafts')
     reloaded.openScriptDraft(newDraftKey)
@@ -1266,6 +1326,18 @@ test('Studio restores separate drafts after switching scripts and keeps unapplie
     if (previous === undefined) delete globalThis.sessionStorage
     else globalThis.sessionStorage = previous
   }
+})
+
+test('Studio copy titles advance existing numbers and fit the saved title limit', () => {
+  const suffix = ' -副本{n}'
+  const copies = ['广播剧 -副本1', '广播剧 - Copy 4', '其他剧本 -副本8']
+  assert.equal(studioScriptCopyTitle('广播剧 -副本1', copies, suffix), '广播剧 -副本5')
+
+  const prefix = '山'.repeat(74)
+  const longTitle = `${prefix}🌙夜色`
+  const copy = studioScriptCopyTitle(longTitle, [], suffix)
+  assert.equal(copy, `${prefix} -副本1`)
+  assert.equal(studioScriptCopyTitle(longTitle, [copy], suffix), `${prefix} -副本2`)
 })
 
 test('Studio checks recording readiness for the same assigned roles in either script mode', () => {

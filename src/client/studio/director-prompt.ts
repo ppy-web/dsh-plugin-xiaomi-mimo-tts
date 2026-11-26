@@ -123,7 +123,7 @@ export function inspectDirectorPromptRoles(
     nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1)
   }
 
-  const all: DirectorPromptRoleInfo[] = roles.map(role => {
+  const all: DirectorPromptRoleInfo[] = roles.filter(role => role.enabled !== false).map(role => {
     const duplicate = (nameCounts.get(normalizeStudioRoleName(role.name)) ?? 0) > 1
     const speakerToken = duplicate ? `${role.name}{${role.id}}` : role.name
     const available = knownAvailability
@@ -216,8 +216,8 @@ function buildCastSection(
     return {
       lines: [
         locale === 'en'
-          ? '- No preset roles yet: feel free to invent concise character names (1–32 chars, e.g. Narrator, Lead, Sidekick). Studio will auto-create roles when I paste the script.'
-          : '- 当前录音棚暂无预设角色：你可以直接拟定 1–32 字的角色名（如 旁白、主角、配角），粘贴进录音棚「纯文本互转」时会自动建角。',
+          ? '- Invent concise character names of 1–32 characters, such as Narrator, Lead, or Sidekick. Studio creates the roles when I paste the script.'
+          : '- 请拟定 1–32 字的角色名，例如旁白、主角或配角。粘贴进录音棚「纯文本互转」时会自动建角。',
       ],
       exampleRoles: [],
     }

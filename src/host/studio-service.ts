@@ -8,6 +8,7 @@ import {
   STUDIO_DEFAULT_PAUSE_MS,
   STUDIO_MAX_LINE_CHARACTERS,
   STUDIO_MAX_LINES_PER_SCRIPT,
+  STUDIO_MAX_SCRIPT_TITLE_LENGTH,
   STUDIO_MAX_ROLES,
   STUDIO_MAX_SCRIPTS,
   STUDIO_MAX_TASKS,
@@ -80,6 +81,7 @@ function validateRoleProvider(provider: unknown): StudioRoleProvider {
 }
 
 function studioTaskLine(line: StudioLine, role: StudioRole): StudioTaskLine {
+  if (role.enabled === false) throw new TtsProviderError('studio-role-disabled', `Enable or replace the Studio role “${role.name}”.`, 409)
   const instruction = line.speechInstruction?.trim() || role.speechInstruction?.trim()
   return {
     lineId: line.id,
@@ -407,6 +409,7 @@ export class HostSpeechStudioService {
       ...(voiceDesignPrompt ? { voiceDesignPrompt } : {}),
       ...(speechInstruction ? { speechInstruction } : {}),
       voiceRate,
+      ...(existing?.enabled !== undefined ? { enabled: existing.enabled } : {}),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     }
@@ -421,6 +424,18 @@ export class HostSpeechStudioService {
       }
       const role = this.normalizeRoleInput({ ...input, id }, existing)
       await this.commit({ roles: existing ? this.roles.map(item => item.id === id ? role : item) : [...this.roles, role] })
+      return structuredClone(role)
+    })
+  }
+
+  async setRoleEnabled(roleId: string, enabled: boolean): Promise<StudioRole> {
+    return this.mutate(async () => {
+      const id = cleanId(roleId)
+      const existing = this.roles.find(role => role.id === id)
+      if (!existing) throw new TtsProviderError('studio-role-not-found', 'Studio role not found.', 404)
+      if ((existing.enabled !== false) === enabled) return structuredClone(existing)
+      const role = { ...existing, enabled, updatedAt: Date.now() }
+      await this.commit({ roles: this.roles.map(item => item.id === id ? role : item) })
       return structuredClone(role)
     })
   }
@@ -467,7 +482,7 @@ export class HostSpeechStudioService {
   }
 
   private prepareScript(input: StudioScriptInput, roles = this.roles): { script: StudioScript; scripts: StudioScript[] } {
-    const title = typeof input?.title === 'string' ? input.title.trim().slice(0, 80) : ''
+    const title = typeof input?.title === 'string' ? input.title.trim().slice(0, STUDIO_MAX_SCRIPT_TITLE_LENGTH) : ''
     if (!title) throw new TtsProviderError('studio-title-required', 'Enter a script title.', 400)
     const id = cleanId(input.id)
     const existing = this.scripts.find(script => script.id === id)
