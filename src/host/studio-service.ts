@@ -36,11 +36,11 @@ import type {
   TtsProvider,
 } from '../shared.js'
 import { materializeStudioScript } from '../text/studio-script-parser.js'
-import type { SpeechSynthesisService } from '../host-api.js'
+import type { SpeechSynthesisService, StudioDirectorReceipt } from '../host-api.js'
 import { synthesizeMoss } from './moss.js'
 import { TtsProviderError } from './provider-error.js'
 import { StudioDiskStore, studioLineCacheKey } from './studio-store.js'
-import type { StudioRecords } from './studio-store.js'
+import type { StudioDirectorRecord, StudioRecords } from './studio-store.js'
 import { decodeWavMono16, stitchWavSegments } from './wav-stitcher.js'
 
 export interface StudioStartTaskInput {
@@ -114,6 +114,7 @@ export class HostSpeechStudioService {
   private roles: StudioRole[] = []
   private scripts: StudioScript[] = []
   private tasks: StudioTask[] = []
+  private directorRequests: StudioDirectorRecord[] = []
   private storageBytes = 0
   private readonly instanceId = randomUUID()
   private revision = 1
@@ -164,6 +165,7 @@ export class HostSpeechStudioService {
       this.roles = loaded.roles
       this.scripts = loaded.scripts
       this.tasks = loaded.tasks
+      this.directorRequests = loaded.directorRequests
       this.storageBytes = loaded.storageBytes
       this.releaseStore = release
     } catch (error) {
@@ -187,12 +189,19 @@ export class HostSpeechStudioService {
   }
 
   private async commit(changes: Partial<StudioRecords>): Promise<void> {
-    const next = { roles: this.roles, scripts: this.scripts, tasks: this.tasks, ...changes }
+    const next = {
+      roles: this.roles,
+      scripts: this.scripts,
+      tasks: this.tasks,
+      directorRequests: this.directorRequests,
+      ...changes,
+    }
     try { await this.store.saveManifest(next) }
     catch { throw new TtsProviderError('studio-storage-write-failed', 'Studio could not save its state.', 503) }
     this.roles = next.roles
     this.scripts = next.scripts
     this.tasks = next.tasks
+    this.directorRequests = next.directorRequests
     this.emit()
   }
 
@@ -219,6 +228,81 @@ export class HostSpeechStudioService {
       maxStorageBytes: this.store.maxStorageBytes,
       storageRoot: this.store.root,
     })
+  }
+
+  private findDirectorRequest(requestId: string): StudioDirectorRecord | undefined {
+    if (typeof requestId !== 'string' || !SAFE_ID_PATTERN.test(requestId)) {
+      throw new TtsProviderError('invalid-studio-director-request-id', undefined, 400)
+    }
+    return this.directorRequests.find(request => request.requestId === requestId)
+  }
+
+  async getDirectorRequest(requestId: string): Promise<StudioDirectorReceipt> {
+    await this.ensureLoaded()
+    const request = this.findDirectorRequest(requestId)
+    if (!request) throw new TtsProviderError('studio-director-request-not-found', undefined, 404)
+    return {
+      requestId: request.requestId,
+      status: request.status,
+      scriptIds: [...request.scriptIds],
+      taskIds: request.recordings.map(recording => recording.taskId),
+    }
+  }
+
+  async beginDirectorRequest(requestId: string, fingerprint: string, canStart: boolean): Promise<boolean> {
+    return this.mutate(async () => {
+      const existing = this.findDirectorRequest(requestId)
+      if (existing) {
+        if (existing.fingerprint !== fingerprint) throw new TtsProviderError('studio-director-request-conflict', undefined, 409)
+        return false
+      }
+      if (!canStart) throw new TtsProviderError('studio-director-session-busy', undefined, 409)
+      await this.commit({ directorRequests: [...this.directorRequests, {
+        requestId,
+        fingerprint,
+        status: 'generating',
+        scriptIds: [],
+        recordings: [],
+      }] })
+      return true
+    })
+  }
+
+  async finishDirectorRequest(requestId: string, outcome: 'completed' | 'failed' | 'interrupted'): Promise<void> {
+    await this.mutate(async () => {
+      const request = this.findDirectorRequest(requestId)
+      if (request?.status !== 'generating') return
+      const allSubmitted = request.recordings.length > 0 && request.recordings.length === request.scriptIds.length
+      const status = outcome === 'completed' ? (allSubmitted ? 'submitted' : 'incomplete') : outcome
+      await this.commit(this.directorRequestChange({ ...request, status }))
+    })
+  }
+
+  private activeDirectorRequest(requestId: string | undefined): StudioDirectorRecord | undefined {
+    if (requestId === undefined) return undefined
+    const request = this.findDirectorRequest(requestId)
+    if (request?.status !== 'generating') throw new TtsProviderError('studio-director-request-inactive', undefined, 409)
+    return request
+  }
+
+  private directorRequestChange(request: StudioDirectorRecord): Pick<StudioRecords, 'directorRequests'> {
+    return { directorRequests: this.directorRequests.map(item => item.requestId === request.requestId ? request : item) }
+  }
+
+  private writableDirectorScript(requestId: string | undefined, id?: string): StudioDirectorRecord | undefined {
+    const request = this.activeDirectorRequest(requestId)
+    const scriptId = typeof id === 'string' ? id.trim() : undefined
+    if (!request || !scriptId) return request
+    const belongsToAnotherRequest = !request.scriptIds.includes(scriptId) && this.scripts.some(script => script.id === scriptId)
+    if (belongsToAnotherRequest || request.recordings.some(recording => recording.scriptId === scriptId)) {
+      throw new TtsProviderError('studio-director-script-conflict', undefined, 409)
+    }
+    return request
+  }
+
+  private directorScriptChange(request: StudioDirectorRecord | undefined, scriptId: string): Partial<StudioRecords> {
+    if (!request || request.scriptIds.includes(scriptId)) return {}
+    return this.directorRequestChange({ ...request, scriptIds: [...request.scriptIds, scriptId] })
   }
 
   private defaultRoleTemplate(name: string, color: string): StudioRole {
@@ -406,16 +490,18 @@ export class HostSpeechStudioService {
     return { script, scripts: existing ? this.scripts.map(item => item.id === id ? script : item) : [script, ...this.scripts] }
   }
 
-  async saveScript(input: StudioScriptInput): Promise<StudioScript> {
+  async saveScript(input: StudioScriptInput, directorRequestId?: string): Promise<StudioScript> {
     return this.mutate(async () => {
+      const request = this.writableDirectorScript(directorRequestId, input?.id)
       const { script, scripts } = this.prepareScript(input)
-      await this.commit({ scripts })
+      await this.commit({ scripts, ...this.directorScriptChange(request, script.id) })
       return structuredClone(script)
     })
   }
 
-  async importScript(input: StudioImportScriptInput): Promise<{ script: StudioScript; createdRoles: StudioRole[] }> {
+  async importScript(input: StudioImportScriptInput, directorRequestId?: string): Promise<{ script: StudioScript; createdRoles: StudioRole[] }> {
     return this.mutate(async () => {
+      const request = this.writableDirectorScript(directorRequestId, input.id)
       const rawText = typeof input.text === 'string' ? input.text : ''
       const { lines, createdRoles } = materializeStudioScript(
         rawText,
@@ -434,7 +520,7 @@ export class HostSpeechStudioService {
         ...(input.description ? { description: input.description } : {}),
         lines,
       }, roles)
-      await this.commit({ roles, scripts })
+      await this.commit({ roles, scripts, ...this.directorScriptChange(request, script.id) })
       return structuredClone({ script, createdRoles })
     })
   }
@@ -447,8 +533,16 @@ export class HostSpeechStudioService {
     })
   }
 
-  async startTask(input: StudioStartTaskInput): Promise<StudioTask> {
+  async startTask(input: StudioStartTaskInput, directorRequestId?: string): Promise<StudioTask> {
     const task = await this.mutate(async () => {
+      const request = this.activeDirectorRequest(directorRequestId)
+      if (request) {
+        if (!input.scriptId || !request.scriptIds.includes(input.scriptId)) {
+          throw new TtsProviderError('studio-director-script-conflict', undefined, 409)
+        }
+        const existing = request.recordings.find(recording => recording.scriptId === input.scriptId)
+        if (existing) return structuredClone(this.findTask(existing.taskId))
+      }
       if (this.tasks.length >= STUDIO_MAX_TASKS) {
         throw new TtsProviderError('studio-task-limit-exceeded', 'Delete old Studio tasks before starting new ones.', 409)
       }
@@ -477,7 +571,13 @@ export class HostSpeechStudioService {
         failedLines: 0,
         lines: taskLines,
       }
-      await this.commit({ tasks: [task, ...this.tasks] })
+      await this.commit({
+        tasks: [task, ...this.tasks],
+        ...(request && script ? this.directorRequestChange({
+          ...request,
+          recordings: [...request.recordings, { scriptId: script.id, taskId: task.id }],
+        }) : {}),
+      })
       return structuredClone(task)
     })
     if (task.status === 'queued') this.kickWorker()

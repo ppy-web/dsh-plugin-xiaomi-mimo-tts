@@ -7,6 +7,7 @@ import { releaseFileLock, staleFileLockOwner } from './file-lock.js'
 import { TtsProviderError } from './provider-error.js'
 import { STUDIO_MAX_STORAGE_BYTES, createBuiltinStudioRoles } from '../types/studio.js'
 import type { StudioRole, StudioScript, StudioTask, StudioTaskLine } from '../types/studio.js'
+import type { StudioDirectorReceipt } from '../host-api.js'
 import { STUDIO_BUILTIN_CATALOG_VERSION, createBuiltinStudioScripts, migrateBuiltinStudioPresets } from '../studio-presets.js'
 
 export const STUDIO_DATA_ROOT = join(SPEECH_DATA_ROOT, 'studio')
@@ -16,11 +17,18 @@ export interface StudioRecords {
   roles: StudioRole[]
   scripts: StudioScript[]
   tasks: StudioTask[]
+  directorRequests: StudioDirectorRecord[]
 }
 
-interface PersistedStudioManifest extends StudioRecords {
+export interface StudioDirectorRecord extends Omit<StudioDirectorReceipt, 'taskIds'> {
+  fingerprint: string
+  recordings: Array<{ scriptId: string; taskId: string }>
+}
+
+interface PersistedStudioManifest extends Omit<StudioRecords, 'directorRequests'> {
   version: 1
   builtinCatalogVersion?: number
+  directorRequests?: StudioDirectorRecord[]
 }
 
 function notFound(error: unknown): boolean {
@@ -169,6 +177,10 @@ export class StudioDiskStore {
       throw new TtsProviderError('studio-store-corrupt', 'Studio manifest is corrupt.', 409)
     }
     const { tasks } = manifest
+    const directorRequests = manifest.directorRequests ?? []
+    if (!Array.isArray(directorRequests)) {
+      throw new TtsProviderError('studio-store-corrupt', 'Studio director requests are corrupt.', 409)
+    }
     const previousCatalogVersion = manifest.builtinCatalogVersion ?? 0
     let dirty = previousCatalogVersion < STUDIO_BUILTIN_CATALOG_VERSION
     const { roles, scripts } = dirty
@@ -192,7 +204,13 @@ export class StudioDiskStore {
       }
     }
 
-    if (dirty) await this.saveManifest({ roles, scripts, tasks })
+    for (const request of directorRequests) {
+      if (request.status === 'generating') {
+        request.status = 'interrupted'
+        dirty = true
+      }
+    }
+    if (dirty) await this.saveManifest({ roles, scripts, tasks, directorRequests })
     for (const task of tasks) {
       if (task.status === 'canceled') {
         await this.deleteTaskFiles(task.id).catch(() => {})
@@ -201,7 +219,7 @@ export class StudioDiskStore {
       }
     }
     const storageBytes = await this.measureStorageBytes()
-    return { roles, scripts, tasks, storageBytes }
+    return { roles, scripts, tasks, directorRequests, storageBytes }
   }
 
   async saveManifest(state: StudioRecords): Promise<void> {
@@ -211,6 +229,7 @@ export class StudioDiskStore {
       roles: state.roles,
       scripts: state.scripts,
       tasks: state.tasks,
+      ...(state.directorRequests.length > 0 ? { directorRequests: state.directorRequests } : {}),
     }
     await writeAtomicJson(this.root, this.manifestPath, payload)
   }

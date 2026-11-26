@@ -256,9 +256,18 @@ export interface SpeechSynthesisService {
   deliver(request: SpeechRequest, adapter: string, context: SpeechDeliveryContext): Promise<SpeechDeliveryResult>
 }
 
+export interface StudioDirectorReceipt {
+  requestId: string
+  /** `submitted` means the director finished and every saved script has a recording task. */
+  status: 'generating' | 'submitted' | 'incomplete' | 'failed' | 'interrupted'
+  scriptIds: string[]
+  taskIds: string[]
+}
+
 export interface SpeechStudioService {
   subscribe(listener: () => void): () => void
   snapshot(): Promise<StudioSnapshot>
+  getDirectorRequest(requestId: string): Promise<StudioDirectorReceipt>
   saveRole(input: StudioRoleInput): Promise<StudioRole>
   deleteRole(roleId: string): Promise<void>
   saveScript(input: StudioScriptInput): Promise<StudioScript>

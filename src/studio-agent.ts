@@ -1,15 +1,22 @@
 import type { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ToolRegistrationOptions } from '@deepseek-ai/dsh-tools'
 import type { StudioLineInput, StudioRoleInput, StudioRoleProvider } from './host-api.js'
 import { STUDIO_MAX_LINE_CHARACTERS, STUDIO_MAX_LINES_PER_SCRIPT } from './shared.js'
 import { findMatchingStudioRole } from './text/studio-script-parser.js'
 import { TtsProviderError } from './host/provider-error.js'
+import type { HostSpeechStudioService } from './host/studio-service.js'
 import type {} from './host/speech-service.js'
 
 export const name = 'studio-agent'
 export const inject = ['speechStudio', 'speechSynthesis', 'tools']
 
-export function registerStudioTools(ctx: Context, options?: ToolRegistrationOptions): () => void {
+export function registerStudioTools(
+  ctx: Context,
+  options?: ToolRegistrationOptions,
+  directorRequestId?: (agent: Agent) => string | undefined,
+): () => void {
+  const studio = ctx.speechStudio as HostSpeechStudioService
   const disposers: Array<() => void> = []
   const register = (tool: Parameters<Context['tools']['register']>[0]): void => {
     const dispose = ctx.tools.register(tool, options)
@@ -128,12 +135,12 @@ export function registerStudioTools(ctx: Context, options?: ToolRegistrationOpti
     async execute(args, exec) {
       exec.signal.throwIfAborted()
       const input = (args ?? {}) as Record<string, unknown>
-      const script = await ctx.speechStudio.saveScript({
+      const script = await studio.saveScript({
         ...(typeof input.id === 'string' ? { id: input.id } : {}),
         title: typeof input.title === 'string' ? input.title : '',
         ...(typeof input.description === 'string' ? { description: input.description } : {}),
         lines: Array.isArray(input.lines) ? input.lines as StudioLineInput[] : [],
-      })
+      }, exec.agent && directorRequestId?.(exec.agent))
       return { script }
     },
   })
@@ -160,13 +167,13 @@ export function registerStudioTools(ctx: Context, options?: ToolRegistrationOpti
     async execute(args, exec) {
       exec.signal.throwIfAborted()
       const input = (args ?? {}) as Record<string, unknown>
-      return ctx.speechStudio.importScript({
+      return studio.importScript({
         ...(typeof input.id === 'string' ? { id: input.id } : {}),
         title: typeof input.title === 'string' ? input.title : '',
         ...(typeof input.description === 'string' ? { description: input.description } : {}),
         text: typeof input.text === 'string' ? input.text : '',
         ...(typeof input.defaultNarratorName === 'string' ? { defaultNarratorName: input.defaultNarratorName } : {}),
-      })
+      }, exec.agent && directorRequestId?.(exec.agent))
     },
   })
 
@@ -195,11 +202,11 @@ export function registerStudioTools(ctx: Context, options?: ToolRegistrationOpti
       const action = typeof input.action === 'string' ? input.action : ''
       const taskId = typeof input.taskId === 'string' ? input.taskId.trim() : ''
       if (action === 'start') {
-        const task = await ctx.speechStudio.startTask({
+        const task = await studio.startTask({
           ...(typeof input.scriptId === 'string' ? { scriptId: input.scriptId } : {}),
           ...(typeof input.title === 'string' ? { title: input.title } : {}),
           ...(typeof input.autoStart === 'boolean' ? { autoStart: input.autoStart } : {}),
-        })
+        }, exec.agent && directorRequestId?.(exec.agent))
         return { task }
       }
       if (action === 'pause') {

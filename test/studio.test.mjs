@@ -689,6 +689,19 @@ test('Studio HTTP routes enforce same-origin, serve Range audio, and Open API en
     const openJson = await openState.json()
     assert.equal(openJson.tasks[0].status, 'completed')
 
+    await studio.beginDirectorRequest('external-request', 'test-fingerprint', true)
+    const receiptUrl = `${base}${TTS_OPEN_STUDIO_ROUTE}?requestId=external-request`
+    assert.equal((await fetch(receiptUrl)).status, 401)
+    const openHeaders = { authorization: 'Bearer secret-studio-token' }
+    const receiptResponse = await fetch(receiptUrl, { headers: openHeaders })
+    assert.equal(receiptResponse.status, 200)
+    assert.deepEqual(await receiptResponse.json(), {
+      request: { requestId: 'external-request', status: 'generating', scriptIds: [], taskIds: [] },
+    })
+    const unknownReceipt = await fetch(`${base}${TTS_OPEN_STUDIO_ROUTE}?requestId=other-request`, { headers: openHeaders })
+    assert.equal(unknownReceipt.status, 404)
+    assert.equal((await unknownReceipt.json()).error, 'studio-director-request-not-found')
+
     const fullScript = await fetch(base + TTS_STUDIO_SCRIPTS_ROUTE, {
       method: 'POST',
       headers: { 'content-type': 'application/json', [TTS_DESKTOP_WRITE_HEADER]: '1' },
@@ -908,6 +921,112 @@ test('studio /director slash command discloses tools per session, steers request
     assert.equal(sessionListeners.size, 0)
     await studio.dispose()
   } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('tracked /director requests associate only their own scripts and recordings and survive retries and restart', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-director-request-'))
+  let syntheses = 0
+  const speech = {
+    engineState: () => ({ provider: 'xiaomi', revision: 1, name: 'xiaomi', ready: true, formats: ['wav'], maxTextLength: 2000, streaming: false }),
+    capabilities: () => ({ provider: 'xiaomi', formats: ['wav'], providers: [] }),
+    async synthesize(req) {
+      syntheses++
+      return { data: makeSineWav(24000, 100), text: req.text, provider: 'xiaomi', format: 'wav', contentType: 'audio/wav' }
+    },
+  }
+  const openStudio = () => new HostSpeechStudioService(speech, () => resolveTtsSettings({}), new StudioDiskStore(dir))
+  let studio = openStudio()
+  const tools = new Map()
+  const listeners = new Map()
+  let command
+  const registerDirector = () => registerStudioDirectorCommand({
+    speechStudio: studio,
+    speechSynthesis: speech,
+    logger: { warn() {} },
+    tools: { register(tool) { tools.set(tool.name, tool) } },
+    commands: { register(value) { command = value } },
+    systemPrompt: { section() {} },
+    on(event, listener) {
+      listeners.set(event, listener)
+      return () => listeners.delete(event)
+    },
+  })
+  let disposeDirector = registerDirector()
+  function makeAgent(id) {
+    const messages = []
+    return { session: { id, snapshotEvents: () => [] }, status: 'idle', messages, steer: message => messages.push(message) }
+  }
+  const agent = makeAgent('chapter')
+  const other = makeAgent('other')
+  const signal = new AbortController().signal
+  const input = '--request-id chapter-one 保存此章节并开始录制'
+  const invoke = (agent, rawInput) => command.handler({ agent, rawInput, signal, attachments: [] })
+  const emit = (agent, type, data) => listeners.get('session/event')(agent.session, { type, data })
+  const run = (name, args, caller = agent) => tools.get(name).execute(args, { agent: caller, signal })
+  try {
+    const receipts = await Promise.all([invoke(agent, input), invoke(other, input)])
+    assert.ok(receipts.every(receipt => receipt.kind === 'success'))
+    assert.equal(agent.messages.length, 1)
+    assert.equal(other.messages.length, 0)
+    assert.deepEqual(await invoke(other, '--request-id chapter-one 改编另一章'), {
+      kind: 'error', text: 'studio-director-request-conflict',
+    })
+
+    emit(agent, 'turn/start', { turn: 1 })
+    emit(agent, 'user/message', agent.messages[0])
+    const { role } = await run('studio_save_role', { name: '配音测试角色', provider: 'xiaomi', voice: '冰糖' })
+    const lines = [{ roleId: role.id, text: '这一句生成第一份成品。' }]
+    const unrelated = await run('studio_save_script', { title: '另一会话的剧本', lines }, other)
+    const first = await run('studio_save_script', { title: '上篇', lines })
+    const second = await run('studio_import_script', { title: '下篇', text: '配音测试角色：这一句生成第二份成品。' })
+    await assert.rejects(run('studio_task_control', { action: 'start', scriptId: unrelated.script.id }), {
+      code: 'studio-director-script-conflict',
+    })
+    const [recording, retried] = await Promise.all([
+      run('studio_task_control', { action: 'start', scriptId: first.script.id }),
+      run('studio_task_control', { action: 'start', scriptId: first.script.id }),
+    ])
+    assert.equal(recording.task.id, retried.task.id)
+    const next = await run('studio_task_control', { action: 'start', scriptId: second.script.id })
+    const expected = {
+      requestId: 'chapter-one', status: 'generating',
+      scriptIds: [first.script.id, second.script.id], taskIds: [recording.task.id, next.task.id],
+    }
+    assert.deepEqual(await studio.getDirectorRequest('chapter-one'), expected)
+    await emit(agent, 'turn/end', { turn: 1, reason: { kind: 'completed' } })
+    expected.status = 'submitted'
+    assert.deepEqual(await studio.getDirectorRequest('chapter-one'), expected)
+    await waitFor(async () => {
+      const { tasks } = await studio.snapshot()
+      return expected.taskIds.every(id => tasks.some(task => task.id === id && task.status === 'completed'))
+    })
+    assert.equal(syntheses, 2)
+
+    const incompleteInput = '--request-id incomplete-chapter 读取下一章'
+    assert.equal((await invoke(agent, incompleteInput)).kind, 'success')
+    emit(agent, 'turn/start', { turn: 2 })
+    emit(agent, 'user/message', agent.messages[1])
+    const draft = await run('studio_save_script', { title: '待配音稿', lines })
+    await emit(agent, 'turn/end', { turn: 2, reason: { kind: 'completed' } })
+    assert.deepEqual(await studio.getDirectorRequest('incomplete-chapter'), {
+      requestId: 'incomplete-chapter', status: 'incomplete', scriptIds: [draft.script.id], taskIds: [],
+    })
+
+    await studio.beginDirectorRequest('interrupted-chapter', 'pending-on-restart', true)
+    disposeDirector()
+    await studio.dispose()
+    studio = openStudio()
+    disposeDirector = registerDirector()
+    assert.deepEqual(await studio.getDirectorRequest('chapter-one'), expected)
+    assert.equal((await studio.getDirectorRequest('interrupted-chapter')).status, 'interrupted')
+    assert.equal((await invoke(other, input)).kind, 'success')
+    assert.equal(other.messages.length, 0)
+    assert.equal(syntheses, 2)
+  } finally {
+    disposeDirector()
+    await studio.dispose()
     await rm(dir, { recursive: true, force: true })
   }
 })

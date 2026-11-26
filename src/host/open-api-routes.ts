@@ -164,7 +164,14 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
       if (!studio) { json(res, 503, { error: 'studio-unavailable' }); return }
       try {
         if (req.method === 'GET') {
-          const taskId = new URL(req.url ?? '/', 'http://localhost').searchParams.get('taskId')?.trim()
+          const params = new URL(req.url ?? '/', 'http://localhost').searchParams
+          const requestId = params.get('requestId')
+          if (requestId !== null) {
+            if (params.has('taskId')) throw new TtsProviderError('invalid-request', undefined, 400)
+            json(res, 200, { request: await studio.getDirectorRequest(requestId) })
+            return
+          }
+          const taskId = params.get('taskId')?.trim()
           const snap = await studio.snapshot()
           if (taskId) {
             const task = snap.tasks.find(item => item.id === taskId)

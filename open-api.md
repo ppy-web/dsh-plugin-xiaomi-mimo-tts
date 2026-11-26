@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | DSH Agent | `synthesize_speech`、`speak`、`speech_mode` | 宿主文件或会话交付适配器 |
 | DSH 宿主插件 | `ctx.speechSynthesis`，类型入口 `dsh-xiaomi-tts/host-api` | Buffer、托管文件或自定义交付渠道 |
+| DSH 插件编排录音棚 | 宿主 `/director --request-id` 和 `ctx.speechStudio.getDirectorRequest()` | 通过任务 ID 读取录音棚成品 WAV |
 | DSH 浏览器插件 | `ctx.xiaomiMimoTts`，类型入口 `dsh-xiaomi-tts/client-api` | 在当前浏览器播放 |
 | 独立程序、手机或硬件 | HTTP 能力查询、导出接口与限时下载 URL | 下载 MP3 / WAV / SILK 文件 |
 
@@ -65,6 +66,27 @@ export async function apply(ctx: Context) {
 适配器的 `check(context)` 在合成前检查渠道前提，`send(audio, context)` 负责会话路由、权限及发送后的临时文件清理。用 `ctx.effect(() => ctx.speechSynthesis.registerDelivery(adapter))` 绑定注销。遵守取消信号，发送失败、部分成功或结果不明时不要自动重发。
 
 Agent 集成还会发出 `speech/delivered` 和 `speech/failed` 事件，载荷包含 `agent`、交付结果或错误码、`automatic`。直接调用 `synthesize()` / `exportAudio()` 不会发出这些会话事件。
+
+## 关联导演请求与录制任务
+
+在专用的空闲 DSH 会话中，通过宿主命令接口提交带 `--request-id` 的导演指令。正文可随命令提交，也可使用宿主命令的附件参数。需要自动录制时，明确要求导演保存剧本并开始录制。
+
+```text
+/director --request-id chapter-42-v1 根据附件保留旁白和对白，编排多角色剧本，保存并开始录制。
+```
+
+`requestId` 由调用方生成，在当前 DSH profile 内唯一，可用 1–80 个 ASCII 字母、数字、下划线或连字符。用同一 ID、相同指令和同样顺序的附件重试，会复用原请求，不再启动一次导演生成。改变素材或指令应使用新 ID，同 ID 内容不同会返回 `studio-director-request-conflict`。
+
+命令回执表示提交成功。通过 `ctx.speechStudio.getDirectorRequest(requestId)` 读取 `StudioDirectorReceipt`，可配合 `ctx.speechStudio.subscribe(listener)` 在状态变更时重新查询。使用 HTTP 的调用方可发送 `GET /plugins/xiaomi-mimo-tts/open-studio?requestId=chapter-42-v1`，携带 `Authorization: Bearer <openApiToken>`，响应形状为 `{ request: StudioDirectorReceipt }`。未知 ID 返回 `404` 和 `studio-director-request-not-found`。
+
+| 回执字段 | 含义 |
+| --- | --- |
+| `requestId` | 提交时使用的 ID。 |
+| `scriptIds` | 此次导演回合成功保存的剧本，按保存顺序排列。 |
+| `taskIds` | 此次导演回合成功创建的录制任务，按提交顺序排列。每个剧本在同一请求中只提交一个录制任务。 |
+| `status` | `generating` 表示正在生成。`submitted` 表示导演回合结束且每份剧本都已创建录制任务。`incomplete` 表示回合结束时仍缺剧本或任务。`failed` 表示导演回合失败。`interrupted` 表示取消或宿主中断了生成。 |
+
+回执与剧本、任务一起保存在当前 profile。生成失败或中断时，仍可凭回执取回已保存的剧本和已提交的任务。收到 `submitted` 后，继续按 `taskIds` 检查录制状态，需要整批播放时等全部任务进入 `completed`。宿主插件可调用 `getTaskAudioFile(taskId)`，同源播放器可读取 `/plugins/xiaomi-mimo-tts/studio/audio?taskId=…`，独立 HTTP 调用方可用 `/open-studio` 的 `export-task-audio` 操作获取下载链接。多任务可通过各自的 `scriptId` 对应回执中的剧本顺序。
 
 ## HTTP 接入与鉴权
 
@@ -210,7 +232,7 @@ URL 最长有效 24 小时。过期后立即拒绝下载，文件由定期任务
 | `POST /moss/probe`、`POST /moss/synthesize` | 探测本地 MOSS 服务、合成 WAV，详见用户手册。 |
 | `GET /studio/state`、`GET /studio/events`、`POST/DELETE /studio/roles`、`POST/DELETE /studio/scripts`、`POST/DELETE /studio/tasks`、`GET /studio/audio?taskId=...` | 录音棚同源管理与实时 SSE 状态推送，音频路由支持 HTTP `Range` 分段拖拽回放与 `?download=1` 下载。纯文本导入超限返回 HTTP 413，响应中的 `lineNumber` 是原文行号。 |
 | `POST /studio/preview` | 接受 `roleId`、`text` 和可选的 `speechInstruction`，按指定角色的配置生成试听 WAV。 |
-| `GET/POST /open-studio`（需 Bearer 令牌） | 沿用 `openApiToken` 鉴权的录音棚开放管理接口，支持查询状态/任务、`save-role`、`save-script`、`import-script`、`start-task`、`pause-task`、`resume-task`、`cancel-task`、`delete-task` 与 `export-task-audio`（生成受控下载 URL）。 |
+| `GET/POST /open-studio`（需 Bearer 令牌） | 沿用 `openApiToken` 鉴权的录音棚开放管理接口，支持查询状态、任务和导演请求回执，以及 `save-role`、`save-script`、`import-script`、`start-task`、`pause-task`、`resume-task`、`cancel-task`、`delete-task` 与 `export-task-audio`（生成受控下载 URL）。 |
 
 ## Agent 工具
 
