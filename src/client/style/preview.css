@@ -275,3 +275,110 @@
   .xmimo-tts-preview-tools { gap: 12px; }
 }
 
+.xmimo-tts-open-api {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--xmimo-ui-border-soft);
+}
+.xmimo-tts-open-api-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.xmimo-tts-open-api-badge-enabled {
+  color: var(--dsw-alias-status-success, #16a34a);
+  background: color-mix(in srgb, var(--dsw-alias-status-success, #16a34a) 12%, transparent);
+}
+.xmimo-tts-open-api-badge-pending {
+  color: var(--xmimo-ui-brand);
+  background: color-mix(in srgb, var(--xmimo-ui-brand) 12%, transparent);
+}
+.xmimo-tts-open-api-badge-disabled {
+  color: var(--xmimo-ui-text-muted);
+  background: color-mix(in srgb, var(--xmimo-ui-border) 28%, transparent);
+}
+.xmimo-tts-open-api-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.xmimo-tts-open-api-input-wrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 240px;
+  min-width: 0;
+  align-items: center;
+}
+.xmimo-tts-open-api-input-wrap > input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--xmimo-ui-border-soft);
+  border-radius: var(--xmimo-ui-control-radius);
+  padding: 7px 34px 7px 10px;
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-skeuo-well-bg, var(--xmimo-ui-control-surface));
+  box-shadow: var(--xmimo-skeuo-well-shadow, none);
+  font: inherit;
+  font-size: 13px;
+}
+.xmimo-tts-open-api-input-wrap > input:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  outline-offset: 1px;
+}
+.xmimo-tts-open-api-eye {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--xmimo-ui-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+.xmimo-tts-open-api-eye:hover:not(:disabled) {
+  color: var(--xmimo-ui-text);
+  background: var(--xmimo-ui-hover);
+}
+.xmimo-tts-open-api-eye:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #4f6ef7);
+  outline-offset: 1px;
+}
+.xmimo-tts-open-api-actions,
+.xmimo-tts-open-api-copy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.xmimo-tts-open-api-endpoint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.xmimo-tts-open-api-endpoint > small {
+  color: var(--xmimo-ui-text-muted);
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.xmimo-tts-open-api-endpoint code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--xmimo-ui-border) 24%, transparent);
+  font-size: 11px;
+}
+

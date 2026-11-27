@@ -5,6 +5,7 @@ import { ANNOUNCEMENT_SOURCES, type AnnouncementSourceId } from '../../types/set
 import type { Translate } from '../localization.js'
 import { SettingFieldHeading } from './field-heading.js'
 import { FieldInfo } from './controls/field-info.js'
+import { OpenApiSettings, type OpenApiSettingsProps } from './open-api-settings.js'
 import { useNestedDisclosure } from './use-nested-disclosure.js'
 import { useSettingsSearch } from './settings-search-context.js'
 
@@ -29,6 +30,7 @@ export interface AnnouncementSettingsProps {
   qqbotEnabled: boolean
   onQqbotChange: (enabled: boolean) => void
   toggles: Record<AnnouncementToggleField, AnnouncementToggle>
+  openApi?: OpenApiSettingsProps | undefined
 }
 
 const HOST_SOURCE_OPTIONS = [
@@ -60,7 +62,7 @@ export const ANNOUNCEMENT_TOGGLE_FIELDS = HOST_TOGGLE_ROWS.map(row => row.field)
 
 export function AnnouncementSettings({
   children, t, sources, sourcesOverridden, onSourcesChange, onSourcesReset,
-  qqbotEnabled, onQqbotChange, writable, toggles, parentOpen = true,
+  qqbotEnabled, onQqbotChange, writable, toggles, openApi, parentOpen = true,
 }: AnnouncementSettingsProps & { parentOpen?: boolean }): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   const showMore = search !== null && (search.groups.has('host') || search.groups.has('sources') || search.groups.has('integrations'))
@@ -134,6 +136,7 @@ export function AnnouncementSettings({
           </div>
         </div></> : null}
       </section>)}
+      {openApi ? <OpenApiSettings {...openApi} /> : null}
     </div>
   </details>
 }

@@ -10,6 +10,7 @@ export interface DraftEdits {
   values: Partial<DraftSettings>
   changes: DraftChanges
   keys: ApiKeys
+  openApiToken?: string
 }
 
 export type DraftKind = DraftChange['kind']
@@ -85,6 +86,23 @@ export function hasPendingProviderKey(changes: DraftChanges, keys: ApiKeys, prov
   return changes[API_KEY_BY_PROVIDER[provider]] !== undefined && keys[provider].trim().length > 0
 }
 
+export function editOpenApiTokenDraft(current: DraftEdits, next: string, kind: DraftKind = 'set'): DraftEdits {
+  const nextChanges = { ...current.changes }
+  if (kind === 'clear') {
+    nextChanges.openApiToken = { kind: 'clear' }
+    return { ...current, openApiToken: '', changes: nextChanges }
+  }
+  if (next.trim().length > 0) nextChanges.openApiToken = { kind: 'set' }
+  else delete nextChanges.openApiToken
+  return { ...current, openApiToken: next, changes: nextChanges }
+}
+
+export function hasPendingOpenApiToken(changes: DraftChanges, openApiToken: string | undefined, configured: boolean): boolean {
+  const change = changes.openApiToken
+  if (!change) return false
+  return change.kind === 'clear' ? configured : (openApiToken ?? '').trim().length > 0
+}
+
 /**
  * Drop the entries a successful save committed. An edit made while that save was
  * in flight replaced its change object and therefore survives, and built-in
@@ -94,11 +112,13 @@ export function pruneDraftEdits(current: DraftEdits, committed: DraftChanges, ex
   const values = { ...current.values }
   const keys = { ...current.keys }
   const changes = { ...current.changes }
+  let openApiToken = current.openApiToken
   for (const field of Object.keys(committed) as SettingField[]) {
     if (current.changes[field] !== committed[field] || (external && BUILTIN_SETTING_FIELDS.has(field))) continue
     delete changes[field]
-    if (isApiKeyField(field)) keys[API_KEY_STATE[field]] = ''
+    if (field === 'openApiToken') openApiToken = undefined
+    else if (isApiKeyField(field)) keys[API_KEY_STATE[field]] = ''
     else delete values[field]
   }
-  return { values, changes, keys }
+  return openApiToken === undefined ? { values, changes, keys } : { values, changes, keys, openApiToken }
 }

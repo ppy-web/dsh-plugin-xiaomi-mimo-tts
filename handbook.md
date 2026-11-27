@@ -324,7 +324,7 @@ TTS 由 DSH 宿主连接官方 WebSocket，支持边生成边朗读。长文本�
 
 ### 插件开发接口
 
-完整接入契约见[开放能力接口文档](open-api.md)，包括宿主能力查询、音频导出和限时下载 URL。外部程序可通过宿主 profile 设置独立的 `openApiToken` 后调用 `GET /plugins/xiaomi-mimo-tts/capabilities` 和 `POST /plugins/xiaomi-mimo-tts/export-audio`；令牌默认为空，新增 HTTP 管理接口默认关闭。下载 URL 最长有效 24 小时，插件重载或宿主重启会提前失效；需要长期保留的音频请及时下载。
+完整接入契约见[开放能力接口文档](open-api.md)，包括宿主能力查询、音频导出和限时下载 URL。外部程序可在音色工坊「播报台 → 更多 → 开放接口（Open API）」中一键生成并保存独立的 `openApiToken`（保存即热生效，也可在宿主 profile 的 `cordis.patch.yml` 中配置），随后调用 `GET /plugins/xiaomi-mimo-tts/capabilities`、`POST /plugins/xiaomi-mimo-tts/export-audio` 与 `GET/POST /plugins/xiaomi-mimo-tts/open-studio`；令牌默认为空，新增 HTTP 管理接口默认关闭。下载 URL 最长有效 24 小时，插件重载或宿主重启会提前失效；需要长期保留的音频请及时下载。
 
 公开类型从 `dsh-xiaomi-tts/host-api` 导入。在插件中声明 `inject = ['speechSynthesis']`，通过 `ctx.speechSynthesis` 调用：
 

@@ -92,13 +92,13 @@ Agent 集成还会发出 `speech/delivered` 和 `speech/failed` 事件，载荷�
 
 以下新增接口使用同一组前缀：`/plugins/xiaomi-mimo-tts`。若 DSH 部署在 `/dsh/` 等子路径，需在前面加部署前缀。
 
-在默认 Web 插件条目的宿主配置中设置 `openApiToken`，重载或保存配置后生效。例如，在已有条目的 `config` 中补充：
+在音色工坊的「播报台 → 更多 → 开放接口（Open API）」中可直接输入或点击「生成令牌」，点击底部「保存」后立即热生效，无需重启；卡片内也提供接口地址、令牌复制和 `curl` 示例命令。若无网页访问，仍可在宿主 profile 的 `cordis.patch.yml` 中找到默认 Web 插件条目并设置 `openApiToken`，重载或保存配置后生效：
 
 ```yaml
 openApiToken: '替换为自行生成的长随机访问令牌'
 ```
 
-该字段目前通过宿主 profile 配置，不在自定义设置页面提供输入框。它独立于供应商 API Key，默认空值表示 HTTP 能力查询和音频导出接口关闭；宿主插件接口不受影响。
+它独立于供应商 API Key，默认空值表示 HTTP 能力查询、音频导出和 `/open-studio` 开放接口关闭（可在网页设置点击「清空关闭」后保存，或将配置置空）；宿主插件接口不受影响。
 
 能力查询和导出请求都必须携带 `Authorization: Bearer <openApiToken>`，包括同源浏览器请求。来自其他 Origin 的浏览器请求会被拒绝，接口不提供跨域 CORS。无 Origin 的独立程序可携带令牌调用。接口沿用 DSH Web 的监听地址和部署访问控制，不会另开端口；远程设备需要能够访问该地址。通过网络传输令牌时使用 HTTPS。
 

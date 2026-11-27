@@ -201,10 +201,13 @@ export function apply(ctx: Context, config: Config): void {
     registerEngineRoutes(host, {
       read: () => {
         const settings = current()
-        return Object.fromEntries(TTS_PROVIDERS.map(provider => {
-          const { configured, supported } = apiKeyStatus(settings, provider)
-          return [provider, configured ? supported ? 'recognized' : 'unrecognized' : 'missing']
-        }))
+        return {
+          ...Object.fromEntries(TTS_PROVIDERS.map(provider => {
+            const { configured, supported } = apiKeyStatus(settings, provider)
+            return [provider, configured ? supported ? 'recognized' : 'unrecognized' : 'missing']
+          })),
+          openApi: config.openApiToken.get().trim().length > 0 ? 'recognized' : 'missing',
+        }
       },
       subscribe: listener => ctx.on('loader/volatile-update', listener),
     })
@@ -333,6 +336,11 @@ export function apply(ctx: Context, config: Config): void {
 
       const settings = current()
       const query = new URL(req.url ?? '/', 'http://localhost').searchParams.get('provider')
+      if (query === 'open-api') {
+        const configured = config.openApiToken.get().trim().length > 0
+        json(res, 200, { provider: 'open-api', configured, supported: configured })
+        return
+      }
       if (query !== null && !TTS_PROVIDERS.includes(query as typeof TTS_PROVIDERS[number])) { json(res, 400, { error: 'invalid-provider' }); return }
       const provider = (query ?? settings.provider) as typeof TTS_PROVIDERS[number]
       json(res, 200, { provider, ...apiKeyStatus(settings, provider) })

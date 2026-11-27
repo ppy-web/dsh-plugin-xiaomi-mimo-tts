@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { loadClientModule } from './helpers/client-modules.mjs'
 
-const { EMPTY_DRAFT, editDraft, draftFieldDirty, pruneDraftEdits } = await loadClientModule('src/client/settings/draft.ts')
+const { EMPTY_DRAFT, editDraft, editOpenApiTokenDraft, hasPendingOpenApiToken, draftFieldDirty, pruneDraftEdits } = await loadClientModule('src/client/settings/draft.ts')
 
 /** Baseline where the Host accepts `accepted` and the user layer owns `overridden`. */
 function baseline(accepted = {}, overridden = []) {
@@ -79,4 +79,19 @@ test('an external engine owns built-in fields, so their committed drafts stay pe
   assert.deepEqual(pruneDraftEdits(edits, committed, true), {
     values: { voice: '冰糖' }, changes: { voice: { kind: 'set' } }, keys: edits.keys,
   })
+})
+
+test('openApiToken draft tracks pending set/clear edits and clears after save', () => {
+  const edited = editOpenApiTokenDraft(EMPTY_DRAFT, '  token-123  ', 'set')
+  assert.equal(hasPendingOpenApiToken(edited.changes, edited.openApiToken, false), true)
+  assert.deepEqual(pruneDraftEdits(edited, { ...edited.changes }, true), {
+    values: {}, changes: {}, keys: EMPTY_DRAFT.keys,
+  })
+
+  const blank = editOpenApiTokenDraft(edited, '   ', 'set')
+  assert.equal(hasPendingOpenApiToken(blank.changes, blank.openApiToken, true), false)
+
+  const cleared = editOpenApiTokenDraft(EMPTY_DRAFT, '', 'clear')
+  assert.equal(hasPendingOpenApiToken(cleared.changes, cleared.openApiToken, false), false)
+  assert.equal(hasPendingOpenApiToken(cleared.changes, cleared.openApiToken, true), true)
 })

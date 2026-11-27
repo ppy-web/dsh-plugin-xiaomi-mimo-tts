@@ -6,6 +6,7 @@ import { CollapsibleModule } from './collapsible-module.js'
 import { useSettingsSearch } from './settings-search-context.js'
 import { AnnouncementSettings, ANNOUNCEMENT_SOURCE_OPTIONS, ANNOUNCEMENT_TOGGLE_FIELDS } from './announcement-settings.js'
 import type { AnnouncementToggle, AnnouncementToggleField } from './announcement-settings.js'
+import type { OpenApiSettingsProps } from './open-api-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { AudioTagPicker } from './controls/audio-tag-picker.js'
 import { TactileButton } from './controls/tactile-button.js'
@@ -50,12 +51,13 @@ export interface PreviewModuleProps {
   onAcceptExternalProvidersChange: (enabled: boolean) => void
   onMossEnabledChange: (enabled: boolean) => void
   onProviderEnabledChange: (provider: OptionalTtsProvider, enabled: boolean) => void
+  openApi?: OpenApiSettingsProps | undefined
 }
 
 export function PreviewModule({
   t, writable, draft, overrides, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, externalSelection,
   onSettingChange, resetField, onSourcesChange, onSourcesReset, onQqbotChange,
-  onAcceptExternalProvidersChange, onMossEnabledChange, onProviderEnabledChange,
+  onAcceptExternalProvidersChange, onMossEnabledChange, onProviderEnabledChange, openApi,
 }: PreviewModuleProps): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   useEngineState()
@@ -188,7 +190,7 @@ export function PreviewModule({
       <AnnouncementSettings t={t} writable={writable} toggles={toggles} parentOpen={open}
         sources={draft.announcementSources} sourcesOverridden={overrides.includes('announcementSources')}
         onSourcesChange={onSourcesChange} onSourcesReset={onSourcesReset}
-        qqbotEnabled={draft.qqbotEnabled} onQqbotChange={onQqbotChange} />
+        qqbotEnabled={draft.qqbotEnabled} onQqbotChange={onQqbotChange} openApi={openApi} />
     </div>
   </CollapsibleModule>
 }

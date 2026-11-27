@@ -28,7 +28,7 @@ export function validateSettingsDraft(draft: SettingsValues): 'voice-required' |
 }
 
 /** Commit the draft atomically so credentials and provider selection change together. */
-export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: SettingsValues, changes: DraftChanges, keys: { xiaomi: string; doubao: string; breeze: string; deepseek?: string }, external = false): Promise<void> {
+export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: SettingsValues, changes: DraftChanges, keys: { xiaomi: string; doubao: string; breeze: string; deepseek?: string }, external = false, openApiToken = ''): Promise<void> {
   if (external) changes = Object.fromEntries(Object.entries(changes).filter(([field]) => !BUILTIN_SETTING_FIELDS.has(field)))
   const invalid = external ? null : validateSettingsDraft(draft)
   if (invalid) throw new SaveSettingsError(invalid)
@@ -73,6 +73,11 @@ export async function saveSettingsDraft(scope: ConfigForm<TtsSettings>, draft: S
     if (changes[field]?.kind === 'set' && (keys[provider] ?? '').trim()) {
       ops.push({ op: 'set', path: [field], value: (keys[provider] ?? '').trim() })
     }
+  }
+  if (changes.openApiToken?.kind === 'set' && openApiToken.trim()) {
+    ops.push({ op: 'set', path: ['openApiToken'], value: openApiToken.trim() })
+  } else if (changes.openApiToken?.kind === 'clear') {
+    ops.push({ op: 'set', path: ['openApiToken'], value: '' })
   }
   write('provider', draft.provider)
   if (switchesChanged && !changes.provider && selected !== 'xiaomi' && !available.includes(TTS_PROVIDER_SWITCH[selected])) {

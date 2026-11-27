@@ -13,8 +13,10 @@ import {
   resolveTtsSettings,
 } from '../shared.js'
 import { saveSettingsDraft, validateSettingsDraft, EDITABLE_SETTING_FIELDS, BUILTIN_SETTING_FIELDS, SaveSettingsError } from './save-settings.js'
-import { API_KEY_BY_PROVIDER, API_KEY_STATE, EMPTY_DRAFT, draftFieldDirty, editApiKeyDraft, editDraft, hasLayerField, hasPendingProviderKey, isApiKeyField, pruneDraftEdits } from './draft.js'
+import { API_KEY_BY_PROVIDER, API_KEY_STATE, EMPTY_DRAFT, draftFieldDirty, editApiKeyDraft, editDraft, editOpenApiTokenDraft, hasLayerField, hasPendingOpenApiToken, hasPendingProviderKey, isApiKeyField, pruneDraftEdits } from './draft.js'
 import type { ApiKeyField, DraftSettings } from './draft.js'
+import { useOpenApiTokenStatus } from './api-key-status-store.js'
+import type { OpenApiSettingsProps } from './open-api-settings.js'
 import { useEngineState } from '../use-engine-state.js'
 import { engineStateStore, externalEngine } from '../engine-state.js'
 import { invalidateApiKeyStatus, useApiKeyStatus } from '../conversation/api-key-status.js'
@@ -183,6 +185,8 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     if (!audioFocus.canPlay()) previewPlayer.stop()
   }), [audioFocus, previewPlayer])
   const apiKeyStatus = useApiKeyStatus(snapshot.status === 'ready' && !changing, keyProvider)
+  const openApiStatus = useOpenApiTokenStatus(snapshot.status === 'ready' && !changing)
+  const [lastSavedOpenApiToken, setLastSavedOpenApiToken] = useState('')
   const minimalMode = useSyncExternalStore(subscribeMinimalMode, readMinimalMode, () => false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const studioTab = useStudioOpenTab()
@@ -202,10 +206,13 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     draftFieldDirty(changes[field], draft[field], raw?.[field] ?? snapshot[field], hasOverride(field))
   const hasApiKeyDraft = (field: ApiKeyField): boolean => changes[field]?.kind === 'set' && apiKeys[API_KEY_STATE[field]].trim().length > 0
   const apiKeyDirty = (Object.keys(API_KEY_STATE) as ApiKeyField[]).some(hasApiKeyDraft)
-  const dirtyFields = (Object.keys(changes) as SettingField[]).filter(field => !isApiKeyField(field) && fieldDirty(field))
-  const dirty = dirtyFields.length > 0 || apiKeyDirty || externalDraft.dirty
+  const openApiToken = edits.openApiToken ?? ''
+  const openApiPendingClear = changes.openApiToken?.kind === 'clear'
+  const openApiDirty = hasPendingOpenApiToken(changes, edits.openApiToken, openApiStatus === 'recognized')
+  const dirtyFields = (Object.keys(changes) as SettingField[]).filter(field => field !== 'openApiToken' && !isApiKeyField(field) && fieldDirty(field))
+  const dirty = dirtyFields.length > 0 || apiKeyDirty || openApiDirty || externalDraft.dirty
   const validationError = external ? null : validateSettingsDraft(draft)
-  const saveableDirty = external ? externalDraft.dirty || dirtyFields.some(field => !BUILTIN_SETTING_FIELDS.has(field)) : dirty
+  const saveableDirty = external ? externalDraft.dirty || openApiDirty || dirtyFields.some(field => !BUILTIN_SETTING_FIELDS.has(field)) : dirty
   const apiKeyViewState = resolveApiKeyViewState(apiKey, isSupportedTtsApiKey(apiKey, keyProvider), apiKeyStatus, changes[apiKeyField]?.kind)
   const apiKeyMessage = t(apiKeyViewState === 'loading'
     ? 'settings.apiKeyLoading'
@@ -293,8 +300,10 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
         const nextDraft = sidebar === undefined ? draft : { ...draft, showInSidebar: sidebar }
         const nextChanges: DraftChanges = sidebar === undefined ? changes : { ...changes, showInSidebar: { kind: 'set' } }
         await externalDraft.save()
-        await saveSettingsDraft(scope, nextDraft, nextChanges, apiKeys, external !== null)
-        if (!external && apiKeyDirty) invalidateApiKeyStatus()
+        await saveSettingsDraft(scope, nextDraft, nextChanges, apiKeys, external !== null, openApiToken)
+        if (nextChanges.openApiToken?.kind === 'set' && openApiToken.trim()) setLastSavedOpenApiToken(openApiToken.trim())
+        else if (nextChanges.openApiToken?.kind === 'clear') setLastSavedOpenApiToken('')
+        if ((!external && apiKeyDirty) || openApiDirty) invalidateApiKeyStatus()
         setEdits(current => pruneDraftEdits(current, changes, external !== null))
         setState('saved')
         if (sidebar !== undefined) onSidebarChange?.(sidebar)
@@ -363,6 +372,14 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
       setEdits(current => editApiKeyDraft(current, keyProvider, next))
       clearSaveMessage()
     },
+    changeOpenApiToken(next: string) {
+      setEdits(current => editOpenApiTokenDraft(current, next, 'set'))
+      clearSaveMessage()
+    },
+    clearOpenApiToken() {
+      setEdits(current => editOpenApiTokenDraft(current, '', 'clear'))
+      clearSaveMessage()
+    },
     changeExternal(next: Parameters<typeof externalDraft.change>[0]) { previewPlayer.stop(); externalDraft.change(next); clearSaveMessage() },
     update<K extends EditableSettingField>(field: K, next: DraftSettings[K]) {
       if (VOICE_FIELDS.has(field)) previewPlayer.stop()
@@ -411,6 +428,17 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     changeAnnouncementSources(next: DraftSettings['announcementSources']) { change('announcementSources', next) },
     resetAnnouncementSources() { resetField('announcementSources') },
   })
+
+  const openApiSettings = useMemo<OpenApiSettingsProps>(() => ({
+    t,
+    writable,
+    status: openApiStatus,
+    value: openApiToken,
+    pendingClear: openApiPendingClear,
+    lastSavedToken: lastSavedOpenApiToken,
+    onChange: actions.changeOpenApiToken,
+    onClear: actions.clearOpenApiToken,
+  }), [t, writable, openApiStatus, openApiToken, openApiPendingClear, lastSavedOpenApiToken, actions])
 
   if (snapshot.status === 'unavailable') return renderHeader?.() ?? null
 
@@ -561,6 +589,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           onAcceptExternalProvidersChange={actions.changeAcceptExternalProviders}
           onMossEnabledChange={actions.changeMossEnabled}
           onProviderEnabledChange={actions.changeProviderEnabled}
+          openApi={openApiSettings}
         />
         {!minimalMode || search?.visible.has('studio') ? <StudioModule
           t={t}

@@ -14,6 +14,8 @@ test('a query can match an alias, localized hint, or normalized name across coll
   assert.ok(search('音量').visible.has('soundVolume'))
   assert.ok(search('音量').visible.has('voiceVolume'))
   assert.ok(search('ＡＰＩ   ＫＥＹ', en).visible.has('apiKey'))
+  assert.ok(search('openApiToken').visible.has('openApi'))
+  assert.ok(search('开放接口').groups.has('integrations'))
   assert.ok(search('待审批').visible.has('approvals'))
   assert.equal(search(' 　'), null, 'empty input restores the full settings page')
   assert.equal(search('no-such-setting').visible.size, 0)

@@ -1,3 +1,4 @@
+import { useCallback, useSyncExternalStore } from 'react'
 import { TTS_API_KEY_STATUS_ROUTE } from '../shared.js'
 import { TTS_PROVIDERS, type TtsProvider } from '../../types/providers.js'
 import { hostRoute } from '../host-route.js'
@@ -10,30 +11,41 @@ interface Entry {
   request: AbortController | null
 }
 
+type StatusKey = TtsProvider | 'open-api'
 type HostKeyStatus = 'missing' | 'recognized' | 'unrecognized'
 const isHostKeyStatus = (value: unknown): value is HostKeyStatus => value === 'missing' || value === 'recognized' || value === 'unrecognized'
 
 /** One request per provider, shared by every mounted speech surface. Never stores a secret. */
 export class ApiKeyStatusStore {
   private available = true
-  private hostStatuses: Record<TtsProvider, HostKeyStatus> | null = null
-  private readonly entries = new Map<TtsProvider, Entry>()
+  private hostStatuses: (Record<TtsProvider, HostKeyStatus> & { openApi?: HostKeyStatus }) | null = null
+  private readonly entries = new Map<StatusKey, Entry>()
 
-  private entry(provider: TtsProvider): Entry {
-    let entry = this.entries.get(provider)
+  private entry(key: StatusKey): Entry {
+    let entry = this.entries.get(key)
     if (entry === undefined) {
       entry = { status: 'loading', listeners: new Set(), request: null }
-      this.entries.set(provider, entry)
+      this.entries.set(key, entry)
     }
     return entry
   }
 
   getSnapshot = (provider: TtsProvider): ApiKeyStatus => this.entry(provider).status
 
+  getOpenApiSnapshot = (): ApiKeyStatus => this.entry('open-api').status
+
   subscribe(provider: TtsProvider, listener: () => void): () => void {
-    const entry = this.entry(provider)
+    return this.subscribeKey(provider, listener)
+  }
+
+  subscribeOpenApi(listener: () => void): () => void {
+    return this.subscribeKey('open-api', listener)
+  }
+
+  private subscribeKey(key: StatusKey, listener: () => void): () => void {
+    const entry = this.entry(key)
     entry.listeners.add(listener)
-    this.load(provider, entry)
+    this.load(key, entry)
     return () => {
       entry.listeners.delete(listener)
       if (entry.listeners.size === 0) this.reset(entry)
@@ -56,13 +68,13 @@ export class ApiKeyStatusStore {
       return
     }
     if (!value || typeof value !== 'object') return
-    const statuses = value as Record<TtsProvider, unknown>
+    const statuses = value as Record<string, unknown>
     if (!TTS_PROVIDERS.every(provider => isHostKeyStatus(statuses[provider]))) return
-    this.hostStatuses = statuses as Record<TtsProvider, HostKeyStatus>
+    this.hostStatuses = statuses as Record<TtsProvider, HostKeyStatus> & { openApi?: HostKeyStatus }
     if (!this.available) return
-    for (const [provider, entry] of this.entries) {
-      const status = this.hostStatuses[provider]
-      if (entry.status === status) continue
+    for (const [key, entry] of this.entries) {
+      const status = key === 'open-api' ? this.hostStatuses.openApi : this.hostStatuses[key]
+      if (!isHostKeyStatus(status) || entry.status === status) continue
       this.reset(entry)
       entry.status = status
       for (const listener of entry.listeners) listener()
@@ -70,9 +82,9 @@ export class ApiKeyStatusStore {
   }
 
   invalidate = (): void => {
-    for (const [provider, entry] of this.entries) {
+    for (const [key, entry] of this.entries) {
       this.reset(entry)
-      this.load(provider, entry)
+      this.load(key, entry)
       for (const listener of entry.listeners) listener()
     }
   }
@@ -84,10 +96,11 @@ export class ApiKeyStatusStore {
     entry.status = 'loading'
   }
 
-  private load(provider: TtsProvider, entry: Entry): void {
+  private load(key: StatusKey, entry: Entry): void {
     if (!this.available || entry.listeners.size === 0 || entry.request !== null || entry.status !== 'loading') return
-    if (this.hostStatuses) {
-      entry.status = this.hostStatuses[provider]
+    const hostStatus = this.hostStatuses ? (key === 'open-api' ? this.hostStatuses.openApi : this.hostStatuses[key]) : undefined
+    if (isHostKeyStatus(hostStatus)) {
+      entry.status = hostStatus
       return
     }
     const request = new AbortController()
@@ -101,7 +114,7 @@ export class ApiKeyStatusStore {
     }
     void (async () => {
       try {
-        const response = await fetch(`${hostRoute(TTS_API_KEY_STATUS_ROUTE)}?provider=${provider}`, {
+        const response = await fetch(`${hostRoute(TTS_API_KEY_STATUS_ROUTE)}?provider=${key}`, {
           cache: 'no-store', headers: { accept: 'application/json' }, signal: request.signal,
         })
         if (!response.ok) throw new Error('api-key-status-failed')
@@ -118,6 +131,14 @@ export class ApiKeyStatusStore {
 }
 
 export const apiKeyStatusStore = new ApiKeyStatusStore()
+
+export function useOpenApiTokenStatus(active: boolean): ApiKeyStatus {
+  const subscribe = useCallback((listener: () => void) => active
+    ? apiKeyStatusStore.subscribeOpenApi(listener)
+    : () => {}, [active])
+  const getSnapshot = useCallback(() => active ? apiKeyStatusStore.getOpenApiSnapshot() : 'loading', [active])
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
 
 /** Scope readiness includes host reconnections; bundle activity pauses all subscribers together. */
 export function bindApiKeyStatus(

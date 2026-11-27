@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { isSilk } from 'silk-wasm'
 import { apply, Config } from '../lib/index.js'
-import { resolveTtsSettings, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE } from '../lib/shared.js'
+import { resolveTtsSettings, TTS_API_KEY_STATUS_ROUTE, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE } from '../lib/shared.js'
 import { withDeepseekServer } from './helpers/deepseek-server.mjs'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { listenLoopback } from './helpers/loopback.mjs'
@@ -16,6 +16,8 @@ const { HostSpeechService } = await loadClientModule('src/host/speech-service.ts
 const { AudioDownloads } = await loadClientModule('src/host/audio-downloads.ts')
 const { registerOpenApiRoutes } = await loadClientModule('src/host/open-api-routes.ts')
 const { writeSpeechArtifact, SPEECH_FILE_TTL_MS } = await loadClientModule('src/host/speech-files.ts')
+const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
+const { generateOpenApiToken, buildOpenApiQuickSnippet } = await loadClientModule('src/client/settings/open-api-settings.tsx')
 
 function wav() {
   const data = Buffer.alloc(4844)
@@ -413,4 +415,79 @@ test('default Web entry registers the new routes when the Host service becomes a
       assert.equal(routes.has(path), false)
     }
   } finally { await ctx.fiber.dispose() }
+})
+
+test('open-api status route reports configured state without leaking the token', async () => {
+  const ctx = new Context(), routes = new Map()
+  ctx.provide('webServer', {
+    register(route) { routes.set(route.path, route); return () => routes.delete(route.path) },
+    registerUpgrade() { return () => {} },
+  })
+  const server = createServer((req, res) => {
+    const pathname = new URL(req.url ?? '/', 'http://127.0.0.1').pathname
+    const route = routes.get(pathname)
+    if (!route) { res.statusCode = 404; res.end(); return }
+    route.handler(req, res)
+  })
+  const base = await listenLoopback(server)
+  let currentToken = ''
+  const fiber = ctx.plugin({ apply, Config }, { openApiToken: '' })
+  try {
+    for (let i = 0; i < 10 && !routes.has(TTS_API_KEY_STATUS_ROUTE); i++) await settle()
+    const check = async () => {
+      const response = await fetch(`${base}${TTS_API_KEY_STATUS_ROUTE}?provider=open-api`)
+      assert.equal(response.status, 200)
+      return await response.text()
+    }
+    const emptyText = await check()
+    assert.deepEqual(JSON.parse(emptyText), { provider: 'open-api', configured: false, supported: false })
+
+    currentToken = 'super-secret-open-api-token'
+    await ctx.loader?.setConfig?.(fiber, { openApiToken: currentToken })
+    const rawRouteText = await check()
+    assert.equal(rawRouteText.includes(currentToken), false)
+
+    // Verify directly via a fresh plugin instance with a configured token as well.
+    await fiber.dispose()
+    const activeFiber = ctx.plugin({ apply, Config }, { openApiToken: currentToken })
+    try {
+      for (let i = 0; i < 10 && !routes.has(TTS_API_KEY_STATUS_ROUTE); i++) await settle()
+      const activeText = await check()
+      assert.deepEqual(JSON.parse(activeText), { provider: 'open-api', configured: true, supported: true })
+      assert.equal(activeText.includes(currentToken), false)
+    } finally { await activeFiber.dispose() }
+  } finally {
+    await close(server)
+    await ctx.fiber.dispose()
+  }
+})
+
+test('openApiToken can be generated, saved, cleared and works during external provider takeover', async () => {
+  const token = generateOpenApiToken()
+  assert.match(token, /^[0-9a-f]{48}$/u)
+  assert.notEqual(token, generateOpenApiToken())
+  assert.match(buildOpenApiQuickSnippet('http://127.0.0.1:3080/plugins/xiaomi-mimo-tts/', token),
+    new RegExp(`Authorization: Bearer ${token}.*http://127\\.0\\.0\\.1:3080/plugins/xiaomi-mimo-tts/capabilities`, 'su'))
+
+  let user = {}
+  let revision = 1
+  const scope = {
+    getSnapshot: () => ({ status: 'ready', writable: true, revision, user, base: {}, value: { ...user } }),
+    async mutate(ops, rev) {
+      if (rev !== revision) return false
+      for (const op of ops) {
+        if (op.op === 'set') user[op.path[0]] = op.value
+        else if (op.op === 'unset') delete user[op.path[0]]
+      }
+      revision++
+      return true
+    },
+  }
+  const saved = resolveTtsSettings()
+  const keys = { xiaomi: '', doubao: '', breeze: '' }
+  await saveSettingsDraft(scope, saved, { openApiToken: { kind: 'set' } }, keys, true, `  ${token}  `)
+  assert.equal(user.openApiToken, token)
+
+  await saveSettingsDraft(scope, saved, { openApiToken: { kind: 'clear' } }, keys, true, '')
+  assert.equal(user.openApiToken, '')
 })
