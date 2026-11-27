@@ -165,6 +165,30 @@ test('Studio import preserves cast assignments and rejects overflow without repl
   }
 })
 
+test('Studio role matching reuses full names across separator and whitespace variants', () => {
+  const narrator = { id: 'narrator', name: '陆远山 · 纪录片旁白' }
+  for (const separator of ['·', '•', '・', '∙', '⋅', '‧', '|', '｜', '/', '／', '—', ' - ', ' – ']) {
+    for (const whitespace of ['', ' \t\u3000\n ']) {
+      const label = `陆远山${whitespace}${separator}${whitespace}纪录片旁白`
+      assert.equal(findMatchingStudioRole([narrator], label, undefined, { allowAliasMatch: false }), narrator)
+    }
+  }
+  for (const label of ['陆远山-纪录片旁白', '陆远山–纪录片旁白', '陆远山 纪录片旁白']) {
+    assert.equal(findMatchingStudioRole([narrator], label, undefined, { allowAliasMatch: false }), undefined)
+  }
+})
+
+test('Studio role matching handles long whitespace runs around separators and within names', () => {
+  const whitespace = ' \t\u3000'.repeat(64_000)
+  const narrator = { id: 'narrator', name: 'Narrator Voice · Documentary' }
+  for (const label of [
+    `Narrator${whitespace}Voice${whitespace}·${whitespace}Documentary`,
+    `Narrator${whitespace}Voice${whitespace}–${whitespace}Documentary`,
+  ]) {
+    assert.equal(findMatchingStudioRole([narrator], label, undefined, { allowAliasMatch: false }), narrator)
+  }
+})
+
 test('Studio persists role status across edits and restarts while existing tasks can resume', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-studio-role-status-'))
   const speech = {

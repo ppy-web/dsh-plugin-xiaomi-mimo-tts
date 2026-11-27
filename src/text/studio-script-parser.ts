@@ -24,7 +24,8 @@ export interface MaterializedStudioScript {
 const SPEAKER_LINE_PATTERN = /^("(?:[^"\\]|\\.)*"|[^":：()（）[\]【】{}]{1,32}?)(?:\s*\{([a-zA-Z0-9_-]{1,80})\})?(?:\s*[（(]("(?:[^"\\]|\\.)*"|[^()（）]+)[)）])?(?:\s*(?:\[([^\][\n]{1,60})\]|【([^】【\n]{1,60})】))?\s*[:：]\s*(.+)$/u
 const FLEX_STAGE_TOKEN_PATTERN = /\s*(?:[（(]("(?:[^"\\]|\\.)*"|[^()（）]+)[)）]|\[([^\][\n]{1,60})\]|【([^】【\n]{1,60})】)/yu
 const MARKDOWN_LINE_PREFIX_PATTERN = /^(?:>\s*|[-*+•]\s+|\d+[.)、]\s+)/u
-const ROLE_SEPARATOR_PATTERN = /(?:\s*[·•・∙⋅‧|｜/／—]+\s*|\s+[-–]\s+)/gu
+// Whitespace is already collapsed before separator matching, so keep it bounded.
+const ROLE_SEPARATOR_PATTERN = /(?:\s?[·•・∙⋅‧|｜/／—]+\s?|\s[-–]\s)/gu
 const PAUSE_TOKEN_PATTERN = /^(?:停顿|间隔|留白|pause|wait)?\s*(\d+(?:\.\d+)?)\s*(ms|毫秒|s|sec|秒)$/iu
 const TRAILING_PAUSE_PATTERN = /\s*(?:\[(?:停顿|间隔|留白|pause|wait)\s*(\d+(?:\.\d+)?)\s*(ms|毫秒|s|sec|秒)\]|【(?:停顿|间隔|留白|pause|wait)\s*(\d+(?:\.\d+)?)\s*(ms|毫秒|s|sec|秒)】)\s*$/iu
 const QUOTED_DIALOGUE_PREFIX = '@"'
