@@ -7,6 +7,9 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { GoHistory } from 'react-icons/go'
 import { RiSwitchFill } from 'react-icons/ri'
 import {
+  DOUBAO_VOICE_PRESETS,
+  TTS_VOICE_DESIGN_PRESETS,
+  breezeVoiceLabel,
   getSoundEffectsModeFlags,
   isSupportedTtsApiKey,
   resolveSoundEffectsScope,
@@ -31,7 +34,9 @@ import { ApiKeyModule } from './api-key-module.js'
 import { resolveApiKeyViewState } from './api-key-state.js'
 import { AvatarStyleContext } from './controls/voice-avatar.js'
 import { DETAIL_FIELDS, DetailsModule } from './details-module.js'
-import { BROADCAST_FIELDS, PreviewModule } from './preview-module.js'
+import { BROADCAST_FIELDS, PreviewModule, type PreviewVoiceSummary } from './preview-module.js'
+import { speechInstructionLabel } from './controls/speech-instruction-picker.js'
+import { formatVoiceRate } from './voice-reading-options.js'
 import { StudioModule } from './studio-module.js'
 import { PERSONALIZATION_FIELDS, SoundEffectsPanel } from './sound-effects-module.js'
 import { SidebarSettings } from './sidebar-settings.js'
@@ -440,6 +445,75 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     onClear: actions.clearOpenApiToken,
   }), [t, writable, openApiStatus, openApiToken, openApiPendingClear, lastSavedOpenApiToken, actions])
 
+  const previewVoiceSummary = useMemo<PreviewVoiceSummary>(() => {
+    const rateLabel = formatVoiceRate(voiceRate)
+    if (external) {
+      const selectedModelId = externalDraft.value?.model ?? external.selection?.model
+      const selectedVoiceId = externalDraft.value?.voice ?? external.selection?.voice
+      const activeModel = external.models?.find(item => item.id === selectedModelId)
+      const voiceLabel = activeModel?.voices.find(item => item.id === selectedVoiceId)?.name
+        ?? selectedVoiceId ?? external.voiceName ?? external.name
+      const activeInstruction = externalDraft.value?.speechInstruction ?? external.selection?.speechInstruction ?? ''
+      const instructionLabel = activeModel?.speechInstruction && activeInstruction.trim()
+        ? activeModel.instructions?.find(item => item.id === activeInstruction)?.name ?? t('settings.speechInstructionCustom')
+        : null
+      return {
+        voiceLabel,
+        providerLabel: external.name,
+        avatar: selectedVoiceId ? { provider: external.provider, id: selectedVoiceId, model: selectedModelId } : undefined,
+        instructionLabel,
+        instructionTitle: activeInstruction.trim() || undefined,
+        rateLabel,
+      }
+    }
+    if (draft.localSpeechMode === 'local-first') {
+      if (mossEnabled && localVoiceEngine === 'moss') {
+        return {
+          voiceLabel: draft.mossVoiceName || draft.mossVoice || t('settings.mossVoice'),
+          providerLabel: t('settings.localVoiceEngineMoss'),
+          avatar: draft.mossVoice ? { provider: 'moss', id: draft.mossVoice } : undefined,
+          rateLabel,
+        }
+      }
+      return {
+        voiceLabel: draft.localVoiceURI || t('settings.localVoice'),
+        providerLabel: t('settings.localVoiceEngineBrowser'),
+        avatar: draft.localVoiceURI ? { provider: 'browser', id: draft.localVoiceURI } : undefined,
+        rateLabel,
+      }
+    }
+    const providerLabel = provider === 'deepseek' ? t('settings.providerDeepseek')
+      : provider === 'doubao' ? t('settings.providerDoubao')
+        : provider === 'breeze' ? t('settings.providerBreeze')
+          : t('settings.providerXiaomi')
+    const voiceDesignPreset = TTS_VOICE_DESIGN_PRESETS.find(item => item.prompt === draft.voiceDesignPrompt)
+    const voiceLabel = provider === 'deepseek'
+      ? t(draft.deepseekVoice === 'stella' ? 'settings.deepseekStella' : 'settings.deepseekTide')
+      : provider === 'doubao'
+        ? (draft.doubaoModel === 'seed-icl-2.0' ? draft.doubaoClonedVoice || t('settings.doubaoVoiceId')
+          : DOUBAO_VOICE_PRESETS.find(item => item.value === draft.doubaoVoice)?.name ?? draft.doubaoVoice)
+        : provider === 'breeze'
+          ? breezeVoiceLabel(draft.breezeVoice)
+          : model === 'mimo-v2.5-tts-voicedesign'
+            ? voiceDesignPreset?.label ?? t('settings.customVoiceOption')
+            : draft.voice
+    const avatarId = provider === 'deepseek' ? draft.deepseekVoice
+      : provider === 'doubao' ? (draft.doubaoModel === 'seed-icl-2.0' ? draft.doubaoClonedVoice : draft.doubaoVoice)
+        : provider === 'breeze' ? draft.breezeVoice
+          : model === 'mimo-v2.5-tts-voicedesign' ? (voiceDesignPreset?.label ?? draft.voiceDesignPrompt) : draft.voice
+    const supportsInstruction = provider !== 'deepseek' && (provider !== 'doubao' || draft.doubaoModel === 'seed-tts-2.0')
+    const activeInstruction = provider === 'breeze' ? draft.breezeInstruction : provider === 'doubao' ? draft.doubaoInstruction : draft.instruction
+    const instructionLabel = supportsInstruction ? speechInstructionLabel(provider, activeInstruction, t) : null
+    return {
+      voiceLabel,
+      providerLabel,
+      avatar: avatarId.trim() ? { provider, id: avatarId, model: provider === 'xiaomi' ? model : provider === 'doubao' ? draft.doubaoModel : undefined } : undefined,
+      instructionLabel,
+      instructionTitle: supportsInstruction && activeInstruction.trim() ? activeInstruction.trim() : undefined,
+      rateLabel,
+    }
+  }, [draft, external, externalDraft.value, localVoiceEngine, model, mossEnabled, provider, t, voiceRate])
+
   if (snapshot.status === 'unavailable') return renderHeader?.() ?? null
 
   if (studioTab !== null) return <AvatarStyleContext.Provider value={avatarStyle}>{renderHeader?.()}
@@ -590,6 +664,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           onMossEnabledChange={actions.changeMossEnabled}
           onProviderEnabledChange={actions.changeProviderEnabled}
           openApi={openApiSettings}
+          voiceSummary={previewVoiceSummary}
         />
         {!minimalMode || search?.visible.has('studio') ? <StudioModule
           t={t}

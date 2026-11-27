@@ -105,6 +105,8 @@ export const MAX_STUDIO_REQUEST_BODY_BYTES = 2 * 1024 * 1024
 
 /** Bearer-authenticated Open API route for external Studio automation. */
 export const TTS_OPEN_STUDIO_ROUTE = '/plugins/xiaomi-mimo-tts/open-studio'
+/** Bearer-authenticated direct binary synthesis route (HTTP 200 audio bytes). */
+export const TTS_OPEN_SYNTHESIZE_ROUTE = '/plugins/xiaomi-mimo-tts/open-synthesize'
 
 /** Host slash command name for entering and exiting Audio Drama Director mode. */
 export const STUDIO_DIRECTOR_COMMAND_NAME = 'director'

@@ -10,6 +10,7 @@ import type { OpenApiSettingsProps } from './open-api-settings.js'
 import { PlaybackIcon } from '../playback/playback-icon.js'
 import { AudioTagPicker } from './controls/audio-tag-picker.js'
 import { TactileButton } from './controls/tactile-button.js'
+import { VoiceAvatar } from './controls/voice-avatar.js'
 import { ProviderSettings } from './provider-settings.js'
 import type { ExternalSpeechSelection } from '../../host-api.js'
 import type { AnnouncementSourceId } from '../../types/settings.js'
@@ -25,6 +26,15 @@ export const BROADCAST_FIELDS = [
   'announcementSources', 'qqbotEnabled', 'doubaoEnabled', 'breezeEnabled', 'deepseekEnabled',
   'mossEnabled', 'acceptExternalProviders', ...ANNOUNCEMENT_TOGGLE_FIELDS,
 ] as const satisfies readonly SettingField[]
+
+export interface PreviewVoiceSummary {
+  voiceLabel: string
+  providerLabel: string
+  avatar?: { provider: string; id: string; model?: string | undefined } | undefined
+  instructionLabel?: string | null | undefined
+  instructionTitle?: string | undefined
+  rateLabel?: string | null | undefined
+}
 
 export interface PreviewModuleProps {
   t: Translate
@@ -52,12 +62,13 @@ export interface PreviewModuleProps {
   onMossEnabledChange: (enabled: boolean) => void
   onProviderEnabledChange: (provider: OptionalTtsProvider, enabled: boolean) => void
   openApi?: OpenApiSettingsProps | undefined
+  voiceSummary?: PreviewVoiceSummary | undefined
 }
 
 export function PreviewModule({
   t, writable, draft, overrides, enabled, status, source, error, text, recording, onToggle, onTextChange, open, onToggleOpen, audioTagProvider, externalSelection,
   onSettingChange, resetField, onSourcesChange, onSourcesReset, onQqbotChange,
-  onAcceptExternalProvidersChange, onMossEnabledChange, onProviderEnabledChange, openApi,
+  onAcceptExternalProvidersChange, onMossEnabledChange, onProviderEnabledChange, openApi, voiceSummary,
 }: PreviewModuleProps): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   useEngineState()
@@ -147,15 +158,26 @@ export function PreviewModule({
     <div className="xmimo-tts-broadcast-body">
       <div className="xmimo-tts-format" hidden={hide('preview')}>
         <div className="xmimo-tts-preview-input">
-          <textarea
-            ref={textRef}
-            value={text}
-            rows={4}
-            maxLength={100}
-            aria-label={t('settings.previewText')}
-            placeholder={t('settings.previewPlaceholder')}
-            onChange={(event) => { changeText(event.target.value) }}
-          />
+          <div className="xmimo-tts-preview-editor">
+            {voiceSummary ? <div className="xmimo-tts-preview-voice-heading">
+              <VoiceAvatar compact voice={voiceSummary.avatar} label={voiceSummary.voiceLabel} />
+              <strong className="xmimo-tts-preview-voice-name" title={voiceSummary.voiceLabel}>{voiceSummary.voiceLabel}</strong>
+              <span className="xmimo-tts-preview-voice-meta">
+                <span>{voiceSummary.providerLabel}</span>
+                {voiceSummary.instructionLabel ? <span title={voiceSummary.instructionTitle}>{voiceSummary.instructionLabel}</span> : null}
+                {voiceSummary.rateLabel ? <span>{voiceSummary.rateLabel}</span> : null}
+              </span>
+            </div> : null}
+            <textarea
+              ref={textRef}
+              value={text}
+              rows={4}
+              maxLength={100}
+              aria-label={t('settings.previewText')}
+              placeholder={t('settings.previewPlaceholder')}
+              onChange={(event) => { changeText(event.target.value) }}
+            />
+          </div>
           <div className="xmimo-tts-preview-tools">
             <div className="xmimo-tts-preview-presets" role="group" aria-label={t('settings.previewPresets')}>
               {PREVIEW_PRESETS.map(preset => <button key={preset.text} type="button" className="xmimo-tts-preview-preset"

@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { isSilk } from 'silk-wasm'
 import { apply, Config } from '../lib/index.js'
-import { resolveTtsSettings, TTS_API_KEY_STATUS_ROUTE, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE } from '../lib/shared.js'
+import { resolveTtsSettings, TTS_API_KEY_STATUS_ROUTE, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE, TTS_OPEN_SYNTHESIZE_ROUTE } from '../lib/shared.js'
 import { withDeepseekServer } from './helpers/deepseek-server.mjs'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { listenLoopback } from './helpers/loopback.mjs'
@@ -17,7 +17,7 @@ const { AudioDownloads } = await loadClientModule('src/host/audio-downloads.ts')
 const { registerOpenApiRoutes } = await loadClientModule('src/host/open-api-routes.ts')
 const { writeSpeechArtifact, SPEECH_FILE_TTL_MS } = await loadClientModule('src/host/speech-files.ts')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
-const { generateOpenApiToken, buildOpenApiQuickSnippet } = await loadClientModule('src/client/settings/open-api-settings.tsx')
+const { generateOpenApiToken, buildOpenApiQuickSnippet, buildOpenSynthesizeHttpConfig } = await loadClientModule('src/client/settings/open-api-settings.tsx')
 
 function wav() {
   const data = Buffer.alloc(4844)
@@ -59,6 +59,10 @@ async function withApi(run, options = {}) {
   const downloads = new AudioDownloads(() => now)
   const service = {
     capabilities: () => host.capabilities(),
+    async synthesize(request) {
+      if (options.synthesize) return options.synthesize(request)
+      return host.synthesize(request)
+    },
     async exportAudio(request) {
       if (options.exportAudio) return options.exportAudio(request, directory)
       const artifact = await writeSpeechArtifact(await host.synthesize(request), directory)
@@ -183,16 +187,17 @@ test('Open API advertises DeepSeek WAV and SILK and exports using saved provider
 
 test('management requires its own token, rejects cross-origin calls and observes token rotation', async () => {
   await withApi(async ({ base, origin, auth, setToken, requests }) => {
-    for (const path of [TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE]) {
+    for (const path of [TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_SYNTHESIZE_ROUTE]) {
+      const method = path === TTS_CAPABILITIES_ROUTE ? 'GET' : 'POST'
       for (const headers of [{}, { authorization: 'Bearer sk-open-api-provider-secret' },
         { origin, 'sec-fetch-site': 'same-origin' }]) {
-        const response = await fetch(base + path, { method: path === TTS_EXPORT_ROUTE ? 'POST' : 'GET', headers })
+        const response = await fetch(base + path, { method, headers })
         assert.equal(response.status, 401)
         assert.equal((await response.json()).error, 'open-api-unauthorized')
       }
       for (const originHeader of ['https://other.example', 'null', 'not-an-origin']) {
         const response = await fetch(base + path, {
-          method: path === TTS_EXPORT_ROUTE ? 'POST' : 'GET', headers: { ...auth(), origin: originHeader },
+          method, headers: { ...auth(), origin: originHeader },
         })
         assert.equal(response.status, 403)
       }
@@ -407,11 +412,11 @@ test('default Web entry registers the new routes when the Host service becomes a
   try {
     for (let i = 0; i < 10 && !routes.has(TTS_CAPABILITIES_ROUTE); i++) await settle()
     assert.ok(ctx.get('speechSynthesis'))
-    for (const path of [TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_OPEN_STUDIO_ROUTE]) {
+    for (const path of [TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_OPEN_STUDIO_ROUTE, TTS_OPEN_SYNTHESIZE_ROUTE]) {
       assert.equal(routes.get(path)?.auth, 'anonymous')
     }
     await fiber.dispose()
-    for (const path of [TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_OPEN_STUDIO_ROUTE]) {
+    for (const path of [TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_OPEN_STUDIO_ROUTE, TTS_OPEN_SYNTHESIZE_ROUTE]) {
       assert.equal(routes.has(path), false)
     }
   } finally { await ctx.fiber.dispose() }
@@ -468,6 +473,13 @@ test('openApiToken can be generated, saved, cleared and works during external pr
   assert.notEqual(token, generateOpenApiToken())
   assert.match(buildOpenApiQuickSnippet('http://127.0.0.1:3080/plugins/xiaomi-mimo-tts/', token),
     new RegExp(`Authorization: Bearer ${token}.*http://127\\.0\\.0\\.1:3080/plugins/xiaomi-mimo-tts/capabilities`, 'su'))
+  const httpLoopback = buildOpenSynthesizeHttpConfig('http://127.0.0.1:3080/plugins/xiaomi-mimo-tts/', token)
+  assert.match(httpLoopback, new RegExp(`http://127\\.0\\.0\\.1:3080/plugins/xiaomi-mimo-tts/open-synthesize`, 'u'))
+  assert.match(httpLoopback, new RegExp(`Authorization: Bearer ${token}`, 'u'))
+  assert.match(httpLoopback, /\{"text": "\{text\}", "format": "wav"\}/u)
+  assert.match(httpLoopback, /局域网 IP/u)
+  const httpLan = buildOpenSynthesizeHttpConfig('http://192.168.1.10:3080/plugins/xiaomi-mimo-tts', token)
+  assert.equal(/局域网 IP/u.test(httpLan), false)
 
   let user = {}
   let revision = 1
@@ -490,4 +502,53 @@ test('openApiToken can be generated, saved, cleared and works during external pr
 
   await saveSettingsDraft(scope, saved, { openApiToken: { kind: 'clear' } }, keys, true, '')
   assert.equal(user.openApiToken, '')
+})
+
+test('open-synthesize returns HTTP 200 audio bytes directly without writing managed files and cancels on unload', async () => {
+  await withApi(async ({ base, auth, directory }) => {
+    const res = await fetch(base + TTS_OPEN_SYNTHESIZE_ROUTE, {
+      method: 'POST',
+      headers: { ...auth(), 'content-type': 'application/json' },
+      body: JSON.stringify({ text: '直接出声测试。', format: 'wav' }),
+    })
+    assert.equal(res.status, 200)
+    assert.equal(res.headers.get('content-type'), 'audio/wav')
+    const bytes = Buffer.from(await res.arrayBuffer())
+    assert.equal(bytes.subarray(0, 4).toString('ascii'), 'RIFF')
+    assert.deepEqual(await readdir(directory), [])
+
+    const badField = await fetch(base + TTS_OPEN_SYNTHESIZE_ROUTE, {
+      method: 'POST',
+      headers: { ...auth(), 'content-type': 'application/json' },
+      body: JSON.stringify({ text: '测试', apiKey: 'forbidden' }),
+    })
+    assert.equal(badField.status, 400)
+    assert.equal((await badField.json()).error, 'unknown-request-field')
+
+    const badFormat = await fetch(base + TTS_OPEN_SYNTHESIZE_ROUTE, {
+      method: 'POST',
+      headers: { ...auth(), 'content-type': 'application/json' },
+      body: JSON.stringify({ text: '测试', format: 'ogg' }),
+    })
+    assert.equal(badFormat.status, 400)
+    assert.equal((await badFormat.json()).error, 'invalid-audio-format')
+  })
+
+  let started
+  const ready = new Promise(resolve => { started = resolve })
+  await withApi(async ({ base, auth, unload }) => {
+    const pending = fetch(base + TTS_OPEN_SYNTHESIZE_ROUTE, {
+      method: 'POST',
+      headers: { ...auth(), 'content-type': 'application/json' },
+      body: JSON.stringify({ text: '卸载取消', format: 'wav' }),
+    })
+    await ready
+    await unload()
+    const response = await pending
+    assert.equal(response.status, 503)
+    assert.equal((await response.json()).error, 'speech-service-disposed')
+  }, { synthesize(request) {
+    started()
+    return new Promise((_resolve, reject) => request.signal.addEventListener('abort', () => reject(new Error('disposed')), { once: true }))
+  } })
 })

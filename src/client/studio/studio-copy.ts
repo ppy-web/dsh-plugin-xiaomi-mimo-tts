@@ -1,6 +1,6 @@
 export const studioZh = {
   'settings.mixerSubtitle': '音色、语速、情绪与本地兜底',
-  'settings.broadcastSubtitle': '单句试听、服务商与事件提醒',
+  'settings.broadcastSubtitle': '试听、服务商、联动与开放接口',
   'settings.personalizationSubtitle': '立绘外观、实时字幕与交互音效',
   'settings.soundEffectsSubtitle': '点击与任务状态交互音效',
   'studio.title': '录音棚',
@@ -234,7 +234,7 @@ export const studioZh = {
 
 export const studioEn: Record<keyof typeof studioZh, string> = {
   'settings.mixerSubtitle': 'Voice, speed, style & local fallback',
-  'settings.broadcastSubtitle': 'Quick test, providers & event alerts',
+  'settings.broadcastSubtitle': 'Preview, providers, integrations & Open API',
   'settings.personalizationSubtitle': 'Portraits, live captions & UI sounds',
   'settings.soundEffectsSubtitle': 'Click & task status sound effects',
   'studio.title': 'Recording Studio',

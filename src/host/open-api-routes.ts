@@ -4,7 +4,7 @@ import { pipeline } from 'node:stream/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SpeechRequest, SpeechStudioService, StudioLineInput, StudioRoleInput } from '../host-api.js'
-import { MAX_STUDIO_REQUEST_BODY_BYTES, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE } from '../constants.js'
+import { MAX_STUDIO_REQUEST_BODY_BYTES, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE, TTS_OPEN_SYNTHESIZE_ROUTE } from '../constants.js'
 import { AudioDownloads } from './audio-downloads.js'
 import { json, readJsonBody } from './http.js'
 import { TtsProviderError } from './provider-error.js'
@@ -44,6 +44,55 @@ function method(req: IncomingMessage, res: ServerResponse, allowed: string[]): b
   return false
 }
 
+const ALLOWED_SPEECH_REQUEST_FIELDS = [
+  'text', 'provider', 'engineRevision', 'model', 'voice', 'voiceDesignPrompt', 'speechInstruction', 'voiceRate', 'format', 'maxDurationMs',
+]
+
+async function readSpeechRequestBody(req: IncomingMessage): Promise<SpeechRequest> {
+  let body: unknown
+  try { body = await readJsonBody(req) } catch (error) {
+    const large = error instanceof Error && error.message === 'request-body-too-large'
+    throw new TtsProviderError(large ? 'request-body-too-large' : 'invalid-json', undefined, large ? 413 : 400)
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TtsProviderError('invalid-request', undefined, 400)
+  // Explicit allowlist: callers cannot supply credentials, addresses, paths or cancellation objects.
+  const input = body as Record<string, unknown>
+  if (Object.keys(input).some(key => !ALLOWED_SPEECH_REQUEST_FIELDS.includes(key))) throw new TtsProviderError('unknown-request-field', undefined, 400)
+  if (input.format !== undefined && !['mp3', 'wav', 'silk'].includes(input.format as string)) throw new TtsProviderError('invalid-audio-format', undefined, 400)
+  return input as unknown as SpeechRequest
+}
+
+async function runWithAbort(
+  req: IncomingMessage,
+  res: ServerResponse,
+  controllers: Set<AbortController>,
+  fallbackCode: 'speech-export-failed' | 'speech-synthesis-failed',
+  work: (signal: AbortSignal) => Promise<void>,
+): Promise<void> {
+  if (req.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {
+    json(res, 415, { error: 'json-required' })
+    return
+  }
+  const controller = new AbortController()
+  controllers.add(controller)
+  const abort = () => controller.abort()
+  req.once('aborted', abort)
+  res.once('close', abort)
+  try {
+    await work(controller.signal)
+  } catch (error) {
+    if (!res.destroyed && !res.writableEnded) {
+      // Error codes are sufficient here; upstream prose may contain private configuration.
+      if (controller.signal.aborted) json(res, 503, { error: 'speech-service-disposed' })
+      else json(res, error instanceof TtsProviderError ? error.status : 502, { error: error instanceof TtsProviderError ? error.code : fallbackCode })
+    }
+  } finally {
+    controllers.delete(controller)
+    req.off('aborted', abort)
+    res.off('close', abort)
+  }
+}
+
 export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, downloads = new AudioDownloads()): void {
   const controllers = new Set<AbortController>()
   ctx.effect(() => {
@@ -76,49 +125,38 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
     kind: 'exact', path: TTS_EXPORT_ROUTE, auth: 'anonymous',
     async handler(req, res) {
       if (!method(req, res, ['POST']) || !authorize(req, res, currentToken())) return
-      if (req.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {
-        json(res, 415, { error: 'json-required' })
-        return
-      }
-      const controller = new AbortController()
-      controllers.add(controller)
-      const abort = () => controller.abort()
-      req.once('aborted', abort)
-      res.once('close', abort)
-      try {
-        let body: unknown
-        try { body = await readJsonBody(req) } catch (error) {
-          const large = error instanceof Error && error.message === 'request-body-too-large'
-          throw new TtsProviderError(large ? 'request-body-too-large' : 'invalid-json', undefined, large ? 413 : 400)
-        }
-        if (!body || typeof body !== 'object' || Array.isArray(body)) throw new TtsProviderError('invalid-request', undefined, 400)
-        // Explicit allowlist: callers cannot supply credentials, addresses, paths or cancellation objects.
-        const input = body as Record<string, unknown>
-        const allowed = ['text', 'provider', 'engineRevision', 'model', 'voice', 'voiceDesignPrompt', 'speechInstruction', 'voiceRate', 'format', 'maxDurationMs']
-        if (Object.keys(input).some(key => !allowed.includes(key))) throw new TtsProviderError('unknown-request-field', undefined, 400)
-        if (input.format !== undefined && !['mp3', 'wav', 'silk'].includes(input.format as string)) throw new TtsProviderError('invalid-audio-format', undefined, 400)
-        const artifact = await ctx.speechSynthesis.exportAudio({ ...input, signal: controller.signal } as SpeechRequest)
-        if (controller.signal.aborted) {
+      await runWithAbort(req, res, controllers, 'speech-export-failed', async (signal) => {
+        const input = await readSpeechRequestBody(req)
+        const artifact = await ctx.speechSynthesis.exportAudio({ ...input, signal })
+        if (signal.aborted) {
           await artifact.remove()
           throw new TtsProviderError('speech-service-disposed', undefined, 503)
         }
         const download = await downloads.publish(artifact)
-        if (controller.signal.aborted) {
+        if (signal.aborted) {
           await downloads.revoke(download.audioId)
           throw new TtsProviderError('speech-service-disposed', undefined, 503)
         }
         json(res, 201, download)
-      } catch (error) {
-        if (!res.destroyed && !res.writableEnded) {
-          // Error codes are sufficient here; upstream prose may contain private configuration.
-          if (controller.signal.aborted) json(res, 503, { error: 'speech-service-disposed' })
-          else json(res, error instanceof TtsProviderError ? error.status : 502, { error: error instanceof TtsProviderError ? error.code : 'speech-export-failed' })
-        }
-      } finally {
-        controllers.delete(controller)
-        req.off('aborted', abort)
-        res.off('close', abort)
-      }
+      })
+    },
+  }))
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact', path: TTS_OPEN_SYNTHESIZE_ROUTE, auth: 'anonymous',
+    async handler(req, res) {
+      if (!method(req, res, ['POST']) || !authorize(req, res, currentToken())) return
+      await runWithAbort(req, res, controllers, 'speech-synthesis-failed', async (signal) => {
+        const input = await readSpeechRequestBody(req)
+        const audio = await ctx.speechSynthesis.synthesize({ ...input, signal })
+        if (signal.aborted) throw new TtsProviderError('speech-service-disposed', undefined, 503)
+        res.statusCode = 200
+        res.setHeader('content-type', audio.contentType)
+        res.setHeader('content-length', audio.data.length)
+        res.setHeader('cache-control', 'no-store')
+        res.setHeader('x-content-type-options', 'nosniff')
+        res.end(audio.data)
+      })
     },
   }))
 

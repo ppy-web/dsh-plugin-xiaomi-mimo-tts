@@ -92,7 +92,7 @@ Agent 集成还会发出 `speech/delivered` 和 `speech/failed` 事件，载荷�
 
 以下新增接口使用同一组前缀：`/plugins/xiaomi-mimo-tts`。若 DSH 部署在 `/dsh/` 等子路径，需在前面加部署前缀。
 
-在音色工坊的「播报台 → 更多 → 开放接口（Open API）」中可直接输入或点击「生成令牌」，点击底部「保存」后立即热生效，无需重启；卡片内也提供接口地址、令牌复制和 `curl` 示例命令。若无网页访问，仍可在宿主 profile 的 `cordis.patch.yml` 中找到默认 Web 插件条目并设置 `openApiToken`，重载或保存配置后生效：
+在音色工坊的「导播台 → 更多 → 开放接口（Open API）」中可直接输入或点击「生成令牌」，点击底部「保存」后立即热生效，无需重启；卡片内也提供接口地址、令牌复制和 `curl` 示例命令。若无网页访问，仍可在宿主 profile 的 `cordis.patch.yml` 中找到默认 Web 插件条目并设置 `openApiToken`，重载或保存配置后生效：
 
 ```yaml
 openApiToken: '替换为自行生成的长随机访问令牌'
@@ -146,6 +146,24 @@ Authorization: Bearer <openApiToken>
 查询不消耗合成请求，不返回密钥、上游地址或保存的声音描述与指令。`ready` 不代表已验证上游账户、额度或音色权限，也不代表浏览器自动朗读已开启。豆包、Breeze 和 DeepSeek 的显示开关控制选择界面，宿主与 Open API 中显式指定的供应商使用独立保存的配置。浏览器本地语音和 MOSS 由客户端提供。
 
 小米的 `selectedModel` 可能是用于浏览器策略的 `browser-local-fallback`；它不是独立云端模型，不列入 `models`。宿主完整合成会按现有逻辑使用 MiMo 预置模型，调用方也可显式选择清单中的模型。
+
+### 直接合成并返回音频二进制（HTTP 200）
+
+```http
+POST /plugins/xiaomi-mimo-tts/open-synthesize
+Authorization: Bearer <openApiToken>
+Content-Type: application/json
+
+{"text":"欢迎回来。","format":"wav"}
+```
+
+请求字段、大小上限与校验规则同下方 `/export-audio`。区别在于成功直接返回 `HTTP 200`、对应 `Content-Type` 与原始音频二进制（WAV / MP3 / SILK），不写临时文件、不占 256 个限时下载名额，适合需要单次直出音频的外部程序或自定义 HTTP 客户端（注：若部署在带外层路由守卫的环境，如手机端内置引擎，需先通过该环境的会话校验或等待宿主放行 `auth: 'anonymous'` 路由）：
+
+* **地址**：`http://<主机或局域网IP>:<端口>/plugins/xiaomi-mimo-tts/open-synthesize`
+* **方法**：`POST`
+* **请求头**：`Authorization: Bearer <openApiToken>`
+* **请求体**：`{"text": "{text}", "format": "wav"}`
+* **响应**：HTTP 200 原始音频二进制（无需解析 JSON 链接）
 
 ### 导出音频并获取下载 URL
 
@@ -373,7 +391,7 @@ async function configure(selection: ExternalSpeechSelection, { signal }: { signa
 
 ### 接收开关与供应商卡片切换
 
-宿主配置 `acceptExternalProviders` 默认 `true`，对应「播报台 → 语音服务商 → 外部供应商」。保存为 `false` 后，已注册的外部适配器仍保留注册和配置，但不参与默认合成、显式外部请求、能力查询或浏览器引擎状态；正在运行的外部任务取消，恢复内置供应商。重新开启后直接使用现有注册，无需适配器重载。
+宿主配置 `acceptExternalProviders` 默认 `true`，对应「导播台 → 语音服务商 → 外部供应商」。保存为 `false` 后，已注册的外部适配器仍保留注册和配置，但不参与默认合成、显式外部请求、能力查询或浏览器引擎状态；正在运行的外部任务取消，恢复内置供应商。重新开启后直接使用现有注册，无需适配器重载。
 
 多供应商适配器可在快照中添加 `configurations: { id: string; name: string }[]`，并用 `configurationId` 标识当前项。列表最多 200 项，ID 和名称最长 200 字符；浏览器只接收这两个字段，不接收凭据、地址或供应商配置。提供可选方法 `selectConfiguration(configurationId, { signal }): Promise<void>`，在适配器中保存当前供应商并通知订阅者；供应商各自的模型、音色和密钥应保持不变。Host 根据方法是否存在派生 `configurationSwitchable`。
 
