@@ -26,8 +26,8 @@ import { registerPassportSettings } from './settings/passport-registration.js'
 import { apiKeyStatusStore, bindApiKeyStatus } from './settings/api-key-status-store.js'
 import { engineStateStore } from './engine-state.js'
 import { PluginDetailActions, PluginDetailBadge } from './settings/plugin-detail.js'
-import type { ActivationGuideProps } from './settings/activation-guide.js'
-import { lazyPanel } from './lazy-panel.js'
+import { FeatureGuideController } from './settings/feature-guide.js'
+import { FeatureGuideActivation, FeatureGuideOverlay } from './settings/feature-guide-overlay.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
 import { VoiceInputActivity } from './voice-input-activity.js'
 import { registerVoiceReadingNavIcon } from './settings/nav-icon.js'
@@ -41,7 +41,6 @@ import { CORE_CLIENT_STYLES } from './style/core.js'
 import { disposePersistentClientStyles, ensureClientStyle } from './style/inject.js'
 import { buildStudioDirectorDraftInput, launchStudioDirectorSession } from './studio/launch-director-session.js'
 
-const ActivationGuide = lazyPanel<ActivationGuideProps>(() => import('./settings/activation-guide.js').then(module => module.ActivationGuide), { silentLoading: true })
 import { AudioHistory } from './history/audio-history.js'
 import { TabAudioFocus } from './playback/tab-audio-focus.js'
 import { SpeechActivity, isSpeechBusy } from './announcements/speech-activity.js'
@@ -74,7 +73,7 @@ function formatStartupError(error: unknown): string {
 
 function registerSlotContribution(
   ctx: Context,
-  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'plugins.row.config' | 'settings.section' | 'sidebar.panellist' | 'settings.section.icon' | 'plugins.bundle.activation' | 'plugins.detail.actions' | 'plugins.detail.badge',
+  name: 'conversation.input.dock' | 'conversation.chat.assistant-actions' | 'plugins.bundle.config' | 'plugins.row.config' | 'settings.section' | 'sidebar.panellist' | 'settings.section.icon' | 'plugins.bundle.activation' | 'plugins.detail.actions' | 'plugins.detail.badge' | 'shell.overlay',
   register: () => (() => void) | Iterable<() => void>,
 ): void {
   ctx.effect(() => {
@@ -110,6 +109,7 @@ export function apply(ctx: Context): void {
   const scope = ctx.configForms.get<TtsSettings>(TTS_SETTINGS_NAMESPACE)
   const focusOwner = new TabAudioFocus()
   const changes = ctx.pluginChanges.bundle('dsh-xiaomi-tts')
+  const featureGuide = new FeatureGuideController(scope, changes)
   ctx.effect(() => {
     const off = bindApiKeyStatus(scope, changes)
     window.addEventListener('online', apiKeyStatusStore.invalidate)
@@ -332,12 +332,20 @@ export function apply(ctx: Context): void {
 
   registerSlotContribution(ctx, 'plugins.row.config', () => [registerWhalePersonaSettings(ctx, t, changes), registerQqbotSpeechSettings(ctx, t, changes), registerPassportSettings(ctx, t, changes)])
 
+  ctx.effect(featureGuide.start, 'xiaomi-mimo-tts: feature guide')
+  registerSlotContribution(ctx, 'shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'xiaomi-mimo-tts-feature-guide',
+    locale: NS,
+    inject: () => ({ t, scope, changes, localeRevision, guide: featureGuide, onOpenWorkbench: () => openVoiceWorkbench(ctx, scope) }),
+  }, FeatureGuideOverlay))
+
   registerSlotContribution(ctx, 'plugins.bundle.activation', () => ctx.slots.register({
     name: 'plugins.bundle.activation',
     key: 'dsh-xiaomi-tts',
     locale: NS,
-    inject: () => ({ t, scope, changes, onOpenWorkbench: () => openVoiceWorkbench(ctx, scope) }),
-  }, ActivationGuide))
+    inject: () => ({ guide: featureGuide }),
+  }, FeatureGuideActivation))
 
   registerSlotContribution(ctx, 'sidebar.panellist', () => registerVoiceSettingsSidebar(ctx, settingsPageProps))
 

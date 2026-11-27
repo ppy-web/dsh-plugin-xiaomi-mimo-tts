@@ -72,13 +72,13 @@ async function loadBundle(failChunk = false, encode = encodeURIComponent) {
   return { loaded, warnings, plugin: moduleRequire(packageId) }
 }
 
-async function registerSettings(failChunk, encode) {
+async function registerSettings(failChunk, encode, initialSettings = {}) {
   const { loaded, warnings, plugin } = await loadBundle(failChunk, encode)
   const slots = []
-  const snapshot = { status: 'ready', writable: true, value: {}, revision: 1 }
+  const snapshot = { status: 'ready', writable: true, value: initialSettings, revision: 1 }
   const scope = { getSnapshot: () => snapshot, subscribe: () => () => {} }
   const changes = { getSnapshot: () => false, subscribe: () => () => {} }
-  const settings = new Set(['settings.section', 'plugins.bundle.config', 'plugins.row.config', 'sidebar.panellist'])
+  const settings = new Set(['settings.section', 'plugins.bundle.config', 'plugins.row.config', 'sidebar.panellist', 'feature guide', 'shell.overlay', 'plugins.bundle.activation'])
   const ctx = {
     locale: { bind: () => key => key, getSnapshot: () => ({ revision: 0 }), subscribe: () => () => {} },
     configForms: { get: () => scope }, pluginChanges: { bundle: () => changes },
@@ -94,6 +94,25 @@ async function registerSettings(failChunk, encode) {
   }
   return { loaded, warnings, slot, section: slot('settings.section') }
 }
+
+test('the production bundle presents new-version guidance outside the Plugins page and dismisses it once', async () => {
+  const { slot } = await registerSettings()
+  const overlay = slot('shell.overlay')
+  const props = overlay.options.inject()
+  const render = () => renderCompleted(createElement(overlay.component, props))
+  assert.match(await render(), /aria-label="onboarding.dismiss"/u)
+  props.guide.dismiss()
+  assert.equal(await render(), '')
+  slot('plugins.bundle.activation').options.inject().guide.requestActivation()
+  assert.equal(await render(), '')
+})
+
+test('the production bundle respects the saved never-remind preference on startup', async () => {
+  const { loaded, slot } = await registerSettings(false, undefined, { showFeatureGuide: false })
+  const overlay = slot('shell.overlay')
+  assert.equal(await renderCompleted(createElement(overlay.component, overlay.options.inject())), '')
+  assert.deepEqual(loaded, [])
+})
 
 test('client loads the avatar chunk only when voice settings render', async () => {
   const { loaded, section } = await registerSettings()

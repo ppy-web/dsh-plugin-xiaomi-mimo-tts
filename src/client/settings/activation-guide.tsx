@@ -31,7 +31,7 @@ export interface ActivationGuideProps extends PluginActivationOwnerProps {
   changes?: SnapshotSource<boolean> | undefined
 }
 
-/** Displayed by the host only for an explicit activation, with host-owned dismissal. */
+/** Shared content for automatic version guidance and manual previews. */
 export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, onNeverRemind, onDismiss, changes = IDLE_PLUGIN_CHANGES }: ActivationGuideProps): ReactElement | null {
   const dismissed = useRef(false)
   const dismiss = (): void => { if (!dismissed.current) { dismissed.current = true; onDismiss() } }
@@ -41,7 +41,7 @@ export function ActivationGuide({ t, scope, preview = false, onOpenWorkbench, on
   const enabled = resolveTtsSettings(useSettingsSnapshot(scope).value).showFeatureGuide
   useEffect(() => { if (!preview && !enabled) dismiss() }, [preview, enabled, onDismiss])
   const changing = useSyncExternalStore(changes.subscribe, changes.getSnapshot, changes.getSnapshot)
-  const openWorkbench = (): void => { onDismiss(); onOpenWorkbench() }
+  const openWorkbench = (): void => { dismiss(); onOpenWorkbench() }
   const neverRemind = async (): Promise<void> => {
     setSaving(true)
     setFailed(false)
