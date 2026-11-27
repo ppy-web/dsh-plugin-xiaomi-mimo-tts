@@ -122,6 +122,8 @@ export class SessionSpeech {
   admit(agent: Agent, turn: number, validateRoute: NonNullable<SpeechDeliveryContext['validateRoute']>): boolean {
     const state = this.states.get(agent)
     if (state?.turn !== turn || state.ended) return false
+    // New work gets a live signal; previously revoked deliveries stay canceled.
+    if (state.controller.signal.aborted) state.controller = new AbortController()
     state.eligible = true
     state.validateRoute = validateRoute
     return true

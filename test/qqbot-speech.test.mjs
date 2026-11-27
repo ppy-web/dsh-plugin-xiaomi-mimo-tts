@@ -341,6 +341,47 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
     duringSynthesis = undefined
     turn.finish('保留文字回复')
     assert.equal(sends.length, 6)
+
+    await map()
+    automatic = true
+    for (const agent of [qq, builtIn]) {
+      for (const manual of [false, true]) {
+        const before = sends.length, beforeDelivered = deliveries.length
+        const text = manual ? '重新接管后按需发声' : '重新接管后自动发声'
+        turn = await start(agent)
+        const signal = new AbortController().signal
+        const modelSelection = { provider: 'test', model: 'test' }
+        const events = agentEvents(ctx, agent)
+        const steer = async (source, step) => {
+          const message = createUserMessage({ content: [{ type: 'text', text: '插话' }], source })
+          events.emit('agent/inbox/claimed', { turn: turns.get(agent), message })
+          const toolSet = await ctx.tools.resolve({ agent, modelSelection, signal })
+          try {
+            await events.waterfall('agent/pre-step', { turn: turns.get(agent), step, messages: [message], signal, modelSelection }, async () => ({ kind: 'enter', messages: [message] }))
+            return toolSet
+          } catch (error) {
+            toolSet.dispose()
+            throw error
+          }
+        }
+        const desktopTools = await steer({ kind: 'user', rpcId: randomUUID() }, 2)
+        try {
+          await assert.rejects(ctx.qqbotSpeech.say(agent, { text: '桌面插话期间不发送', signal }), error => error.code === 'qqbot-voice-unavailable')
+        } finally { desktopTools.dispose() }
+        const qqTools = await steer({ kind: 'user' }, 3)
+        try {
+          if (manual) {
+            const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text }, agent, signal, toolSet: qqTools })
+            const result = await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+            assert.equal(result.isError, false)
+            assert.equal(result.value.adapter, 'qqbot')
+          }
+          turn.finish(text)
+          await delivered(beforeDelivered + 1)
+          assert.deepEqual(sends.slice(before), [{ agent, text }])
+        } finally { qqTools.dispose() }
+      }
+    }
     assert.deepEqual(await readdir(directory), ['model-prefs.json'])
     await plugin.dispose()
     assert.equal(ctx.speechSynthesis.conversationDelivery('qqbot'), undefined)

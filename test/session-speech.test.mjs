@@ -197,3 +197,61 @@ test('failed automatic speech identifies its owner, does not retry, and allows t
     assert.equal(run.failures.length, 1)
   } finally { await run.speech.dispose() }
 })
+
+test('QQ readmission restores automatic speech in the same turn', async () => {
+  const run = setup({ isAutomaticDeliveryEnabled: () => true }, {
+    delivery: 'qqbot', sourceControlled: true, turnScoped: true, maxAutoCharacters: 0, maxDurationMs: 0,
+  })
+  const a = run.agent('qq')
+  try {
+    run.start(a)
+    assert.equal(run.speech.admit(a, 1, async () => {}), true)
+    run.speech.revoke(a, 1)
+    await assert.rejects(run.speech.say(a, { text: '桌面插话期间不发送' }), error => error.code === 'qqbot-voice-unavailable')
+    assert.equal(run.speech.admit(a, 1, async () => {}), true)
+    run.message(a, 'QQ 再次接管后的回复'); run.end(a); await settle()
+    assert.equal(run.sends.length, 1)
+    assert.equal(run.sends[0].request.text, 'QQ 再次接管后的回复')
+    assert.equal(run.sends[0].context.automatic, true)
+    assert.equal(run.delivered.length, 1)
+    assert.deepEqual(run.failures, [])
+  } finally { await run.speech.dispose() }
+})
+
+test('QQ readmission permits new manual speech while old work stays canceled and automatic speech stays suppressed', async () => {
+  const started = Promise.withResolvers(), sent = [], routes = []
+  let oldSignal
+  const run = setup({
+    isAutomaticDeliveryEnabled: () => true,
+    async deliver(request, adapter, context) {
+      await context.validateRoute?.(context.signal)
+      context.signal.throwIfAborted()
+      if (request.text === '旧任务') {
+        oldSignal = context.signal
+        started.resolve()
+        return new Promise((_resolve, reject) => {
+          context.signal.addEventListener('abort', () => reject(context.signal.reason), { once: true })
+        })
+      }
+      sent.push(request.text)
+      return { adapter }
+    },
+  }, { delivery: 'qqbot', sourceControlled: true, turnScoped: true, maxAutoCharacters: 0, maxDurationMs: 0 })
+  const a = run.agent('qq')
+  try {
+    run.start(a)
+    run.speech.admit(a, 1, async () => { routes.push('old') })
+    const canceled = assert.rejects(run.speech.say(a, { text: '旧任务' }), { name: 'AbortError' })
+    await started.promise
+    run.speech.revoke(a, 1)
+    await canceled
+    assert.equal(run.speech.admit(a, 1, async () => { routes.push('new') }), true)
+    assert.equal((await run.speech.say(a, { text: '新任务' })).adapter, 'qqbot')
+    run.message(a, '新任务'); run.end(a); await settle()
+    assert.equal(oldSignal.aborted, true)
+    assert.deepEqual(sent, ['新任务'])
+    assert.deepEqual(routes, ['old', 'new'])
+    assert.equal(run.delivered.length, 1)
+    assert.deepEqual(run.failures, [])
+  } finally { await run.speech.dispose() }
+})
