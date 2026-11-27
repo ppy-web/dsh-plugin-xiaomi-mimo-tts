@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import type { TtsAvatarStyle } from '../../shared.js'
 import loreleiNeutral from './lorelei-neutral.json' with { type: 'json' }
@@ -23,7 +23,9 @@ interface LoreleiComponent {
 }
 
 const MAX_CACHED_AVATARS = 512
-const sources = new Map<string, string | null>()
+const sources = new Map<string, string>()
+let reportedGenerationFailure = false
+let reportedImageFailure = false
 
 interface CompiledLayer {
   probability: number | undefined
@@ -135,11 +137,15 @@ function avatarSource(seed: string, avatarStyle: TtsAvatarStyle): string | null 
     return cached
   }
 
-  let source: string | null = null
+  let source: string
   try {
     source = renderLoreleiSvg(seed, avatarStyle)
-  } catch {
-    // Keep the picker usable when an avatar cannot be generated.
+  } catch (error) {
+    if (!reportedGenerationFailure) {
+      reportedGenerationFailure = true
+      console.warn('[dsh-xiaomi-tts] Voice avatar could not be generated.', error)
+    }
+    return null
   }
 
   if (sources.size >= MAX_CACHED_AVATARS) {
@@ -155,13 +161,36 @@ const GeneratedVoiceAvatar = memo(function GeneratedVoiceAvatar({ voice, label, 
   const seed = voice && id ? JSON.stringify([voice.provider, voice.model ?? '', id]) : null
   const [failedSeed, setFailedSeed] = useState<string | null>(null)
   const imageKey = JSON.stringify([seed, avatarStyle])
-  const source = seed === null || imageKey === failedSeed ? null : avatarSource(seed, avatarStyle)
+  const [retry, setRetry] = useState({ key: imageKey, attempt: 0 })
+  const attempt = retry.key === imageKey ? retry.attempt : 0
+  const requestKey = JSON.stringify([imageKey, attempt])
+  const source = seed === null || requestKey === failedSeed ? null : avatarSource(seed, avatarStyle)
+  useEffect(() => {
+    if (seed === null || source !== null) return
+    const retryImage = (): void => {
+      setRetry(current => ({ key: imageKey, attempt: current.key === imageKey ? current.attempt + 1 : 1 }))
+    }
+    const timer = attempt < 2 ? setTimeout(retryImage, 1000) : undefined
+    window.addEventListener('online', retryImage)
+    window.addEventListener('focus', retryImage)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('online', retryImage)
+      window.removeEventListener('focus', retryImage)
+    }
+  }, [seed, source, imageKey, attempt])
   const className = compact ? 'xmimo-tts-voice-avatar xmimo-tts-voice-avatar-compact' : 'xmimo-tts-voice-avatar'
   if (source === null) {
     return <span className={`${className} xmimo-tts-voice-avatar-fallback`} aria-hidden="true">{fallback ?? Array.from(label.trim())[0]}</span>
   }
   const size = compact ? 20 : 36
-  return <img key={imageKey} className={className} src={source} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setFailedSeed(imageKey)} />
+  return <img key={requestKey} className={className} src={source} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => {
+    if (!reportedImageFailure) {
+      reportedImageFailure = true
+      console.warn('[dsh-xiaomi-tts] Voice avatar image could not be loaded.')
+    }
+    setFailedSeed(requestKey)
+  }} />
 })
 
 export default GeneratedVoiceAvatar

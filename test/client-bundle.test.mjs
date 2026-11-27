@@ -16,8 +16,8 @@ test('production Web bundle loads through the host module loader', async () => {
   assert.deepEqual(loaded, [])
 })
 
-async function loadBundle(failChunk = false) {
-  const factories = new Map(), loaded = []
+async function loadBundle(failChunk = false, encode = encodeURIComponent) {
+  const factories = new Map(), loaded = [], warnings = []
   const packageId = 'dsh-xiaomi-tts'
   const context = {
     window: { __ModuleLoader__: { load({ id, chunk, factory }) {
@@ -28,6 +28,7 @@ async function loadBundle(failChunk = false) {
     } } },
     document: { baseURI: 'http://localhost/' },
     crypto: globalThis.crypto, URL, TextEncoder, TextDecoder, queueMicrotask, setTimeout, clearTimeout, performance, structuredClone, AbortController, AbortSignal,
+    encodeURIComponent: encode, console: { info() {}, warn: (...args) => warnings.push(args) },
   }
   const modules = new Map([
     ['react', require('react')], ['react/jsx-runtime', require('react/jsx-runtime')], ['react-dom', require('react-dom')],
@@ -53,21 +54,26 @@ async function loadBundle(failChunk = false) {
   const pending = new Map()
   moduleRequire.async = specifier => {
     assert.match(specifier, /^\.\/client\.[\w.-]+\.js$/u)
+    const filename = specifier.slice(2)
+    const id = `${packageId}/${filename}`
+    if (modules.has(id)) return Promise.resolve(modules.get(id))
     if (pending.has(specifier)) return pending.get(specifier)
     loaded.push(specifier)
-    const filename = specifier.slice(2)
-    const load = failChunk ? Promise.reject(new Error('chunk unavailable'))
-      : run(filename).then(() => moduleRequire(`${packageId}/${filename}`))
+    const load = Promise.resolve().then(() => {
+      const failure = typeof failChunk === 'function' ? failChunk(specifier) : failChunk
+      if (failure) throw failure instanceof Error ? failure : new Error('chunk unavailable')
+      return run(filename)
+    }).then(() => moduleRequire(id)).finally(() => pending.delete(specifier))
     pending.set(specifier, load)
     return load
   }
   if (failChunk === 'missing-loader') delete moduleRequire.async
   await run('client.js')
-  return { loaded, plugin: moduleRequire(packageId) }
+  return { loaded, warnings, plugin: moduleRequire(packageId) }
 }
 
-async function registerSettings(failChunk) {
-  const { loaded, plugin } = await loadBundle(failChunk)
+async function registerSettings(failChunk, encode) {
+  const { loaded, warnings, plugin } = await loadBundle(failChunk, encode)
   const slots = []
   const snapshot = { status: 'ready', writable: true, value: {}, revision: 1 }
   const scope = { getSnapshot: () => snapshot, subscribe: () => () => {} }
@@ -86,7 +92,7 @@ async function registerSettings(failChunk) {
     assert.ok(entry, `missing Host slot ${key ?? name}`)
     return entry
   }
-  return { loaded, slot, section: slot('settings.section') }
+  return { loaded, warnings, slot, section: slot('settings.section') }
 }
 
 test('client loads the avatar chunk only when voice settings render', async () => {
@@ -103,6 +109,38 @@ test('voice settings remain usable if the avatar chunk cannot load', async () =>
   assert.deepEqual(loaded, ['./client.generated-voice-avatar.js'])
   assert.ok(html.includes('settings.voiceReadingVoice'))
   assert.ok(html.includes('xmimo-tts-voice-avatar-fallback'))
+})
+
+test('voice avatars recover on remount and share the successful retry across pickers', async () => {
+  const failure = new Error('temporary avatar transport failure')
+  let unavailable = true
+  const { loaded, warnings, section } = await registerSettings(() => unavailable && failure)
+  const render = () => renderCompleted(createElement(section.component, { ...section.options.inject(), close() {} }))
+  assert.ok((await render()).includes('xmimo-tts-voice-avatar-fallback'))
+  assert.equal(warnings.length, 1)
+  assert.equal(warnings[0][1], failure)
+
+  unavailable = false
+  const recovered = await Promise.all([render(), render()])
+  for (const html of recovered) assert.match(html, /data:image\/svg\+xml/u)
+  assert.equal(loaded.length, 2, 'simultaneous pickers share the recovery request')
+  assert.match(await render(), /data:image\/svg\+xml/u)
+  assert.equal(loaded.length, 2, 'successful modules are reused')
+})
+
+test('a temporary avatar generation failure does not poison the saved voice cache', async () => {
+  const failure = new Error('temporary SVG encoding failure')
+  let unavailable = true
+  const { warnings, section } = await registerSettings(false, value => {
+    if (unavailable && value.startsWith('<svg')) throw failure
+    return encodeURIComponent(value)
+  })
+  const render = () => renderCompleted(createElement(section.component, { ...section.options.inject(), close() {} }))
+  assert.ok((await render()).includes('xmimo-tts-voice-avatar-fallback'))
+  assert.equal(warnings.length, 1)
+  assert.equal(warnings[0][1], failure)
+  unavailable = false
+  assert.match(await render(), /data:image\/svg\+xml/u)
 })
 
 test('voice settings fall back safely when the Host has no chunk loader', async () => {

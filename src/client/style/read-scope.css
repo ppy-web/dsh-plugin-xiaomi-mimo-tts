@@ -210,24 +210,25 @@
 }
 
 .xmimo-avatar-style-options .xmimo-read-scope-card {
-  min-height: 92px;
-  justify-content: space-between;
-  padding: clamp(8px, 2.2cqi, 13px) clamp(7px, 2cqi, 12px);
+  box-sizing: border-box;
+  min-height: 80px;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
 }
 
 .xmimo-avatar-style-samples {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: clamp(4px, 1.6cqi, 12px);
-  padding-block: 4px 2px;
+  gap: 8px;
   min-width: 0;
 }
 
 .xmimo-avatar-style-samples .xmimo-tts-voice-avatar {
-  flex: 0 1 38px;
-  width: clamp(28px, 8cqi, 38px);
+  flex: 0 1 32px;
+  width: 32px;
   min-width: 0;
   height: auto;
   aspect-ratio: 1;
