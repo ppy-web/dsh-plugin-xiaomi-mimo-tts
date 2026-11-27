@@ -1,6 +1,6 @@
 {
   "name": "dsh-xiaomi-tts",
-  "version": "5.7.0-alpha.3",
+  "version": "5.7.0",
   "description": "给 DSH 换副百变好嗓子！云端本地 10+ 语音引擎随心挑，能听会说还会演——流式朗读、字幕响应球、趣味音效、多角色录音棚统统安排，还能拉上桌宠、听书、QQ Bot 和 AI Passport 一块玩。",
   "icon": "./assets/plugin-icons/avatar.webp",
   "license": "MIT",
@@ -368,7 +368,7 @@
   },
   "publishConfig": {
     "access": "public",
-    "tag": "next",
+    "tag": "latest",
     "directory": "output/npm-package",
     "linkDirectory": false
   },
