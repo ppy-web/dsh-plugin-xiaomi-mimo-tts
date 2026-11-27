@@ -21,20 +21,32 @@ export const QQ_PRESET_ID = 'qq-speech-assistant'
 export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): void {
   const speech = ctx.speechSynthesis
   const input = new WeakMap<Agent, { turn: number; candidate: boolean; pending?: Promise<boolean> }>()
-  const session = observeSpeech(ctx, qqSpeechPolicy(ctx, true), { accepts: (agent, source) => agent.session === source })
+  const session = observeSpeech(ctx, qqSpeechPolicy(ctx, true), { accepts: (agent, source) => agent.session === source, global: true })
   const available = (agent: Agent) => session.admitted(agent) && speech.hasDelivery('qqbot') && !!ctx.tools.get(QQBOT_FILE_TOOL, agent)
+  const lifecycle = new AbortController()
+  ctx.effect(() => () => lifecycle.abort())
+  const reasonForUnavailable = (agent: Agent): string => {
+    if (!speech.hasDelivery('qqbot')) return 'delivery-unavailable'
+    if (!ctx.tools.get(QQBOT_FILE_TOOL, agent)) return 'send-tool-unavailable'
+    if (!input.get(agent)?.candidate) return 'no-qq-input'
+    return 'not-admitted'
+  }
   const say = async (agent: Agent, request: SpeechRequest): Promise<SpeechDeliveryResult> => {
-    if (!available(agent)) throw new TtsProviderError('qqbot-voice-unavailable', 'This turn has no QQ voice delivery route.', 409)
+    if (!available(agent)) {
+      const checkSignal = request.signal ? AbortSignal.any([request.signal, lifecycle.signal]) : lifecycle.signal
+      await admit(agent, checkSignal)
+    }
+    if (!available(agent)) {
+      ctx.logger.warn(`QQ voice unavailable for agent=${agent.id}: reason=${reasonForUnavailable(agent)}`)
+      throw new TtsProviderError('qqbot-voice-unavailable', 'This turn has no QQ voice delivery route.', 409)
+    }
     return session.say(agent, request)
   }
   ctx.provide('qqbotSpeech', { admitted: (agent, turn) => session.admitted(agent, turn), say })
 
-  // Remember claimed inputs in this turn before the loop resolves its tool set.
-  // A QQ steer arriving mid-turn during a desktop-started turn switches ownership
-  // to QQ (matching QQBot's TurnTracker); a desktop prompt with rpcId revokes QQ.
-  ctx.on('agent/inbox/claimed', ({ agent, turn, message }) => {
+  const recordInput = (agent: Agent, turn: number, message: { source: { kind: string } }): boolean => {
     const existing = input.get(agent)
-    if (agent.session.header.origin === 'subagent' || (existing?.turn ?? -1) > turn) return
+    if (agent.session.header.origin === 'subagent' || (existing?.turn ?? -1) > turn) return false
     const source = message.source
     const isRpcUser = (source.kind === 'user' || source.kind === 'retry') && 'rpcId' in source
     const isPlainQqUser = source.kind === 'user' && !('rpcId' in source)
@@ -47,52 +59,80 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
         existing.candidate = true
         delete existing.pending
       }
-      return
+      return existing.candidate
     }
     // QQBot 0.5.x submits a plain user message; the DSH Web/API prompt carries rpcId.
     input.set(agent, { turn, candidate: isPlainQqUser })
-  })
+    return isPlainQqUser
+  }
+
+  // Remember claimed inputs in this turn before the loop resolves its tool set.
+  // A QQ steer arriving mid-turn during a desktop-started turn switches ownership
+  // to QQ (matching QQBot's TurnTracker); a desktop prompt with rpcId revokes QQ.
+  ctx.on('agent/inbox/claimed', ({ agent, turn, message }) => {
+    if (recordInput(agent, turn, message) && !session.admitted(agent)) {
+      void admit(agent, lifecycle.signal)
+    }
+  }, { global: true })
   ctx.on('session/event', (source, event) => {
     if (event.type !== 'turn/start' && event.type !== 'turn/end') return
     const agent = ctx.agents.get(source.id)
     if (!agent || agent.session !== source) return
     const claimed = input.get(agent)
     if (claimed && (claimed.turn < event.data.turn || (event.type === 'turn/end' && claimed.turn === event.data.turn))) input.delete(agent)
-  })
+  }, { global: true })
   ctx.on('agent/disposed', ({ agent }) => { input.delete(agent) })
-  const lifecycle = new AbortController()
-  ctx.effect(() => () => lifecycle.abort())
   async function admit(agent: Agent, signal: AbortSignal): Promise<boolean> {
     signal.throwIfAborted()
     if (available(agent)) return true
     const candidate = input.get(agent)
     if (!candidate?.candidate) return false
     const delivery = speech.conversationDelivery?.('qqbot')
-    if (!delivery) return false
-    const routeSignal = lifecycle.signal
-    const check = candidate.pending ??= (async () => {
-      if (!await delivery.policy.supports(agent, routeSignal)) return false
-      const route = await identity.inspect(agent.id, routeSignal)
-      if (route.kind !== 'qqbot') return false
-      routeSignal.throwIfAborted()
-      if (input.get(agent) !== candidate || !candidate.candidate) return false
-      return session.admit(agent, candidate.turn, async admitSignal => {
-        const current = await identity.inspect(agent.id, admitSignal)
-        if (ctx.agents.get(agent.id) !== agent || current.kind !== 'qqbot' || current.identity.key !== route.identity.key) {
-          throw new TtsProviderError('qqbot-identity-unavailable')
-        }
-      })
-    })().catch((error: unknown) => {
-      if (routeSignal.aborted) return false
-      ctx.logger.warn(`QQ speech route check failed for agent=${agent.id}`, error)
+    if (!delivery) {
+      ctx.logger.debug(`QQ speech route skipped for agent=${agent.id}: delivery unavailable`)
       return false
-    })
+    }
+    const routeSignal = lifecycle.signal
+    let check = candidate.pending
+    if (!check) {
+      let passed = false
+      const pendingCheck = (async () => {
+        if (!await delivery.policy.supports(agent, routeSignal)) {
+          ctx.logger.debug(`QQ speech route skipped for agent=${agent.id}: policy unsupported`)
+          return false
+        }
+        const route = await identity.inspect(agent.id, routeSignal)
+        if (route.kind !== 'qqbot') {
+          ctx.logger.debug(`QQ speech route skipped for agent=${agent.id}: identity=${route.kind}`)
+          return false
+        }
+        routeSignal.throwIfAborted()
+        if (input.get(agent) !== candidate || !candidate.candidate) return false
+        const admitted = session.admit(agent, candidate.turn, async admitSignal => {
+          const current = await identity.inspect(agent.id, admitSignal)
+          if (ctx.agents.get(agent.id) !== agent || current.kind !== 'qqbot' || current.identity.key !== route.identity.key) {
+            throw new TtsProviderError('qqbot-identity-unavailable')
+          }
+        })
+        if (!admitted) ctx.logger.debug(`QQ speech route skipped for agent=${agent.id}: session turn=${candidate.turn} not active`)
+        passed = admitted
+        return admitted
+      })().catch((error: unknown) => {
+        if (routeSignal.aborted) return false
+        ctx.logger.warn(`QQ speech route check failed for agent=${agent.id}`, error)
+        return false
+      }).finally(() => {
+        if (!passed && candidate.pending === pendingCheck) delete candidate.pending
+      })
+      candidate.pending = check = pendingCheck
+    }
     return abortable(check, signal)
   }
-  ctx.on('agent/pre-step', async ({ agent, signal, turn }, next) => {
+  ctx.on('agent/pre-step', async ({ agent, signal, turn, messages }, next) => {
+    for (const message of messages) recordInput(agent, turn, message)
     if (input.get(agent)?.turn === turn) await admit(agent, signal)
     return next()
-  })
+  }, { global: true })
   // Preset tools shadow the fallback. Host tool restrictions still apply.
   if (!ctx.tools.get('speak')) registerSpeak(ctx, (request, exec) => say(speechOwner(exec), request), true,
     { when: ({ agent, signal }) => admit(agent, signal) })

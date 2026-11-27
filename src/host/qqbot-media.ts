@@ -3,7 +3,6 @@ import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { SpeechDeliveryContext, SpeechDeliveryResult } from '../host-api.js'
 import { TtsProviderError } from './provider-error.js'
@@ -11,8 +10,9 @@ import { SPEECH_FILE_TTL_MS } from './speech-files.js'
 import { DEFAULT_WHALE_SETTINGS, type WhalePersona } from '../types/whale.js'
 import { buildWhalePersona, whalePackageRoot, type WhaleMeme } from './whale-persona.js'
 import { QQBOT_FILE_TOOL, qqbotDeliverySignals } from './qqbot-delivery-signal.js'
+import { resolveQqbotHome } from './qqbot-identity.js'
 
-export const QQBOT_MEDIA_ROOT = join(homedir(), '.dsh-qqbot', 'media')
+export const QQBOT_MEDIA_ROOT = join(resolveQqbotHome(), 'media')
 export { loadWhaleMemes } from './whale-persona.js'
 
 declare module '@deepseek-ai/cordis' {

@@ -351,3 +351,155 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
     await rm(directory, { recursive: true, force: true })
   }
 })
+
+test('resolveQqbotHome uses valid absolute QQBOT_DATA_DIR and falls back for blank or relative values', () => {
+  const userHome = join(tmpdir(), 'qq-home-base')
+  const customDir = join(tmpdir(), 'custom-qqbot-data')
+  assert.equal(qqbotSpeech.resolveQqbotHome(`  ${customDir}  `, userHome), customDir)
+  assert.equal(qqbotSpeech.resolveQqbotHome('relative/qqbot-dir', userHome), join(userHome, '.dsh-qqbot'))
+  assert.equal(qqbotSpeech.resolveQqbotHome('   ', userHome), join(userHome, '.dsh-qqbot'))
+  assert.equal(qqbotSpeech.resolveQqbotHome(undefined, userHome), join(userHome, '.dsh-qqbot'))
+})
+
+test('QQ speech retries transient mapping gaps, accepts pre-step fallback, and blocks desktop rpcId turns', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-qq-compat-'))
+  const mapping = join(directory, 'model-prefs.json')
+  const ctx = new Context(), sends = [], scopes = [], toolErrors = []
+  ctx.provide('systemPrompt', { tools() {}, section() {}, context() {} })
+  ctx.provide('whaleSettings', { current: () => ({ persona: qqbotSpeech.DEFAULT_WHALE_PERSONA, memory: { enabled: false } }) })
+  ctx.provide('speechSynthesis', {
+    registerDelivery(value) {
+      const adapter = { ...createQqbotSpeechDelivery(ctx, directory), conversation: value.conversation }
+      this.adapter = adapter
+      return () => { this.adapter = undefined }
+    },
+    conversationDelivery(id) {
+      return id === 'qqbot' && this.adapter ? { format: this.adapter.format, automatic: false, policy: this.adapter.conversation } : undefined
+    },
+    hasDelivery(id) { return id === 'file' || (id === 'qqbot' && !!this.adapter) },
+    isAutomaticDeliveryEnabled: () => false,
+    async deliver(request, id, context) {
+      if (id === 'file') return { adapter: 'file', path: '/fixture.wav' }
+      await context.validateRoute?.(context.signal)
+      await this.adapter.check(context)
+      return this.adapter.send({ data: Buffer.from(request.text), contentType: 'audio/silk', format: 'silk' }, context)
+    },
+  })
+  try {
+    await ctx.plugin(Loader).await()
+    await ctx.plugin(Sessions).await()
+    await ctx.plugin(Projections).await()
+    await ctx.plugin(Agents).await()
+    await ctx.plugin(ToolsService).await()
+    await ctx.plugin(Presets, { default: 'existing' }).await()
+    ctx.loader.internal = { version: 'v2', async import(name) {
+      if (name === 'dsh-xiaomi-tts/speech-agent') return speechAgent
+      if (name === 'dsh-xiaomi-tts/whale-agent') return whaleAgent
+      if (name === 'dsh-xiaomi-tts/qqbot-agent') return await import('../lib/qqbot-agent.js')
+      if (name === '@deepseek-ai/dsh-time-context') return { apply() {} }
+      throw new Error(name)
+    } }
+    await ctx.agentPresets.register({ id: 'existing', plugins: [] })
+    const plugin = ctx.plugin(qqbotSpeech)
+    await plugin.await()
+    ctx.qqbotCompanion.identity.path = mapping
+    registerSender(ctx, async (args, { agent }) => {
+      sends.push({ agent, text: await readFile(args.file_path, 'utf8') })
+      return { messageId: 'audio', target: 'c2c:peer' }
+    })
+    const make = async preset => {
+      const agent = { id: randomUUID() }
+      const scope = createScope(ctx, agent)
+      scopes.push(scope)
+      agent.ctx = scope.ctx
+      agent.ctx.on('tools/result', (_exec, result) => {
+        if (result.isError) toolErrors.push(result)
+      })
+      await scope.ctx.plugin({ inject: ['sessions'], apply(owner) {
+        agent.session = owner.sessions.create(agent.id, { meta: { agentPreset: preset } })
+      } }).await()
+      await ctx.agentPresets.mount(scope.ctx, preset)
+      await scope.ctx.plugin({ inject: ['agents'], async apply(owner) { await owner.agents.register(agent) } }).await()
+      return agent
+    }
+    const qq = await make('existing')
+    const builtIn = await make('qq-speech-assistant')
+    const pipeline = new ToolExecutionPipeline(ctx)
+    const turns = new WeakMap()
+    const modelSelection = { provider: 'test', model: 'test' }
+    const beginTurn = async (agent, source, { emitClaimed = true } = {}) => {
+      const turn = (turns.get(agent) ?? 0) + 1
+      turns.set(agent, turn)
+      const signal = new AbortController().signal
+      const message = createUserMessage({ content: [{ type: 'text', text: '测试' }], source })
+      agent.session.append('turn/start', { turn })
+      const events = agentEvents(ctx, agent)
+      if (emitClaimed) events.emit('agent/inbox/claimed', { turn, message })
+      const toolSet = await ctx.tools.resolve({ agent, modelSelection, signal })
+      await events.waterfall('agent/pre-step', { turn, step: 1, messages: [message], signal, modelSelection }, async () => ({ kind: 'enter', messages: [message] }))
+      return {
+        turn,
+        toolSet,
+        async speak(text) {
+          const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text }, agent, signal, toolSet })
+          return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+        },
+        finish() {
+          toolSet.dispose()
+          agent.session.append('turn/end', { turn, reason: { kind: 'completed' } })
+        },
+      }
+    }
+
+    // 1. Transient missing mapping during pre-step does not lock out later say() in the same turn.
+    let turn = await beginTurn(qq, { kind: 'user' })
+    assert.equal(ctx.qqbotSpeech.admitted(qq, turn.turn), false)
+    await writeFile(mapping, JSON.stringify({ sessionIds: { 'qqbot:bot:c2c:peer': qq.id, 'qqbot:bot:c2c:builtin': builtIn.id } }))
+    assert.equal((await ctx.qqbotSpeech.say(qq, { text: '补验票成功' })).adapter, 'qqbot')
+    assert.equal(ctx.qqbotSpeech.admitted(qq, turn.turn), true)
+    assert.deepEqual(sends.map(item => item.text), ['补验票成功'])
+    turn.finish()
+
+    // 2. agent/pre-step fallback works even without agent/inbox/claimed; desktop rpcId stays blocked.
+    turn = await beginTurn(qq, { kind: 'user' }, { emitClaimed: false })
+    assert.equal(ctx.qqbotSpeech.admitted(qq, turn.turn), true)
+    const step2Tools = await ctx.tools.resolve({ agent: qq, modelSelection, signal: new AbortController().signal })
+    try {
+      assert.ok(ctx.tools.get('speak', qq, step2Tools))
+      const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text: '仅靠 pre-step 放行' }, agent: qq, signal: new AbortController().signal, toolSet: step2Tools })
+      const step2Result = await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+      assert.equal(step2Result.value.adapter, 'qqbot')
+    } finally {
+      step2Tools.dispose()
+    }
+    turn.finish()
+
+    turn = await beginTurn(qq, { kind: 'user', rpcId: randomUUID() }, { emitClaimed: false })
+    assert.equal(ctx.qqbotSpeech.admitted(qq, turn.turn), false)
+    assert.equal(ctx.tools.get('speak', qq, turn.toolSet), undefined)
+    await assert.rejects(ctx.qqbotSpeech.say(qq, { text: '桌面回合禁止发 QQ' }), error => error.code === 'qqbot-voice-unavailable')
+    turn.finish()
+
+    // 3. Built-in qq-speech-assistant preset retries admission inside speak and rejects desktop rpcId turns.
+    await rm(mapping)
+    turn = await beginTurn(builtIn, { kind: 'user' })
+    assert.equal(ctx.qqbotSpeech.admitted(builtIn, turn.turn), false)
+    await writeFile(mapping, JSON.stringify({ sessionIds: { 'qqbot:bot:c2c:peer': qq.id, 'qqbot:bot:c2c:builtin': builtIn.id } }))
+    const builtInOk = await turn.speak('内置预设补验票')
+    assert.equal(builtInOk.isError, false)
+    assert.equal(builtInOk.value.adapter, 'qqbot')
+    turn.finish()
+
+    turn = await beginTurn(builtIn, { kind: 'user', rpcId: randomUUID() })
+    const beforeErrors = toolErrors.length
+    const builtInDenied = await turn.speak('内置预设桌面拒发')
+    assert.equal(builtInDenied.isError, true)
+    assert.equal(toolErrors.length, beforeErrors + 1)
+    assert.match(JSON.stringify(toolErrors.at(-1)), /qqbot-voice-unavailable|This turn has no QQ voice delivery route/)
+    turn.finish()
+  } finally {
+    for (const scope of scopes) await scope.dispose()
+    await ctx.fiber.dispose()
+    await rm(directory, { recursive: true, force: true })
+  }
+})

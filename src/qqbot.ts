@@ -22,7 +22,7 @@ import { QQBOT_FILE_TOOL } from './host/qqbot-delivery-signal.js'
 
 export { QqCompanion } from './host/qqbot-companion.js'
 export { QqMemoryStore, parseQqIdentity } from './host/qqbot-memory.js'
-export { QqIdentityReader } from './host/qqbot-identity.js'
+export { QqIdentityReader, resolveQqbotHome } from './host/qqbot-identity.js'
 export { QqMemoryAdmin } from './host/qqbot-memory-admin.js'
 export { DEFAULT_WHALE_PERSONA } from './types/whale.js'
 

@@ -50,6 +50,7 @@ export function speechRequest(args: unknown, signal: AbortSignal): SpeechRequest
 export function observeSpeech(ctx: Context, policy: SessionSpeechOptions, options: {
   accepts?: (agent: Agent, session: Session) => boolean
   suppressAutomatic?: (agent: Agent, turn: number) => boolean
+  global?: boolean
 } = {}): SessionSpeech {
   const { delivery } = policy
   const sessionSpeech = new SessionSpeech(ctx.speechSynthesis, new SpeechModeStore(), policy,
@@ -65,7 +66,7 @@ export function observeSpeech(ctx: Context, policy: SessionSpeechOptions, option
     if (!agent || options.accepts?.(agent, session) === false) return
     const suppress = event.type === 'turn/end' && options.suppressAutomatic?.(agent, event.data.turn) === true
     sessionSpeech.observe(agent, event, suppress)
-  })
+  }, options.global ? { global: true } : undefined)
   ctx.on('agent/disposed', ({ agent }) => { sessionSpeech.release(agent) })
   return sessionSpeech
 }
@@ -135,8 +136,7 @@ export function apply(ctx: Context, config: Config): void {
   registerSpeak(ctx, async (input, exec) => {
     const agent = speechOwner(exec)
     const bridge = ctx.get('qqbotSpeech')
-    if (bridge?.admitted(agent)) return bridge.say(agent, input)
-    if (qq && bridge) throw new TtsProviderError('qqbot-voice-unavailable', 'This turn has no QQ voice delivery route.', 409)
+    if (bridge && (qq || bridge.admitted(agent))) return bridge.say(agent, input)
     return sessionSpeech.say(agent, input)
   }, qq)
   if (qq) return
