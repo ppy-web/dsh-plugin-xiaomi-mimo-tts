@@ -57,7 +57,7 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
   })
 
   ctx.effect(() => ctx.webServer.register({
-    kind: 'exact', path: TTS_CAPABILITIES_ROUTE,
+    kind: 'exact', path: TTS_CAPABILITIES_ROUTE, auth: 'anonymous',
     handler(req, res) {
       if (!method(req, res, ['GET']) || !authorize(req, res, currentToken())) return
       const capabilities = ctx.speechSynthesis.capabilities()
@@ -73,7 +73,7 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
   }))
 
   ctx.effect(() => ctx.webServer.register({
-    kind: 'exact', path: TTS_EXPORT_ROUTE,
+    kind: 'exact', path: TTS_EXPORT_ROUTE, auth: 'anonymous',
     async handler(req, res) {
       if (!method(req, res, ['POST']) || !authorize(req, res, currentToken())) return
       if (req.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {
@@ -123,7 +123,7 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
   }))
 
   ctx.effect(() => ctx.webServer.register({
-    kind: 'prefix', path: TTS_DOWNLOAD_ROUTE,
+    kind: 'prefix', path: TTS_DOWNLOAD_ROUTE, auth: 'anonymous',
     async handler(req, res) {
       if (!method(req, res, ['GET', 'HEAD'])) return
       const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
@@ -158,6 +158,7 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: TTS_OPEN_STUDIO_ROUTE,
+    auth: 'anonymous',
     async handler(req, res) {
       if (!method(req, res, ['GET', 'POST']) || !authorize(req, res, currentToken())) return
       const studio = (typeof ctx.get === 'function' ? ctx.get('speechStudio') : undefined) as SpeechStudioService | undefined

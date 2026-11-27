@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { isSilk } from 'silk-wasm'
 import { apply, Config } from '../lib/index.js'
-import { resolveTtsSettings, TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE } from '../lib/shared.js'
+import { resolveTtsSettings, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE } from '../lib/shared.js'
 import { withDeepseekServer } from './helpers/deepseek-server.mjs'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { listenLoopback } from './helpers/loopback.mjs'
@@ -405,10 +405,12 @@ test('default Web entry registers the new routes when the Host service becomes a
   try {
     for (let i = 0; i < 10 && !routes.has(TTS_CAPABILITIES_ROUTE); i++) await settle()
     assert.ok(ctx.get('speechSynthesis'))
-    assert.ok(routes.has(TTS_CAPABILITIES_ROUTE))
-    assert.ok(routes.has(TTS_EXPORT_ROUTE))
+    for (const path of [TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_OPEN_STUDIO_ROUTE]) {
+      assert.equal(routes.get(path)?.auth, 'anonymous')
+    }
     await fiber.dispose()
-    assert.equal(routes.has(TTS_CAPABILITIES_ROUTE), false)
-    assert.equal(routes.has(TTS_EXPORT_ROUTE), false)
+    for (const path of [TTS_CAPABILITIES_ROUTE, TTS_EXPORT_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_OPEN_STUDIO_ROUTE]) {
+      assert.equal(routes.has(path), false)
+    }
   } finally { await ctx.fiber.dispose() }
 })
