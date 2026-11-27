@@ -114,37 +114,11 @@ test('the production bundle respects the saved never-remind preference on startu
   assert.deepEqual(loaded, [])
 })
 
-test('client loads the avatar chunk only when voice settings render', async () => {
+test('voice settings render generated avatars from the main bundle', async () => {
   const { loaded, section } = await registerSettings()
+  const html = await renderCompleted(createElement(section.component, { ...section.options.inject(), close() {} }))
   assert.deepEqual(loaded, [])
-  const html = await renderCompleted(createElement(section.component, { ...section.options.inject(), close() {} }))
-  assert.deepEqual(loaded, ['./client.generated-voice-avatar.js'])
   assert.match(html, /data:image\/svg\+xml/u)
-})
-
-test('voice settings remain usable if the avatar chunk cannot load', async () => {
-  const { loaded, section } = await registerSettings(true)
-  const html = await renderCompleted(createElement(section.component, { ...section.options.inject(), close() {} }))
-  assert.deepEqual(loaded, ['./client.generated-voice-avatar.js'])
-  assert.ok(html.includes('settings.voiceReadingVoice'))
-  assert.ok(html.includes('xmimo-tts-voice-avatar-fallback'))
-})
-
-test('voice avatars recover on remount and share the successful retry across pickers', async () => {
-  const failure = new Error('temporary avatar transport failure')
-  let unavailable = true
-  const { loaded, warnings, section } = await registerSettings(() => unavailable && failure)
-  const render = () => renderCompleted(createElement(section.component, { ...section.options.inject(), close() {} }))
-  assert.ok((await render()).includes('xmimo-tts-voice-avatar-fallback'))
-  assert.equal(warnings.length, 1)
-  assert.equal(warnings[0][1], failure)
-
-  unavailable = false
-  const recovered = await Promise.all([render(), render()])
-  for (const html of recovered) assert.match(html, /data:image\/svg\+xml/u)
-  assert.equal(loaded.length, 2, 'simultaneous pickers share the recovery request')
-  assert.match(await render(), /data:image\/svg\+xml/u)
-  assert.equal(loaded.length, 2, 'successful modules are reused')
 })
 
 test('a temporary avatar generation failure does not poison the saved voice cache', async () => {
@@ -160,14 +134,6 @@ test('a temporary avatar generation failure does not poison the saved voice cach
   assert.equal(warnings[0][1], failure)
   unavailable = false
   assert.match(await render(), /data:image\/svg\+xml/u)
-})
-
-test('voice settings fall back safely when the Host has no chunk loader', async () => {
-  const { loaded, section } = await registerSettings('missing-loader')
-  const html = await renderCompleted(createElement(section.component, { ...section.options.inject(), close() {} }))
-  assert.deepEqual(loaded, [])
-  assert.ok(html.includes('settings.voiceReadingVoice'))
-  assert.ok(html.includes('xmimo-tts-voice-avatar-fallback'))
 })
 
 test('DSH keeps settings chunks deferred until their full pages are rendered', async () => {
