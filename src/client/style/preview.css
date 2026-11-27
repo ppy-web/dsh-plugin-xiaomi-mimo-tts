@@ -467,6 +467,19 @@
 .xmimo-tts-open-api-endpoint-copy > svg {
   flex: none;
 }
+.xmimo-tts-open-api-passport {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--xmimo-ui-border-soft);
+}
+.xmimo-tts-open-api-note {
+  color: var(--xmimo-ui-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
 @container xmimo-broadcast (max-width: 560px) {
   .xmimo-tts-open-api-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .xmimo-tts-open-api-side { align-items: flex-start; }

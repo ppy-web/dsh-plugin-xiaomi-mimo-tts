@@ -70,7 +70,7 @@ const ENTRIES = {
   passport: { group: 'integrations', terms: ['settings.passportIntegration', 'settings.passportIntegrationHint'] },
   novel: { group: 'integrations', terms: ['settings.novelIntegration', 'settings.novelIntegrationHint'], aliases: 'dsh-novel 听书 audiobook' },
   'audio-reactive': { group: 'integrations', terms: ['settings.audioReactiveIntegration', 'settings.audioReactiveIntegrationHint'], aliases: 'dsh-audio-reactive 音频响应 频谱' },
-  openApi: { group: 'integrations', terms: ['settings.openApiTitle', 'settings.openApiHint'], aliases: 'openApiToken open-api openapi 开放接口 令牌 外部程序 http api /open-studio' },
+  openApi: { group: 'integrations', terms: ['settings.openApiTitle', 'settings.openApiHint', 'settings.passportApiTitle', 'settings.passportApiHint'], aliases: 'openApiToken open-api openapi 开放接口 令牌 外部程序 http api /open-studio passport 3101 3010 /api/synthesize 直出 独立端口' },
   studio: { group: 'studio', terms: ['studio.title', 'studio.subtitle', 'studio.enter'], aliases: '录音棚 剧情模式 广播剧 剧本 角色 导演 studio drama script cast' },
   soundScope: { group: 'sound', terms: ['settings.soundEffectsScope', 'settings.soundEffectsClickOnly', 'settings.soundEffectsTaskOnly'] },
   soundVolume: { group: 'sound', terms: ['settings.soundEffectsVolume'] },

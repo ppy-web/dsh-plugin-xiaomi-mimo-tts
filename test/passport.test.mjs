@@ -75,6 +75,11 @@ async function harness(t, overrides = {}) {
   }
   const synthesis = {
     hasDelivery: id => id === 'passport',
+    async synthesize(request) {
+      if (overrides.synthesizeRaw) return overrides.synthesizeRaw(request)
+      const data = overrides.synthesize ? await overrides.synthesize(request) : pcmWave(tone(40))
+      return { data, text: request.text, format: request.format ?? 'wav', contentType: 'audio/wav', provider: 'xiaomi' }
+    },
     async deliver(request, id, context) {
       deliveries.push({ request, id, context })
       await bridge.adapter.check(context)
@@ -951,4 +956,118 @@ test('preset roster route lists actual IDs without exposing configuration and re
     assert.equal(rejected.headers.allow, 'GET')
   } finally { await plugin.dispose(); await ctx.fiber.dispose() }
   assert.equal(routes.size, 0)
+})
+
+test('Passport HTTP /api/synthesize returns direct audio with Bearer auth and cancels on dispose', async t => {
+  const { bridge, errors } = await harness(t)
+  const baseUrl = `http://127.0.0.1:${bridge.address.port}`
+  const auth = { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' }
+
+  const unauth = await fetch(`${baseUrl}/api/synthesize`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ text: '你好' }),
+  })
+  assert.equal(unauth.status, 401)
+
+  const badOrigin = await fetch(`${baseUrl}/api/synthesize`, {
+    method: 'POST',
+    headers: { ...auth, origin: `http://127.0.0.1:${bridge.address.port}` },
+    body: JSON.stringify({ text: '你好' }),
+  })
+  assert.equal(badOrigin.status, 401)
+
+  const wrongMethod = await fetch(`${baseUrl}/api/synthesize`, { headers: { authorization: `Bearer ${TOKEN}` } })
+  assert.equal(wrongMethod.status, 405)
+
+  const wrongType = await fetch(`${baseUrl}/api/synthesize`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'text/plain' },
+    body: 'hello',
+  })
+  assert.equal(wrongType.status, 415)
+
+  const badField = await fetch(`${baseUrl}/api/synthesize`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ text: '你好', apiKey: 'secret' }),
+  })
+  assert.equal(badField.status, 400)
+  assert.equal((await badField.json()).error, 'unknown-request-field')
+
+  const ok = await fetch(`${baseUrl}/api/synthesize`, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ text: '你好，伙伴小屋', format: 'wav' }),
+  })
+  assert.equal(ok.status, 200)
+  assert.equal(ok.headers.get('content-type'), 'audio/wav')
+  const wavBytes = Buffer.from(await ok.arrayBuffer())
+  assert.equal(wavBytes.subarray(0, 4).toString('ascii'), 'RIFF')
+  assert.deepEqual(errors, [])
+
+  let started
+  const ready = new Promise(resolve => { started = resolve })
+  const slow = await harness(t, {
+    synthesizeRaw(request) {
+      started()
+      return new Promise((_resolve, reject) => request.signal.addEventListener('abort', () => reject(new Error('disposed')), { once: true }))
+    },
+  })
+  const slowUrl = `http://127.0.0.1:${slow.bridge.address.port}/api/synthesize`
+  const pending = fetch(slowUrl, {
+    method: 'POST',
+    headers: auth,
+    body: JSON.stringify({ text: '等待取消', format: 'wav' }),
+  })
+  await ready
+  await slow.bridge.dispose()
+  const disposedRes = await pending
+  assert.equal(disposedRes.status, 503)
+  assert.equal((await disposedRes.json()).error, 'speech-service-disposed')
+})
+
+test('passport-token-copy requires same-origin POST and status route never exposes accessToken', async () => {
+  const ctx = new Context(), routes = new Map()
+  ctx.provide('webServer', { register: route => { routes.set(route.path, route); return () => routes.delete(route.path) } })
+  const plugin = ctx.plugin(passport, { accessToken: TOKEN })
+  try {
+    for (let n = 0; n < 20 && !routes.has('/plugins/xiaomi-mimo-tts/passport-token-copy'); n++) await settle()
+    const statusRoute = routes.get('/plugins/xiaomi-mimo-tts/passport-status')
+    const copyRoute = routes.get('/plugins/xiaomi-mimo-tts/passport-token-copy')
+    assert.ok(statusRoute)
+    assert.ok(copyRoute)
+    assert.notEqual(copyRoute.auth, 'anonymous')
+
+    const call = async (route, req) => {
+      let status = 200
+      let body
+      const headers = {}
+      const res = {
+        set statusCode(value) { status = value },
+        setHeader(key, value) { headers[key] = value },
+        end(value) { body = JSON.parse(value) },
+      }
+      await route.handler(req, res)
+      return { status, body, headers }
+    }
+
+    const statusRes = await call(statusRoute, { method: 'GET', headers: { host: '127.0.0.1:3080' } })
+    assert.equal(statusRes.status, 200)
+    assert.equal(JSON.stringify(statusRes.body).includes(TOKEN), false)
+
+    const getCopy = await call(copyRoute, { method: 'GET', headers: { host: '127.0.0.1:3080' } })
+    assert.equal(getCopy.status, 405)
+
+    const crossOrigin = await call(copyRoute, { method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'https://evil.example' } })
+    assert.equal(crossOrigin.status, 403)
+
+    const sameOrigin = await call(copyRoute, { method: 'POST', headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080' } })
+    assert.equal(sameOrigin.status, 200)
+    assert.equal(sameOrigin.body.token, TOKEN)
+    assert.equal(sameOrigin.headers['cache-control'], 'no-store')
+  } finally {
+    await plugin.dispose()
+    await ctx.fiber.dispose()
+  }
 })

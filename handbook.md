@@ -372,6 +372,7 @@ export async function apply(ctx: Context) {
 - **Agent 预设与专用会话**：支持选择预设，设备会话独立于网页和 QQ 会话，重启后可恢复；工具操作仍遵循宿主权限和审批规则。
 - **快捷配对与取消**：一键生成 4 位配对码并显示电脑局域网地址；使用配套固件时，按 DOWN 可取消当前识别、对话或播报，掉线重连后不会补播旧回复。
 - **关闭网页后继续使用**：只要电脑上的 DSH 进程保持运行且设备能访问它，就能继续对话。
+- **独立 HTTP 音频直出接口（`POST /api/synthesize`）**：只要配置好 `accessToken` 并启动监听，该独立端口同时提供 `POST /api/synthesize`（携带 `Authorization: Bearer <accessToken>`，请求体 `{"text":"{text}","format":"wav"}`），直接返回 `HTTP 200` 音频二进制且不经过 DSH 主端口网页门禁。音色工坊「播报台 → 更多 → 开放接口」下方可直接查看监听状态并复制完整 HTTP 配置。
 
 完整分步教程见独立的 [AI Passport 接入页](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#passport)。[组件配置预览](https://ppy-web.github.io/dsh-plugin-xiaomi-mimo-tts/#components-passport)提供与真实组件相同的分组表单，但保存只修改演示数据，不启动监听、不扫描网络，也不会连接设备。
 

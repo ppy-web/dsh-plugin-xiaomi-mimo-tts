@@ -163,7 +163,9 @@ Content-Type: application/json
 * **方法**：`POST`
 * **请求头**：`Authorization: Bearer <openApiToken>`
 * **请求体**：`{"text": "{text}", "format": "wav"}`
-* **响应**：HTTP 200 原始音频二进制（无需解析 JSON 链接）
+* **音频**：`HTTP 200` 原始音频二进制（无需解析 JSON 链接）
+
+此外，若启用了 `dsh-xiaomi-tts/passport` 组件（默认监听 `127.0.0.1:3101`，可在组件设置中修改地址、端口与 `accessToken`），该独立端口同样提供 `POST /api/synthesize`（携带 `Authorization: Bearer <accessToken>`），**不经过 DSH 网页会话门禁**，适合在带外层路由守卫的环境（例如手机端内置引擎）中由本机自定义 HTTP 客户端直接调用；音色工坊「开放接口」下方已提供状态展示与「复制 HTTP 配置」按钮。
 
 ### 导出音频并获取下载 URL
 

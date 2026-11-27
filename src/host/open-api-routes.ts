@@ -3,7 +3,7 @@ import { open, readFile } from 'node:fs/promises'
 import { pipeline } from 'node:stream/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
-import type { SpeechRequest, SpeechStudioService, StudioLineInput, StudioRoleInput } from '../host-api.js'
+import type { SpeechRequest, SpeechStudioService, SpeechSynthesisService, StudioLineInput, StudioRoleInput } from '../host-api.js'
 import { MAX_STUDIO_REQUEST_BODY_BYTES, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE, TTS_OPEN_SYNTHESIZE_ROUTE } from '../constants.js'
 import { AudioDownloads } from './audio-downloads.js'
 import { json, readJsonBody } from './http.js'
@@ -93,6 +93,25 @@ async function runWithAbort(
   }
 }
 
+export async function synthesizeToHttpResponse(
+  req: IncomingMessage,
+  res: ServerResponse,
+  controllers: Set<AbortController>,
+  synthesis: Pick<SpeechSynthesisService, 'synthesize'>,
+): Promise<void> {
+  await runWithAbort(req, res, controllers, 'speech-synthesis-failed', async (signal) => {
+    const input = await readSpeechRequestBody(req)
+    const audio = await synthesis.synthesize({ ...input, signal })
+    if (signal.aborted) throw new TtsProviderError('speech-service-disposed', undefined, 503)
+    res.statusCode = 200
+    res.setHeader('content-type', audio.contentType)
+    res.setHeader('content-length', audio.data.length)
+    res.setHeader('cache-control', 'no-store')
+    res.setHeader('x-content-type-options', 'nosniff')
+    res.end(audio.data)
+  })
+}
+
 export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, downloads = new AudioDownloads()): void {
   const controllers = new Set<AbortController>()
   ctx.effect(() => {
@@ -146,17 +165,7 @@ export function registerOpenApiRoutes(ctx: Context, currentToken: () => string, 
     kind: 'exact', path: TTS_OPEN_SYNTHESIZE_ROUTE, auth: 'anonymous',
     async handler(req, res) {
       if (!method(req, res, ['POST']) || !authorize(req, res, currentToken())) return
-      await runWithAbort(req, res, controllers, 'speech-synthesis-failed', async (signal) => {
-        const input = await readSpeechRequestBody(req)
-        const audio = await ctx.speechSynthesis.synthesize({ ...input, signal })
-        if (signal.aborted) throw new TtsProviderError('speech-service-disposed', undefined, 503)
-        res.statusCode = 200
-        res.setHeader('content-type', audio.contentType)
-        res.setHeader('content-length', audio.data.length)
-        res.setHeader('cache-control', 'no-store')
-        res.setHeader('x-content-type-options', 'nosniff')
-        res.end(audio.data)
-      })
+      await synthesizeToHttpResponse(req, res, controllers, ctx.speechSynthesis)
     },
   }))
 

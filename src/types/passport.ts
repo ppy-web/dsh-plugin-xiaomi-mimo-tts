@@ -37,6 +37,7 @@ export const PASSPORT_NUMBER_FIELDS = {
 
 export type PassportNumberField = keyof typeof PASSPORT_NUMBER_FIELDS
 export const PASSPORT_STATUS_ROUTE = '/plugins/xiaomi-mimo-tts/passport-status'
+export const PASSPORT_TOKEN_COPY_ROUTE = '/plugins/xiaomi-mimo-tts/passport-token-copy'
 export const PASSPORT_ASR_TEST_ROUTE = '/plugins/xiaomi-mimo-tts/passport-asr-test'
 export const PASSPORT_DEVICE_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/passport-device.webp'
 export const PASSPORT_SCREEN_ASSET_ROUTE = '/plugins/xiaomi-mimo-tts/passport-screen.webp'

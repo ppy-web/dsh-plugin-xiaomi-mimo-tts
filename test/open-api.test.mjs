@@ -17,7 +17,7 @@ const { AudioDownloads } = await loadClientModule('src/host/audio-downloads.ts')
 const { registerOpenApiRoutes } = await loadClientModule('src/host/open-api-routes.ts')
 const { writeSpeechArtifact, SPEECH_FILE_TTL_MS } = await loadClientModule('src/host/speech-files.ts')
 const { saveSettingsDraft } = await loadClientModule('src/client/settings/save-settings.ts')
-const { generateOpenApiToken, buildOpenApiQuickSnippet, buildOpenSynthesizeHttpConfig } = await loadClientModule('src/client/settings/open-api-settings.tsx')
+const { generateOpenApiToken, buildOpenApiQuickSnippet, resolvePassportSynthesizeUrl, buildPassportSynthesizeHttpConfig, buildPassportSynthesizeCurl } = await loadClientModule('src/client/settings/open-api-settings.tsx')
 
 function wav() {
   const data = Buffer.alloc(4844)
@@ -473,13 +473,17 @@ test('openApiToken can be generated, saved, cleared and works during external pr
   assert.notEqual(token, generateOpenApiToken())
   assert.match(buildOpenApiQuickSnippet('http://127.0.0.1:3080/plugins/xiaomi-mimo-tts/', token),
     new RegExp(`Authorization: Bearer ${token}.*http://127\\.0\\.0\\.1:3080/plugins/xiaomi-mimo-tts/capabilities`, 'su'))
-  const httpLoopback = buildOpenSynthesizeHttpConfig('http://127.0.0.1:3080/plugins/xiaomi-mimo-tts/', token)
-  assert.match(httpLoopback, new RegExp(`http://127\\.0\\.0\\.1:3080/plugins/xiaomi-mimo-tts/open-synthesize`, 'u'))
-  assert.match(httpLoopback, new RegExp(`Authorization: Bearer ${token}`, 'u'))
-  assert.match(httpLoopback, /\{"text": "\{text\}", "format": "wav"\}/u)
-  assert.match(httpLoopback, /局域网 IP/u)
-  const httpLan = buildOpenSynthesizeHttpConfig('http://192.168.1.10:3080/plugins/xiaomi-mimo-tts', token)
-  assert.equal(/局域网 IP/u.test(httpLan), false)
+  assert.equal(resolvePassportSynthesizeUrl(null), 'http://127.0.0.1:3101/api/synthesize')
+  assert.equal(resolvePassportSynthesizeUrl({ host: '0.0.0.0', port: 3010 }), 'http://127.0.0.1:3010/api/synthesize')
+  const passportUrl = resolvePassportSynthesizeUrl({ host: '127.0.0.1', port: 3010 })
+  const passportCfg = buildPassportSynthesizeHttpConfig(passportUrl, '192.168.1.10')
+  assert.match(passportCfg, /http:\/\/127\.0\.0\.1:3010\/api\/synthesize/u)
+  assert.match(passportCfg, /Authorization: Bearer <AI Passport 访问令牌>/u)
+  assert.match(passportCfg, /\{"text": "\{text\}", "format": "wav"\}/u)
+  assert.match(passportCfg, /http:\/\/192\.168\.1\.10:3010\/api\/synthesize/u)
+  assert.match(buildPassportSynthesizeCurl(passportUrl), /curl -X POST "http:\/\/127\.0\.0\.1:3010\/api\/synthesize"/u)
+  assert.match(buildPassportSynthesizeHttpConfig(passportUrl, '192.168.1.10', '9527'), /Authorization: Bearer 9527/u)
+  assert.match(buildPassportSynthesizeCurl(passportUrl, '9527'), /Authorization: Bearer 9527/u)
 
   let user = {}
   let revision = 1

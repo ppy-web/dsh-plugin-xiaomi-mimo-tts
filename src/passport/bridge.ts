@@ -7,6 +7,8 @@ import { Socket } from 'node:net'
 import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { WebSocket, WebSocketServer } from 'ws'
 import type { SpeechAudio, SpeechDeliveryAdapter, SpeechSynthesisService } from '../host-api.js'
+import { json } from '../host/http.js'
+import { synthesizeToHttpResponse } from '../host/open-api-routes.js'
 import { SessionSpeech } from '../host/session-speech.js'
 import { prepareTtsText } from '../shared.js'
 import { playbackPcm, PcmUtterances } from './audio.js'
@@ -54,6 +56,8 @@ export class PassportBridge {
   private readonly sockets = new Set<WebSocket>()
   private readonly connections = new Set<PassportConnection>()
   private readonly pending = new Set<Promise<unknown>>()
+  private readonly httpControllers = new Set<AbortController>()
+  private readonly httpPending = new Set<Promise<void>>()
   private readonly authFailures = new Map<string, { count: number; resetAt: number }>()
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES, perMessageDeflate: false })
   private current: PassportConnection | undefined
@@ -155,7 +159,7 @@ export class PassportBridge {
   async listen(): Promise<void> {
     if (this.disposed || this.server) throw new Error('passport-server-unavailable')
     if (!isPassportAccessToken(this.options.accessToken)) throw new Error('passport-token-required')
-    const server = createServer((req, res) => {
+    const server = createServer(async (req, res) => {
       res.setHeader('cache-control', 'no-store')
       const address = req.socket.remoteAddress ?? ''
       if (this.isAuthRateLimited(address)) { res.setHeader('connection', 'close'); res.writeHead(429); res.end(); return }
@@ -167,7 +171,15 @@ export class PassportBridge {
         return
       }
       this.clearAuthFailure(address)
-      if (req.method !== 'GET' || req.url !== '/api/health') { res.writeHead(404); res.end(); return }
+      const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
+      if (pathname === '/api/synthesize') {
+        if (req.method !== 'POST') { res.setHeader('allow', 'POST'); json(res, 405, { error: 'method-not-allowed' }); return }
+        const task = synthesizeToHttpResponse(req, res, this.httpControllers, this.synthesis)
+        this.httpPending.add(task)
+        try { await task } finally { this.httpPending.delete(task) }
+        return
+      }
+      if (req.method !== 'GET' || pathname !== '/api/health') { res.writeHead(404); res.end(); return }
       res.setHeader('content-type', 'application/json')
       res.end(JSON.stringify({ ok: true, adapter: 'passport', protocol_version: '7.0.0' }))
     })
@@ -209,6 +221,8 @@ export class PassportBridge {
 
   private async shutdown(): Promise<void> {
     this.disposed = true
+    for (const controller of this.httpControllers) controller.abort()
+    await Promise.allSettled(this.httpPending)
     for (const connection of [...this.connections]) connection.close(1001, 'shutdown')
     for (const socket of this.sockets) socket.terminate()
     this.wss.close()

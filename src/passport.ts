@@ -6,7 +6,7 @@ import z from '@deepseek-ai/schemastery'
 import { readFileSync } from 'node:fs'
 import { PassportBridge } from './passport/bridge.js'
 import { PassportSession } from './passport/session.js'
-import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_ASR_TEST_ROUTE, PASSPORT_ASR_PROVIDERS, PASSPORT_NUMBER_FIELDS, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from './types/passport.js'
+import { DEFAULT_PASSPORT_SETTINGS as defaults, isPassportAccessToken, PASSPORT_STATUS_ROUTE, PASSPORT_TOKEN_COPY_ROUTE, PASSPORT_ASR_TEST_ROUTE, PASSPORT_ASR_PROVIDERS, PASSPORT_NUMBER_FIELDS, PASSPORT_PRESETS_ROUTE, PASSPORT_DEVICE_ASSET_ROUTE, PASSPORT_SCREEN_ASSET_ROUTE } from './types/passport.js'
 import type { PassportSettings } from './types/passport.js'
 import { json, readJsonBody, sameOriginRequest, isJsonContentType } from './host/http.js'
 import { registerStaticAsset } from './host/assets.js'
@@ -140,6 +140,13 @@ export function apply(ctx: Context, config: Config): void {
         recognitionChoices: ctx.get('passportRecognition')?.choices().map(choice => choice.id === 'host' ? { ...choice, configured: !!ctx.get('speechToText') } : choice),
         host: config.host.get(), port: config.port.get(), addresses: passportAddresses(), error: lastError,
         sessionError: connection?.status.connected ? undefined : sessionError })
+    } }))
+    child.effect(() => child.webServer.register({ kind: 'exact', path: PASSPORT_TOKEN_COPY_ROUTE, handler(req, res) {
+      if (req.method !== 'POST') { res.setHeader('allow', 'POST'); json(res, 405, { error: 'method-not-allowed' }); return }
+      if (!sameOriginRequest(req, true)) { json(res, 403, { error: 'cross-origin-denied' }); return }
+      res.setHeader('cache-control', 'no-store')
+      const raw = config.accessToken.get().trim()
+      json(res, 200, { token: isPassportAccessToken(raw) ? raw : '' })
     } }))
   })
   ctx.inject(['speechSynthesis', 'agents', 'agentPresets', 'agentDefaultModel'], child => {
