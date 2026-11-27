@@ -7,7 +7,7 @@
   min-width: 0;
   flex-direction: column;
   gap: 8px;
-  padding-bottom: var(--xmimo-ui-space-3, 12px);
+  padding: 4px 0 var(--xmimo-ui-space-3, 12px);
   border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e8ee)
 }
 

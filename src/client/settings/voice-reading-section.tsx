@@ -95,10 +95,10 @@ const VoiceReadingRanges = memo(function VoiceReadingRanges({ t, volume, rate, d
 function selectReadingSettings(snapshot: ConfigFormSnapshot<TtsSettings>) {
   const { enabled, autoPlay, provider, doubaoEnabled, breezeEnabled, deepseekEnabled, doubaoModel, doubaoVoice,
     doubaoClonedVoice, breezeVoice, deepseekVoice, model, voice, voiceDesignPrompt, readScope, voiceVolume, voiceRate,
-    avatarStyle, soundEnabled, taskSounds, clickSounds } = resolvedSettingsSnapshot(snapshot)
+    avatarStyle, showAvatarStyle, soundEnabled, taskSounds, clickSounds } = resolvedSettingsSnapshot(snapshot)
   return { status: snapshot.status, writable: snapshot.writable, enabled, autoPlay, provider, doubaoEnabled, breezeEnabled,
     deepseekEnabled, doubaoModel, doubaoVoice, doubaoClonedVoice, breezeVoice, deepseekVoice, model, voice,
-    voiceDesignPrompt, readScope, voiceVolume, voiceRate, avatarStyle, soundEnabled, taskSounds, clickSounds }
+    voiceDesignPrompt, readScope, voiceVolume, voiceRate, avatarStyle, showAvatarStyle, soundEnabled, taskSounds, clickSounds }
 }
 
 function VoiceReadingPage({ scope, t: translate, localeRevision, openPluginSettings, changes = IDLE_PLUGIN_CHANGES }: VoiceReadingPageProps): ReactElement | null {
@@ -173,7 +173,7 @@ function VoiceReadingPage({ scope, t: translate, localeRevision, openPluginSetti
   const ready = snapshot.status === 'ready'
   const unavailable = changing || !ready || !snapshot.writable
   const disabled = unavailable
-  return <AvatarStyleContext.Provider value={settings.avatarStyle}><div className="xmimo-voice-reading" style={minimalMode ? undefined : {
+  return <AvatarStyleContext.Provider value={settings.showAvatarStyle ? settings.avatarStyle : 'default'}><div className="xmimo-voice-reading" style={minimalMode ? undefined : {
     '--xmimo-voice-reading-background': `url(${hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)})`,
   } as CSSProperties}>
     <div className="xmimo-voice-reading-header">

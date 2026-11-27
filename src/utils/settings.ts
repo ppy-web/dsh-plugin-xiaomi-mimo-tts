@@ -66,6 +66,8 @@ export function resolveTtsSettings(value: TtsSettings | undefined): ResolvedTtsS
     autoPlay: resolved.enabled ? resolved.autoPlay : false,
     showReadingCaptions: resolved.showReadingCaptions === true,
     showAudioResponse: resolved.showAudioResponse === true,
+    showCustomPortraits: resolved.showCustomPortraits === true,
+    showAvatarStyle: resolved.showAvatarStyle === true,
     audioResponseStyle: AUDIO_RESPONSE_STYLES.includes(resolved.audioResponseStyle) ? resolved.audioResponseStyle : DEFAULT_TTS_SETTINGS.audioResponseStyle,
     importantAnnouncementsFirst: resolved.importantAnnouncementsFirst === true,
     soundVolume,

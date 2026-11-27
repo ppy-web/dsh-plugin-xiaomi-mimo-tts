@@ -19,7 +19,7 @@ import { SoundPackIcon } from '../sound-effects/sound-pack-icon.js'
 import { useSettingsSearch } from './settings-search-context.js'
 import type { SettingField } from './types.js'
 
-export const PERSONALIZATION_FIELDS = ['avatarStyle', 'showReadingCaptions', 'showAudioResponse', 'audioResponseStyle'] as const satisfies readonly SettingField[]
+export const PERSONALIZATION_FIELDS = ['showCustomPortraits', 'showAvatarStyle', 'avatarStyle', 'showReadingCaptions', 'showAudioResponse', 'audioResponseStyle'] as const satisfies readonly SettingField[]
 export type PersonalizationField = typeof PERSONALIZATION_FIELDS[number]
 
 interface SoundEffectsPanelProps {
@@ -30,6 +30,8 @@ interface SoundEffectsPanelProps {
   pack: SoundPack
   taskSounds: boolean
   clickSounds: boolean
+  showCustomPortraits?: boolean | undefined
+  showAvatarStyle?: boolean | undefined
   avatarStyle?: TtsAvatarStyle | undefined
   showReadingCaptions?: boolean | undefined
   showAudioResponse?: boolean | undefined
@@ -43,6 +45,8 @@ interface SoundEffectsPanelProps {
   onScopeChange: (scope: SoundEffectsScope) => void
   onVolumeChange: (volume: number) => void
   onPackChange: (pack: SoundPack) => void
+  onShowCustomPortraitsChange?: ((enabled: boolean) => void) | undefined
+  onShowAvatarStyleChange?: ((enabled: boolean) => void) | undefined
   onAvatarStyleChange?: ((style: TtsAvatarStyle) => void) | undefined
   onShowReadingCaptionsChange?: ((enabled: boolean) => void) | undefined
   onShowAudioResponseChange?: ((enabled: boolean) => void) | undefined
@@ -70,12 +74,13 @@ const SOUND_PACK_COLORS: Record<SoundPack, string> = {
 /** Collapsible personalization and sound library module. */
 export function SoundEffectsPanel({
   t, controller, enabled, volume, pack, taskSounds, clickSounds,
-  avatarStyle = 'default', showReadingCaptions = false, showAudioResponse = false, audioResponseStyle = 'aura-field', overrides = [],
+  showCustomPortraits = false, showAvatarStyle = false, avatarStyle = 'default', showReadingCaptions = false, showAudioResponse = false, audioResponseStyle = 'aura-field', overrides = [],
   writable, minimal, provider, open, onToggle, onScopeChange, onVolumeChange, onPackChange,
-  onAvatarStyleChange, onShowReadingCaptionsChange, onShowAudioResponseChange, onAudioResponseStyleChange, onResetField,
+  onShowCustomPortraitsChange, onShowAvatarStyleChange, onAvatarStyleChange, onShowReadingCaptionsChange, onShowAudioResponseChange, onAudioResponseStyleChange, onResetField,
 }: SoundEffectsPanelProps): ReactElement {
   const { result: search, hide } = useSettingsSearch()
   const fieldOverridden = (field: PersonalizationField): boolean => overrides.includes(field)
+  const switchOverridden = fieldOverridden('showCustomPortraits') || fieldOverridden('showAvatarStyle') || fieldOverridden('showReadingCaptions') || fieldOverridden('showAudioResponse')
   const packOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const mode: SoundEffectsMode = resolveSoundEffectsMode(enabled, taskSounds, clickSounds)
   const modeLabel = mode === 'all'
@@ -126,6 +131,8 @@ export function SoundEffectsPanel({
     ariaLabel={t(minimal ? 'settings.soundEffectsTitle' : 'settings.personalizationTitle')}
     searchGroups={minimal ? ['sound', 'portraits'] : ['sound', 'portraits']}
     summary={<span className="xmimo-tts-sound-summary xmimo-ui-summary">
+      {!minimal && showCustomPortraits ? <span>{t('settings.portraitCardsTitle')}</span> : null}
+      {showAvatarStyle ? <span>{t('settings.avatarStyle')}</span> : null}
       {showReadingCaptions ? <span>{t('settings.readingCaptions')}</span> : null}
       {showAudioResponse ? <span>{t('settings.audioResponse')}</span> : null}
       <span>{modeLabel}</span>
@@ -136,34 +143,50 @@ export function SoundEffectsPanel({
     onToggle={onToggle}
   >
     <div className="xmimo-tts-sound-body xmimo-ui-module-body">
-      {minimal ? null : <PortraitCards t={t} provider={provider} writable={writable} />}
-      {!minimal || search?.visible.has('avatarStyle') ? <div className="xmimo-tts-format" hidden={hide('avatarStyle')}>
-        <SettingFieldHeading label={t('settings.avatarStyle')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')}
-          overridden={fieldOverridden('avatarStyle')} resettable disabled={!writable} onReset={() => { onResetField?.('avatarStyle') }} />
-        <AvatarStyleCards value={avatarStyle} disabled={!writable} t={t} onChange={(next) => { onAvatarStyleChange?.(next) }} />
-      </div> : null}
-      {!minimal || search?.visible.has('settings.readingCaptions') || search?.visible.has('settings.audioResponse') ? <div className="xmimo-tts-format" hidden={hide('settings.readingCaptions', 'settings.audioResponse')}>
+      {!minimal || search?.visible.has('avatarStyle') || search?.visible.has('settings.readingCaptions') || search?.visible.has('settings.audioResponse') ? <div className="xmimo-tts-format" hidden={hide('portraitCards', 'avatarStyle', 'settings.readingCaptions', 'settings.audioResponse')}>
         <div className="xmimo-tts-switch-grid">
-          {(fieldOverridden('showReadingCaptions') || fieldOverridden('showAudioResponse')) ? <SettingFieldHeading label="" overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')}
+          {switchOverridden ? <SettingFieldHeading label="" overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')}
             overridden resettable disabled={!writable} onReset={() => {
+              if (fieldOverridden('showCustomPortraits')) onResetField?.('showCustomPortraits')
+              if (fieldOverridden('showAvatarStyle')) onResetField?.('showAvatarStyle')
               if (fieldOverridden('showReadingCaptions')) onResetField?.('showReadingCaptions')
               if (fieldOverridden('showAudioResponse')) onResetField?.('showAudioResponse')
             }} /> : null}
-          <div className="xmimo-tts-announcement-source" hidden={hide('settings.readingCaptions')}>
+          {!minimal ? <div className="xmimo-tts-announcement-source" hidden={hide('portraitCards')}>
+            <div>
+              <span>{t('settings.portraitCardsTitle')}</span>
+              <small>{t('settings.portraitCardsSwitchHint')}</small>
+            </div>
+            <Switch checked={showCustomPortraits} disabled={!writable} label={t('settings.portraitCardsTitle')} onChange={(next) => { onShowCustomPortraitsChange?.(next) }} />
+          </div> : null}
+          {!minimal || search?.visible.has('avatarStyle') ? <div className="xmimo-tts-announcement-source" hidden={hide('avatarStyle')}>
+            <div>
+              <span>{t('settings.avatarStyle')}</span>
+              <small>{t('settings.avatarStyleHint')}</small>
+            </div>
+            <Switch checked={showAvatarStyle} disabled={!writable} label={t('settings.avatarStyle')} onChange={(next) => { onShowAvatarStyleChange?.(next) }} />
+          </div> : null}
+          {!minimal || search?.visible.has('settings.readingCaptions') ? <div className="xmimo-tts-announcement-source" hidden={hide('settings.readingCaptions')}>
             <div>
               <span>{t('settings.readingCaptions')}</span>
               <small>{t('settings.readingCaptionsHint')}</small>
             </div>
             <Switch checked={showReadingCaptions} disabled={!writable} label={t('settings.readingCaptions')} onChange={(next) => { onShowReadingCaptionsChange?.(next) }} />
-          </div>
-          <div className="xmimo-tts-announcement-source" hidden={hide('settings.audioResponse')}>
+          </div> : null}
+          {!minimal || search?.visible.has('settings.audioResponse') ? <div className="xmimo-tts-announcement-source" hidden={hide('settings.audioResponse')}>
             <div>
               <span>{t('settings.audioResponse')}</span>
               <small>{t('settings.audioResponseHint')}</small>
             </div>
             <Switch checked={showAudioResponse} disabled={!writable} label={t('settings.audioResponse')} onChange={(next) => { onShowAudioResponseChange?.(next) }} />
-          </div>
+          </div> : null}
         </div>
+        {!minimal && showCustomPortraits && (open || search !== null) && !hide('portraitCards') ? <PortraitCards t={t} provider={provider} writable={writable} /> : null}
+        {showAvatarStyle && (open || search !== null) && !hide('avatarStyle') ? <>
+          <SettingFieldHeading label={t('settings.avatarStyle')} overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')}
+            overridden={fieldOverridden('avatarStyle')} resettable disabled={!writable} onReset={() => { onResetField?.('avatarStyle') }} />
+          <AvatarStyleCards value={avatarStyle} disabled={!writable} t={t} onChange={(next) => { onAvatarStyleChange?.(next) }} />
+        </> : null}
         {showAudioResponse && (open || search !== null) && !hide('settings.audioResponse') ? <>
           <SettingFieldHeading label={t('settings.audioResponseEffects')} disabled={!writable} overridden={fieldOverridden('audioResponseStyle')}
             resettable overriddenLabel={t('settings.overridden')} resetLabel={t('settings.reset')} onReset={() => { onResetField?.('audioResponseStyle') }} />

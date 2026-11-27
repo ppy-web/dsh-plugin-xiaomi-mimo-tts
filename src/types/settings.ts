@@ -65,6 +65,8 @@ export interface TtsSettings {
   /** @deprecated Retained for settings migration; use readScope for user-facing playback range. */
   voiceDesignPlaybackMode?: TtsVoiceDesignPlaybackMode
   avatarStyle?: TtsAvatarStyle | 'greyscale'
+  showCustomPortraits?: boolean
+  showAvatarStyle?: boolean
   readScope?: TtsReadScope | 'first-segment'
   autoPlay?: boolean
   showReadingCaptions?: boolean
@@ -128,6 +130,8 @@ export interface ResolvedTtsSettings {
   format: TtsFormat
   voiceDesignPlaybackMode: TtsVoiceDesignPlaybackMode
   avatarStyle: TtsAvatarStyle
+  showCustomPortraits: boolean
+  showAvatarStyle: boolean
   readScope: TtsReadScope
   autoPlay: boolean
   showReadingCaptions: boolean
@@ -192,6 +196,8 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   format: 'pcm',
   voiceDesignPlaybackMode: 'complete',
   avatarStyle: 'default',
+  showCustomPortraits: false,
+  showAvatarStyle: false,
   readScope: 'smart',
   autoPlay: false,
   showReadingCaptions: false,

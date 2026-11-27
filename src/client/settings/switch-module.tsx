@@ -188,6 +188,7 @@ export interface SwitchModuleProps {
   enabled: boolean
   autoPlay: boolean
   soundEnabled: boolean
+  showCustomPortraits?: boolean | undefined
   minimal: boolean
   writable: boolean
   onProviderChange: (provider: TtsProvider) => void
@@ -196,9 +197,10 @@ export interface SwitchModuleProps {
   onSoundEnabledChange: (next: boolean) => void
 }
 
-export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, deepseekEnabled, enabled, autoPlay, soundEnabled, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
+export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, deepseekEnabled, enabled, autoPlay, soundEnabled, showCustomPortraits = false, minimal, writable, onProviderChange, onEnabledChange, onAutoPlayChange, onSoundEnabledChange }: SwitchModuleProps): ReactElement {
   const { result } = useSettingsSearch()
   const portraits = usePortraitManifest()
+  const slotPortrait = (slot: Parameters<typeof portraitView>[1]): PortraitView | null => (showCustomPortraits ? portraitView(portraits, slot) : null)
   const rowRef = useHoloHover(!minimal && writable, { tilt: 14, hoverScale: 1.035, holo: HOLO_RENDERER })
   const [switching, setSwitching] = useState(false)
   const [switchFailed, setSwitchFailed] = useState(false)
@@ -210,10 +212,10 @@ export function SwitchModule({ t, provider, doubaoEnabled, breezeEnabled, deepse
 
   return <section hidden={result !== null && !result.groups.has('switches')} className={minimal ? 'xmimo-tts-switch-module xmimo-tts-switch-module-minimal' : 'xmimo-tts-switch-module'}>
     <div ref={rowRef} className="xmimo-tts-switch-row xmimo-ui-grid">
-      <CharacterToggle kind="voice" checked={enabled} disabled={!writable} label={t(minimal ? 'settings.enabled' : enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} tooltip={t('settings.voiceToggleTooltip')} customPortrait={portraitView(portraits, 'voice')} minimal={minimal} onChange={onEnabledChange} />
-      <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!writable} label={t(minimal ? 'settings.autoPlay' : enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} tooltip={t('settings.autoPlayToggleTooltip')} customPortrait={portraitView(portraits, 'autoplay')} minimal={minimal} onChange={onAutoPlayChange} />
-      <CharacterToggle kind="sound" checked={soundEnabled} disabled={!writable} label={t(minimal ? 'settings.soundEffectsTitle' : soundEnabled ? 'settings.soundEffectsOnLabel' : 'settings.soundEffectsOffLabel')} stateLabel={t(soundEnabled ? 'settings.stateOn' : 'settings.stateOff')} tooltip={t('settings.soundToggleTooltip')} customPortrait={portraitView(portraits, 'sound')} minimal={minimal} onChange={onSoundEnabledChange} />
-      <ProviderToggle t={t} provider={provider} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} deepseekEnabled={deepseekEnabled ?? false} minimal={minimal} writable={writable} switching={switching} customPortrait={portraitView(portraits, 'provider')} onChange={onProviderChange} onExternalChange={changeExternal} />
+      <CharacterToggle kind="voice" checked={enabled} disabled={!writable} label={t(minimal ? 'settings.enabled' : enabled ? 'settings.enabledOnLabel' : 'settings.enabledOffLabel')} stateLabel={t(enabled ? 'settings.stateOn' : 'settings.stateOff')} tooltip={t('settings.voiceToggleTooltip')} customPortrait={slotPortrait('voice')} minimal={minimal} onChange={onEnabledChange} />
+      <CharacterToggle kind="autoplay" checked={enabled && autoPlay} disabled={!writable} label={t(minimal ? 'settings.autoPlay' : enabled && autoPlay ? 'settings.autoPlayOnLabel' : 'settings.autoPlayOffLabel')} stateLabel={t(enabled && autoPlay ? 'settings.stateOn' : 'settings.stateOff')} tooltip={t('settings.autoPlayToggleTooltip')} customPortrait={slotPortrait('autoplay')} minimal={minimal} onChange={onAutoPlayChange} />
+      <CharacterToggle kind="sound" checked={soundEnabled} disabled={!writable} label={t(minimal ? 'settings.soundEffectsTitle' : soundEnabled ? 'settings.soundEffectsOnLabel' : 'settings.soundEffectsOffLabel')} stateLabel={t(soundEnabled ? 'settings.stateOn' : 'settings.stateOff')} tooltip={t('settings.soundToggleTooltip')} customPortrait={slotPortrait('sound')} minimal={minimal} onChange={onSoundEnabledChange} />
+      <ProviderToggle t={t} provider={provider} doubaoEnabled={doubaoEnabled} breezeEnabled={breezeEnabled} deepseekEnabled={deepseekEnabled ?? false} minimal={minimal} writable={writable} switching={switching} customPortrait={slotPortrait('provider')} onChange={onProviderChange} onExternalChange={changeExternal} />
     </div>
     {switchFailed ? <p className="xmimo-tts-failed" role="alert">{t('settings.externalSwitchFailed')}</p> : null}
   </section>

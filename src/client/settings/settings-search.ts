@@ -40,7 +40,7 @@ const ENTRIES = {
   instruction: { group: 'mixer', terms: ['settings.speechInstruction', 'settings.speechInstructionLimitations'] },
   voiceVolume: { group: 'playback', terms: ['settings.voiceVolume'], aliases: '朗读音量' },
   voiceRate: { group: 'playback', terms: ['settings.voiceRate', 'settings.voiceRateHint'], aliases: '速度 倍速 speed' },
-  avatarStyle: { group: 'portraits', terms: ['settings.avatarStyle'], aliases: '头像 avatar' },
+  avatarStyle: { group: 'portraits', terms: ['settings.avatarStyle', 'settings.avatarStyleHint'], aliases: '头像 avatar' },
   readScope: { group: 'playback', terms: ['settings.readScope'], aliases: '文本过滤 精简' },
   localSpeechMode: { group: 'local', terms: ['settings.localSpeechMode', 'settings.localSpeechAuto', 'settings.localSpeechFirst', 'settings.localSpeechDisabled'] },
   browserVoice: { group: 'local', terms: ['settings.localVoice', 'settings.localVoiceEngineBrowser'], aliases: 'Edge 浏览器音色' },
@@ -76,7 +76,7 @@ const ENTRIES = {
   soundVolume: { group: 'sound', terms: ['settings.soundEffectsVolume'] },
   soundPack: { group: 'sound', terms: ['settings.soundEffectsPack'] },
   soundPreview: { group: 'sound', terms: ['settings.soundEffectsPreviewLabel'] },
-  portraitCards: { group: 'portraits', terms: ['settings.portraitCardsTitle', 'settings.personalizationTitle', 'settings.portraitCardsHint', 'settings.portraitUpload', 'settings.portraitReplace', 'settings.portraitReset'], aliases: '立绘 形象 自定义头像 图片 portrait avatar image' },
+  portraitCards: { group: 'portraits', terms: ['settings.portraitCardsTitle', 'settings.portraitCardsSwitchHint', 'settings.personalizationTitle', 'settings.portraitCardsHint', 'settings.portraitUpload', 'settings.portraitReplace', 'settings.portraitReset'], aliases: '立绘 形象 自定义头像 图片 portrait avatar image' },
   sidebar: { group: 'footer', terms: ['settings.mountSidebar', 'settings.unmountSidebar', 'settings.sidebarPlacementHint'] },
   minimalMode: { group: 'footer', terms: ['settings.minimalMode', 'settings.defaultModeShort'] },
 } satisfies Record<string, SearchEntry>

@@ -100,6 +100,8 @@ export const Config = z.object({
   format: z.union(TTS_FORMATS).default(DEFAULT_TTS_SETTINGS.format).volatile(),
   voiceDesignPlaybackMode: z.union(TTS_VOICE_DESIGN_PLAYBACK_MODES).default(DEFAULT_TTS_SETTINGS.voiceDesignPlaybackMode).volatile(),
   avatarStyle: z.union([...TTS_AVATAR_STYLES, 'greyscale'] as const).default(DEFAULT_TTS_SETTINGS.avatarStyle).volatile(),
+  showCustomPortraits: z.boolean().default(DEFAULT_TTS_SETTINGS.showCustomPortraits).volatile(),
+  showAvatarStyle: z.boolean().default(DEFAULT_TTS_SETTINGS.showAvatarStyle).volatile(),
   readScope: z.union([...TTS_READ_SCOPES, 'first-segment'] as const).default(DEFAULT_TTS_SETTINGS.readScope).volatile(),
   autoPlay: z.boolean().default(DEFAULT_TTS_SETTINGS.autoPlay).volatile(),
   showReadingCaptions: z.boolean().default(DEFAULT_TTS_SETTINGS.showReadingCaptions).volatile(),

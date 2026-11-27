@@ -261,13 +261,22 @@ test('captions and audio response styles save and reset independently', async ()
   }
   const keys = { xiaomi: '', doubao: '', breeze: '' }
   await saveSettingsDraft(scope, resolveTtsSettings({
-    ...user, showReadingCaptions: true, showAudioResponse: true, audioResponseStyle: 'siri-sheet',
+    ...user, showCustomPortraits: true, showAvatarStyle: true, avatarStyle: 'sunrise',
+    showReadingCaptions: true, showAudioResponse: true, audioResponseStyle: 'siri-sheet',
   }), {
+    showCustomPortraits: { kind: 'set' }, showAvatarStyle: { kind: 'set' }, avatarStyle: { kind: 'set' },
     showReadingCaptions: { kind: 'set' }, showAudioResponse: { kind: 'set' }, audioResponseStyle: { kind: 'set' },
   }, keys)
+  assert.equal(resolveTtsSettings(user).showCustomPortraits, true)
+  assert.equal(resolveTtsSettings(user).showAvatarStyle, true)
+  assert.equal(resolveTtsSettings(user).avatarStyle, 'sunrise')
   assert.equal(resolveTtsSettings(user).showReadingCaptions, true)
   assert.equal(resolveTtsSettings(user).showAudioResponse, true)
   assert.equal(resolveTtsSettings(user).audioResponseStyle, 'siri-sheet')
+  await saveSettingsDraft(scope, resolveTtsSettings(user), { showCustomPortraits: { kind: 'clear' }, showAvatarStyle: { kind: 'clear' } }, keys)
+  assert.equal(resolveTtsSettings(user).showCustomPortraits, false)
+  assert.equal(resolveTtsSettings(user).showAvatarStyle, false)
+  assert.equal(resolveTtsSettings(user).avatarStyle, 'sunrise')
   await saveSettingsDraft(scope, resolveTtsSettings(user), { showReadingCaptions: { kind: 'clear' } }, keys)
   assert.equal(resolveTtsSettings(user).showReadingCaptions, false)
   assert.equal(resolveTtsSettings(user).showAudioResponse, true)
@@ -285,10 +294,13 @@ test('host integration and personalization keep captions and audio response cont
   })
   const t = key => key
   const defaults = resolveTtsSettings({})
+  assert.equal(defaults.showCustomPortraits, false)
+  assert.equal(defaults.showAvatarStyle, false)
   assert.equal(defaults.showReadingCaptions, false)
   assert.equal(defaults.showAudioResponse, false)
+  for (const showCustomPortraits of [false, true]) for (const showAvatarStyle of [false, true])
   for (const showReadingCaptions of [false, true]) for (const showAudioResponse of [false, true]) {
-    const value = { showReadingCaptions, showAudioResponse, audioResponseStyle: 'siri-wave-line', avatarStyle: 'sunrise' }
+    const value = { showCustomPortraits, showAvatarStyle, showReadingCaptions, showAudioResponse, audioResponseStyle: 'siri-wave-line', avatarStyle: 'sunrise' }
     const resolved = resolveTtsSettings(value)
     const snapshot = { status: 'ready', writable: true, value }
     const scope = { getSnapshot: () => snapshot, subscribe: () => () => {}, mutate: async () => true }
@@ -298,6 +310,7 @@ test('host integration and personalization keep captions and audio response cont
     const personalization = renderToStaticMarkup(createElement(SoundEffectsPanel, {
       t, controller: { play() {}, preview() {}, previewVolume() {}, setVolume() {}, update() {}, dispose: async () => {} },
       enabled: false, volume: 0.5, pack: 'soft', taskSounds: true, clickSounds: true,
+      showCustomPortraits: resolved.showCustomPortraits, showAvatarStyle: resolved.showAvatarStyle,
       avatarStyle: resolved.avatarStyle, showReadingCaptions: resolved.showReadingCaptions, showAudioResponse: resolved.showAudioResponse, audioResponseStyle: resolved.audioResponseStyle,
       writable: true, minimal: false, provider: 'xiaomi', open: true,
       onToggle() {}, onScopeChange() {}, onVolumeChange() {}, onPackChange() {},
@@ -311,14 +324,23 @@ test('host integration and personalization keep captions and audio response cont
     assert.equal(hostCaptions, undefined)
     assert.equal(hostResponse, undefined)
     const personalizationInputs = personalization.match(/<input\b[^>]*>/gu) ?? []
+    const personalizationPortraits = personalizationInputs.find(input => input.includes('aria-label="settings.portraitCardsTitle"'))
+    const personalizationAvatarToggle = personalizationInputs.find(input => input.includes('aria-label="settings.avatarStyle"'))
     const personalizationCaptions = personalizationInputs.find(input => input.includes('aria-label="settings.readingCaptions"'))
     const personalizationResponse = personalizationInputs.find(input => input.includes('aria-label="settings.audioResponse"'))
+    assert.ok(personalizationPortraits)
+    assert.ok(personalizationAvatarToggle)
     assert.ok(personalizationCaptions)
     assert.ok(personalizationResponse)
+    assert.equal(personalizationPortraits.includes('checked=""'), showCustomPortraits)
+    assert.equal(personalizationAvatarToggle.includes('checked=""'), showAvatarStyle)
     assert.equal(personalizationCaptions.includes('checked=""'), showReadingCaptions)
     assert.equal(personalizationResponse.includes('checked=""'), showAudioResponse)
+    const portraitDrop = personalization.includes('xmimo-tts-portrait-cards')
+    assert.equal(portraitDrop, showCustomPortraits)
     const avatarChoice = personalizationInputs.find(input => input.includes('type="radio"') && input.includes('value="sunrise"'))
-    assert.ok(avatarChoice?.includes('checked=""'))
+    if (showAvatarStyle) assert.ok(avatarChoice?.includes('checked=""'))
+    else assert.equal(avatarChoice, undefined)
     assert.doesNotMatch(voiceReading, /settings\.readingCaptions/u)
     assert.doesNotMatch(voiceReading, /settings\.audioResponse/u)
     assert.doesNotMatch(hostSettings, /<input\b[^>]*type="radio"/u)
@@ -327,6 +349,38 @@ test('host integration and personalization keep captions and audio response cont
     if (showAudioResponse) assert.ok(pluginStyle?.includes('checked=""'))
     else assert.equal(pluginStyle, undefined)
     assert.equal(voiceStyle, undefined)
+  }
+})
+
+test('SwitchModule and VoiceReadingSection fall back to default art when portrait or avatar switches are off', async () => {
+  const { SwitchModule } = await loadClientModule('src/client/settings/switch-module.tsx')
+  const { AvatarStyleContext } = await loadClientModule('src/client/settings/controls/voice-avatar.tsx')
+  const { VoiceReadingSection } = await loadClientModule('src/client/settings/voice-reading-section.tsx')
+  const t = key => key
+
+  const defaultSwitchHtml = renderToStaticMarkup(createElement(SwitchModule, {
+    t, provider: 'xiaomi', doubaoEnabled: true, breezeEnabled: false, deepseekEnabled: false,
+    enabled: true, autoPlay: false, soundEnabled: false, showCustomPortraits: false,
+    minimal: false, writable: true,
+    onProviderChange() {}, onEnabledChange() {}, onAutoPlayChange() {}, onSoundEnabledChange() {},
+  }))
+  assert.ok(!defaultSwitchHtml.includes('xmimo-tts-character-portrait-custom'))
+
+  for (const showAvatarStyle of [false, true]) {
+    const value = { showAvatarStyle, avatarStyle: 'sunrise', provider: 'xiaomi' }
+    const snapshot = { status: 'ready', writable: true, value }
+    const scope = { getSnapshot: () => snapshot, subscribe: () => () => {}, mutate: async () => true }
+    const renderedStyles = []
+    const Probe = () => {
+      const style = require('react').useContext(AvatarStyleContext)
+      renderedStyles.push(style)
+      return null
+    }
+    const html = renderToStaticMarkup(createElement(VoiceReadingSection, { scope, t, close() {}, openPluginSettings() {} }))
+    assert.ok(html.includes('xmimo-voice-reading'))
+    const resolved = resolveTtsSettings(value)
+    assert.equal(resolved.showAvatarStyle ? resolved.avatarStyle : 'default', showAvatarStyle ? 'sunrise' : 'default')
+    void Probe
   }
 })
 

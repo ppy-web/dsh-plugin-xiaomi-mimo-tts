@@ -162,7 +162,8 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   }, [snapshot, edits.values])
   const { enabled, autoPlay, soundEnabled, voiceVolume, voiceRate, soundVolume, soundPack, taskSounds, clickSounds,
     mossEnabled, localVoiceEngine, model, provider, doubaoEnabled, breezeEnabled,
-    deepseekEnabled, avatarStyle, showReadingCaptions, showAudioResponse, audioResponseStyle } = draft
+    deepseekEnabled, avatarStyle, showCustomPortraits, showAvatarStyle, showReadingCaptions, showAudioResponse, audioResponseStyle } = draft
+  const effectiveAvatarStyle = showAvatarStyle ? avatarStyle : 'default'
   const [studioSetupProvider, setStudioSetupProvider] = useState<StudioRoleProvider | null>(null)
   const setupKeyProvider = TTS_PROVIDERS.find(item => item === studioSetupProvider)
   const keyProvider = setupKeyProvider ?? provider
@@ -424,6 +425,8 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
     changeVoiceRate(next: number) { change('voiceRate', next) },
     changeSoundVolume(next: number) { change('soundVolume', next) },
     changeSoundPack(next: DraftSettings['soundPack']) { change('soundPack', next) },
+    changeShowCustomPortraits(next: boolean) { change('showCustomPortraits', next) },
+    changeShowAvatarStyle(next: boolean) { change('showAvatarStyle', next) },
     changeAvatarStyle(next: DraftSettings['avatarStyle']) { change('avatarStyle', next) },
     changeShowReadingCaptions(next: boolean) { change('showReadingCaptions', next) },
     changeShowAudioResponse(next: boolean) { change('showAudioResponse', next) },
@@ -516,7 +519,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
 
   if (snapshot.status === 'unavailable') return renderHeader?.() ?? null
 
-  if (studioTab !== null) return <AvatarStyleContext.Provider value={avatarStyle}>{renderHeader?.()}
+  if (studioTab !== null) return <AvatarStyleContext.Provider value={effectiveAvatarStyle}>{renderHeader?.()}
     {changing ? <p className="xmimo-ui-scope xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p>
     : <StudioPage
       t={t}
@@ -563,7 +566,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
       }} onBack={() => { setHistoryOpen(false) }} />}
   </>
 
-  return <AvatarStyleContext.Provider value={avatarStyle}>{renderHeader?.({ query, onQueryChange: setQuery })}
+  return <AvatarStyleContext.Provider value={effectiveAvatarStyle}>{renderHeader?.({ query, onQueryChange: setQuery })}
     <SettingsSearchContext.Provider value={search}>
     <div data-settings-search={search !== null ? '' : undefined} className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
       {changing ? <p className="xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p> : null}
@@ -583,6 +586,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           enabled={enabled}
           autoPlay={autoPlay}
           soundEnabled={soundEnabled}
+          showCustomPortraits={showCustomPortraits}
           minimal={minimalMode}
           writable={writable}
           onProviderChange={actions.changeProvider}
@@ -694,6 +698,8 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           pack={soundPack}
           taskSounds={draft.taskSounds}
           clickSounds={draft.clickSounds}
+          showCustomPortraits={showCustomPortraits}
+          showAvatarStyle={showAvatarStyle}
           avatarStyle={avatarStyle}
           showReadingCaptions={showReadingCaptions}
           showAudioResponse={showAudioResponse}
@@ -707,6 +713,8 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           onScopeChange={actions.changeSoundScope}
           onVolumeChange={actions.changeSoundVolume}
           onPackChange={actions.changeSoundPack}
+          onShowCustomPortraitsChange={actions.changeShowCustomPortraits}
+          onShowAvatarStyleChange={actions.changeShowAvatarStyle}
           onAvatarStyleChange={actions.changeAvatarStyle}
           onShowReadingCaptionsChange={actions.changeShowReadingCaptions}
           onShowAudioResponseChange={actions.changeShowAudioResponse}
