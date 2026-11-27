@@ -229,7 +229,7 @@ export function apply(ctx: Context, config: Config): void {
   const mimoLogoAsset = readFileSync(new URL('../assets/mimo.svg', import.meta.url))
   const toggleCharacterAsset = readFileSync(new URL('../assets/ui/toggle-characters.webp', import.meta.url))
   const soundEffectsCharacterAsset = readFileSync(new URL('../assets/ui/sound-effects-toggle-characters.webp', import.meta.url))
-  const apiKeyWhaleAsset = readFileSync(new URL('../assets/ui/api-key-whale.webp', import.meta.url))
+  const whaleGuideImage = readFileSync(new URL('../assets/ui/api-key-whale.webp', import.meta.url))
   const historyEmptyAsset = readFileSync(new URL('../assets/plugin-icons/avatar.webp', import.meta.url))
   const qqGroupAsset = readFileSync(new URL('../assets/ui/qq-group.webp', import.meta.url))
 
@@ -315,7 +315,7 @@ export function apply(ctx: Context, config: Config): void {
 
   registerStaticAsset(ctx, {
     path: TTS_API_KEY_WHALE_ASSET_ROUTE,
-    data: apiKeyWhaleAsset,
+    data: whaleGuideImage,
     contentType: 'image/webp',
     description: 'API key whale asset',
   })
