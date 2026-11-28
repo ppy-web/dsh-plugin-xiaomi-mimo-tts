@@ -18,18 +18,18 @@
 .xmimo-reading-caption-integrated:has(> .xmimo-caption-siri) { height: var(--xmimo-caption-row-size) }
 
 /* Reserve a row only while ChatView follows the bottom. */
-[data-conversation-scroll] > [data-composer-seat] [data-slot="conversation.input.dock"] > .xmimo-reading-caption-integrated {
+[data-conversation-scroll] > [data-composer-seat] [data-slot="conversation.input.dock"] > [data-slot-item] > .xmimo-reading-caption-integrated {
   display: none;
 }
 
 /* ChatView hides its return-to-bottom button while this flag is present. */
 [data-content-phase="active"] [data-conversation-scroll]:has(> [data-slot="conversation.session"] [data-chat-following-tail])
-  > [data-composer-seat] [data-slot="conversation.input.dock"] > .xmimo-reading-caption-integrated {
+  > [data-composer-seat] [data-slot="conversation.input.dock"] > [data-slot-item] > .xmimo-reading-caption-integrated {
   display: flex;
 }
 
 /* Close the host stack gap only when this row sits immediately above the input card. */
-[data-slot="conversation.input.dock"]:has(+ [data-slot="conversation.composer.bar"]) > .xmimo-reading-caption-integrated:last-child {
+[data-slot="conversation.input.dock"]:has(+ [data-slot="conversation.composer.bar"]) > [data-slot-item]:last-child > .xmimo-reading-caption-integrated {
   margin-block-end: calc(-1 * var(--dsh-composer-stack-gap, 0px));
 }
 

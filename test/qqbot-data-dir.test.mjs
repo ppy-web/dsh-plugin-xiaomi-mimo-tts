@@ -20,6 +20,7 @@ test('QQ identity and default speech delivery share QQBOT_DATA_DIR and clean sta
       import { dirname, join } from 'node:path'
       import { Context } from '@deepseek-ai/cordis'
       import ToolsService from '@deepseek-ai/dsh-tools'
+      import { NativeToolRegistry } from '@deepseek-ai/dsh-tools/pipeline'
       import { createScope } from '@deepseek-ai/dsh-scope'
       import { QqIdentityReader, createQqbotSpeechDelivery } from './lib/qqbot.js'
       const ctx = new Context(), media = join(process.env.QQBOT_DATA_DIR, 'media')
@@ -28,6 +29,7 @@ test('QQ identity and default speech delivery share QQBOT_DATA_DIR and clean sta
       agent.ctx = scope.ctx
       ctx.provide('systemPrompt', { tools() {} })
       await ctx.plugin(ToolsService).await()
+      ctx.tools.setRoot(new NativeToolRegistry())
       const audio = { data: Buffer.from('fixture-silk'), text: '语音', format: 'silk', contentType: 'audio/silk', provider: 'xiaomi' }
       const uploads = []
       ctx.tools.register({

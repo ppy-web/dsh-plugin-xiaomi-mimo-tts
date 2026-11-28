@@ -93,8 +93,8 @@ export function ttsSelectionKey(settings: ResolvedTtsSettings): string {
   return selectionKey(ttsSelection(settings))
 }
 
-export function supportsDuplexTts(provider: TtsProvider): provider is 'doubao' | 'deepseek' {
-  return provider === 'doubao' || provider === 'deepseek'
+export function supportsDuplexTts(provider: TtsProvider): provider is 'doubao' {
+  return provider === 'doubao'
 }
 
 export function usesCloudVoiceRate(provider: TtsProvider): boolean {

@@ -5,7 +5,7 @@ import { createServer } from 'node:http'
 import WebSocket from 'ws'
 import { resolveTtsSettings, TTS_ROUTE, TTS_STREAM_ROUTE, TTS_DUPLEX_ROUTE } from '../lib/shared.js'
 import { loadClientModule } from './helpers/client-modules.mjs'
-import { withDeepseekServer } from './helpers/deepseek-server.mjs'
+import { createMockTextToSpeech } from './helpers/host-text-to-speech.mjs'
 import { withDoubaoServer, serverFrame } from './helpers/doubao-server.mjs'
 import { apply, Config } from '../lib/index.js'
 import { isSilk } from 'silk-wasm'
@@ -14,11 +14,16 @@ const { registerSynthesisRoutes } = await loadClientModule('src/host/synthesis-r
 const { DuplexPcmStream } = await loadClientModule('src/client/playback/duplex-pcm.ts')
 const { HostSpeechService } = await loadClientModule('src/host/speech-service.ts')
 
-test('key status reads each provider with legacy profile fields without exposing saved secrets', () => {
+test('key status reads each provider with legacy profile fields and host DeepSeek availability without exposing saved secrets', async () => {
   const routes = new Map()
   const disposers = []
+  const textToSpeech = createMockTextToSpeech({ phase: 'ready' })
+  const injections = []
   const ctx = {
-    inject() {},
+    get: name => (name === 'textToSpeech' ? textToSpeech : undefined),
+    inject(deps, fn) {
+      if (Array.isArray(deps) && deps.includes('textToSpeech')) injections.push(() => fn(ctx))
+    },
     effect(effect) { disposers.push(effect()) },
     webServer: {
       register(route) { routes.set(route.path, route.handler); return () => routes.delete(route.path) },
@@ -29,6 +34,7 @@ test('key status reads each provider with legacy profile fields without exposing
     apiKey: 'sk-private-xiaomi', doubaoApiKey: 'private-doubao', breezeApiKey: 'private-breeze', deepseekApiKey: 'private-deepseek', provider: 'doubao',
     petFeedEnabled: true, petFeedTarget: 'legacy-pet', petAnnouncementTypes: ['completed'],
   }))
+  const disposeTtsInjection = injections.map(run => run())
   try {
     const handler = routes.get('/plugins/xiaomi-mimo-tts/api-key-status')
     for (const provider of ['xiaomi', 'doubao', 'breeze', 'deepseek', undefined, 'invalid']) {
@@ -38,13 +44,20 @@ test('key status reads each provider with legacy profile fields without exposing
       if (provider !== 'invalid') assert.deepEqual(response.body, { provider: provider ?? 'doubao', configured: true, supported: true })
       assert.equal(JSON.stringify(response.body).includes('private'), false)
     }
+    textToSpeech.setPhase('unavailable')
+    const unready = { statusCode: 0, setHeader() {}, end(value) { this.body = JSON.parse(value) } }
+    handler({ method: 'GET', headers: {}, url: '/plugins/xiaomi-mimo-tts/api-key-status?provider=deepseek' }, unready)
+    assert.deepEqual(unready.body, { provider: 'deepseek', configured: false, supported: false })
     const denied = { statusCode: 0, setHeader() {}, end(value) { this.body = JSON.parse(value) } }
     handler({ method: 'GET', headers: { origin: 'https://foreign.example' }, url: '/plugins/xiaomi-mimo-tts/api-key-status' }, denied)
     assert.equal(denied.statusCode, 403)
-  } finally { for (const dispose of disposers.reverse()) dispose() }
+  } finally {
+    for (const dispose of disposeTtsInjection) dispose?.()
+    for (const dispose of disposers.reverse()) dispose()
+  }
 })
 
-async function withRoutes(run, connectDoubao, extra = {}, connectDeepseek) {
+async function withRoutes(run, connectDoubao, extra = {}, textToSpeech) {
   const routes = new Map()
   const upgrades = new Map()
   const disposers = []
@@ -55,7 +68,7 @@ async function withRoutes(run, connectDoubao, extra = {}, connectDeepseek) {
       register(route) { routes.set(route.path, route.handler); return () => routes.delete(route.path) },
       registerUpgrade(route) { upgrades.set(route.path, route.handler); return () => upgrades.delete(route.path) },
     },
-  }, () => settings, { connectDoubao, connectDeepseek })
+  }, () => settings, { connectDoubao, ...(textToSpeech ? { textToSpeech: () => textToSpeech } : {}) })
   const server = createServer((req, res) => {
     const handler = routes.get(new URL(req.url, 'http://localhost').pathname)
     if (handler) void handler(req, res).catch(error => { res.statusCode = 500; res.end(String(error)) })
@@ -185,10 +198,11 @@ test('stream errors after headers use SSE and redact upstream credential echoes'
   })
 })
 
-const deepseekSettings = { provider: 'deepseek', deepseekEnabled: true, deepseekApiKey: 'test-private-deepseek' }
+const deepseekSettings = { provider: 'deepseek', deepseekEnabled: true }
 
-test('DeepSeek HTTP complete and SSE routes synthesize only through the official WebSocket protocol', async () => {
-  await withDeepseekServer(({ connect, sessions }) => withRoutes(async ({ base }) => {
+test('DeepSeek HTTP complete and SSE routes synthesize through the host textToSpeech service', async () => {
+  const textToSpeech = createMockTextToSpeech()
+  await withRoutes(async ({ base }) => {
     const response = await post(base, TTS_ROUTE, { text: '完整音频。', voice: 'tide' })
     assert.equal(response.status, 200)
     assert.equal(response.headers.get('content-type'), 'audio/wav')
@@ -203,92 +217,84 @@ test('DeepSeek HTTP complete and SSE routes synthesize only through the official
     assert.equal(sse.status, 200)
     assert.equal(events.pop(), '[DONE]')
     assert.deepEqual(Buffer.concat(events.map(event => Buffer.from(JSON.parse(event).choices[0].delta.audio.data, 'base64'))), audio.subarray(44))
-    assert.deepEqual(sessions.map(session => session.commands.map(command => command.event)), [['text', 'finish_text'], ['text', 'finish_text']])
-    for (const session of sessions) assert.equal(session.authorization, 'Bearer test-private-deepseek')
+    assert.deepEqual(textToSpeech.calls, [
+      { text: '完整音频.', voice: 'tide' },
+      { text: '流式音频.', voice: 'stella' },
+    ])
     const mp3 = await post(base, TTS_ROUTE, { text: '格式。', format: 'mp3' })
     assert.equal(mp3.status, 400)
     assert.equal((await mp3.json()).error, 'audio-format-unsupported')
     const excessive = await post(base, TTS_ROUTE, { text: '汉'.repeat(5001) })
     assert.equal(excessive.status, 413)
     assert.equal((await excessive.json()).error, 'text-too-long')
-    assert.equal(sessions.length, 2, 'format and text limits reject before contacting the paid service')
-  }, undefined, deepseekSettings, connect))
+    assert.equal(textToSpeech.calls.length, 2, 'format and text limits reject before calling the host synthesizer')
+  }, undefined, deepseekSettings, textToSpeech)
 })
 
-test('DeepSeek browser duplex forwards multiple text chunks, plays before finish and preserves spacing', async () => {
-  await withDeepseekServer(({ connect, sessions }) => withRoutes(async ({ base }) => {
+test('DeepSeek is rejected on the duplex WebSocket route because it streams via host SSE', async () => {
+  const textToSpeech = createMockTextToSpeech()
+  await withRoutes(async ({ base }) => {
     const socket = new WebSocket(base.replace('http:', 'ws:') + TTS_DUPLEX_ROUTE, { origin: base })
     try {
       await once(socket, 'open')
-      const send = command => socket.send(JSON.stringify(command))
-      send({ type: 'start', selection: { provider: 'deepseek', model: 'deepseek-tts', voice: 'tide' } })
-      const [ready] = await once(socket, 'message')
-      assert.equal(JSON.parse(ready.toString()).sampleRate, 24000)
-      send({ type: 'text', text: 'Hello ' })
-      const [early, binary] = await once(socket, 'message')
-      assert.equal(binary, true)
-      assert.deepEqual(early, Buffer.alloc(4800, 1))
-      const terminal = Promise.withResolvers()
-      const chunks = []
-      socket.on('message', (data, isBinary) => {
-        if (isBinary) chunks.push(data)
-        else terminal.resolve(JSON.parse(data.toString()))
-      })
-      send({ type: 'text', text: 'world.' })
-      send({ type: 'finish' })
-      assert.equal((await terminal.promise).type, 'done')
-      assert.deepEqual(Buffer.concat(chunks), early)
-      assert.deepEqual(sessions[0].commands, [{ event: 'text', text: 'Hello ' }, { event: 'text', text: 'world.' }, { event: 'finish_text' }])
-      const upstream = new URL(sessions[0].url, 'http://localhost')
-      assert.equal(upstream.searchParams.get('voice_id'), 'tide')
-      assert.equal(upstream.searchParams.get('format'), 'pcm')
-      assert.equal(upstream.searchParams.get('filter_markdown'), 'false')
+      socket.send(JSON.stringify({ type: 'start', selection: { provider: 'deepseek', model: 'deepseek-tts', voice: 'tide' } }))
+      const [message] = await once(socket, 'message')
+      assert.equal(JSON.parse(message.toString()).error, 'streaming-model-unsupported')
     } finally { socket.terminate() }
-  }, undefined, deepseekSettings, connect))
+  }, undefined, deepseekSettings, textToSpeech)
 })
 
-test('DeepSeek requires successful termination, whole PCM samples and redacts upstream failures', async () => {
+test('DeepSeek maps host synthesis failures, checks whole PCM samples and tolerates missing host service', async () => {
+  await withRoutes(async ({ base }) => {
+    const response = await post(base, TTS_ROUTE, { text: '未接入宿主。' })
+    assert.equal(response.status, 409)
+    assert.equal((await response.json()).error, 'api-key-not-configured')
+  }, undefined, deepseekSettings)
+
   for (const [fixture, error, status] of [
-    [{ terminal: 'content_filter' }, 'content-filtered', 400],
-    [{ terminal: 'close' }, 'stream-incomplete', 502],
+    [{ onSynthesize: async function* () { throw Object.assign(new Error('rejected private-host-secret'), { code: 'text-rejected' }) } }, 'content-filtered', 400],
+    [{ onSynthesize: async function* () {} }, 'stream-incomplete', 502],
     [{ pcm: Buffer.from([1, 2, 3]) }, 'stream-incomplete', 502],
-    [{ verifyClient: (_info, accept) => accept(false, 401) }, 'api-key-rejected', 401],
-  ]) await withDeepseekServer(({ connect }) => withRoutes(async ({ base }) => {
-    const response = await post(base, TTS_ROUTE, { text: '失败测试。' })
-    assert.equal(response.status, status)
-    const result = await response.json()
-    assert.equal(result.error, error)
-    assert.ok(!JSON.stringify(result).includes(deepseekSettings.deepseekApiKey))
-  }, undefined, deepseekSettings, connect), fixture)
+    [{ onSynthesize: async function* () { throw Object.assign(new Error('invalid private-host-secret'), { code: 'api-key-invalid' }) } }, 'api-key-rejected', 401],
+    [{ onSynthesize: async function* () { throw Object.assign(new Error('sign in'), { code: 'sign-in-required' }) } }, 'api-key-not-configured', 409],
+  ]) {
+    const textToSpeech = createMockTextToSpeech(fixture)
+    await withRoutes(async ({ base }) => {
+      const response = await post(base, TTS_ROUTE, { text: '失败测试。' })
+      assert.equal(response.status, status)
+      const result = await response.json()
+      assert.equal(result.error, error)
+      assert.equal(JSON.stringify(result).includes('private-host-secret'), false)
+    }, undefined, deepseekSettings, textToSpeech)
+  }
 })
 
-test('explicit DeepSeek host requests support SILK delivery and cancel stalled PCM work', async () => {
-  await withDeepseekServer(async ({ connect, sessions }) => {
-    const service = new HostSpeechService(() => resolveTtsSettings({ deepseekApiKey: deepseekSettings.deepseekApiKey }), { connectDeepseek: connect })
-    try {
-      assert.equal(service.currentProvider(), 'xiaomi')
-      const capability = service.capabilities().providers.find(provider => provider.id === 'deepseek')
-      assert.ok(capability.ready && capability.models[0].duplex)
-      assert.equal(capability.models[0].voiceRate, false)
-      const deliveries = []
-      service.registerDelivery({ id: 'test-qq', format: 'silk', async send(audio) { deliveries.push(audio); return { adapter: 'test-qq' } } })
-      await service.deliver({ text: '汉'.repeat(5001), provider: 'deepseek', splitLongText: true }, 'test-qq',
-        { agent: { id: 'qq', session: { header: {} } }, signal: new AbortController().signal })
-      assert.equal(deliveries.length, 2)
-      for (const audio of deliveries) {
-        assert.equal(audio.provider, 'deepseek')
-        assert.equal(isSilk(audio.data), true)
-      }
-      assert.equal(sessions.flatMap(session => session.commands.filter(command => command.event === 'text')).map(command => command.text).join(''), '汉'.repeat(5001))
-      const controller = new AbortController()
-      const audioStarted = Promise.withResolvers()
-      const task = service.streamPcm({ text: '取消。', provider: 'deepseek', signal: controller.signal }, () => {
-        audioStarted.resolve()
-        return new Promise(() => {})
-      })
-      await audioStarted.promise
-      controller.abort()
-      await assert.rejects(task, { name: 'AbortError' })
-    } finally { await service.dispose() }
-  })
+test('explicit DeepSeek host requests support SILK delivery via host textToSpeech and cancel stalled PCM work', async () => {
+  const textToSpeech = createMockTextToSpeech()
+  const service = new HostSpeechService(() => resolveTtsSettings({}), { textToSpeech: () => textToSpeech })
+  try {
+    assert.equal(service.currentProvider(), 'xiaomi')
+    const capability = service.capabilities().providers.find(provider => provider.id === 'deepseek')
+    assert.ok(capability.ready && !capability.models[0].duplex && capability.models[0].streaming)
+    assert.equal(capability.models[0].voiceRate, false)
+    const deliveries = []
+    service.registerDelivery({ id: 'test-qq', format: 'silk', async send(audio) { deliveries.push(audio); return { adapter: 'test-qq' } } })
+    await service.deliver({ text: '汉'.repeat(5001), provider: 'deepseek', splitLongText: true }, 'test-qq',
+      { agent: { id: 'qq', session: { header: {} } }, signal: new AbortController().signal })
+    assert.equal(deliveries.length, 2)
+    for (const audio of deliveries) {
+      assert.equal(audio.provider, 'deepseek')
+      assert.equal(isSilk(audio.data), true)
+    }
+    assert.equal(textToSpeech.calls.map(call => call.text).join(''), '汉'.repeat(5001))
+    const controller = new AbortController()
+    const audioStarted = Promise.withResolvers()
+    const task = service.streamPcm({ text: '取消。', provider: 'deepseek', signal: controller.signal }, () => {
+      audioStarted.resolve()
+      return new Promise(() => {})
+    })
+    await audioStarted.promise
+    controller.abort()
+    await assert.rejects(task, { name: 'AbortError' })
+  } finally { await service.dispose() }
 })

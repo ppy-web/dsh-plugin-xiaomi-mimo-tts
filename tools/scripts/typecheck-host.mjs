@@ -13,6 +13,18 @@ if (hostConfig.error) throw new Error(ts.flattenDiagnosticMessageText(hostConfig
 const paths = {}
 for (const [name, targets] of Object.entries(hostConfig.config.compilerOptions.paths)) {
   paths[name] = targets.map(target => {
+    const clean = target.replace(/\/$/, '')
+    if (/\/src$/.test(clean)) {
+      const pkgPath = resolve(hostRoot, clean.slice(0, -4), 'package.json')
+      if (existsSync(pkgPath)) {
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+        const rootTypes = typeof pkg.exports?.['.']?.types === 'string' ? pkg.exports['.'].types : pkg.types
+        if (typeof rootTypes === 'string') {
+          const resolvedTypes = resolve(hostRoot, clean.slice(0, -4), rootTypes)
+          if (existsSync(resolvedTypes)) return resolvedTypes
+        }
+      }
+    }
     const path = resolve(hostRoot, target.replace(/\/src(?=\/|$)/, '/lib/types').replace(/\.tsx?$/, '.d.ts'))
     if (path.includes('*') || path.endsWith('.d.ts')) return path
     return existsSync(`${path}.d.ts`) ? `${path}.d.ts` : resolve(path, 'index.d.ts')
@@ -35,7 +47,10 @@ const configPath = resolve(output, 'tsconfig.json')
 writeFileSync(configPath, JSON.stringify({
   extends: resolve(root, 'tsconfig.json'),
   compilerOptions: { paths, noEmit: true },
-  include: [resolve(root, 'src/**/*.ts'), resolve(root, 'src/**/*.tsx')],
+  include: [
+    resolve(root, 'src/**/*.ts').replaceAll('\\', '/'),
+    resolve(root, 'src/**/*.tsx').replaceAll('\\', '/'),
+  ],
 }, null, 2))
 const formatHost = { getCanonicalFileName: path => path, getCurrentDirectory: () => root, getNewLine: () => '\n' }
 const config = ts.getParsedCommandLineOfConfigFile(configPath, {}, {
@@ -44,6 +59,7 @@ const config = ts.getParsedCommandLineOfConfigFile(configPath, {}, {
     throw new Error(ts.formatDiagnostics([diagnostic], formatHost))
   },
 })
+if (!config.fileNames.length) throw new Error('typecheck-host matched no source files.')
 const program = ts.createProgram(config.fileNames, config.options)
 const diagnostics = ts.getPreEmitDiagnostics(program)
 console.log(`DSH source baseline: ${hostPackage.version} (${hostRoot})`)

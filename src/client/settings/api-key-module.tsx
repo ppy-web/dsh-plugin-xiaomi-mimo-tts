@@ -54,18 +54,22 @@ export function ApiKeyModule({ t, provider, value, message, status, invalid, mis
   const { hide } = useSettingsSearch()
   const engineView = useEngineState()
   const external = externalEngine()
+  const hostDeepseek = !external && provider === 'deepseek'
   if (external) { message = `${external.name} · ${t(engineView.status !== 'ready' ? 'settings.externalDisconnected' : external.ready ? 'settings.externalManaged' : 'settings.externalNotReady')}`; invalid = false; writable = false }
+  else if (hostDeepseek) { invalid = false; missing = false; writable = false }
   const tone = external
     ? (engineView.status !== 'ready' ? 'danger' : external.ready ? 'success' : 'pending')
-    : (invalid || status === 'unrecognized' || status === 'pending-invalid')
-      ? 'danger'
-      : status === 'recognized'
-        ? 'success'
-        : status === 'pending-save'
-          ? 'pending'
-          : (missing || status === 'missing')
-            ? 'warning'
-            : 'neutral'
+    : hostDeepseek
+      ? (status === 'recognized' ? 'success' : status === 'unavailable' ? 'danger' : 'warning')
+      : (invalid || status === 'unrecognized' || status === 'pending-invalid')
+        ? 'danger'
+        : status === 'recognized'
+          ? 'success'
+          : status === 'pending-save'
+            ? 'pending'
+            : (missing || status === 'missing')
+              ? 'warning'
+              : 'neutral'
   const [bubbleKey, setBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const inputId = useId()
   const messageId = useId()
@@ -83,7 +87,9 @@ export function ApiKeyModule({ t, provider, value, message, status, invalid, mis
       </span>}
       suffix={external?.managementBundle && onOpenProviderSettings
         ? <button type="button" className="xmimo-tts-api-key-link" onClick={() => onOpenProviderSettings(external.managementBundle!)}>{t('settings.externalManage')}</button>
-        : <a className="xmimo-tts-api-key-link" href={external ? external.managementPath ? hostRoute(external.managementPath) : undefined : keyUrl} aria-disabled={external !== null && !external.managementPath} target="_blank" rel="noopener noreferrer">{t(external?.managementPath ? 'settings.externalManage' : 'settings.getApiKey')}</a>}
+        : hostDeepseek && onOpenProviderSettings
+          ? <button type="button" className="xmimo-tts-api-key-link" onClick={() => onOpenProviderSettings('@deepseek-ai/dsh-read-aloud-bundle')}>{t('settings.deepseekHostManage')}</button>
+          : <a className="xmimo-tts-api-key-link" href={external ? external.managementPath ? hostRoute(external.managementPath) : undefined : keyUrl} aria-disabled={external !== null && !external.managementPath} target="_blank" rel="noopener noreferrer">{t(external?.managementPath ? 'settings.externalManage' : 'settings.getApiKey')}</a>}
       disabled={!writable}
       resettable={false}
     />} action={minimal ? undefined : <span className="xmimo-tts-api-key-decoration" aria-hidden="true" />}>

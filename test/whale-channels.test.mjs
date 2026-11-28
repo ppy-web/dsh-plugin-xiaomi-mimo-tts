@@ -3,7 +3,7 @@ import test from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { Context } from '@deepseek-ai/cordis'
 import ToolsService from '@deepseek-ai/dsh-tools'
-import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
+import { NativeToolRegistry } from '@deepseek-ai/dsh-tools/pipeline'
 import { createScope, scopeTarget } from '@deepseek-ai/dsh-scope'
 import * as speechAgent from '../lib/speech-agent.js'
 import * as whaleAgent from '../lib/whale-agent.js'
@@ -32,6 +32,7 @@ test('independent presets keep DSH file delivery and QQ full automatic voice iso
   })
   ctx.plugin(ToolsService)
   await settle()
+  ctx.tools.setRoot(new NativeToolRegistry())
   const globalSender = ctx.tools.register({
     name: 'qqbot_send_file', description: 'globally visible QQ sender', parameters: { type: 'object' },
     output: { schema: { type: 'object' }, render: () => [] }, execute() { return {} },
@@ -48,10 +49,12 @@ test('independent presets keep DSH file delivery and QQ full automatic voice iso
     return agent
   }
   const desktop = await create('file', whaleAgent), qq = await create('qqbot', qqAgent)
-  const pipeline = new ToolExecutionPipeline(ctx)
   const speak = async agent => {
-    const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text: '显式语音' }, agent, signal: signal() })
-    return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+    const { results: [{ result }] } = await ctx.tools.execute({
+      calls: [{ type: 'tool-call', id: randomUUID(), name: 'speak', arguments: JSON.stringify({ text: '显式语音' }) }],
+      agent, signal: signal(),
+    })
+    return result
   }
   let seq = 0
   const turn = (agent, number, text, kind = 'completed') => {

@@ -3,6 +3,7 @@ import { TTS_MODELS, TTS_VOICES, DOUBAO_TTS_MODELS, isSupportedTtsApiKey, ttsApi
 import { TTS_PROVIDERS, DEEPSEEK_TTS_MODEL, DEEPSEEK_VOICES } from '../types/providers.js'
 import type { TtsProvider, DeepSeekVoice } from '../types/providers.js'
 import { TtsProviderError } from './provider-error.js'
+import { hostDeepseekReady, type HostTextToSpeech } from './deepseek.js'
 import type { SynthesizeBody } from './synthesis.js'
 
 export function synthesisOptions(options: ResolvedTtsSettings, body: SynthesizeBody): ResolvedTtsSettings {
@@ -40,7 +41,12 @@ export function synthesisOptions(options: ResolvedTtsSettings, body: SynthesizeB
   return { ...options, provider: 'xiaomi', model, voice, voiceDesignPrompt, ...(typeof body.speechInstruction === 'string' ? { instruction: body.speechInstruction.trim() } : {}) }
 }
 
-export function validateSynthesisSettings(settings: ResolvedTtsSettings): void {
+export function validateSynthesisSettings(settings: ResolvedTtsSettings, textToSpeech?: HostTextToSpeech): void {
+  if (settings.provider === 'deepseek') {
+    if (!hostDeepseekReady(textToSpeech)) throw new TtsProviderError('api-key-not-configured', 'Enable DeepSeek Read Aloud and sign in on the Host.', 409)
+    if (!DEEPSEEK_VOICES.includes(ttsSelection(settings).voice as DeepSeekVoice)) throw new TtsProviderError('voice-unavailable', undefined, 400)
+    return
+  }
   const key = ttsApiKey(settings)
   if (!key) throw new TtsProviderError('api-key-not-configured', 'Configure the selected provider API key.', 409)
   if (!isSupportedTtsApiKey(key, settings.provider)) throw new TtsProviderError('api-key-rejected', 'Unsupported API key format.', 400)

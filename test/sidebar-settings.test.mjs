@@ -125,7 +125,7 @@ test('native More navigation keeps the destination and stable entry identity acr
   } finally { dispose() }
 })
 
-test('the independent settings page opens its mixer by default', async () => {
+test('the independent settings page keeps its mixer collapsed by default', async () => {
   const h = host({ enabled: true })
   const dispose = registerVoiceSettingsSidebar(h.ctx, h.page)
   try {
@@ -133,7 +133,7 @@ test('the independent settings page opens its mixer by default', async () => {
     const html = await renderCompleted(createElement(panel.component, panel.options.inject()))
     const mixer = html.match(/<button\b[^>]*aria-label="settings.detailedVoiceConfig"[^>]*>/u)?.[0]
     assert.ok(mixer)
-    assert.ok(mixer.includes('aria-expanded="true"'))
+    assert.ok(mixer.includes('aria-expanded="false"'))
   } finally { dispose() }
 })
 

@@ -196,7 +196,7 @@ test('saved service toggle registers and withdraws providers without restarting 
     await entry.update({ config: { voiceRecognitionService: true, deepseekEnabled: false, deepseekApiKey: 'test-deepseek' } })
     await ctx.loader.await()
     await settle()
-    assert.ok(providers.has(deepseek))
+    assert.equal(providers.has(deepseek), false, 'DeepSeek cloud ASR must not be declared to the Host')
     await entry.update({ config: { voiceRecognitionService: false } })
     await ctx.loader.await()
     for (let i = 0; i < 50 && providers.size > 0; i += 1) await settle()

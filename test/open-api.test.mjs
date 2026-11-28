@@ -8,7 +8,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { isSilk } from 'silk-wasm'
 import { apply, Config } from '../lib/index.js'
 import { resolveTtsSettings, TTS_API_KEY_STATUS_ROUTE, TTS_CAPABILITIES_ROUTE, TTS_DOWNLOAD_ROUTE, TTS_EXPORT_ROUTE, TTS_OPEN_STUDIO_ROUTE, TTS_OPEN_SYNTHESIZE_ROUTE } from '../lib/shared.js'
-import { withDeepseekServer } from './helpers/deepseek-server.mjs'
+import { createMockTextToSpeech } from './helpers/host-text-to-speech.mjs'
 import { loadClientModule, settle } from './helpers/client-modules.mjs'
 import { listenLoopback } from './helpers/loopback.mjs'
 
@@ -153,22 +153,23 @@ test('capabilities follow saved settings and expose actionable model features wi
   })
 })
 
-test('Open API advertises DeepSeek WAV and SILK and exports using saved provider settings', async () => {
-  await withDeepseekServer(({ connect, sessions }) => withApi(async ({ base, auth, post }) => {
+test('Open API advertises DeepSeek WAV and SILK and exports via host textToSpeech', async () => {
+  const textToSpeech = createMockTextToSpeech()
+  await withApi(async ({ base, auth, post }) => {
     const response = await fetch(base + TTS_CAPABILITIES_ROUTE, { headers: auth() })
     const info = await response.json()
     assert.equal(info.provider, 'deepseek')
     assert.deepEqual(info.http.formats, ['wav'])
     assert.deepEqual(info.http.exportFormats, ['wav', 'silk'])
     const model = info.providers.find(provider => provider.id === 'deepseek').models[0]
-    assert.equal(model.duplex, true)
+    assert.equal(model.duplex, false)
+    assert.equal(model.streaming, true)
     assert.deepEqual(model.voices.map(voice => voice.id), ['stella', 'tide'])
-    assert.equal(JSON.stringify(info).includes('test-deepseek-export-key'), false)
 
     const mp3 = await post({ text: '导出失败。', format: 'mp3' })
     assert.equal(mp3.status, 400)
     assert.equal((await mp3.json()).error, 'audio-format-unsupported')
-    assert.equal(sessions.length, 0)
+    assert.equal(textToSpeech.calls.length, 0)
     const exportResponse = await post({ text: '导出语音。' })
     assert.equal(exportResponse.status, 201)
     const result = await exportResponse.json()
@@ -178,11 +179,11 @@ test('Open API advertises DeepSeek WAV and SILK and exports using saved provider
     const audio = Buffer.from(await download.arrayBuffer())
     assert.equal(audio.readUInt32LE(24), 24000)
     assert.equal(audio.readUInt32LE(40), 4800)
-    assert.equal(sessions[0].authorization, 'Bearer test-deepseek-export-key')
+    assert.deepEqual(textToSpeech.calls, [{ text: '导出语音.', voice: 'stella' }])
   }, {
-    settings: { provider: 'deepseek', deepseekEnabled: true, deepseekApiKey: 'test-deepseek-export-key' },
-    runtime: { connectDeepseek: connect },
-  }))
+    settings: { provider: 'deepseek', deepseekEnabled: true },
+    runtime: { textToSpeech: () => textToSpeech },
+  })
 })
 
 test('management requires its own token, rejects cross-origin calls and observes token rotation', async () => {

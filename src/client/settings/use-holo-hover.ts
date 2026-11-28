@@ -137,7 +137,7 @@ function clearCard(card: HTMLElement): void {
 export function useHoloHover(
   enabled: boolean,
   { selector = CARD_SELECTOR, allowDisabled = false, mouseOnly = false, tilt = 12, hoverScale = 1.032, holo }: HoloHoverOptions = {},
-): RefObject<HTMLDivElement> {
+): RefObject<HTMLDivElement | null> {
   const rowRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

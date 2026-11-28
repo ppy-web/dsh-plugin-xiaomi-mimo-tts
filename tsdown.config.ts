@@ -212,7 +212,7 @@ export default defineConfig([{
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',
-  external: ['@deepseek-ai/cordis-plugin-loader', '@deepseek-ai/dsh-agent-preset', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-tools/pipeline', '@deepseek-ai/dsh-llm', 'silk-wasm'],
+  external: ['@deepseek-ai/cordis-plugin-loader', '@deepseek-ai/dsh-agent-preset', '@deepseek-ai/dsh-scope', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-tools/pipeline', '@deepseek-ai/dsh-llm', 'silk-wasm'],
   target: 'es2024',
   fixedExtension: false,
   dts: false,

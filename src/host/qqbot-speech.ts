@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import { AgentToolRegistry } from '@deepseek-ai/dsh-tools/pipeline'
 import type { SpeechDeliveryResult, SpeechRequest } from '../host-api.js'
 import { observeSpeech, qqSpeechPolicy, registerSpeak, speechOwner } from '../speech-agent.js'
 import { abortable } from './abortable.js'
@@ -66,11 +67,22 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
     return isPlainQqUser
   }
 
+  const speakRegistry = !ctx.tools.get('speak') ? new AgentToolRegistry() : undefined
+  if (speakRegistry) {
+    registerSpeak(ctx, (request, exec) => say(speechOwner(exec), request), true, speakRegistry)
+    ctx.tools.include(speakRegistry)
+  }
+  const syncSpeak = (agent: Agent): void => {
+    speakRegistry?.set(agent, available(agent) ? ['speak'] : [])
+  }
+
   // Remember claimed inputs in this turn before the loop resolves its tool set.
   // A QQ steer arriving mid-turn during a desktop-started turn switches ownership
   // to QQ (matching QQBot's TurnTracker); a desktop prompt with rpcId revokes QQ.
   ctx.on('agent/inbox/claimed', ({ agent, turn, message }) => {
-    if (recordInput(agent, turn, message) && !session.admitted(agent)) {
+    const candidate = recordInput(agent, turn, message)
+    syncSpeak(agent)
+    if (candidate && !session.admitted(agent)) {
       void admit(agent, lifecycle.signal)
     }
   }, { global: true })
@@ -79,12 +91,18 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
     const agent = ctx.agents.get(source.id)
     if (!agent || agent.session !== source) return
     const claimed = input.get(agent)
-    if (claimed && (claimed.turn < event.data.turn || (event.type === 'turn/end' && claimed.turn === event.data.turn))) input.delete(agent)
+    if (claimed && (claimed.turn < event.data.turn || (event.type === 'turn/end' && claimed.turn === event.data.turn))) {
+      input.delete(agent)
+      syncSpeak(agent)
+    }
   }, { global: true })
   ctx.on('agent/disposed', ({ agent }) => { input.delete(agent) })
   async function admit(agent: Agent, signal: AbortSignal): Promise<boolean> {
     signal.throwIfAborted()
-    if (available(agent)) return true
+    if (available(agent)) {
+      syncSpeak(agent)
+      return true
+    }
     const candidate = input.get(agent)
     if (!candidate?.candidate) return false
     const delivery = speech.conversationDelivery?.('qqbot')
@@ -116,6 +134,7 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
         })
         if (!admitted) ctx.logger.debug(`QQ speech route skipped for agent=${agent.id}: session turn=${candidate.turn} not active`)
         passed = admitted
+        if (admitted) syncSpeak(agent)
         return admitted
       })().catch((error: unknown) => {
         if (routeSignal.aborted) return false
@@ -126,23 +145,26 @@ export function registerQqbotSpeech(ctx: Context, identity: QqIdentityReader): v
       })
       candidate.pending = check = pendingCheck
     }
-    return abortable(check, signal)
+    const admitted = await abortable(check, signal)
+    syncSpeak(agent)
+    return admitted
   }
   ctx.on('agent/pre-step', async ({ agent, signal, turn, messages }, next) => {
     for (const message of messages) recordInput(agent, turn, message)
     if (input.get(agent)?.turn === turn) await admit(agent, signal)
+    else syncSpeak(agent)
     return next()
   }, { global: true })
   // Preset tools shadow the fallback. Host tool restrictions still apply.
-  if (!ctx.tools.get('speak')) registerSpeak(ctx, (request, exec) => say(speechOwner(exec), request), true,
-    { when: ({ agent, signal }) => admit(agent, signal) })
   ctx.inject(['systemPrompt'], child => {
     child.systemPrompt.context({
       name: 'xiaomi:qqbot-speech', order: 310, required: true, interpolate: false,
-      text: ({ agent, toolSet }) => {
+      text: ({ agent, toolStep }) => {
         if (!agent || !available(agent)) return ''
         const automatic = speech.isAutomaticDeliveryEnabled('qqbot')
-        const speak = ctx.tools.get('speak', agent, toolSet)
+        const speak = toolStep !== undefined && toolStep.agent === agent
+          ? toolStep.declarations.find(tool => tool.name === 'speak')
+          : ctx.tools.get('speak', agent)
         return (automatic ? 'QQ 会自动朗读本轮的最终回复。普通聊天直接输出正文。' : '')
           + (speak ? '用户要求语音时直接调用 speak，把完整语音正文放在 text，不要先发文字铺垫。自动朗读开启时，用户明确指定语气、情绪或方言也可调用 speak，并传入 speechInstruction。语音送达后本轮会结束；只有用户同时要求文字时才设 replyWithText: true，接着发所需正文。' : '')
       },

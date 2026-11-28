@@ -5,6 +5,7 @@ import type { ResolvedTtsSettings } from '../shared.js'
 import type { ExternalSpeechProvider, SpeechEngineState, SpeechAudio, SpeechArtifact, SpeechConversationCapability, SpeechDeliveryAdapter, SpeechDeliveryContext, SpeechDeliveryResult, SpeechRequest, SpeechSynthesisService } from '../host-api.js'
 import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
 import type { SynthesisRuntime } from './complete-synthesis.js'
+import { hostDeepseekReady, type HostTextToSpeech } from './deepseek.js'
 import { completeAudioFormat, completeAudioLimit, CompleteAudioResponseError, synthesisOptions } from './validation.js'
 import { supportsDuplexTts, ttsApiKey, ttsSelectionKey, TTS_PROVIDERS } from '../types/providers.js'
 import type { TtsProvider } from '../types/providers.js'
@@ -28,10 +29,11 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-function engineSettings(value: ResolvedTtsSettings) {
+function engineSettings(value: ResolvedTtsSettings, textToSpeech?: HostTextToSpeech) {
   const settings = resolveTtsSettings(value)
   return {
-    selection: ttsSelectionKey(settings), key: ttsApiKey(settings),
+    selection: ttsSelectionKey(settings),
+    key: settings.provider === 'deepseek' ? String(hostDeepseekReady(textToSpeech)) : ttsApiKey(settings),
     baseURL: settings.provider === 'xiaomi' ? settings.baseURL : undefined,
     maxTextLength: settings.maxTextLength,
   }
@@ -53,7 +55,7 @@ export class HostSpeechService implements SpeechSynthesisService {
 
   constructor(private readonly current: () => ResolvedTtsSettings, private readonly runtime: SynthesisRuntime = {}) {
     const settings = current()
-    this.engineConfig = engineSettings(settings)
+    this.engineConfig = engineSettings(settings, runtime.textToSpeech?.())
     this.external.setEnabled(settings.acceptExternalProviders !== false)
     this.external.subscribe(() => {
       for (const controller of this.defaultJobs) controller.abort(new TtsProviderError('speech-engine-changed', undefined, 409))
@@ -64,7 +66,7 @@ export class HostSpeechService implements SpeechSynthesisService {
   subscribeEngine = (listener: () => void): (() => void) => this.external.subscribe(listener)
   refreshEngine(settings = this.current()): void {
     const previous = this.engineConfig
-    const next = this.engineConfig = engineSettings(settings)
+    const next = this.engineConfig = engineSettings(settings, this.runtime.textToSpeech?.())
     if (this.external.setEnabled(settings.acceptExternalProviders !== false)) return
     if (previous.maxTextLength !== next.maxTextLength || (!this.external.id
       && (previous.selection !== next.selection || previous.key !== next.key || previous.baseURL !== next.baseURL))) this.external.changed()
@@ -80,7 +82,7 @@ export class HostSpeechService implements SpeechSynthesisService {
     const settings = resolveTtsSettings(this.current())
     const external = this.external.state(settings)
     if (external) return external
-    const current = speechCapabilities(settings).providers.find(provider => provider.id === settings.provider)!
+    const current = speechCapabilities(settings, this.runtime.textToSpeech?.()).providers.find(provider => provider.id === settings.provider)!
     return { provider: settings.provider, revision: this.external.revision, name: settings.provider, ready: current.ready,
       ...(current.unavailableReason ? { unavailableReason: current.unavailableReason } : {}),
       formats: settings.provider === 'deepseek' ? ['wav'] : ['mp3', 'wav'], maxTextLength: current.maxTextLength,
@@ -115,7 +117,7 @@ export class HostSpeechService implements SpeechSynthesisService {
       let size = 0, carry = Buffer.alloc(0)
       try {
         signal.throwIfAborted()
-        const prepared = prepareSpeechRequest(this.current(), { ...request, provider: selected })
+        const prepared = prepareSpeechRequest(this.current(), { ...request, provider: selected }, this.runtime)
         await streamSynthesis(prepared.settings, prepared.text, signal, async chunk => {
           size += chunk.length
           if (size > this.current().maxWavAudioBytes) throw new TtsProviderError('audio-too-large')
@@ -164,7 +166,7 @@ export class HostSpeechService implements SpeechSynthesisService {
   currentProvider() { return this.external.id ?? resolveTtsSettings(this.current()).provider }
 
   capabilities() {
-    const capabilities = speechCapabilities(resolveTtsSettings(this.current()))
+    const capabilities = speechCapabilities(resolveTtsSettings(this.current()), this.runtime.textToSpeech?.())
     const state = this.external.state(this.current())
     if (!state) return capabilities
     return { ...capabilities, engine: state, provider: state.provider, formats: [...state.formats, 'silk' as const], providers: [...capabilities.providers, {
@@ -224,7 +226,7 @@ export class HostSpeechService implements SpeechSynthesisService {
     let settings = resolveTtsSettings({})
     try {
       settings = resolveTtsSettings(this.current())
-      const prepared = prepareSpeechRequest(settings, { ...request, provider: selected })
+      const prepared = prepareSpeechRequest(settings, { ...request, provider: selected }, this.runtime)
       settings = prepared.settings
       const format = request.format ?? completeAudioFormat(settings)
       if (!['mp3', 'wav', 'silk'].includes(format)) throw new TtsProviderError('invalid-audio-format', 'Select MP3, WAV or SILK.', 400)
@@ -353,7 +355,7 @@ export class HostSpeechService implements SpeechSynthesisService {
       if (request.splitLongText && (!Number.isFinite(limit) || limit < 1)) throw new TtsProviderError('invalid-text-limit')
       const chunks = request.splitLongText ? (!external && settings.provider === 'breeze' ? splitBreezeTtsSegments(text, limit) : !external && settings.provider === 'deepseek' ? splitDeepseekText(text, limit) : splitDeliveryText(text, limit, !external && supportsXiaomiAudioTags(settings), externalTags)) : [text]
       let result: SpeechDeliveryResult | undefined
-      const providerCapabilities = speechCapabilities(settings).providers.find(provider => provider.id === selected)
+      const providerCapabilities = speechCapabilities(settings, this.runtime.textToSpeech?.()).providers.find(provider => provider.id === selected)
       const streaming = external ? external.streaming && external.models?.find(model => model.id === (request.model ?? external.selection?.model))?.streaming !== false
         : providerCapabilities?.models.find(model => model.id === (request.model ?? providerCapabilities.selectedModel))?.streaming === true
       for (const chunk of chunks) {
@@ -395,8 +397,9 @@ export class HostSpeechService implements SpeechSynthesisService {
 }
 
 export default class SpeechHost {
-  constructor(ctx: Context, config: { current: () => ResolvedTtsSettings; updates?: (listener: () => void) => (() => void) }) {
-    const service = new HostSpeechService(config.current)
+  constructor(ctx: Context, config: { current: () => ResolvedTtsSettings; updates?: (listener: () => void) => (() => void); textToSpeech?: () => HostTextToSpeech | undefined }) {
+    const textToSpeech = config.textToSpeech ?? (() => (typeof ctx.get === 'function' ? ctx.get('textToSpeech') : undefined))
+    const service = new HostSpeechService(config.current, { textToSpeech })
     ctx.provide('speechSynthesis', service)
     const profileBase = (ctx.get('profileContext') as { dir?: string } | undefined)?.dir ?? ctx.get('loader')?.config.baseUrl
     const store = profileBase ? StudioDiskStore.forProfile(profileBase) : new StudioDiskStore()

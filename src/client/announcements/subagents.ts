@@ -14,7 +14,7 @@ export interface AnnouncementSubagentSessions {
       byId: Readonly<Record<string, {
         id: string
         parentId?: string
-        origin?: 'subagent'
+        origin?: 'subagent' | 'side'
         running: boolean
         retainedBy: Readonly<Partial<Record<string, number>>>
         projectionValues?: SubagentFacts

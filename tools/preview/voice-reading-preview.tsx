@@ -1,9 +1,22 @@
+import type { ReactNode } from 'react'
 import { VoiceReadingSection } from '../../src/client/settings/voice-reading-section.js'
 import type { Translate } from '../../src/client/localization.js'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { TtsSettings } from '../../src/shared.js'
 
+const PreviewDocumentPortal = ({ children }: { children?: ReactNode }) => <>{children}</>
+
 /** Renders the independent Voice reading settings page inside the standalone preview. */
 export function VoiceReadingPreview({ scope, t, onOpenPluginSettings }: { scope: ConfigForm<TtsSettings>; t: Translate; onOpenPluginSettings: () => void }) {
-  return <VoiceReadingSection scope={scope} t={t} openPluginSettings={onOpenPluginSettings} close={() => {}} usePanelInfo={selector => selector({ activePanelId: null })} />
+  return (
+    <VoiceReadingSection
+      scope={scope}
+      t={t}
+      openPluginSettings={onOpenPluginSettings}
+      close={() => {}}
+      usePanelInfo={selector => selector({ activePanelId: null })}
+      useDocumentPortal={() => PreviewDocumentPortal}
+      useDocumentViewport={() => ({ width: typeof window === 'undefined' ? 1280 : window.innerWidth, height: typeof window === 'undefined' ? 800 : window.innerHeight })}
+    />
+  )
 }

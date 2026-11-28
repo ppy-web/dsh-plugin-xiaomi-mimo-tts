@@ -5,8 +5,7 @@ import { synthesizeDoubao, wrapPcmWav } from './doubao.js'
 import type { DoubaoSessionOptions } from './doubao.js'
 import { synthesizeXiaomi } from './xiaomi.js'
 import { synthesizeBreeze } from './breeze.js'
-import { streamDeepseek } from './deepseek.js'
-import type { DeepseekSessionOptions } from './deepseek.js'
+import { streamDeepseek, type HostTextToSpeech } from './deepseek.js'
 import { exceedsDeepseekLimit } from '../text/deepseek-limit.js'
 import { TtsProviderError } from './provider-error.js'
 import { completeAudioLimit, synthesisOptions, validateSynthesisSettings } from './validation.js'
@@ -14,17 +13,17 @@ import type { CompleteAudioFormat } from './validation.js'
 import type { SynthesizeBody } from './synthesis.js'
 
 export interface SynthesisRuntime {
-  connectDeepseek?: NonNullable<DeepseekSessionOptions['connect']>
+  textToSpeech?: () => HostTextToSpeech | undefined
   connectDoubao?: NonNullable<DoubaoSessionOptions['connect']>
 }
 
-export function prepareSpeechRequest(current: ResolvedTtsSettings, body: SynthesizeBody): { settings: ResolvedTtsSettings; text: string } {
+export function prepareSpeechRequest(current: ResolvedTtsSettings, body: SynthesizeBody, runtime: SynthesisRuntime = {}): { settings: ResolvedTtsSettings; text: string } {
   const settings = synthesisOptions(current, body)
   const text = typeof body.text === 'string' ? prepareProviderTtsText(body.text, settings) : ''
   if (!text) throw new TtsProviderError('text-required', 'Enter text to synthesize.', 400)
   const providerLimit = settings.provider === 'breeze' ? Math.min(settings.maxTextLength, BREEZE_MAX_TEXT_LENGTH) : settings.maxTextLength
   if (settings.provider === 'deepseek' ? exceedsDeepseekLimit(text, providerLimit) : text.length > providerLimit) throw new TtsProviderError('text-too-long', 'Text exceeds the configured limit.', 413)
-  validateSynthesisSettings(settings)
+  validateSynthesisSettings(settings, runtime.textToSpeech?.())
   return { settings, text }
 }
 
@@ -37,7 +36,7 @@ export async function synthesizeCompleteAudio(settings: ResolvedTtsSettings, tex
   if (settings.provider === 'deepseek') {
     if (format !== 'wav') throw new TtsProviderError('audio-format-unsupported', undefined, 400)
     const pcm: Buffer[] = []
-    await streamDeepseek(text, settings, controller.signal, chunk => { pcm.push(Buffer.from(chunk)) }, runtime.connectDeepseek)
+    await streamDeepseek(text, settings, controller.signal, chunk => { pcm.push(Buffer.from(chunk)) }, runtime.textToSpeech?.())
     return wrapPcmWav(Buffer.concat(pcm))
   }
   const chunks: Buffer[] = []

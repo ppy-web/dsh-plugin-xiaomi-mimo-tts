@@ -1,4 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import { scopeOf } from '@deepseek-ai/dsh-scope'
+import { AgentToolRegistry } from '@deepseek-ai/dsh-tools/pipeline'
 import { sendWhaleMeme } from './host/qqbot-media.js'
 import { TtsProviderError } from './host/provider-error.js'
 import type { QqMemoryInput } from './host/qqbot-companion.js'
@@ -67,7 +70,8 @@ export function registerQqbotCompanionTools(ctx: Context): void {
     schema: { type: 'object' as const, additionalProperties: true },
     render: (_args: unknown, value: unknown) => [{ type: 'text' as const, text: JSON.stringify(value) }],
   }
-  ctx.tools.register({
+  const registry = new AgentToolRegistry()
+  registry.register({
     name: 'qqbot_memory',
     description: 'Manage local memory for this QQ conversation only. Save explicit stable requirements/preferences during normal chat; update by ID, list, forget, clear, pause or resume. Topics are short labels to continue during a later normal conversation; they do not schedule messages. Group memory is public to this group, not individual profiles. No background model calls. Confirm saving only after success.',
     parameters: { type: 'object', properties: {
@@ -80,14 +84,37 @@ export function registerQqbotCompanionTools(ctx: Context): void {
     output,
     execute(args, exec) {
       if (!exec.agent) throw new TtsProviderError('qqbot-agent-required')
+      if (!ctx.qqbotSettings.current().memory.enabled) throw new TtsProviderError('qqbot-memory-disabled', 'QQ memory is disabled in settings.', 409)
       return ctx.qqbotCompanion.memory(exec.agent, args as QqMemoryInput, exec.signal)
     },
-  }, { when: async ({ agent, signal }) => {
-    if (!ctx.qqbotSettings.current().memory.enabled) return false
-    const route = await ctx.qqbotCompanion.identity.inspect(agent.id)
-    signal.throwIfAborted()
-    return route.kind === 'qqbot' && ctx.qqbotSettings.current().memory.enabled
-  } })
+  })
+  ctx.tools.include(registry)
+
+  const checks = new WeakMap<Agent, object>()
+  const sync = async (agent: Agent, signal?: AbortSignal): Promise<void> => {
+    const token = {}
+    checks.set(agent, token)
+    if (!ctx.qqbotSettings.current().memory.enabled) {
+      registry.set(agent, [])
+      return
+    }
+    const route = await ctx.qqbotCompanion.identity.inspect(agent.id, signal)
+    signal?.throwIfAborted()
+    if (checks.get(agent) !== token) return
+    registry.set(agent, route.kind === 'qqbot' && ctx.qqbotSettings.current().memory.enabled ? ['qqbot_memory'] : [])
+  }
+  const syncInBackground = (agent: Agent): void => {
+    void sync(agent).catch(() => {})
+  }
+  const scoped = scopeOf(ctx) as Agent | undefined
+  if (scoped) syncInBackground(scoped)
+  for (const agent of ctx.get('agents')?.list?.() ?? []) syncInBackground(agent)
+  ctx.on('agent/created', async ({ agent, signal }) => { await sync(agent, signal) })
+  ctx.on('agent/inbox/claimed', ({ agent }) => { syncInBackground(agent) })
+  ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
+    await sync(agent, signal)
+    return next()
+  })
 }
 
 export function registerQqbotMemeTool(ctx: Context, options: { directory?: string } = {}): void {
@@ -100,7 +127,8 @@ export function registerQqbotMemeTool(ctx: Context, options: { directory?: strin
     lifetime.abort()
     await Promise.allSettled(pending)
   })
-  ctx.tools.register({
+  const registry = new AgentToolRegistry()
+  registry.register({
     name: 'qqbot_send_meme',
     description: 'Send one bundled Whale Girl reaction image to the current QQ conversation using its catalog ID.',
     parameters: { type: 'object', properties: { meme: { type: 'string', enum: memes.map(meme => meme.id) } }, required: ['meme'], additionalProperties: false },
@@ -127,5 +155,19 @@ export function registerQqbotMemeTool(ctx: Context, options: { directory?: strin
       void task.then(done, done)
       return task
     },
-  }, { when: enabled })
+  })
+  ctx.tools.include(registry)
+
+  const sync = (agent: Agent): void => {
+    registry.set(agent, enabled() ? ['qqbot_send_meme'] : [])
+  }
+  const scoped = scopeOf(ctx) as Agent | undefined
+  if (scoped) sync(scoped)
+  for (const agent of ctx.get('agents')?.list?.() ?? []) sync(agent)
+  ctx.on('agent/created', ({ agent }) => { sync(agent) })
+  ctx.on('agent/inbox/claimed', ({ agent }) => { sync(agent) })
+  ctx.on('agent/pre-step', async ({ agent }, next) => {
+    sync(agent)
+    return next()
+  })
 }

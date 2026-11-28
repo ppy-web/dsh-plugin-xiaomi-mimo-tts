@@ -7,8 +7,9 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { FileBlock, ImageBlock, MessageSource } from '@deepseek-ai/dsh-llm'
 import type { Session } from '@deepseek-ai/dsh-session'
+import { AgentToolRegistry } from '@deepseek-ai/dsh-tools/pipeline'
 import { STUDIO_DIRECTOR_COMMAND_NAME, STUDIO_DIRECTOR_SLASH_COMMAND } from '../constants.js'
-import { registerStudioTools } from '../studio-agent.js'
+import { STUDIO_TOOL_NAMES, registerStudioTools } from '../studio-agent.js'
 import { TtsProviderError } from './provider-error.js'
 import type { HostSpeechStudioService } from './studio-service.js'
 
@@ -156,6 +157,16 @@ export function registerStudioDirectorCommand(ctx: Context): () => void {
     if (typeof dispose === 'function') disposers.push(dispose as () => void)
   }
 
+  const studioTools = new AgentToolRegistry()
+  const syncTools = (agent: Agent | undefined): void => {
+    if (!agent) return
+    studioTools.set(agent, getState(agent.session).entered ? STUDIO_TOOL_NAMES : [])
+  }
+  const syncSessionTools = (session: Session): void => {
+    const agents = typeof ctx.get === 'function' ? ctx.get('agents') : undefined
+    syncTools(agents?.get?.(session.id))
+  }
+
   const finishRequest = async (
     session: Session,
     outcome: Parameters<HostSpeechStudioService['finishDirectorRequest']>[1],
@@ -165,6 +176,7 @@ export function registerStudioDirectorCommand(ctx: Context): () => void {
     activeRequests.delete(session)
     if (request.dispatched) {
       states.set(session, request.previousState)
+      syncSessionTools(session)
       await studio.finishDirectorRequest(request.requestId, outcome)
     }
   }
@@ -209,6 +221,7 @@ export function registerStudioDirectorCommand(ctx: Context): () => void {
     request.previousState = getState(session)
     request.dispatched = true
     states.set(session, { active: true, entered: true })
+    syncTools(agent)
     try { agent.steer(message) }
     catch (error) {
       await finishRequest(session, 'failed')
@@ -248,14 +261,17 @@ export function registerStudioDirectorCommand(ctx: Context): () => void {
     },
   }))
 
-  track(registerStudioTools(ctx, {
-    when: ({ agent }) => getState(agent.session).entered,
-  }, agent => {
+  track(registerStudioTools(ctx, agent => {
     const request = activeRequests.get(agent.session)
     return request?.admitted ? request.requestId : undefined
-  }))
+  }, studioTools))
+  track(ctx.tools.include(studioTools))
+  if (typeof ctx.get === 'function') {
+    for (const agent of ctx.get('agents')?.list?.() ?? []) syncTools(agent)
+  }
 
   if (typeof ctx.on === 'function') {
+    track(ctx.on('agent/created', ({ agent }) => { syncTools(agent) }, { global: true }))
     track(ctx.on('session/event', (session, event) => {
       const request = activeRequests.get(session)
       if (request?.dispatched) {
@@ -288,6 +304,7 @@ export function registerStudioDirectorCommand(ctx: Context): () => void {
           if (ev.data.kind === 'success') {
             const current = getState(session)
             states.set(session, { active: target, entered: current.entered || target })
+            syncSessionTools(session)
           }
         }
       }
@@ -320,6 +337,7 @@ export function registerStudioDirectorCommand(ctx: Context): () => void {
       }
 
       states.set(agent.session, { active: true, entered: true })
+      syncTools(agent)
       if (message.length > 0 || attachments.length > 0) {
         agent.steer(createUserMessage({
           content: [

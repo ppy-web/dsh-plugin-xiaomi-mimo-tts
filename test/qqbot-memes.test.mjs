@@ -6,8 +6,9 @@ import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
+import { agentEvents } from '@deepseek-ai/dsh-agent'
 import ToolsService from '@deepseek-ai/dsh-tools'
-import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
+import { NativeToolRegistry, ToolStep } from '@deepseek-ai/dsh-tools/pipeline'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import { buildQqbotPersona, cleanupQqbotMemes, loadWhaleMemes, registerQqbotMemeTool } from '../lib/qqbot-agent.js'
 
@@ -21,6 +22,7 @@ async function setup(run) {
   ctx.provide('systemPrompt', { tools() {} })
   ctx.plugin(ToolsService)
   await settle()
+  ctx.tools.setRoot(new NativeToolRegistry())
   const component = ctx.plugin({
     name: 'qq-component-test',
     apply(owner) {
@@ -36,13 +38,13 @@ async function setup(run) {
     apply(owner) { registerQqbotMemeTool(owner, { directory }) },
   })
   await settle()
-  const pipeline = new ToolExecutionPipeline(ctx)
   const call = async (args, signal = new AbortController().signal, admitted) => {
-    const toolSet = admitted ?? await ctx.tools.resolve({ agent, modelSelection: {}, signal })
-    try {
-      const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'qqbot_send_meme', arguments: args, agent, signal, toolSet })
-      return await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
-    } finally { if (!admitted) toolSet.dispose() }
+    const toolStep = admitted ?? ToolStep.capture(ctx.tools, agent)
+    const { results: [{ result }] } = await ctx.tools.execute({
+      calls: [{ type: 'tool-call', id: randomUUID(), name: 'qqbot_send_meme', arguments: JSON.stringify(args) }],
+      agent, signal, toolStep,
+    })
+    return result
   }
   const sender = execute => ctx.tools.register({
     name: 'qqbot_send_file', description: 'test QQ file sender',
@@ -74,24 +76,23 @@ test('QQ persona and meme tool use the same installed image catalog without expo
 test('disabling QQ memes withdraws the tool and rejects calls already admitted by a model step', async () => {
   await setup(async ({ ctx, agent, call, sender, directory, settings }) => {
     const signal = new AbortController().signal
-    const resolveTools = () => ctx.tools.resolve({ agent, modelSelection: {}, signal })
-    const admitted = await resolveTools()
+    const resolveTools = () => ToolStep.capture(ctx.tools, agent)
+    const admitted = resolveTools()
     const args = { meme: loadWhaleMemes()[0].id }
     let sends = 0
     sender(() => { sends++; return { messageId: 'image-message', target: 'group:current-chat' } })
-    try {
-      assert.ok(ctx.tools.get('qqbot_send_meme', agent, admitted))
-      settings.memes.enabled = false
-      const disabled = await resolveTools()
-      try { assert.equal(ctx.tools.get('qqbot_send_meme', agent, disabled), undefined) }
-      finally { disabled.dispose() }
-      assert.equal((await call(args, signal, admitted)).isError, true)
-      assert.equal(sends, 0)
-      assert.deepEqual(await readdir(directory), [])
-      settings.memes.enabled = true
-      assert.equal((await call(args)).value.meme, args.meme)
-      assert.equal(sends, 1)
-    } finally { admitted.dispose() }
+    assert.ok(admitted.declarations.some(tool => tool.name === 'qqbot_send_meme'))
+    settings.memes.enabled = false
+    agentEvents(ctx, agent).emit('agent/inbox/claimed', { turn: 1, message: {} })
+    const disabled = resolveTools()
+    assert.equal(disabled.declarations.some(tool => tool.name === 'qqbot_send_meme'), false)
+    assert.equal((await call(args, signal, admitted)).isError, true)
+    assert.equal(sends, 0)
+    assert.deepEqual(await readdir(directory), [])
+    settings.memes.enabled = true
+    agentEvents(ctx, agent).emit('agent/inbox/claimed', { turn: 2, message: {} })
+    assert.equal((await call(args)).value.meme, args.meme)
+    assert.equal(sends, 1)
   })
 })
 

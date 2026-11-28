@@ -18,7 +18,7 @@ export type VoiceSettingsPageProps = Omit<SettingsCardProps, 'view' | 'renderHea
 export function VoiceSettingsPage(props: VoiceSettingsPageProps): ReactElement {
   return <section className="xmimo-ui-scope xmimo-tts-settings-page" aria-label={props.t('settings.voiceSettingsNav')}>
     <div className="xmimo-tts-settings-page-content">
-      <SettingsCard {...props} view="page" initialPanel="mixer" renderHeader={search => <header className="xmimo-tts-settings-page-header">
+      <SettingsCard {...props} view="page" renderHeader={search => <header className="xmimo-tts-settings-page-header">
         <div className="xmimo-tts-settings-page-identity">
           <div className="xmimo-tts-settings-page-icon">
             <img src={hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)} width={56} height={56} alt="" />

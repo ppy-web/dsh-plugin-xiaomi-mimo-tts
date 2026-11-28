@@ -26,6 +26,7 @@ export interface TtsSettings {
   showInHostSettings?: boolean
   showFeatureGuide?: boolean
   acceptExternalProviders?: boolean
+  avoidHostReadAloud?: boolean
   voiceRecognitionService?: boolean
   qqbotEnabled?: boolean
   qqbotMaxAutoCharacters?: number
@@ -93,6 +94,7 @@ export interface ResolvedTtsSettings {
   showInHostSettings: boolean
   showFeatureGuide: boolean
   acceptExternalProviders: boolean
+  avoidHostReadAloud: boolean
   voiceRecognitionService: boolean
   qqbotEnabled: boolean
   qqbotMaxAutoCharacters: number
@@ -159,6 +161,7 @@ export const DEFAULT_TTS_SETTINGS: ResolvedTtsSettings = {
   showInHostSettings: true,
   showFeatureGuide: true,
   acceptExternalProviders: true,
+  avoidHostReadAloud: true,
   voiceRecognitionService: true,
   qqbotEnabled: false,
   qqbotMaxAutoCharacters: 0,

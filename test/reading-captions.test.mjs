@@ -38,7 +38,7 @@ function captionClock() {
   }
 }
 
-for (const provider of ['doubao', 'deepseek']) {
+for (const provider of ['doubao']) {
   test(`${provider} duplex captions start with audio, grow with appended text, and freeze in a playback gap`, async () => {
     await withBrowserPlayback(state => withDuplexBrowser(async sockets => {
       const clock = captionClock(), captions = new ReadingCaptions(clock)
@@ -93,65 +93,31 @@ for (const provider of ['doubao', 'deepseek']) {
   })
 }
 
-test('DeepSeek rolls over long text, advances captions on the next audio cue and keeps a single WAV', async () => {
+test('DeepSeek SSE streaming splits long text for the host limit and drives captions', async () => {
   const parts = ['甲'.repeat(5000), '乙'.repeat(5000), '丙'.repeat(30)]
-  await withBrowserPlayback(state => withDuplexBrowser(async sockets => {
-    const captions = new ReadingCaptions(captionClock()), saved = []
-    const live = new LiveSpeechController({ add: entry => saved.push(entry) }, captions)
+  const pcm = Buffer.alloc(48_000).toString('base64')
+  const event = new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: pcm } } }] })}\n\n`)
+  await withBrowserPlayback(async state => {
+    const captions = new ReadingCaptions(captionClock())
+    const live = new LiveSpeechController(undefined, captions)
     live.configure(resolveTtsSettings({ provider: 'deepseek', deepseekEnabled: true, maxTextLength: 12_000, voiceRate: 2 }))
     live.activateSession('session')
     try {
       live.playCompleted('session', 'reply', parts.join(''), () => assert.fail('unexpected fallback'))
+      for (let i = 0; i < 20 && state.requests.length < 3; i += 1) await settle()
       await settle()
-      assert.equal(sockets.length, 3)
-      assert.deepEqual(sockets.map(socket => socket.sent.filter(command => command.type === 'text').map(command => command.text).join('')), parts)
-      const context = state.contexts[0]
-      assert.equal(captions.getSnapshot().text, '')
-      context.advanceTo(.04)
+      assert.equal(state.requests.length, 3)
+      assert.deepEqual(state.requests.map(request => request.text), parts)
+      for (const request of state.requests) {
+        assert.equal(request.provider, 'deepseek')
+        assert.equal(request.voice, 'stella')
+      }
+      state.contexts[0].advanceTo(.05)
       assert.ok(captions.getSnapshot().text.startsWith('甲'))
-      context.advanceTo(.54)
-      assert.ok(captions.getSnapshot().text.startsWith('乙'))
-      context.advanceTo(1.04)
-      assert.ok(captions.getSnapshot().text.startsWith('丙'))
-      assert.equal(saved.length, 1)
-      assert.equal(saved[0].messageId, 'reply')
-      assert.equal(saved[0].voiceRateApplied, false)
-      assert.equal(saved[0].format, 'wav')
-      const wav = new DataView(await saved[0].blob.arrayBuffer())
-      assert.equal(wav.getUint32(40, true), 48_000 * parts.length)
-      context.advanceTo(1.6)
+      assert.equal(live.stop('session'), true)
       assert.equal(captions.getSnapshot().text, '')
     } finally { await live.dispose() }
-  }, { handle(socket, command) { if (command.type === 'text') { socket.audio(new Uint8Array(48_000)); return true } } }))
-})
-
-test('DeepSeek idle rollover finishes only the current connection and saves the reply after its final ID arrives', async t => {
-  t.mock.timers.enable({ apis: ['setTimeout'] })
-  await withBrowserPlayback(() => withDuplexBrowser(async sockets => {
-    const saved = []
-    const live = new LiveSpeechController({ add: entry => saved.push(entry) })
-    live.configure(resolveTtsSettings({ provider: 'deepseek', deepseekEnabled: true }))
-    live.activateSession('session')
-    try {
-      live.observe('session', 1, 0, 'First sentence. ')
-      await settle()
-      t.mock.timers.tick(55_000)
-      await settle()
-      assert.ok(sockets[0].sent.some(command => command.type === 'finish'))
-      assert.equal(saved.length, 0)
-      const text = 'First sentence. Second sentence.'
-      live.observe('session', 1, 0, text)
-      live.finishInput('session', 1, 0)
-      await settle()
-      assert.equal(saved.length, 0)
-      live.finish('session', { turn: 1, step: 0, messageId: 'reply', text, interrupted: false })
-      await settle()
-      assert.equal(sockets.length, 2)
-      assert.equal(sockets.flatMap(socket => socket.sent.filter(command => command.type === 'text').map(command => command.text)).join(''), text)
-      assert.equal(saved.length, 1)
-      assert.equal(saved[0].messageId, 'reply')
-    } finally { await live.dispose() }
-  }), { endPcm: true })
+  }, { fetch: () => new Response(event) })
 })
 
 test('long Chinese and mixed-language text is split into readable lines without losing content', () => {

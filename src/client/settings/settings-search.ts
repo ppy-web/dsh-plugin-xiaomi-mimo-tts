@@ -57,6 +57,7 @@ const ENTRIES = {
   'settings.audioResponse': { group: 'portraits', terms: ['settings.audioResponse', 'settings.audioResponseHint', 'settings.audioResponseEffects'], aliases: '响应球 Aura Field Siri Wave Line Siri Sheet' },
   'settings.readingCaptions': { group: 'portraits', terms: ['settings.readingCaptions', 'settings.readingCaptionsHint'], aliases: '字幕 captions subtitles' },
   'settings.voiceRecognitionService': { group: 'host', terms: ['settings.voiceRecognitionService', 'settings.voiceRecognitionServiceHint'], aliases: '语音识别 听写 asr speech recognition' },
+  'settings.avoidHostReadAloud': { group: 'host', terms: ['settings.avoidHostReadAloud', 'settings.avoidHostReadAloudHint'], aliases: '避让 宿主朗读 read aloud yield' },
   'settings.showInHostSettings': { group: 'host', terms: ['settings.showInHostSettings', 'settings.showInHostSettingsHint'] },
   'settings.showFeatureGuide': { group: 'host', terms: ['settings.showFeatureGuide', 'settings.showFeatureGuideHint'] },
   'settings.importantAnnouncementsFirst': { group: 'host', terms: ['settings.importantAnnouncementsFirst', 'settings.importantAnnouncementsFirstHint'] },

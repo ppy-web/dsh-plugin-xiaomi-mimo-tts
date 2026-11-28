@@ -1,8 +1,12 @@
 import { cp, mkdir, readFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
+
+const require = createRequire(import.meta.url)
+const uiPrimitivesEntry = require.resolve('@deepseek-ai/dsh-client-ui-primitives/src/client/index.ts')
 
 const previewRoot = fileURLToPath(new URL('.', import.meta.url))
 const repositoryRoot = path.resolve(previewRoot, '..', '..')
@@ -98,13 +102,13 @@ export default defineConfig(({ command }) => ({
   resolve: {
     alias: [
       {
-        find: /^@deepseek-ai\/dsh-client-ui-primitives$/,
-        replacement: '@deepseek-ai/dsh-client-ui-primitives/src/index.ts',
+        find: /^@deepseek-ai\/dsh-client-ui-primitives(?:\/client)?$/,
+        replacement: uiPrimitivesEntry,
       },
     ],
   },
   optimizeDeps: {
-    exclude: ['@deepseek-ai/dsh-client-ui-primitives'],
+    exclude: ['@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-client-ui-primitives/client'],
     include: ['anser'],
   },
   define: {

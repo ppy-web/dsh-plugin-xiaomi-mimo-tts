@@ -1,6 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { ToolRegistrationOptions } from '@deepseek-ai/dsh-tools'
 import type { StudioLineInput, StudioRoleInput, StudioRoleProvider } from './host-api.js'
 import { STUDIO_MAX_LINE_CHARACTERS, STUDIO_MAX_LINES_PER_SCRIPT } from './shared.js'
 import { findMatchingStudioRole } from './text/studio-script-parser.js'
@@ -11,15 +10,23 @@ import type {} from './host/speech-service.js'
 export const name = 'studio-agent'
 export const inject = ['speechStudio', 'speechSynthesis', 'tools']
 
+export const STUDIO_TOOL_NAMES = [
+  'studio_inspect',
+  'studio_save_role',
+  'studio_save_script',
+  'studio_import_script',
+  'studio_task_control',
+] as const
+
 export function registerStudioTools(
   ctx: Context,
-  options?: ToolRegistrationOptions,
   directorRequestId?: (agent: Agent) => string | undefined,
+  target: Pick<Context['tools'], 'register'> = ctx.tools,
 ): () => void {
   const studio = ctx.speechStudio as HostSpeechStudioService
   const disposers: Array<() => void> = []
   const register = (tool: Parameters<Context['tools']['register']>[0]): void => {
-    const dispose = ctx.tools.register(tool, options)
+    const dispose = target.register(tool)
     if (typeof dispose === 'function') disposers.push(dispose)
   }
 

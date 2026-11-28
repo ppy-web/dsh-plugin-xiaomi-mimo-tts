@@ -339,33 +339,38 @@ export class PreviewPlayer {
     }
     if (settings.provider && supportsDuplexTts(settings.provider)) {
       const provider = settings.provider
-      this.pcm.setPlaybackRate(provider === 'deepseek' ? this.voiceRate : 1)
+      this.pcm.setPlaybackRate(1)
       this.publish('loading', provider)
       const controller = new AbortController()
       this.request = controller
       this.requestBusy = true
       const recording = new PcmRecording()
       try {
-        const resolved = resolveTtsSettings({ ...settings, ...(provider === 'deepseek' ? { deepseekEnabled: true } : {}) })
-        const parts = provider === 'deepseek' ? splitDeepseekText(text, resolved.maxTextLength) : [text]
-        for (const part of parts) {
-          controller.signal.throwIfAborted()
-          const stream = new DuplexPcmStream(ttsSelection(resolved), controller.signal, async bytes => {
-            if (generation !== this.generation || controller.signal.aborted) return
-            recording.appendBytes(bytes)
-            await this.pcm.enqueueBytes(bytes)
-          }, resolved.maxPausedPcmBytes, resolved.requestTimeoutMs, resolved.maxTextLength)
-          stream.append(part)
-          await stream.finish()
-        }
+        const resolved = resolveTtsSettings(settings)
+        controller.signal.throwIfAborted()
+        const stream = new DuplexPcmStream(ttsSelection(resolved), controller.signal, async bytes => {
+          if (generation !== this.generation || controller.signal.aborted) return
+          recording.appendBytes(bytes)
+          await this.pcm.enqueueBytes(bytes)
+        }, resolved.maxPausedPcmBytes, resolved.requestTimeoutMs, resolved.maxTextLength)
+        stream.append(text)
+        await stream.finish()
         if (generation === this.generation) {
           const blob = recording.toWav()
           if (blob !== null) this.setRecording({ blob, text, format: 'wav' })
-          recording.save(this.history, { text, source: 'preview', voiceRateApplied: provider === 'doubao' })
+          recording.save(this.history, { text, source: 'preview', voiceRateApplied: true })
         }
       } finally {
         controller.abort()
         if (generation === this.generation) { this.request = null; this.requestBusy = false; this.maybeFinishPcm() }
+      }
+      return
+    }
+    if (settings.provider === 'deepseek') {
+      this.pcm.setPlaybackRate(this.voiceRate)
+      for (const part of splitDeepseekText(text, settings.maxTextLength ?? 12000)) {
+        if (generation !== this.generation) return
+        await this.playPcm(part, settings, generation)
       }
       return
     }
@@ -449,7 +454,7 @@ export class PreviewPlayer {
   }
 
   private async playPcm(text: string, settings: PreviewSettings, generation: number): Promise<void> {
-    this.publish('loading', externalEngine() ? 'external' : 'mimo')
+    this.publish('loading', externalEngine() ? 'external' : settings.provider === 'deepseek' ? 'deepseek' : 'mimo')
     const controller = new AbortController()
     this.request = controller
     this.requestBusy = true

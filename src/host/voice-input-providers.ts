@@ -4,11 +4,10 @@ import type { SpeechProvider, SpeechProviderId } from '@deepseek-ai/dsh-experime
 import type { PassportRecognitionService, RecognitionSource } from '../passport/recognition.js'
 import { abortable } from './abortable.js'
 
-type CloudSource = Exclude<RecognitionSource, 'host'>
+type CloudSource = Exclude<RecognitionSource, 'host' | 'deepseek'>
 const SOURCES: readonly { source: CloudSource; id: string; name: string }[] = [
   { source: 'xiaomi', id: 'xiaomi-mimo-tts-asr', name: 'Xiaomi MiMo ASR' },
   { source: 'doubao', id: 'xiaomi-mimo-tts-doubao-asr', name: 'Doubao real-time ASR' },
-  { source: 'deepseek', id: 'xiaomi-mimo-tts-deepseek-asr', name: 'DeepSeek ASR' },
   { source: 'doubao-nostream', id: 'xiaomi-mimo-tts-doubao-utterance-asr', name: 'Doubao utterance ASR' },
 ]
 const MAX_PCM_BYTES = 4 * 1024 * 1024
@@ -70,12 +69,10 @@ export function registerVoiceInputProviders(ctx: Context, enabled: () => boolean
       pending = pending.then(async () => {
         if (disposed || !enabled()) { await withdraw(); return }
         try {
-          const deepseekReady = ctx.passportRecognition.choices().some(choice => choice.id === 'deepseek' && choice.configured)
           for (const item of SOURCES) {
-            const previous = registrations.get(item.source)
-            if (item.source === 'deepseek' && !deepseekReady) {
-              if (previous) { registrations.delete(item.source); await previous() }
-            } else if (!previous) registrations.set(item.source, ctx.speechToText.register(voiceInputProvider(item.source, item.id, item.name, ctx.passportRecognition)))
+            if (!registrations.has(item.source)) {
+              registrations.set(item.source, ctx.speechToText.register(voiceInputProvider(item.source, item.id, item.name, ctx.passportRecognition)))
+            }
           }
         } catch (error) {
           await withdraw()

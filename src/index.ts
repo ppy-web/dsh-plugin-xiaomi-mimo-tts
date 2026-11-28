@@ -43,6 +43,7 @@ import { registerPortraitRoutes } from './host/portraits.js'
 import { registerStudioRoutes } from './host/studio-routes.js'
 import { registerStudioDirectorCommand } from './host/studio-director-command.js'
 import SpeechHost from './host/speech-service.js'
+import { hostDeepseekReady, type HostTextToSpeech } from './host/deepseek.js'
 import { registerDshGo } from './host/dsh-go.js'
 import { TTS_PROVIDERS, DOUBAO_TTS_MODELS, DEEPSEEK_VOICES, ttsApiKey } from './shared.js'
 import type { ResolvedTtsSettings } from './shared.js'
@@ -63,6 +64,7 @@ export const Config = z.object({
   showInHostSettings: z.boolean().default(DEFAULT_TTS_SETTINGS.showInHostSettings).volatile(),
   showFeatureGuide: z.boolean().default(DEFAULT_TTS_SETTINGS.showFeatureGuide).volatile(),
   acceptExternalProviders: z.boolean().default(DEFAULT_TTS_SETTINGS.acceptExternalProviders).volatile(),
+  avoidHostReadAloud: z.boolean().default(DEFAULT_TTS_SETTINGS.avoidHostReadAloud).volatile(),
   voiceRecognitionService: z.boolean().default(DEFAULT_TTS_SETTINGS.voiceRecognitionService).volatile(),
   qqbotEnabled: z.boolean().default(DEFAULT_TTS_SETTINGS.qqbotEnabled).volatile(),
   qqbotMaxAutoCharacters: z.number().step(1).min(0).max(QQBOT_SPEECH_LIMITS.qqbotMaxAutoCharacters).default(0).volatile(),
@@ -197,22 +199,53 @@ export function readConfig(config: Config): ResolvedTtsSettings {
 /** Register the TTS settings and same-origin synthesis route. */
 export function apply(ctx: Context, config: Config): void {
   const current = () => readConfig(config)
-  ctx.inject(['webServer'], host => { host.plugin(SpeechHost, { current, updates: (listener: () => void) => ctx.on('loader/volatile-update', listener) }) })
+  const hostTtsListeners = new Set<() => void>()
+  const notifyHostTts = () => { for (const listener of hostTtsListeners) listener() }
+  const subscribeEngineUpdates = (listener: () => void) => {
+    const off = ctx.on('loader/volatile-update', listener)
+    hostTtsListeners.add(listener)
+    return () => { off(); hostTtsListeners.delete(listener) }
+  }
+  const hostTextToSpeech = (scope: Pick<Context, 'get'> = ctx): HostTextToSpeech | undefined => (
+    typeof scope.get === 'function' ? scope.get('textToSpeech') as HostTextToSpeech | undefined : undefined
+  )
+  ctx.inject(['webServer'], host => {
+    host.plugin(SpeechHost, {
+      current,
+      updates: subscribeEngineUpdates,
+      textToSpeech: () => hostTextToSpeech(host),
+    })
+  })
   ctx.inject(['speechSynthesis'], host => {
     registerOpenApiRoutes(host, () => config.openApiToken.get())
     registerEngineRoutes(host, {
       read: () => {
         const settings = current()
+        const textToSpeech = hostTextToSpeech(host)
         return {
           ...Object.fromEntries(TTS_PROVIDERS.map(provider => {
-            const { configured, supported } = apiKeyStatus(settings, provider)
+            const { configured, supported } = apiKeyStatus(settings, provider, textToSpeech)
             return [provider, configured ? supported ? 'recognized' : 'unrecognized' : 'missing']
           })),
           openApi: config.openApiToken.get().trim().length > 0 ? 'recognized' : 'missing',
         }
       },
-      subscribe: listener => ctx.on('loader/volatile-update', listener),
+      subscribe: subscribeEngineUpdates,
     })
+  })
+  ctx.inject(['textToSpeech'] as never, host => {
+    const controller = new AbortController()
+    const service = hostTextToSpeech(host as Context) as (HostTextToSpeech & { follow?: (signal: AbortSignal) => AsyncIterable<unknown> }) | undefined
+    const follow = service?.follow
+    notifyHostTts()
+    if (follow) {
+      void (async () => {
+        try {
+          for await (const _snapshot of follow.call(service, controller.signal)) notifyHostTts()
+        } catch { /* aborted on unload */ }
+      })()
+    }
+    return () => { controller.abort(); notifyHostTts() }
   })
   ctx.inject(['speechStudio'], host => {
     registerStudioRoutes(host)
@@ -345,7 +378,7 @@ export function apply(ctx: Context, config: Config): void {
       }
       if (query !== null && !TTS_PROVIDERS.includes(query as typeof TTS_PROVIDERS[number])) { json(res, 400, { error: 'invalid-provider' }); return }
       const provider = (query ?? settings.provider) as typeof TTS_PROVIDERS[number]
-      json(res, 200, { provider, ...apiKeyStatus(settings, provider) })
+      json(res, 200, { provider, ...apiKeyStatus(settings, provider, hostTextToSpeech(ctx)) })
     },
   }), 'xiaomi-mimo-tts: API key status route')
 
@@ -354,7 +387,11 @@ export function apply(ctx: Context, config: Config): void {
   registerPortraitRoutes(ctx)
 }
 
-function apiKeyStatus(settings: ResolvedTtsSettings, provider: typeof TTS_PROVIDERS[number]) {
+function apiKeyStatus(settings: ResolvedTtsSettings, provider: typeof TTS_PROVIDERS[number], textToSpeech?: HostTextToSpeech) {
+  if (provider === 'deepseek') {
+    const ready = hostDeepseekReady(textToSpeech)
+    return { configured: ready, supported: ready }
+  }
   const key = ttsApiKey({ ...settings, provider })
   return { configured: key.length > 0, supported: key.length > 0 && isSupportedTtsApiKey(key, provider) }
 }

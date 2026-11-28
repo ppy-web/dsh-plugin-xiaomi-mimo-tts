@@ -13,7 +13,6 @@ export const TTS_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize'
 /** Same-origin route that proxies MiMo PCM16 server-sent audio chunks. */
 export const TTS_STREAM_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-stream'
 
-export const DEEPSEEK_TTS_ENDPOINT = 'wss://api.deepseek.com/v1/tools/tts'
 export const DEEPSEEK_ASR_ENDPOINT = 'https://api.deepseek.com/v1/tools/asr'
 export const TTS_DUPLEX_ROUTE = '/plugins/xiaomi-mimo-tts/synthesize-duplex'
 export const TTS_CAPABILITIES_ROUTE = '/plugins/xiaomi-mimo-tts/capabilities'

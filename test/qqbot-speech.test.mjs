@@ -10,7 +10,7 @@ import Projections from '@deepseek-ai/dsh-session-projection'
 import Agents, { agentEvents } from '@deepseek-ai/dsh-agent'
 import Presets from '@deepseek-ai/dsh-agent-preset-registry'
 import ToolsService from '@deepseek-ai/dsh-tools'
-import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
+import { AgentToolRegistry, NativeToolRegistry, ToolStep } from '@deepseek-ai/dsh-tools/pipeline'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import { createQqbotSpeechDelivery } from '../lib/qqbot.js'
@@ -31,6 +31,7 @@ async function setup(run) {
   ctx.plugin(ToolsService)
   await settle()
   assert.ok(ctx.tools)
+  ctx.tools.setRoot(new NativeToolRegistry())
   const agent = { id: 'qq-agent' }
   const scope = createScope(ctx, agent)
   agent.ctx = scope.ctx
@@ -44,13 +45,13 @@ async function setup(run) {
   }
 }
 
-function registerSender(ctx, execute, options) {
+function registerSender(ctx, execute) {
   ctx.tools.register({
     name: 'qqbot_send_file', description: 'test QQ sender',
     parameters: { type: 'object', properties: { file_path: { type: 'string' } }, required: ['file_path'], additionalProperties: false },
     output: { schema: { type: 'object', properties: { messageId: { type: 'string' }, target: { type: 'string' } }, required: ['messageId', 'target'], additionalProperties: false }, render: () => [] },
     execute,
-  }, options)
+  })
 }
 
 test('QQ adapter passes the real Agent through the shared pipeline and cleans audio after the sender settles', async () => {
@@ -76,7 +77,15 @@ test('QQ adapter passes the real Agent through the shared pipeline and cleans au
 
 test('a step-conditional QQ sender stays usable for out-of-band deliveries', async () => {
   await setup(async ({ ctx, agent, audio, adapter, signal }) => {
-    registerSender(ctx, async () => ({ messageId: 'conditional', target: 'group:peer' }), { when: () => true })
+    const senderRegistry = new AgentToolRegistry()
+    senderRegistry.register({
+      name: 'qqbot_send_file', description: 'test QQ sender',
+      parameters: { type: 'object', properties: { file_path: { type: 'string' } }, required: ['file_path'], additionalProperties: false },
+      output: { schema: { type: 'object', properties: { messageId: { type: 'string' }, target: { type: 'string' } }, required: ['messageId', 'target'], additionalProperties: false }, render: () => [] },
+      execute: async () => ({ messageId: 'conditional', target: 'group:peer' }),
+    })
+    ctx.tools.include(senderRegistry)
+    senderRegistry.set(agent, ['qqbot_send_file'])
     await settle()
     assert.deepEqual(await adapter.send(audio, { agent, signal }), { adapter: 'qqbot', messageId: 'conditional', target: 'group:peer' })
   })
@@ -147,6 +156,7 @@ test('the Host advertises QQ voice capabilities for the lifetime of the relay', 
   ctx.provide('speechSynthesis', speech)
   try {
     await ctx.plugin(ToolsService).await()
+    ctx.tools.setRoot(new NativeToolRegistry())
     assert.equal(speech.conversationDelivery('qqbot'), undefined)
     const relay = ctx.plugin(qqbotSpeech)
     await relay.await()
@@ -196,6 +206,7 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
     await ctx.plugin(Projections).await()
     await ctx.plugin(Agents).await()
     await ctx.plugin(ToolsService).await()
+    ctx.tools.setRoot(new NativeToolRegistry())
     await ctx.plugin(Presets, { default: 'existing' }).await()
     ctx.loader.internal = { version: 'v2', async import(name) {
       if (name === 'dsh-xiaomi-tts/speech-agent') return speechAgent
@@ -239,7 +250,6 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
     const peers = { 'qqbot:bot:group:room': qq.id, 'qqbot:bot:c2c:whale': whale.id, 'qqbot:bot:c2c:legacy': legacy.id, 'qqbot:bot:c2c:child': child.id, 'qqbot:bot:c2c:builtin': builtIn.id }
     const map = (rows = peers) => writeFile(mapping, JSON.stringify({ sessionIds: rows }))
     await map()
-    const pipeline = new ToolExecutionPipeline(ctx)
     const turns = new WeakMap()
     const start = async (agent, source = { kind: 'user' }) => {
       const turn = (turns.get(agent) ?? 0) + 1
@@ -250,16 +260,18 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
       agent.session.append('turn/start', { turn })
       const events = agentEvents(ctx, agent)
       events.emit('agent/inbox/claimed', { turn, message })
-      const toolSet = await ctx.tools.resolve({ agent, modelSelection, signal })
       await events.waterfall('agent/pre-step', { turn, step: 1, messages: [message], signal, modelSelection }, async () => ({ kind: 'enter', messages: [message] }))
+      const toolStep = ToolStep.capture(ctx.tools, agent)
       return {
-        toolSet,
+        toolStep,
         async speak(text, options = {}) {
-          const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text, ...options }, agent, signal, toolSet })
-          return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+          const { results: [{ result }] } = await ctx.tools.execute({
+            calls: [{ type: 'tool-call', id: randomUUID(), name: 'speak', arguments: JSON.stringify({ text, ...options }) }],
+            agent, signal, toolStep,
+          })
+          return result
         },
         finish(text, kind = 'completed') {
-          toolSet.dispose()
           if (text) agent.session.append('assistant/message', { turn, step: 1, stream: [],
             message: { id: randomUUID(), role: 'assistant', source: { kind: 'model', ...modelSelection }, content: [{ type: 'text', text }] },
           }, { surfaceOp: 'append' })
@@ -271,8 +283,9 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
       for (let tries = 0; deliveries.length < count && tries < 150; tries++) await new Promise(resolve => setTimeout(resolve, 10))
       assert.equal(deliveries.length, count)
     }
+    const hasSpeak = step => step.declarations.some(tool => tool.name === 'speak')
     let turn = await start(qq)
-    assert.ok(ctx.tools.get('speak', qq, turn.toolSet))
+    assert.ok(hasSpeak(turn.toolStep))
     turn.finish('普通预设自动传声')
     await delivered(1)
     assert.deepEqual(sends, [{ agent: qq, text: '普通预设自动传声' }])
@@ -299,29 +312,27 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
     await delivered(5)
     for (const agent of [desktop, child]) {
       turn = await start(agent)
-      assert.equal(ctx.tools.get('speak', agent, turn.toolSet), undefined)
+      assert.equal(hasSpeak(turn.toolStep), false)
       turn.finish('不发送到 QQ')
     }
     turn = await start(qq, { kind: 'user', rpcId: randomUUID() })
-    assert.equal(ctx.tools.get('speak', qq, turn.toolSet), undefined)
+    assert.equal(hasSpeak(turn.toolStep), false)
     turn.finish('桌面回复')
     await settle()
     assert.equal(sends.length, 4)
 
     // Mid-turn QQ steer (interrupt mode) arriving during a desktop-started turn adopts QQ voice admission.
     turn = await start(qq, { kind: 'user', rpcId: randomUUID() })
-    assert.equal(ctx.tools.get('speak', qq, turn.toolSet), undefined)
+    assert.equal(hasSpeak(turn.toolStep), false)
     {
       const steerTurn = turns.get(qq)
       const steerSignal = new AbortController().signal
       const steerMsg = createUserMessage({ content: [{ type: 'text', text: 'QQ 插话' }], source: { kind: 'user' } })
       const events = agentEvents(ctx, qq)
       events.emit('agent/inbox/claimed', { turn: steerTurn, message: steerMsg })
-      const steerTools = await ctx.tools.resolve({ agent: qq, modelSelection: { provider: 'test', model: 'test' }, signal: steerSignal })
-      try {
-        await events.waterfall('agent/pre-step', { turn: steerTurn, step: 2, messages: [steerMsg], signal: steerSignal, modelSelection: { provider: 'test', model: 'test' } }, async () => ({ kind: 'enter', messages: [steerMsg] }))
-        assert.ok(ctx.tools.get('speak', qq, steerTools), 'QQ steer mid-turn must enable speak tool')
-      } finally { steerTools.dispose() }
+      await events.waterfall('agent/pre-step', { turn: steerTurn, step: 2, messages: [steerMsg], signal: steerSignal, modelSelection: { provider: 'test', model: 'test' } }, async () => ({ kind: 'enter', messages: [steerMsg] }))
+      const steerTools = ToolStep.capture(ctx.tools, qq)
+      assert.ok(hasSpeak(steerTools), 'QQ steer mid-turn must enable speak tool')
     }
     turn.finish('插话后自动语音')
     await delivered(6)
@@ -355,31 +366,23 @@ test('QQ speech follows an existing preset, preserves desktop delivery and rejec
         const steer = async (source, step) => {
           const message = createUserMessage({ content: [{ type: 'text', text: '插话' }], source })
           events.emit('agent/inbox/claimed', { turn: turns.get(agent), message })
-          const toolSet = await ctx.tools.resolve({ agent, modelSelection, signal })
-          try {
-            await events.waterfall('agent/pre-step', { turn: turns.get(agent), step, messages: [message], signal, modelSelection }, async () => ({ kind: 'enter', messages: [message] }))
-            return toolSet
-          } catch (error) {
-            toolSet.dispose()
-            throw error
-          }
+          await events.waterfall('agent/pre-step', { turn: turns.get(agent), step, messages: [message], signal, modelSelection }, async () => ({ kind: 'enter', messages: [message] }))
+          return ToolStep.capture(ctx.tools, agent)
         }
-        const desktopTools = await steer({ kind: 'user', rpcId: randomUUID() }, 2)
-        try {
-          await assert.rejects(ctx.qqbotSpeech.say(agent, { text: '桌面插话期间不发送', signal }), error => error.code === 'qqbot-voice-unavailable')
-        } finally { desktopTools.dispose() }
+        await steer({ kind: 'user', rpcId: randomUUID() }, 2)
+        await assert.rejects(ctx.qqbotSpeech.say(agent, { text: '桌面插话期间不发送', signal }), error => error.code === 'qqbot-voice-unavailable')
         const qqTools = await steer({ kind: 'user' }, 3)
-        try {
-          if (manual) {
-            const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text }, agent, signal, toolSet: qqTools })
-            const result = await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
-            assert.equal(result.isError, false)
-            assert.equal(result.value.adapter, 'qqbot')
-          }
-          turn.finish(text)
-          await delivered(beforeDelivered + 1)
-          assert.deepEqual(sends.slice(before), [{ agent, text }])
-        } finally { qqTools.dispose() }
+        if (manual) {
+          const { results: [{ result }] } = await ctx.tools.execute({
+            calls: [{ type: 'tool-call', id: randomUUID(), name: 'speak', arguments: JSON.stringify({ text }) }],
+            agent, signal, toolStep: qqTools,
+          })
+          assert.equal(result.isError, false)
+          assert.equal(result.value.adapter, 'qqbot')
+        }
+        turn.finish(text)
+        await delivered(beforeDelivered + 1)
+        assert.deepEqual(sends.slice(before), [{ agent, text }])
       }
     }
     assert.deepEqual(await readdir(directory), ['model-prefs.json'])
@@ -432,6 +435,7 @@ test('QQ speech retries transient mapping gaps, accepts pre-step fallback, and b
     await ctx.plugin(Projections).await()
     await ctx.plugin(Agents).await()
     await ctx.plugin(ToolsService).await()
+    ctx.tools.setRoot(new NativeToolRegistry())
     await ctx.plugin(Presets, { default: 'existing' }).await()
     ctx.loader.internal = { version: 'v2', async import(name) {
       if (name === 'dsh-xiaomi-tts/speech-agent') return speechAgent
@@ -465,7 +469,6 @@ test('QQ speech retries transient mapping gaps, accepts pre-step fallback, and b
     }
     const qq = await make('existing')
     const builtIn = await make('qq-speech-assistant')
-    const pipeline = new ToolExecutionPipeline(ctx)
     const turns = new WeakMap()
     const modelSelection = { provider: 'test', model: 'test' }
     const beginTurn = async (agent, source, { emitClaimed = true } = {}) => {
@@ -476,17 +479,19 @@ test('QQ speech retries transient mapping gaps, accepts pre-step fallback, and b
       agent.session.append('turn/start', { turn })
       const events = agentEvents(ctx, agent)
       if (emitClaimed) events.emit('agent/inbox/claimed', { turn, message })
-      const toolSet = await ctx.tools.resolve({ agent, modelSelection, signal })
       await events.waterfall('agent/pre-step', { turn, step: 1, messages: [message], signal, modelSelection }, async () => ({ kind: 'enter', messages: [message] }))
+      const toolStep = ToolStep.capture(ctx.tools, agent)
       return {
         turn,
-        toolSet,
+        toolStep,
         async speak(text) {
-          const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text }, agent, signal, toolSet })
-          return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+          const { results: [{ result }] } = await ctx.tools.execute({
+            calls: [{ type: 'tool-call', id: randomUUID(), name: 'speak', arguments: JSON.stringify({ text }) }],
+            agent, signal, toolStep,
+          })
+          return result
         },
         finish() {
-          toolSet.dispose()
           agent.session.append('turn/end', { turn, reason: { kind: 'completed' } })
         },
       }
@@ -504,20 +509,18 @@ test('QQ speech retries transient mapping gaps, accepts pre-step fallback, and b
     // 2. agent/pre-step fallback works even without agent/inbox/claimed; desktop rpcId stays blocked.
     turn = await beginTurn(qq, { kind: 'user' }, { emitClaimed: false })
     assert.equal(ctx.qqbotSpeech.admitted(qq, turn.turn), true)
-    const step2Tools = await ctx.tools.resolve({ agent: qq, modelSelection, signal: new AbortController().signal })
-    try {
-      assert.ok(ctx.tools.get('speak', qq, step2Tools))
-      const prepared = await pipeline.prepare({ callId: randomUUID(), name: 'speak', arguments: { text: '仅靠 pre-step 放行' }, agent: qq, signal: new AbortController().signal, toolSet: step2Tools })
-      const step2Result = await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
-      assert.equal(step2Result.value.adapter, 'qqbot')
-    } finally {
-      step2Tools.dispose()
-    }
+    const step2Tools = ToolStep.capture(ctx.tools, qq)
+    assert.ok(step2Tools.declarations.some(tool => tool.name === 'speak'))
+    const { results: [{ result: step2Result }] } = await ctx.tools.execute({
+      calls: [{ type: 'tool-call', id: randomUUID(), name: 'speak', arguments: JSON.stringify({ text: '仅靠 pre-step 放行' }) }],
+      agent: qq, signal: new AbortController().signal, toolStep: step2Tools,
+    })
+    assert.equal(step2Result.value.adapter, 'qqbot')
     turn.finish()
 
     turn = await beginTurn(qq, { kind: 'user', rpcId: randomUUID() }, { emitClaimed: false })
     assert.equal(ctx.qqbotSpeech.admitted(qq, turn.turn), false)
-    assert.equal(ctx.tools.get('speak', qq, turn.toolSet), undefined)
+    assert.equal(turn.toolStep.declarations.some(tool => tool.name === 'speak'), false)
     await assert.rejects(ctx.qqbotSpeech.say(qq, { text: '桌面回合禁止发 QQ' }), error => error.code === 'qqbot-voice-unavailable')
     turn.finish()
 

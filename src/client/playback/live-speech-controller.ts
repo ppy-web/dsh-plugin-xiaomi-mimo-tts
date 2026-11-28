@@ -16,7 +16,7 @@ import type { LiveMessageIdentity, PlaybackStatus } from './types.js'
 import type { AudioHistory } from '../history/audio-history.js'
 import { PcmRecording } from '../history/pcm-recording.js'
 import { DuplexPcmStream } from './duplex-pcm.js'
-import { DEEPSEEK_INPUT_IDLE_MS, exceedsDeepseekLimit, splitDeepseekText } from '../../text/deepseek-limit.js'
+import { splitDeepseekText } from '../../text/deepseek-limit.js'
 import { selectionKey, supportsDuplexTts, ttsSelection, usesCloudVoiceRate } from '../../types/providers.js'
 import type { TtsSelection } from '../../types/providers.js'
 import type { ResolvedTtsSettings } from '../../types/settings.js'
@@ -269,7 +269,13 @@ export class LiveSpeechController {
       this.finishDuplexStep()
       return
     }
-    for (const segment of (externalEngine() ? splitExternalText(text, this.maxTextLength) : this.selection.provider === 'breeze' ? splitBreezeTtsSegments(text) : splitTtsSegments(text, undefined, undefined, value => prepareProviderTtsText(value, this.selection)))) this.queue.enqueue(segment)
+    const segments = externalEngine()
+      ? splitExternalText(text, this.maxTextLength)
+      : this.selection.provider === 'breeze'
+        ? splitBreezeTtsSegments(text)
+        : splitTtsSegments(text, undefined, undefined, value => prepareProviderTtsText(value, this.selection))
+          .flatMap(segment => this.selection.provider === 'deepseek' ? splitDeepseekText(segment, this.maxTextLength) : [segment])
+    for (const segment of segments) this.queue.enqueue(segment)
   }
 
   finish(sessionId: string, final: LiveMessageIdentity): void {
@@ -428,7 +434,9 @@ export class LiveSpeechController {
     if (batch.requests.length > 0 && this.active !== null) this.handled.add(this.cursorKey(this.active))
     for (const request of batch.requests) {
       const segments = externalEngine() ? splitExternalText(request, this.maxTextLength, undefined, true)
-        : this.selection.provider === 'breeze' ? splitBreezeTtsSegments(request, undefined, true) : [request]
+        : this.selection.provider === 'breeze' ? splitBreezeTtsSegments(request, undefined, true)
+        : this.selection.provider === 'deepseek' ? splitDeepseekText(request, this.maxTextLength)
+        : [request]
       for (const segment of segments) this.queue.enqueue(segment)
     }
   }
@@ -551,33 +559,21 @@ export class LiveSpeechController {
 
   private enqueueDuplex(text: string): void {
     if (this.duplexRecording?.finished || !text.trim()) return
-    const deepseek = this.selection.provider === 'deepseek'
     const batch = this.duplexRecording ??= {
       sessionId: this.sessionId, messageId: this.active === null ? this.messageId : null,
       text: [], pcm: new PcmRecording(), pending: 0, finished: false, saveReady: false,
     }
     try {
-      const parts = deepseek ? splitDeepseekText(text, this.maxTextLength) : [text]
-      for (const part of parts) {
-        if (deepseek && this.duplexStep && exceedsDeepseekLimit(this.duplexStep.text.join('') + part, this.maxTextLength)) this.finishDuplexInput()
-        if (this.duplexStep === null) {
-          this.duplexStep = { text: [], finished: false, stream: null, batch }
-          batch.pending += 1
-          this.duplexJobs.push(this.duplexStep)
-        }
-        this.duplexStep.text.push(part)
-        batch.text.push(part)
-        this.duplexStep.stream?.append(part)
-        this.duplexStep.updateCaption?.()
+      if (this.duplexStep === null) {
+        this.duplexStep = { text: [], finished: false, stream: null, batch }
+        batch.pending += 1
+        this.duplexJobs.push(this.duplexStep)
       }
+      this.duplexStep.text.push(text)
+      batch.text.push(text)
+      this.duplexStep.stream?.append(text)
+      this.duplexStep.updateCaption?.()
     } catch (error) { this.handleStreamError(error); return }
-    if (deepseek && this.duplexStep) {
-      clearTimeout(this.duplexInputTimer)
-      const job = this.duplexStep
-      this.duplexInputTimer = setTimeout(() => {
-        if (this.duplexStep === job) this.finishDuplexInput()
-      }, Math.min(DEEPSEEK_INPUT_IDLE_MS, this.timeoutMs - Math.min(1000, this.timeoutMs / 10)))
-    }
     if (!this.duplexRunning && this.duplexJobs.length) void this.runDuplexJobs()
   }
 

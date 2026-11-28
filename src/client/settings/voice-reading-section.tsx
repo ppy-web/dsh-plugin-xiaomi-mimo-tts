@@ -4,7 +4,7 @@ import { Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { resolveTtsSettings, TTS_HISTORY_EMPTY_ASSET_ROUTE } from '../shared.js'
 import type { TtsSettings } from '../shared.js'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
-import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots/client'
 import { IDLE_PLUGIN_CHANGES, type SnapshotSource } from '../plugin-activity.js'
 import type { Translate } from '../localization.js'
 import { hostRoute } from '../host-route.js'
@@ -164,7 +164,10 @@ function VoiceReadingPage({ scope, t: translate, localeRevision, openPluginSetti
   }
 
   if (snapshot.status === 'unavailable') {
-    return <p className="xmimo-voice-reading-notice" role="status">{t('settings.voiceReadingUnavailable')}</p>
+    return <div className="xmimo-voice-reading">
+      <h2 className="xmimo-voice-reading-title">{t('settings.voiceReadingNav')}</h2>
+      <p className="xmimo-voice-reading-notice" role="status">{t('settings.voiceReadingUnavailable')}</p>
+    </div>
   }
 
   // The Host's first snapshot is `loading` with `writable: false`; treat that as
@@ -176,6 +179,7 @@ function VoiceReadingPage({ scope, t: translate, localeRevision, openPluginSetti
   return <AvatarStyleContext.Provider value={settings.showAvatarStyle ? settings.avatarStyle : 'default'}><div className="xmimo-voice-reading" style={minimalMode ? undefined : {
     '--xmimo-voice-reading-background': `url(${hostRoute(TTS_HISTORY_EMPTY_ASSET_ROUTE)})`,
   } as CSSProperties}>
+    <h2 className="xmimo-voice-reading-title">{t('settings.voiceReadingNav')}</h2>
     <div className="xmimo-voice-reading-header">
       <p className="xmimo-voice-reading-description">{t('settings.voiceReadingDescription')}</p>
       <VoiceReadingHeaderActions t={t} openPluginSettings={openPluginSettings} />

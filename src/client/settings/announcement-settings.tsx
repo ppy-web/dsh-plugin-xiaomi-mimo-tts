@@ -9,7 +9,7 @@ import { OpenApiSettings, type OpenApiSettingsProps } from './open-api-settings.
 import { useNestedDisclosure } from './use-nested-disclosure.js'
 import { useSettingsSearch } from './settings-search-context.js'
 
-export type AnnouncementToggleField = 'voiceRecognitionService' | 'showInHostSettings' | 'showFeatureGuide' | 'importantAnnouncementsFirst'
+export type AnnouncementToggleField = 'voiceRecognitionService' | 'avoidHostReadAloud' | 'showInHostSettings' | 'showFeatureGuide' | 'importantAnnouncementsFirst'
 
 /** One boolean setting and the actions the heading needs to show and clear its override. */
 export interface AnnouncementToggle {
@@ -53,6 +53,7 @@ const SOURCE_GROUPS = [
 
 const HOST_TOGGLE_ROWS = [
   { field: 'voiceRecognitionService', label: 'settings.voiceRecognitionService', hint: 'settings.voiceRecognitionServiceHint' },
+  { field: 'avoidHostReadAloud', label: 'settings.avoidHostReadAloud', hint: 'settings.avoidHostReadAloudHint' },
   { field: 'showInHostSettings', label: 'settings.showInHostSettings', hint: 'settings.showInHostSettingsHint' },
   { field: 'showFeatureGuide', label: 'settings.showFeatureGuide', hint: 'settings.showFeatureGuideHint' },
   { field: 'importantAnnouncementsFirst', label: 'settings.importantAnnouncementsFirst', hint: 'settings.importantAnnouncementsFirstHint' },

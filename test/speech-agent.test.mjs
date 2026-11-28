@@ -3,7 +3,7 @@ import test from 'node:test'
 import { randomUUID } from 'node:crypto'
 import { Context } from '@deepseek-ai/cordis'
 import ToolsService from '@deepseek-ai/dsh-tools'
-import { executeToolBatch, ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
+import { NativeToolRegistry, ToolStep } from '@deepseek-ai/dsh-tools/pipeline'
 import { createScope, scopeTarget } from '@deepseek-ai/dsh-scope'
 import { SessionStore } from '@deepseek-ai/dsh-session'
 import * as speechAgent from '../lib/speech-agent.js'
@@ -36,17 +36,22 @@ for (const delivery of ['custom-channel', 'qqbot']) test(`${delivery} speech too
   })
   ctx.plugin(ToolsService)
   await settle()
+  ctx.tools.setRoot(new NativeToolRegistry())
   const key = {}
   const preset = createScope(ctx, key)
   const owner = createScope(ctx, agent, { parent: key })
   agent.ctx = owner.ctx
   const plugin = preset.ctx.plugin(speechAgent, { delivery })
   await settle()
-  const pipeline = new ToolExecutionPipeline(ctx)
   ctx.on('speech/delivered', payload => { deliveries.push(payload) })
   const call = async (name, args) => {
-    const prepared = await pipeline.prepare({ callId: randomUUID(), name, arguments: args, agent, signal: new AbortController().signal })
-    return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+    const signal = new AbortController().signal
+    const toolStep = ToolStep.capture(ctx.tools, agent)
+    const { results: [{ result }] } = await ctx.tools.execute({
+      calls: [{ type: 'tool-call', id: randomUUID(), name, arguments: JSON.stringify(args) }],
+      agent, signal, toolStep,
+    })
+    return result
   }
   try {
     assert.equal(ctx.tools.get('speak'), undefined, 'the capability is only visible through its preset')
@@ -104,22 +109,20 @@ test('QQ speech ends the turn after delivery, leaving failures and requested tex
     },
   })
   await ctx.plugin(ToolsService).await()
+  ctx.tools.setRoot(new NativeToolRegistry())
   const owner = createScope(ctx, agent)
   agent.ctx = owner.ctx
   await owner.ctx.plugin(speechAgent, { delivery: 'qqbot' }).await()
-  const pipeline = new ToolExecutionPipeline(ctx)
   const call = async args => {
     const signal = new AbortController().signal
-    const toolSet = await ctx.tools.resolve({ agent, modelSelection: {}, signal })
-    try {
-      const schema = ctx.tools.schemas(agent, toolSet).find(tool => tool.name === 'speak')
-      for (const provider of ['xiaomi', 'doubao', 'breeze']) assert.ok(schema.parameters.properties.provider.enum.includes(provider), `the model must be able to select the ${provider} retry provider`)
-      assert.ok(schema.parameters.properties.speechInstruction, 'the model must be able to describe a requested style')
-      assert.ok(schema.description.includes('[轻笑]') && schema.description.includes('(sighs)'), 'the model must receive the Breeze tag list')
-      assert.equal(schema.parameters.properties.replyWithText?.type, 'boolean')
-      const calls = [{ type: 'tool-call', id: randomUUID(), name: 'speak', arguments: JSON.stringify(args) }]
-      return await executeToolBatch({ calls, agent, signal, toolSet }, pipeline, () => 1)
-    } finally { toolSet.dispose() }
+    const toolStep = ToolStep.capture(ctx.tools, agent)
+    const schema = toolStep.declarations.find(tool => tool.name === 'speak')
+    for (const provider of ['xiaomi', 'doubao', 'breeze']) assert.ok(schema.parameters.properties.provider.enum.includes(provider), `the model must be able to select the ${provider} retry provider`)
+    assert.ok(schema.parameters.properties.speechInstruction, 'the model must be able to describe a requested style')
+    assert.ok(schema.description.includes('[轻笑]') && schema.description.includes('(sighs)'), 'the model must receive the Breeze tag list')
+    assert.equal(schema.parameters.properties.replyWithText?.type, 'boolean')
+    const calls = [{ type: 'tool-call', id: randomUUID(), name: 'speak', arguments: JSON.stringify(args) }]
+    return await ctx.tools.execute({ calls, agent, signal, toolStep })
   }
   const session = { id: agent.id }
   const emit = (type, seq, data) => ctx.emit(scopeTarget(session, agent), 'session/event', session, { type, seq, data })

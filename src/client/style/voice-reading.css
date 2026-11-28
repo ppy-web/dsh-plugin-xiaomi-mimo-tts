@@ -10,6 +10,15 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 8px 0;
+  color: var(--dsw-alias-label-primary, #1f2328);
+}
+
+.xmimo-voice-reading-title {
+  margin: 0 0 -4px;
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 500;
   color: var(--dsw-alias-label-primary, #1f2328);
 }
 
@@ -293,15 +302,17 @@
 }
 
 /**
- * Row stack. The page already sits inside the Host's settings panel, so the
- * card carries no border, radius, or padding of its own: the rows alone draw
- * the Host's hairline separators (same as the Host settings sections).
+ * Row stack. Uses the host settings card material and outer border so the
+ * independent section matches built-in settings cards, while rows draw the
+ * inner hairline separators.
  */
 .xmimo-voice-reading-card {
   container-type: inline-size;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
+  min-width: 0;
+  padding: 0 16px;
+  border: 0.5px solid var(--dsw-alias-settings-card-stroke, var(--dsw-alias-border-l2, #d7dbe2));
+  border-radius: var(--dsw-radius-xl, 16px);
+  background: var(--dsw-alias-settings-card-fill, transparent);
 }
 
 .xmimo-voice-reading-row {
@@ -350,10 +361,9 @@
 
 .xmimo-voice-reading-provider {
   min-width: 0;
-  margin: 4px 0 0;
+  margin: 4px 0;
   border: 0;
-  border-bottom: 0.5px solid var(--dsw-alias-border-l2, #d7dbe2);
-  padding: 0 0 16px;
+  padding: 0;
 }
 
 .xmimo-voice-reading-provider legend {

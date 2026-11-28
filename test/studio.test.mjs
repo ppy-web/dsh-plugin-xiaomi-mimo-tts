@@ -821,17 +821,21 @@ test('studio /director slash command discloses tools per session, steers request
     }
     const studio = new HostSpeechStudioService(mockSpeech, () => resolveTtsSettings({}), store)
 
-    const registeredTools = new Map()
+    const includedRegistries = []
     const registeredCommands = new Map()
     const promptSections = new Map()
     const sessionListeners = new Set()
+    const agentCreatedListeners = new Set()
     const ctx = {
       speechStudio: studio,
       speechSynthesis: mockSpeech,
       tools: {
-        register(tool, options) {
-          registeredTools.set(tool.name, { tool, options })
-          return () => registeredTools.delete(tool.name)
+        include(registry) {
+          includedRegistries.push(registry)
+          return () => {
+            const index = includedRegistries.indexOf(registry)
+            if (index >= 0) includedRegistries.splice(index, 1)
+          }
         },
       },
       commands: {
@@ -849,8 +853,19 @@ test('studio /director slash command discloses tools per session, steers request
       },
       on(event, listener) {
         if (event === 'session/event') sessionListeners.add(listener)
-        return () => sessionListeners.delete(listener)
+        if (event === 'agent/created') agentCreatedListeners.add(listener)
+        return () => {
+          sessionListeners.delete(listener)
+          agentCreatedListeners.delete(listener)
+        }
       },
+    }
+    const getTool = (name, agent) => {
+      for (const registry of includedRegistries) {
+        const tool = registry.get(name, agent)
+        if (tool) return tool
+      }
+      return undefined
     }
 
     const dispose = registerStudioDirectorCommand(ctx)
@@ -860,7 +875,7 @@ test('studio /director slash command discloses tools per session, steers request
 
     const expectedTools = ['studio_inspect', 'studio_save_role', 'studio_save_script', 'studio_import_script', 'studio_task_control']
     for (const toolName of expectedTools) {
-      assert.ok(registeredTools.has(toolName), `Expected tool ${toolName}`)
+      assert.ok(getTool(toolName), `Expected tool ${toolName}`)
     }
 
     const sessionA = { id: 'session-a', snapshotEvents: () => [] }
@@ -873,7 +888,7 @@ test('studio /director slash command discloses tools per session, steers request
     // Before entering /director, neither session sees director prompt or studio tools.
     assert.equal(promptSections.get('studio-director:policy').text({ agent: agentA }), '')
     assert.equal(promptSections.get('studio-director:status').text({ agent: agentA }), '')
-    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: agentA }), false)
+    assert.equal(getTool('studio_inspect', agentA), undefined)
 
     // Entering /director with text + attachment activates only session A and steers the prompt.
     const attachment = {
@@ -895,8 +910,8 @@ test('studio /director slash command discloses tools per session, steers request
 
     assert.ok(promptSections.get('studio-director:policy').text({ agent: agentA }).includes('studio_inspect'))
     assert.ok(promptSections.get('studio-director:status').text({ agent: agentA }).length > 0)
-    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: agentA }), true)
-    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: agentB }), false)
+    assert.ok(getTool('studio_inspect', agentA))
+    assert.equal(getTool('studio_inspect', agentB), undefined)
     assert.equal(promptSections.get('studio-director:policy').text({ agent: agentB }), '')
 
     // Uploaded documents can be the entire request, with every file forwarded in upload order.
@@ -930,21 +945,21 @@ test('studio /director slash command discloses tools per session, steers request
       signal,
     })
     assert.equal(bareResult.kind, 'success')
-    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: agentBare }), true)
+    assert.ok(getTool('studio_inspect', agentBare))
     assert.equal(steeredBare.length, 1)
     assert.equal(steeredBare[0].source.kind, 'studio-director')
     assert.ok(steeredBare[0].content[0].text.includes('studio_inspect'))
 
     // Disclosed tools execute end-to-end against HostSpeechStudioService and reuse roles on duplicate save names.
-    const savedRole = await registeredTools.get('studio_save_role').tool.execute({ name: '导演旁白', provider: 'xiaomi', voice: '冰糖' }, { signal })
-    const reusedRole = await registeredTools.get('studio_save_role').tool.execute({ name: '导演旁白', provider: 'xiaomi', voice: '白桦' }, { signal })
+    const savedRole = await getTool('studio_save_role').execute({ name: '导演旁白', provider: 'xiaomi', voice: '冰糖' }, { signal })
+    const reusedRole = await getTool('studio_save_role').execute({ name: '导演旁白', provider: 'xiaomi', voice: '白桦' }, { signal })
     assert.equal(reusedRole.role.id, savedRole.role.id)
     assert.equal(reusedRole.role.voice, '白桦')
-    const savedScript = await registeredTools.get('studio_save_script').tool.execute({
+    const savedScript = await getTool('studio_save_script').execute({
       title: 'AI导演样片',
       lines: [{ roleId: savedRole.role.id, text: '第一场，开拍！', pauseAfterMs: 300 }],
     }, { signal })
-    const started = await registeredTools.get('studio_task_control').tool.execute({ action: 'start', scriptId: savedScript.script.id, autoStart: false }, { signal })
+    const started = await getTool('studio_task_control').execute({ action: 'start', scriptId: savedScript.script.id, autoStart: false }, { signal })
     assert.equal(started.task.status, 'paused')
 
     // /director off rejects attachments and preserves active mode.
@@ -984,7 +999,8 @@ test('studio /director slash command discloses tools per session, steers request
       ],
     }
     const resumedAgent = { id: 'session-resumed', session: resumedSession }
-    assert.equal(registeredTools.get('studio_inspect').options.when({ agent: resumedAgent }), true)
+    for (const listener of agentCreatedListeners) listener({ agent: resumedAgent })
+    assert.ok(getTool('studio_inspect', resumedAgent))
     assert.ok(promptSections.get('studio-director:policy').text({ agent: resumedAgent }).includes('studio_inspect'))
 
     // Standalone studio-agent module remains composable independently.
@@ -998,9 +1014,10 @@ test('studio /director slash command discloses tools per session, steers request
 
     dispose()
     assert.equal(registeredCommands.size, 0)
-    assert.equal(registeredTools.size, 0)
+    assert.equal(includedRegistries.length, 0)
     assert.equal(promptSections.size, 0)
     assert.equal(sessionListeners.size, 0)
+    assert.equal(agentCreatedListeners.size, 0)
     await studio.dispose()
   } finally {
     await rm(dir, { recursive: true, force: true })
@@ -1020,14 +1037,22 @@ test('tracked /director requests associate only their own scripts and recordings
   }
   const openStudio = () => new HostSpeechStudioService(speech, () => resolveTtsSettings({}), new StudioDiskStore(dir))
   let studio = openStudio()
-  const tools = new Map()
+  const includedRegistries = []
   const listeners = new Map()
   let command
   const registerDirector = () => registerStudioDirectorCommand({
     speechStudio: studio,
     speechSynthesis: speech,
     logger: { warn() {} },
-    tools: { register(tool) { tools.set(tool.name, tool) } },
+    tools: {
+      include(registry) {
+        includedRegistries.push(registry)
+        return () => {
+          const index = includedRegistries.indexOf(registry)
+          if (index >= 0) includedRegistries.splice(index, 1)
+        }
+      },
+    },
     commands: { register(value) { command = value } },
     systemPrompt: { section() {} },
     on(event, listener) {
@@ -1046,7 +1071,13 @@ test('tracked /director requests associate only their own scripts and recordings
   const input = '--request-id chapter-one 保存此章节并开始录制'
   const invoke = (agent, rawInput) => command.handler({ agent, rawInput, signal, attachments: [] })
   const emit = (agent, type, data) => listeners.get('session/event')(agent.session, { type, data })
-  const run = (name, args, caller = agent) => tools.get(name).execute(args, { agent: caller, signal })
+  const run = (name, args, caller = agent) => {
+    for (const registry of includedRegistries) {
+      const tool = registry.get(name)
+      if (tool) return tool.execute(args, { agent: caller, signal })
+    }
+    throw new Error(`Missing tool ${name}`)
+  }
   try {
     const receipts = await Promise.all([invoke(agent, input), invoke(other, input)])
     assert.ok(receipts.every(receipt => receipt.kind === 'success'))

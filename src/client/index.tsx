@@ -30,6 +30,7 @@ import { FeatureGuideController } from './settings/feature-guide.js'
 import { FeatureGuideActivation, FeatureGuideOverlay } from './settings/feature-guide-overlay.js'
 import { PluginAudioFocus, observePluginActivity } from './plugin-activity.js'
 import { VoiceInputActivity } from './voice-input-activity.js'
+import { HostReadAloudActivity } from './host-read-aloud-activity.js'
 import { registerVoiceReadingNavIcon } from './settings/nav-icon.js'
 import { observeHostSettingsEntry } from './settings/host-settings-entry.js'
 import { openVoiceWorkbench, registerVoiceSettingsSidebar, VOICE_SETTINGS_PANEL_ID } from './settings/sidebar-action.js'
@@ -116,8 +117,9 @@ export function apply(ctx: Context): void {
     return () => { window.removeEventListener('online', apiKeyStatusStore.invalidate); off() }
   }, 'xiaomi-mimo-tts: API key status')
   const voiceInput = new VoiceInputActivity(document)
+  const hostReadAloud = new HostReadAloudActivity(document)
   const tabAudioFocus = new PluginAudioFocus(focusOwner, changes)
-  const audioFocus = new PluginAudioFocus(tabAudioFocus, voiceInput)
+  const audioFocus = new PluginAudioFocus(new PluginAudioFocus(tabAudioFocus, voiceInput), hostReadAloud)
   const soundEffects = createSoundEffectsController(audioFocus.canPlay, tabAudioFocus.canPlay)
   const selectSoundSettings = (snapshot: ReturnType<typeof scope.getSnapshot>) => {
     const resolved = resolvedSettingsSnapshot(snapshot)
@@ -211,6 +213,12 @@ export function apply(ctx: Context): void {
     voiceInput.start(soundEffects.playMicrophoneCue)
     return () => voiceInput.dispose()
   }, 'xiaomi-mimo-tts: voice input activity')
+  ctx.effect(() => {
+    const off = observeSettingsSlice(scope, snapshot => resolvedSettingsSnapshot(snapshot).avoidHostReadAloud, enabled => {
+      hostReadAloud.setEnabled(enabled)
+    })
+    return () => { off(); hostReadAloud.dispose() }
+  }, 'xiaomi-mimo-tts: host read-aloud avoidance')
   let providerSelectionKey: string | null = null
   ctx.effect(() => observeSettingsSlice(scope, snapshot => {
     const settings = resolvedSettingsSnapshot(snapshot)

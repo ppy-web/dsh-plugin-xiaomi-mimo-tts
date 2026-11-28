@@ -12,7 +12,7 @@ import { TtsProviderError, safeProviderError } from './provider-error.js'
 import { DoubaoSession, synthesizeDoubao } from './doubao.js'
 import { streamXiaomi } from './xiaomi.js'
 import { streamBreeze, evenPcmChunks } from './breeze.js'
-import { DeepseekSession, streamDeepseek } from './deepseek.js'
+import { streamDeepseek } from './deepseek.js'
 import { supportsDuplexTts, TTS_PROVIDERS } from '../types/providers.js'
 import type { SynthesisRuntime } from './complete-synthesis.js'
 import { prepareSpeechRequest, synthesizeCompleteAudio } from './complete-synthesis.js'
@@ -27,6 +27,8 @@ function responseError(res: ServerResponse, error: unknown, settings: ResolvedTt
 
 export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTtsSettings, runtime: SynthesisRuntime = {}): void {
   const connection = runtime.connectDoubao ? { connect: runtime.connectDoubao } : {}
+  const hostTextToSpeech = runtime.textToSpeech ?? (() => (typeof ctx.get === 'function' ? ctx.get('textToSpeech') : undefined))
+  const effectiveRuntime: SynthesisRuntime = { ...runtime, textToSpeech: hostTextToSpeech }
   for (const stream of [false, true]) ctx.effect(() => {
     const controllers = new Set<AbortController>()
     const remove = ctx.webServer.register({
@@ -77,7 +79,7 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
             return
           }
         settings = resolveTtsSettings(current())
-        const prepared = prepareSpeechRequest(settings, { ...body, ...(selected ? { provider: selected } : {}) })
+        const prepared = prepareSpeechRequest(settings, { ...body, ...(selected ? { provider: selected } : {}) }, effectiveRuntime)
         settings = prepared.settings
         const text = prepared.text
         if (!stream && body.format !== undefined && body.format !== 'mp3' && body.format !== 'wav') throw new TtsProviderError('invalid-audio-format', 'Select MP3 or WAV.', 400)
@@ -104,7 +106,7 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
             await streamDeepseek(text, settings, controller.signal, bytes => {
               if (!res.headersSent) begin()
               forward(`data: ${JSON.stringify({ choices: [{ delta: { audio: { data: Buffer.from(bytes).toString('base64') } } }] })}\n\n`)
-            }, runtime.connectDeepseek)
+            }, hostTextToSpeech())
             forward('data: [DONE]\n\n')
           } else {
             if (settings.provider === 'breeze') {
@@ -129,7 +131,7 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
           if (!res.destroyed) res.end()
         } else {
           const format = body.format === 'mp3' || body.format === 'wav' ? body.format : completeAudioFormat(settings)
-          const audio = service ? (await service.synthesize({ ...request, format })).data : await synthesizeCompleteAudio(settings, text, format, controller, runtime)
+          const audio = service ? (await service.synthesize({ ...request, format })).data : await synthesizeCompleteAudio(settings, text, format, controller, effectiveRuntime)
           res.setHeader('content-type', format === 'wav' ? 'audio/wav' : 'audio/mpeg')
           res.setHeader('content-length', audio.length)
           res.setHeader('cache-control', 'no-store')
@@ -163,7 +165,7 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
         const controller = new AbortController()
         controllers.add(controller)
         let settings = resolveTtsSettings(current())
-        let session: DoubaoSession | DeepseekSession | null = null
+        let session: DoubaoSession | null = null
         let state: 'initial' | 'starting' | 'ready' | 'finishing' | 'ended' = 'initial'
         let offEngine = () => {}
         let closeTimer: ReturnType<typeof setTimeout> | undefined
@@ -205,9 +207,7 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
                 if (ws.bufferedAmount + bytes.length > settings.maxPausedPcmBytes) throw new TtsProviderError('stream-buffer-limit')
                 ws.send(bytes)
               } }
-              session = settings.provider === 'deepseek'
-                ? new DeepseekSession({ ...options, ...(runtime.connectDeepseek ? { connect: runtime.connectDeepseek } : {}) })
-                : new DoubaoSession({ ...options, ...connection })
+              session = new DoubaoSession({ ...options, ...connection })
               void session.ready.then(() => {
                 if (state !== 'starting') return
                 state = 'ready'
@@ -216,9 +216,8 @@ export function registerSynthesisRoutes(ctx: Context, current: () => ResolvedTts
               void session.done.then(() => { if (state !== 'ended') { state = 'ended'; send({ type: 'done' }); close() } }).catch(fail)
             } else if (command.type === 'text' && state === 'ready' && typeof command.text === 'string') {
               // Preserve word boundaries between adjacent duplex text commands.
-              const text = settings.provider === 'deepseek' ? command.text : prepareTtsText(command.text)
-              if (text) session!.append(settings.provider === 'deepseek' ? text
-                : (/^\s/u.test(command.text) ? ' ' : '') + text + (/\s$/u.test(command.text) ? ' ' : ''))
+              const text = prepareTtsText(command.text)
+              if (text) session!.append((/^\s/u.test(command.text) ? ' ' : '') + text + (/\s$/u.test(command.text) ? ' ' : ''))
             } else if (command.type === 'finish' && state === 'ready') {
               state = 'finishing'
               void session!.finish().catch(fail)

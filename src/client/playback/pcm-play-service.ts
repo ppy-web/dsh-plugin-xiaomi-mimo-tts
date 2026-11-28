@@ -187,22 +187,22 @@ export class XiaomiMimoTtsPcmService extends Service implements XiaomiMimoTtsSer
           return
         }
         if (!external && supportsDuplexTts(settings.provider)) {
-          const parts = settings.provider === 'deepseek' ? splitDeepseekText(normalized, settings.maxTextLength) : [normalized]
-          for (const part of parts) {
-            controller.signal.throwIfAborted()
-            const stream = new DuplexPcmStream(ttsSelection(settings), controller.signal, consume, settings.maxPausedPcmBytes, settings.requestTimeoutMs, settings.maxTextLength)
-            stream.append(part)
-            await stream.finish()
-          }
+          controller.signal.throwIfAborted()
+          const stream = new DuplexPcmStream(ttsSelection(settings), controller.signal, consume, settings.maxPausedPcmBytes, settings.requestTimeoutMs, settings.maxTextLength)
+          stream.append(normalized)
+          await stream.finish()
           return
         }
-        await streamPcmAudio(normalized, controller.signal, async (pcm) => {
-          if (this.disposed || controller.signal.aborted || generation !== this.generation) {
-            return
-          }
-          recording.append(pcm)
-          await this.audio.enqueue(pcm)
-        }, ttsSelection(settings))
+        const parts = !external && settings.provider === 'deepseek' ? splitDeepseekText(normalized, settings.maxTextLength) : [normalized]
+        for (const part of parts) {
+          await streamPcmAudio(part, controller.signal, async (pcm) => {
+            if (this.disposed || controller.signal.aborted || generation !== this.generation) {
+              return
+            }
+            recording.append(pcm)
+            await this.audio.enqueue(pcm)
+          }, ttsSelection(settings))
+        }
       }
       void synthesize().then(() => {
         if (!this.disposed && !controller.signal.aborted && generation === this.generation) {

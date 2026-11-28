@@ -70,7 +70,6 @@ export function shouldOpenFeatureGuide(field: EditableSettingField, previous: bo
 
 export interface SettingsCardProps {
   view: 'summary' | 'page'
-  initialPanel?: 'mixer' | undefined
   renderHeader?: (search?: { query: string; onQueryChange: (query: string) => void }) => ReactElement
   onSidebarChange?: ((mounted: boolean) => void) | undefined
   onOpenProviderSettings?: ((bundle: string) => void) | undefined
@@ -132,7 +131,7 @@ const SettingsSounds = memo(SoundEffectsPanel, (
   { overrides: nextOverrides = [], ...nextProps }: Parameters<typeof SoundEffectsPanel>[0],
 ) => settingsValueEqual(previousOverrides, nextOverrides) && settingsSliceEqual(previousProps, nextProps))
 
-function HistoryLink({ history, t, onOpen, onPreload, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; onPreload: () => void; buttonRef: RefObject<HTMLButtonElement> }): ReactElement {
+function HistoryLink({ history, t, onOpen, onPreload, buttonRef }: { history: AudioHistory; t: Translate; onOpen: () => void; onPreload: () => void; buttonRef: RefObject<HTMLButtonElement | null> }): ReactElement {
   const view = useSyncExternalStore(history.subscribe, history.getSnapshot, history.getSnapshot)
   useEffect(() => { void history.ensureLoaded() }, [history])
   return <Button ref={buttonRef} type="button" className="xmimo-tts-history-link" variant="toolbar" size="sm" onPointerEnter={onPreload} onFocus={onPreload} onClick={onOpen}>
@@ -212,7 +211,7 @@ export function SettingsCard(props: SettingsCardProps): ReactElement | null {
   return <SettingsPage {...props} />
 }
 
-const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRevision, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, initialPanel, renderHeader, onSidebarChange, onOpenProviderSettings, onWriteWithDsh, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
+const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRevision, controller, history, speechActivity, beforePreview, beforeHistoryPlayback, renderHeader, onSidebarChange, onOpenProviderSettings, onWriteWithDsh, changes: pluginChanges = IDLE_PLUGIN_CHANGES, audioFocus = unrestrictedAudioFocus }: Omit<SettingsCardProps, 'view'>): ReactElement | null {
   const t = useSettingsTranslation(translate, localeRevision)
   useClientStyle('workbench', WORKBENCH_CLIENT_STYLES)
   useEngineState()
@@ -239,7 +238,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [saveError, setSaveError] = useState<'api-key-rejected' | 'host-rejected' | 'provider-count' | 'unknown' | null>(null)
   const saveInFlight = useRef(false)
-  const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | 'studio' | null>(initialPanel ?? null)
+  const [openPanel, setOpenPanel] = useState<'mixer' | 'sound' | 'broadcast' | 'studio' | null>(null)
   const togglePanel = (panel: 'mixer' | 'sound' | 'broadcast' | 'studio'): void => setOpenPanel(current => current === panel ? null : panel)
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
@@ -287,19 +286,27 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
   const validationError = external ? null : validateSettingsDraft(draft)
   const saveableDirty = external ? externalDraft.dirty || openApiDirty || dirtyFields.some(field => !BUILTIN_SETTING_FIELDS.has(field)) : dirty
   const apiKeyViewState = resolveApiKeyViewState(apiKey, isSupportedTtsApiKey(apiKey, keyProvider), apiKeyStatus, changes[apiKeyField]?.kind)
-  const apiKeyMessage = t(apiKeyViewState === 'loading'
-    ? 'settings.apiKeyLoading'
-    : apiKeyViewState === 'missing'
-      ? 'settings.apiKeyMissing'
-      : apiKeyViewState === 'recognized'
-        ? keyProvider === 'doubao' || keyProvider === 'deepseek' ? 'settings.doubaoKeyConfigured' : 'settings.apiKeyRecognized'
-        : apiKeyViewState === 'unrecognized'
-          ? 'settings.apiKeyUnsupportedSaved'
-          : apiKeyViewState === 'unavailable'
-            ? 'settings.apiKeyUnavailable'
-            : apiKeyViewState === 'pending-save'
-              ? 'settings.apiKeyPendingSave'
-              : 'settings.apiKeyUnsupported')
+  const apiKeyMessage = keyProvider === 'deepseek'
+    ? t(apiKeyStatus === 'recognized'
+      ? 'settings.deepseekHostManagedReady'
+      : apiKeyStatus === 'loading'
+        ? 'settings.apiKeyLoading'
+        : apiKeyStatus === 'unavailable'
+          ? 'settings.apiKeyUnavailable'
+          : 'settings.deepseekHostManagedUnavailable')
+    : t(apiKeyViewState === 'loading'
+      ? 'settings.apiKeyLoading'
+      : apiKeyViewState === 'missing'
+        ? 'settings.apiKeyMissing'
+        : apiKeyViewState === 'recognized'
+          ? keyProvider === 'doubao' ? 'settings.doubaoKeyConfigured' : 'settings.apiKeyRecognized'
+          : apiKeyViewState === 'unrecognized'
+            ? 'settings.apiKeyUnsupportedSaved'
+            : apiKeyViewState === 'unavailable'
+              ? 'settings.apiKeyUnavailable'
+              : apiKeyViewState === 'pending-save'
+                ? 'settings.apiKeyPendingSave'
+                : 'settings.apiKeyUnsupported')
   const apiKeyInvalid = apiKeyViewState === 'pending-invalid' || apiKeyViewState === 'unrecognized'
 
   useEffect(() => () => { void previewPlayer.dispose() }, [previewPlayer])

@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { ToolRegistrationOptions, ToolRunContext } from '@deepseek-ai/dsh-tools'
+import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { Session } from '@deepseek-ai/dsh-session'
 import z from '@deepseek-ai/schemastery'
 import type { SpeechDeliveryResult, SpeechRequest } from './host-api.js'
@@ -80,13 +80,18 @@ export function qqSpeechPolicy(ctx: Context, turnScoped = false): SessionSpeechO
   }
 }
 
-export function registerSpeak(ctx: Context, send: (request: SpeechRequest, exec: ToolRunContext) => Promise<SpeechDeliveryResult>, qq: boolean, options?: ToolRegistrationOptions): void {
+export function registerSpeak(
+  ctx: Context,
+  send: (request: SpeechRequest, exec: ToolRunContext) => Promise<SpeechDeliveryResult>,
+  qq: boolean,
+  target: Pick<Context['tools'], 'register'> = ctx.tools,
+): () => void {
   const properties = qq ? { text: selection.text, provider: selection.provider, speechInstruction: selection.speechInstruction } : selection
   const replyWithText = {
     type: 'boolean',
     description: 'QQ only. Set true only if the user also requests a written reply. After the audio, send the requested text without a delivery notice. Otherwise omit this option and let the voice reply end the turn.',
   } as const
-  ctx.tools.register({
+  return target.register({
     name: 'speak',
     description: 'Read the requested text and deliver audio through this conversation\'s configured speech adapter. Use when asked to answer by voice or read a passage. A successful call already delivered the audio: do not send the file again. When the user explicitly requests an emotion, tone, dialect or delivery style, pass speechInstruction in the same language as the text and keep the saved voice and model. Use provider-specific audio tags only for Breeze or Xiaomi preset voices; use speechInstruction for Doubao and Xiaomi VoiceDesign.'
       + (qq
@@ -105,7 +110,7 @@ export function registerSpeak(ctx: Context, send: (request: SpeechRequest, exec:
       if (result.adapter === 'qqbot' && (args as SpeakOptions | null)?.replyWithText !== true) exec.concludeTurn()
       return result
     },
-  }, options)
+  })
 }
 
 export function apply(ctx: Context, config: Config): void {

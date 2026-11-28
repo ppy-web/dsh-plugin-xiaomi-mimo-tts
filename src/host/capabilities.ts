@@ -6,10 +6,11 @@ import type { ResolvedTtsSettings } from '../types/settings.js'
 import { DEEPSEEK_TEXT_UNITS } from '../text/deepseek-limit.js'
 import { DOUBAO_VOICE_PRESETS } from '../doubao-voices.js'
 import { TtsProviderError } from './provider-error.js'
+import { hostDeepseekReady, type HostTextToSpeech } from './deepseek.js'
 import { validateSynthesisSettings } from './validation.js'
 
 /** Build an allowlisted snapshot: never return settings objects, prompts, keys or URLs. */
-export function speechCapabilities(settings: ResolvedTtsSettings): SpeechCapabilities {
+export function speechCapabilities(settings: ResolvedTtsSettings, textToSpeech?: HostTextToSpeech): SpeechCapabilities {
   return {
     provider: settings.provider,
     formats: settings.provider === 'deepseek' ? ['wav', 'silk'] : ['mp3', 'wav', 'silk'],
@@ -17,7 +18,7 @@ export function speechCapabilities(settings: ResolvedTtsSettings): SpeechCapabil
       const selected = { ...settings, provider: id }
       const selection = ttsSelection(selected)
       let unavailableReason: string | undefined
-      try { validateSynthesisSettings(selected) } catch (error) {
+      try { validateSynthesisSettings(selected, textToSpeech) } catch (error) {
         unavailableReason = error instanceof TtsProviderError ? error.code : 'invalid-configuration'
       }
       let models: SpeechModelCapabilities[]
@@ -41,7 +42,7 @@ export function speechCapabilities(settings: ResolvedTtsSettings): SpeechCapabil
           id: DEEPSEEK_TTS_MODEL,
           voices: DEEPSEEK_VOICES.map(voice => ({ id: voice, name: voice === 'stella' ? 'Stella' : 'Tide' })),
           customVoice: false, voiceDesign: false, speechInstruction: false, audioTags: false, voiceRate: false,
-          streaming: true, duplex: true,
+          streaming: true, duplex: false,
         }]
       } else {
         models = [{
@@ -52,7 +53,7 @@ export function speechCapabilities(settings: ResolvedTtsSettings): SpeechCapabil
         }]
       }
       return {
-        id, configured: ttsApiKey(selected).length > 0, ready: unavailableReason === undefined,
+        id, configured: id === 'deepseek' ? hostDeepseekReady(textToSpeech) : ttsApiKey(selected).length > 0, ready: unavailableReason === undefined,
         ...(unavailableReason === undefined ? {} : { unavailableReason }),
         selectedModel: selection.model, selectedVoice: selection.voice,
         maxTextLength: id === 'breeze' ? Math.min(settings.maxTextLength, BREEZE_MAX_TEXT_LENGTH) : id === 'deepseek' ? Math.min(settings.maxTextLength, DEEPSEEK_TEXT_UNITS) : settings.maxTextLength,

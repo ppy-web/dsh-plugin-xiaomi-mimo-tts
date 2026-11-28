@@ -30,6 +30,7 @@ const { LensSlider } = await loadClientModule('src/client/settings/controls/lens
 const { ReadScopeCards } = await loadClientModule('src/client/settings/controls/read-scope-cards.tsx')
 const { centeredRangeScale } = await loadClientModule('src/client/settings/controls/use-settings-range.ts')
 const { createVoiceReadingWrites } = await loadClientModule('src/client/settings/voice-reading-writes.ts')
+const { VoiceReadingSection } = await loadClientModule('src/client/settings/voice-reading-section.tsx')
 
 test('auto-save keeps newer edits visible when an earlier Host write is refused', async () => {
   let value = { voiceVolume: 1, voiceRate: 1, soundEnabled: true }
@@ -297,5 +298,23 @@ test('voice remarks preserve their synthesis IDs for each provider', () => {
     const removed = buildVoiceReadingVoiceSource(resolved, [], { [kind]: { history: [], names: {} } })
     assert.equal(removed.choices.find(choice => choice.value === id).label, id)
     assert.equal(removed.choices.some(choice => choice.value === 'other'), false)
+  }
+})
+
+test('voice reading settings section renders the translated page heading', () => {
+  const t = key => (key === 'settings.voiceReadingNav' ? 'Voice reading' : key)
+  for (const status of ['ready', 'unavailable']) {
+    const scope = {
+      getSnapshot: () => ({ status, writable: status === 'ready', value: {} }),
+      subscribe: () => () => {},
+      mutate: async () => true,
+    }
+    const html = renderToStaticMarkup(createElement(VoiceReadingSection, {
+      scope,
+      t,
+      openPluginSettings() {},
+      close() {},
+    }))
+    assert.match(html, /<h2\b[^>]*>Voice reading<\/h2>/u)
   }
 })

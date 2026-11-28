@@ -7,8 +7,9 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
+import { agentEvents } from '@deepseek-ai/dsh-agent'
 import ToolsService from '@deepseek-ai/dsh-tools'
-import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
+import { NativeToolRegistry, ToolStep } from '@deepseek-ai/dsh-tools/pipeline'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import { QqCompanion, QqIdentityReader, QqMemoryStore, QqMemoryAdmin, DEFAULT_WHALE_PERSONA } from '../lib/qqbot.js'
 import * as whaleAgent from '../lib/whale-agent.js'
@@ -267,10 +268,7 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
     ctx.provide('qqbotMemes', memes)
     ctx.provide('llm', { prepareCall: () => assert.fail('memory tools do not request a model') })
     await settle()
-    ctx.tools.setExecutor({
-      describe: tools => ({ schemas: tools.map(({ name, description, parameters }) => ({ name, description, parameters })) }),
-      execute: () => assert.fail('the test invokes memory through the policy pipeline, not a model loop'),
-    })
+    ctx.tools.setRoot(new NativeToolRegistry())
     const scope = createScope(ctx, peer)
     peer.ctx = scope.ctx
     let automaticSpeech = false, provider = 'xiaomi'
@@ -279,6 +277,7 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
     await tools.await()
     try {
       await ready()
+      await agentEvents(ctx, peer).serial('agent/created', { source: 'startup' })
       current.persona.name = '自定义角色甲'
       current.persona.likes = '自定义喜好乙'
       const first = await ctx.systemPrompt.assemble({ scope: peer, agent: peer })
@@ -293,14 +292,14 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
       assert.ok(next.sections.some(section => section.text.includes('新的角色名丙')))
       assert.equal(speechStatus(next).automaticSpeech, true, 'the next model request must see the live QQ source switch')
       assert.equal(speechStatus(next).provider, 'breeze', 'the tag policy follows the saved provider')
-      assert.equal(ctx.tools.executable('qqbot_memory'), undefined)
-      const pipeline = new ToolExecutionPipeline(ctx)
+      assert.equal(ctx.tools.get('qqbot_memory'), undefined)
       const invoke = async args => {
-        const toolSet = await ctx.tools.resolve({ agent: peer, modelSelection: {}, signal: signal() })
-        try {
-          const prepared = await pipeline.prepare({ name: 'qqbot_memory', callId: randomUUID(), arguments: args, agent: peer, signal: signal(), toolSet })
-          return await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
-        } finally { toolSet.dispose() }
+        const toolStep = ToolStep.capture(ctx.tools, peer)
+        const { results: [{ result }] } = await ctx.tools.execute({
+          calls: [{ type: 'tool-call', id: randomUUID(), name: 'qqbot_memory', arguments: JSON.stringify(args) }],
+          agent: peer, signal: signal(), toolStep,
+        })
+        return result
       }
       const saved = await invoke({ action: 'save', kind: 'preference', text: '测试称呼' })
       assert.equal(saved.isError, false)
@@ -310,24 +309,27 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
       assert.ok(assembly.contexts.some(context => context.text.includes('测试称呼')))
       current.memory.enabled = false
       current.memes = { enabled: false }
-      const admitted = await ctx.tools.resolve({ agent: peer, modelSelection: {}, signal: signal() })
-      try {
-        const disabled = await ctx.systemPrompt.assemble({ scope: peer, agent: peer, toolSet: admitted })
-        assert.ok(disabled.sections.some(section => section.text.includes('新的角色名丙')))
-        assert.deepEqual(disabled.tools.filter(tool => ['qqbot_send_meme', 'qqbot_memory'].includes(tool.name)), [])
-        const prompt = [...disabled.sections, ...disabled.contexts].map(part => part.text).join('\n')
-        for (const value of [memes[0].label, 'qqbot_send_meme', 'qqbot_memory', '测试称呼']) assert.ok(!prompt.includes(value))
-        assert.equal(speechStatus(disabled).automaticSpeech, true)
-      } finally { admitted.dispose() }
+      await agentEvents(ctx, peer).waterfall('agent/pre-step', { turn: 1, step: 1, messages: [], signal: signal(), modelSelection: {} }, async () => ({ kind: 'enter', messages: [] }))
+      const admitted = ToolStep.capture(ctx.tools, peer)
+      const disabled = await ctx.systemPrompt.assemble({ scope: peer, agent: peer, toolStep: admitted })
+      assert.ok(disabled.sections.some(section => section.text.includes('新的角色名丙')))
+      assert.deepEqual(disabled.tools.filter(tool => ['qqbot_send_meme', 'qqbot_memory'].includes(tool.name)), [])
+      const prompt = [...disabled.sections, ...disabled.contexts].map(part => part.text).join('\n')
+      for (const value of [memes[0].label, 'qqbot_send_meme', 'qqbot_memory', '测试称呼']) assert.ok(!prompt.includes(value))
+      assert.equal(speechStatus(disabled).automaticSpeech, true)
       current.memory.enabled = true
       current.memes.enabled = true
+      await agentEvents(ctx, peer).waterfall('agent/pre-step', { turn: 2, step: 1, messages: [], signal: signal(), modelSelection: {} }, async () => ({ kind: 'enter', messages: [] }))
       ctx.tools.register({
         name: 'local_file_read', description: 'test desktop file tool', parameters: { type: 'object', properties: {}, additionalProperties: false },
         output: { schema: { type: 'object', properties: {}, additionalProperties: false }, render: () => [] },
         async execute() { return {} },
       })
-      const qqLocal = await pipeline.prepare({ name: 'local_file_read', callId: randomUUID(), arguments: {}, agent: peer, signal: signal() })
-      assert.equal((await pipeline.complete(qqLocal.exec, qqLocal.kind === 'dispatch' ? await pipeline.dispatch(qqLocal.exec) : qqLocal)).isError, true, 'QQ must not gain desktop filesystem access')
+      const qqLocal = await ctx.tools.execute({
+        calls: [{ type: 'tool-call', id: randomUUID(), name: 'local_file_read', arguments: '{}' }],
+        agent: peer, signal: signal(),
+      })
+      assert.equal(qqLocal.results[0].result.isError, true, 'QQ must not gain desktop filesystem access')
       const desktop = agent('desktop-whale'), desktopScope = createScope(ctx, desktop)
       desktop.ctx = desktopScope.ctx
       try {
@@ -340,11 +342,13 @@ test('the persona reads live fields and scoped memory tools cannot target anothe
         assert.ok(qqAfterDesktopEdit.sections.some(section => section.text.includes('新的角色名丙')))
         assert.ok(qqAfterDesktopEdit.sections.every(section => !section.text.includes('桌面修改后的名字')))
         assert.ok(desktopPrompt.contexts.every(context => !context.text.includes('测试称呼')), 'DSH must not receive QQ private memory')
-        const desktopLocal = await pipeline.prepare({ name: 'local_file_read', callId: randomUUID(), arguments: {}, agent: desktop, signal: signal() })
-        assert.equal((await pipeline.complete(desktopLocal.exec, desktopLocal.kind === 'dispatch' ? await pipeline.dispatch(desktopLocal.exec) : desktopLocal)).isError, false)
-        const desktopTools = await ctx.tools.resolve({ agent: desktop, modelSelection: {}, signal: signal() })
-        try { assert.equal(ctx.tools.executable('qqbot_memory', desktop, desktopTools), undefined) }
-        finally { desktopTools.dispose() }
+        const desktopLocal = await ctx.tools.execute({
+          calls: [{ type: 'tool-call', id: randomUUID(), name: 'local_file_read', arguments: '{}' }],
+          agent: desktop, signal: signal(),
+        })
+        assert.equal(desktopLocal.results[0].result.isError, false)
+        const desktopTools = ToolStep.capture(ctx.tools, desktop)
+        assert.equal(desktopTools.declarations.some(tool => tool.name === 'qqbot_memory'), false)
       } finally { await desktopScope.dispose() }
     } finally { await scope.dispose(); await ctx.fiber.dispose() }
   })

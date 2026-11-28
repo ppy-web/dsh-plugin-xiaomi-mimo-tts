@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { MutableRefObject, RefObject } from 'react';
+import type { RefObject } from 'react';
 import {
   approach,
   blendEnergy,
@@ -37,7 +37,7 @@ export interface OrbAnimatorOptions {
 }
 
 export interface OrbAnimator {
-  frameRef: MutableRefObject<OrbFrame>;
+  frameRef: RefObject<OrbFrame>;
 }
 
 export const smoothLevel = (current: number, target: number, dt: number): number =>

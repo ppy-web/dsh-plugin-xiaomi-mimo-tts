@@ -82,10 +82,12 @@ export const zh = {
   'conversation.voiceInput': '语音输入',
   'settings.importantAnnouncementsFirst': '重要提醒优先',
   'settings.importantAnnouncementsFirstHint': '待审批与后台任务失败提醒可打断普通播报',
+  'settings.avoidHostReadAloud': '避让宿主朗读',
+  'settings.avoidHostReadAloudHint': '开启后，宿主官方朗读开始播报时自动停止并避让本插件朗读与播报。',
   'settings.showInHostSettings': '宿主设置入口',
   'settings.showInHostSettingsHint': '在 DSH 设置中显示「语音朗读」快捷设置',
   'settings.voiceRecognitionService': '语音识别服务',
-  'settings.voiceRecognitionServiceHint': '向宿主和 AI Passport 声明小米、豆包和 DeepSeek 语音识别服务',
+  'settings.voiceRecognitionServiceHint': '向宿主和 AI Passport 声明小米和豆包语音识别服务',
   'settings.announcementsTitle': '播报来源',
   'settings.announcementsPlugins': '插件联动',
   'settings.announcementsPluginsHint': '需安装并启用对应插件',
@@ -562,6 +564,9 @@ export const zh = {
   'settings.deepseekStella': '海星 · 女声',
   'settings.deepseekTide': '暗潮 · 男声',
   'settings.deepseekVoiceHint': '使用 DeepSeek 官方音色。',
+  'settings.deepseekHostManage': '管理宿主朗读',
+  'settings.deepseekHostManagedReady': '已借力宿主 DeepSeek 朗读服务，可直接播放。',
+  'settings.deepseekHostManagedUnavailable': '请先在宿主启用朗读套件并登录 DeepSeek 账号或配置 API Key。',
   'settings.providerMinimum': '小米始终开启。豆包、Breeze 和 DeepSeek 中可开启一至两家。',
   'settings.providerLimit': '已启用三家供应商。请先关闭一家再启用其他供应商。',
   'settings.previewLoadingDeepseek': '正在连接 DeepSeek…',
@@ -724,10 +729,12 @@ export const en: Record<keyof typeof zh, string> = {
   'conversation.voiceInput': 'Voice input',
   'settings.importantAnnouncementsFirst': 'Prioritize important alerts',
   'settings.importantAnnouncementsFirstHint': 'Approval requests and failed background jobs may interrupt ordinary speech. Voice input still takes precedence.',
+  'settings.avoidHostReadAloud': 'Yield to host read-aloud',
+  'settings.avoidHostReadAloudHint': 'Automatically stop and yield plugin speech while the host\'s built-in read-aloud is active.',
   'settings.showInHostSettings': 'Host settings shortcut',
   'settings.showInHostSettingsHint': 'Show Voice reading in DSH settings. Save to apply.',
   'settings.voiceRecognitionService': 'Speech recognition service',
-  'settings.voiceRecognitionServiceHint': 'Make Xiaomi, Doubao and DeepSeek recognition available to DSH and AI Passport. Choose each source separately.',
+  'settings.voiceRecognitionServiceHint': 'Make Xiaomi and Doubao recognition available to DSH and AI Passport. Choose each source separately.',
   'settings.announcementsTitle': 'Announcement sources',
   'settings.announcementsPlugins': 'Plugin integrations',
   'settings.announcementsPluginsHint': 'Requires the corresponding plugin to be installed and enabled',
@@ -1219,6 +1226,9 @@ export const en: Record<keyof typeof zh, string> = {
   'settings.deepseekStella': 'Stella · Female',
   'settings.deepseekTide': 'Tide · Male',
   'settings.deepseekVoiceHint': 'Uses official DeepSeek voices.',
+  'settings.deepseekHostManage': 'Manage host read-aloud',
+  'settings.deepseekHostManagedReady': 'Using the Host DeepSeek read-aloud service.',
+  'settings.deepseekHostManagedUnavailable': 'Enable the Host read-aloud bundle and sign in or configure a DeepSeek API key.',
   'settings.providerMinimum': 'Xiaomi is always enabled. Enable one or two of Doubao, Breeze, and DeepSeek.',
   'settings.providerLimit': 'Three providers are enabled. Turn one off to enable another.',
   'settings.previewLoadingDeepseek': 'Connecting to DeepSeek…',
@@ -1307,7 +1317,7 @@ export type LocaleKey = keyof typeof zh
 
 export type Translate = (key: LocaleKey) => string
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@deepseek-ai/dsh-client-ui-slots/client' {
   interface LocaleNamespaceMap {
     'xiaomi-mimo-tts': LocaleKey
   }

@@ -1,6 +1,5 @@
 import { TTS_DUPLEX_ROUTE } from '../../constants.js'
 import type { TtsSelection } from '../../types/providers.js'
-import { engineStateStore } from '../engine-state.js'
 import { hostWebSocketUrl } from '../host-route.js'
 
 export class DuplexPcmError extends Error {
@@ -28,10 +27,9 @@ export class DuplexPcmStream {
   constructor(selection: TtsSelection, private readonly signal: AbortSignal, private readonly consume: (bytes: Uint8Array) => void | Promise<void>, private readonly limit = 32 * 1024 * 1024, private readonly timeoutMs = 120000, private readonly maxTextLength = 12000) {
     this.done = new Promise((resolve, reject) => { this.resolve = resolve; this.reject = reject })
     void this.done.catch(() => {})
-    const engineRevision = selection.provider === 'deepseek' ? engineStateStore.getSnapshot().engine?.revision : undefined
     this.socket = new WebSocket(hostWebSocketUrl(TTS_DUPLEX_ROUTE))
     this.socket.binaryType = 'arraybuffer'
-    this.socket.onopen = () => { if (!this.ended) this.socket.send(JSON.stringify({ type: 'start', selection, ...(engineRevision === undefined ? {} : { engineRevision }) })) }
+    this.socket.onopen = () => { if (!this.ended) this.socket.send(JSON.stringify({ type: 'start', selection })) }
     this.socket.onmessage = event => {
       if (this.ended || this.terminal) return
       this.arm()
