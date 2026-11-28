@@ -4,8 +4,8 @@ import { classifyClick } from './click-classifier.js'
 import { DEFAULT_SOUND_SETTINGS } from '../../types/sound.js'
 import type { Context } from '@deepseek-ai/cordis'
 
-const VALID_CUES = new Set<SoundCue>(['start', 'complete', 'success', 'error', 'notification', 'press', 'select', 'toggle-on', 'toggle-off', 'send', 'close', 'delete', 'open', 'stop', 'queued'])
-const BACKGROUND_TASK_CUES = new Set<SoundCue>(['start', 'complete', 'error', 'stop', 'queued'])
+const VALID_CUES = new Set<SoundCue>(['hover', 'start', 'complete', 'success', 'error', 'notification', 'press', 'select', 'toggle-on', 'toggle-off', 'send', 'close', 'delete', 'open', 'stop', 'queued', 'processing'])
+const BACKGROUND_TASK_CUES = new Set<SoundCue>(['start', 'complete', 'error', 'stop', 'queued', 'processing'])
 
 function createSoundAudioContext(): AudioContext | undefined {
   if (typeof window === 'undefined') return undefined
@@ -22,6 +22,8 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
   let settings: SoundEffectsSettings = { enabled: true, volume: DEFAULT_SOUND_SETTINGS.soundVolume, pack: DEFAULT_SOUND_SETTINGS.soundPack, taskSounds: true, clickSounds: true }
   let player: ReturnType<typeof createUISFX> | null = null
   let ownedContext: AudioContext | undefined
+  const desiredLoops = new Set<SoundCue>()
+  const activeLoops = new Map<SoundCue, { stop(): void }>()
 
   const getPlayer = (): ReturnType<typeof createUISFX> => {
     if (player === null) {
@@ -36,6 +38,36 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
     }
     return player
   }
+  const canPlayLoop = (cue: SoundCue): boolean => {
+    if (!settings.enabled || !canPlay()) return false
+    if (BACKGROUND_TASK_CUES.has(cue) && !settings.taskSounds) return false
+    return true
+  }
+  const stopLoopHandle = (cue: SoundCue): void => {
+    const handle = activeLoops.get(cue)
+    if (!handle) return
+    activeLoops.delete(cue)
+    try { handle.stop() } catch { /* AudioContext may already be closed. */ }
+  }
+  const syncLoops = (): void => {
+    for (const cue of [...activeLoops.keys()]) {
+      if (!desiredLoops.has(cue) || !canPlayLoop(cue)) stopLoopHandle(cue)
+    }
+    for (const cue of desiredLoops) {
+      if (activeLoops.has(cue) || !canPlayLoop(cue) || !VALID_CUES.has(cue)) continue
+      try {
+        const target = getPlayer()
+        if (ownedContext?.state === 'suspended') {
+          void ownedContext.resume().then(() => {
+            if (ownedContext?.state === 'running') syncLoops()
+          }).catch(() => {})
+          continue
+        }
+        const handle = target.play(cue, { loop: true, retrigger: 'ignore' })
+        if (handle && typeof handle.stop === 'function') activeLoops.set(cue, { stop: () => handle.stop() })
+      } catch { /* AudioContext may be unavailable. */ }
+    }
+  }
   const play = (cue: SoundCue, options?: SoundEffectsPlayOptions, interactive = false): void => {
     if (!settings.enabled || !VALID_CUES.has(cue)) return
     try {
@@ -45,6 +77,7 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
         return
       }
       target.play(cue, options)
+      if (desiredLoops.size > 0 && ownedContext?.state === 'running') syncLoops()
     } catch { /* AudioContext may be unavailable. */ }
   }
 
@@ -57,6 +90,12 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
     },
     preview(cue) {
       if (canPlay()) play(cue, undefined, true)
+    },
+    setLoop(cue, active) {
+      if (!VALID_CUES.has(cue)) return
+      if (active) desiredLoops.add(cue)
+      else desiredLoops.delete(cue)
+      syncLoops()
     },
     setVolume(value) {
       settings = { ...settings, volume: Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : settings.volume }
@@ -72,12 +111,16 @@ export function createSoundEffectsController(canPlay: () => boolean = () => true
     update(next) {
       const previous = settings
       settings = next
-      if (player === null) return
-      if (previous.enabled !== next.enabled) player.setEnabled(next.enabled)
-      if (previous.volume !== next.volume) player.setVolume(next.volume)
-      if (previous.pack !== next.pack) player.setPack(next.pack)
+      if (player !== null) {
+        if (previous.enabled !== next.enabled) player.setEnabled(next.enabled)
+        if (previous.volume !== next.volume) player.setVolume(next.volume)
+        if (previous.pack !== next.pack) player.setPack(next.pack)
+      }
+      syncLoops()
     },
     async dispose() {
+      desiredLoops.clear()
+      for (const cue of [...activeLoops.keys()]) stopLoopHandle(cue)
       const current = player
       const context = ownedContext
       player = null
@@ -102,8 +145,23 @@ export function installClickSounds(_ctx: Context, controller: SoundEffectsContro
     lastClickAt = now
     controller.play(cue)
   }
+  const onPointerOver = (event: PointerEvent): void => {
+    if (event.pointerType === 'touch') return
+    const settings = getSettings()
+    if (!settings.enabled || !settings.clickSounds) return
+    if (!(event.target instanceof Element)) return
+    const current = event.target.closest('[data-xmimo-hover-sound]')
+    if (current === null) return
+    const previous = event.relatedTarget instanceof Element ? event.relatedTarget.closest('[data-xmimo-hover-sound]') : null
+    if (current === previous) return
+    controller.play('hover')
+  }
   document.addEventListener('pointerdown', onPointerDown, true)
-  return () => document.removeEventListener('pointerdown', onPointerDown, true)
+  document.addEventListener('pointerover', onPointerOver, true)
+  return () => {
+    document.removeEventListener('pointerdown', onPointerDown, true)
+    document.removeEventListener('pointerover', onPointerOver, true)
+  }
 }
 
 export type { SoundEffectsController, SoundEffectsSettings, SoundCue } from './types.js'

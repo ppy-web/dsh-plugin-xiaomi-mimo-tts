@@ -57,6 +57,7 @@ import { searchSettings } from './settings-search.js'
 import { WORKBENCH_CLIENT_STYLES } from '../style/workbench.js'
 import { useClientStyle } from '../style/inject.js'
 import { studioWorkspaceStore, useStudioOpenTab } from '../studio/studio-workspace-store.js'
+import { useStudioState } from '../studio/studio-client-store.js'
 
 const AudioHistoryPage = lazyPanel(() => import('../history/audio-history-page.js').then(module => module.AudioHistoryPage))
 const StudioPage = lazyPanel(() => import('../studio/studio-page.js').then(module => module.StudioPage))
@@ -138,6 +139,72 @@ function HistoryLink({ history, t, onOpen, onPreload, buttonRef }: { history: Au
     <GoHistory size={14} aria-hidden="true" focusable="false" />
     <span className="xmimo-tts-action-label">{t('history.shortTitle')} · {view.entries.length}</span>
   </Button>
+}
+
+export function isStudioProgressVisible(state: {
+  changing: boolean
+  studioTab: 'scripts' | 'roles' | 'tasks' | null
+  historyOpen: boolean
+  openPanel: 'mixer' | 'sound' | 'broadcast' | 'studio' | null
+  minimalMode: boolean
+  searchActive: boolean
+  searchShowsStudio: boolean
+}): boolean {
+  if (state.changing) return false
+  if (state.studioTab !== null) return state.studioTab === 'tasks'
+  if (state.historyOpen) return false
+  const mounted = !state.minimalMode || state.searchShowsStudio
+  const expanded = state.searchActive ? state.searchShowsStudio : state.openPanel === 'studio'
+  return mounted && expanded
+}
+
+export function collectNewlyCompletedStudioTaskIds(
+  previous: ReadonlyMap<string, string>,
+  tasks: ReadonlyArray<{ id: string; status: string }>,
+): string[] {
+  const completed: string[] = []
+  for (const task of tasks) {
+    if (task.status !== 'completed') continue
+    const prior = previous.get(task.id)
+    if (prior === 'running' || prior === 'queued') completed.push(task.id)
+  }
+  return completed
+}
+
+function StudioProcessingSound({ controller, enabled, visible, audioFocus }: {
+  controller: SoundEffectsController
+  enabled: boolean
+  visible: boolean
+  audioFocus: AudioFocus
+}): null {
+  const studio = useStudioState()
+  const generating = studio.tasks.some(task => task.status === 'running' || task.status === 'queued')
+  const [canPlay, setCanPlay] = useState(() => audioFocus.canPlay())
+  const previousTaskStatusesRef = useRef<Map<string, string> | null>(null)
+  useEffect(() => {
+    setCanPlay(audioFocus.canPlay())
+    return audioFocus.subscribe(() => setCanPlay(audioFocus.canPlay()))
+  }, [audioFocus])
+  useEffect(() => {
+    controller.setLoop?.('processing', enabled && visible && generating && canPlay)
+  }, [controller, enabled, visible, generating, canPlay])
+  useEffect(() => {
+    if (studio.status !== 'ready' && studio.status !== 'demo') return
+    const previous = previousTaskStatusesRef.current
+    const next = new Map(studio.tasks.map(task => [task.id, task.status]))
+    if (previous === null) {
+      previousTaskStatusesRef.current = next
+      return
+    }
+    const newlyCompleted = collectNewlyCompletedStudioTaskIds(previous, studio.tasks)
+    previousTaskStatusesRef.current = next
+    if (newlyCompleted.length > 0 && enabled && canPlay) {
+      controller.setLoop?.('processing', enabled && visible && generating && canPlay)
+      controller.play('success')
+    }
+  }, [studio.status, studio.tasks, controller, enabled, visible, generating, canPlay])
+  useEffect(() => () => { controller.setLoop?.('processing', false) }, [controller])
+  return null
 }
 
 export function SettingsCard(props: SettingsCardProps): ReactElement | null {
@@ -519,7 +586,17 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
 
   if (snapshot.status === 'unavailable') return renderHeader?.() ?? null
 
-  if (studioTab !== null) return <AvatarStyleContext.Provider value={effectiveAvatarStyle}>{renderHeader?.()}
+  const studioProgressVisible = isStudioProgressVisible({
+    changing,
+    studioTab,
+    historyOpen: Boolean(historyOpen && history),
+    openPanel,
+    minimalMode,
+    searchActive: search !== null,
+    searchShowsStudio: Boolean(search?.groups.has('studio') && search?.visible.has('studio')),
+  })
+
+  if (studioTab !== null) return <AvatarStyleContext.Provider value={effectiveAvatarStyle}><StudioProcessingSound controller={controller} enabled={soundEnabled && taskSounds} visible={studioProgressVisible} audioFocus={audioFocus} />{renderHeader?.()}
     {changing ? <p className="xmimo-ui-scope xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p>
     : <StudioPage
       t={t}
@@ -566,7 +643,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
       }} onBack={() => { setHistoryOpen(false) }} />}
   </>
 
-  return <AvatarStyleContext.Provider value={effectiveAvatarStyle}>{renderHeader?.({ query, onQueryChange: setQuery })}
+  return <AvatarStyleContext.Provider value={effectiveAvatarStyle}><StudioProcessingSound controller={controller} enabled={soundEnabled && taskSounds} visible={studioProgressVisible} audioFocus={audioFocus} />{renderHeader?.({ query, onQueryChange: setQuery })}
     <SettingsSearchContext.Provider value={search}>
     <div data-settings-search={search !== null ? '' : undefined} className={minimalMode ? 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope xmimo-tts-card-minimal' : 'xmimo-tts-card xmimo-tts-card-open xmimo-ui-scope'}>
       {changing ? <p className="xmimo-tts-plugin-status" role="status">{t('plugin.changing')}</p> : null}
@@ -615,6 +692,7 @@ const SettingsPage = memo(function SettingsPage({ scope, t: translate, localeRev
           inputRef={studioKeyRef}
           value={apiKey}
           message={apiKeyMessage}
+          status={apiKeyViewState}
           invalid={apiKeyInvalid}
           missing={apiKeyStatus === 'missing'}
           writable={writable}

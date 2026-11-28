@@ -33,10 +33,9 @@
   overflow: hidden;
   flex-direction: column;
   gap: 18px;
-  padding: 0 var(--xmimo-ui-module-padding) var(--xmimo-ui-module-padding);
 }
 
-.xmimo-tts-preview-input { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px; margin-top: 8px; }
+.xmimo-tts-preview-input { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px; }
 .xmimo-tts-preview-editor {
   display: flex;
   min-width: 0;

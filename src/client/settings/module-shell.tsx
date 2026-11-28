@@ -34,7 +34,7 @@ export function ModuleShell({ className, title, summary, interactiveSummary = fa
   </span>
 
   return <section className={`xmimo-ui-module ${className}`.trim()} hidden={hidden}>
-    <header className="xmimo-ui-module-header">
+    <header className="xmimo-ui-module-header" data-xmimo-hover-sound={collapsible ? 'true' : undefined}>
       {collapsible && interactiveSummary
         ? <div className={`xmimo-ui-module-toggle ${toggleClassName}`.trim()}>
           <div className={`xmimo-ui-module-head xmimo-ui-module-heading ${headingClassName}`.trim()}>

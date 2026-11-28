@@ -273,6 +273,22 @@
   gap: 6px;
 }
 
+.xmimo-tts-card-minimal :is(.xmimo-tts-details-body, .xmimo-tts-broadcast-body, .xmimo-tts-sound-body) {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-details-body {
+  padding: 4px var(--xmimo-ui-module-padding) var(--xmimo-ui-space-2);
+}
+
+.xmimo-tts-card-minimal .xmimo-tts-broadcast-body {
+  padding: 6px var(--xmimo-ui-module-padding) var(--xmimo-ui-module-padding);
+}
+
 .xmimo-tts-card-minimal .xmimo-tts-sound-body {
   padding: 6px 10px 10px;
 }

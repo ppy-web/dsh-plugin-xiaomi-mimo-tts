@@ -145,7 +145,7 @@
 }
 
 .xmimo-studio-recording-check li + li {
-  border-block-start: 1px solid var(--xmimo-ui-border);
+  border-block-start: 1px solid color-mix(in srgb, var(--xmimo-studio-warn) 22%, var(--xmimo-ui-border));
 }
 
 .xmimo-studio-sample-card {
@@ -315,10 +315,6 @@
   outline: none;
 }
 
-.xmimo-studio-recording-check > summary {
-  cursor: pointer;
-}
-
 .xmimo-studio-script-actions {
   position: sticky;
   inset-block-start: 0;
@@ -349,19 +345,34 @@
 }
 
 .xmimo-studio-recording-check {
-  padding: 7px 9px;
-  border: 1px solid var(--xmimo-ui-border);
+  --xmimo-studio-warn: var(--dsw-alias-state-warn-primary, var(--dsw-alias-state-warning-primary, #d97706));
+  padding: 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--xmimo-studio-warn) 42%, var(--xmimo-ui-border));
+  border-inline-start: 3px solid var(--xmimo-studio-warn);
   border-radius: var(--xmimo-ui-control-radius);
-  background: var(--xmimo-ui-control-surface);
+  background: color-mix(in srgb, var(--xmimo-studio-warn) 11%, var(--xmimo-ui-surface));
   font-size: 12px;
 }
 
 .xmimo-studio-recording-check > summary {
+  cursor: pointer;
+  padding-block: 2px;
+  color: light-dark(color-mix(in srgb, var(--xmimo-studio-warn) 82%, #3f2200), color-mix(in srgb, var(--xmimo-studio-warn) 80%, #fff4d6));
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.5;
+}
+
+.xmimo-studio-recording-check > summary:focus-visible {
+  outline: var(--xmimo-ui-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .xmimo-studio-recording-check[open] > summary {
-  margin-block-end: 4px;
+  margin-block-end: 8px;
+  padding-block-end: 8px;
+  border-block-end: 1px solid color-mix(in srgb, var(--xmimo-studio-warn) 24%, transparent);
 }
 
 .xmimo-studio-recording-check li {
@@ -370,7 +381,11 @@
   justify-content: space-between;
   align-items: center;
   gap: 5px 12px;
-  padding: 6px 0;
+  padding: 8px 0;
+}
+
+.xmimo-studio-recording-check li:last-child {
+  padding-block-end: 2px;
 }
 
 .xmimo-studio-recording-check li > div:first-child {

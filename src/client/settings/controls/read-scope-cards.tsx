@@ -30,8 +30,8 @@ export function ReadScopeCards({ value, disabled, t, onChange }: ReadScopeCardsP
       <div className="xmimo-read-scope-options">
         {TTS_READ_SCOPES.map(scope => {
           const paragraphs = PREVIEW_PARAGRAPHS[scope]
-          return <label className="xmimo-read-scope-option" key={scope}>
-            <input type="radio" name={id} value={scope} checked={scope === value} aria-labelledby={`${id}-${scope}-title`} aria-describedby={scope === value ? `${id}-hint` : undefined} onChange={() => { onChange(scope) }} />
+          return <label className="xmimo-read-scope-option" key={scope} data-xmimo-select-option="true">
+            <input type="radio" name={id} value={scope} checked={scope === value} disabled={disabled} aria-labelledby={`${id}-${scope}-title`} aria-describedby={scope === value ? `${id}-hint` : undefined} onChange={() => { onChange(scope) }} />
             <span className="xmimo-read-scope-card">
               <span className="xmimo-read-scope-heading">
                 <span id={`${id}-${scope}-title`}>{t(readScopeLabelKey(scope))}</span>

@@ -9,6 +9,7 @@ import { SettingFieldHeading } from './field-heading.js'
 import { ModuleShell } from './module-shell.js'
 import { useEngineState } from '../use-engine-state.js'
 import { externalEngine } from '../engine-state.js'
+import type { ApiKeyViewState } from './api-key-state.js'
 import { useSettingsSearch } from './settings-search-context.js'
 
 const API_KEY_IDLE_COPY_KEYS = [
@@ -39,6 +40,7 @@ export interface ApiKeyModuleProps {
   t: Translate
   value: string
   message: string
+  status?: ApiKeyViewState | undefined
   invalid: boolean
   missing: boolean
   writable: boolean
@@ -48,11 +50,22 @@ export interface ApiKeyModuleProps {
   onOpenProviderSettings?: ((bundle: string) => void) | undefined
 }
 
-export function ApiKeyModule({ t, provider, value, message, invalid, missing, writable, minimal, onChange, onOpenProviderSettings, inputRef }: ApiKeyModuleProps): ReactElement {
+export function ApiKeyModule({ t, provider, value, message, status, invalid, missing, writable, minimal, onChange, onOpenProviderSettings, inputRef }: ApiKeyModuleProps): ReactElement {
   const { hide } = useSettingsSearch()
   const engineView = useEngineState()
   const external = externalEngine()
   if (external) { message = `${external.name} · ${t(engineView.status !== 'ready' ? 'settings.externalDisconnected' : external.ready ? 'settings.externalManaged' : 'settings.externalNotReady')}`; invalid = false; writable = false }
+  const tone = external
+    ? (engineView.status !== 'ready' ? 'danger' : external.ready ? 'success' : 'pending')
+    : (invalid || status === 'unrecognized' || status === 'pending-invalid')
+      ? 'danger'
+      : status === 'recognized'
+        ? 'success'
+        : status === 'pending-save'
+          ? 'pending'
+          : (missing || status === 'missing')
+            ? 'warning'
+            : 'neutral'
   const [bubbleKey, setBubbleKey] = useState<ApiKeyBubbleKey>(() => randomCopyKey(API_KEY_IDLE_COPY_KEYS))
   const inputId = useId()
   const messageId = useId()
@@ -109,10 +122,12 @@ export function ApiKeyModule({ t, provider, value, message, invalid, missing, wr
       </div>
       <small
         id={messageId}
+        data-tone={tone}
         className={`xmimo-tts-api-key-message${invalid ? ' xmimo-tts-api-key-warning' : ''}${minimal && !invalid && !external ? ' xmimo-tts-visually-hidden' : ''}`}
         role={invalid ? 'alert' : 'status'}
       >
-        {message}
+        <span className="xmimo-tts-api-key-status-dot" aria-hidden="true" />
+        <span>{message}</span>
       </small>
     </form>
   </ModuleShell>

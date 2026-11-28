@@ -10,7 +10,7 @@ export function classifyClick(target: EventTarget | null): SoundCue | null {
   const selectOption = target.closest<HTMLElement>('[data-xmimo-select-option]')
   if (selectOption !== null) {
     const radio = selectOption.querySelector<HTMLInputElement>('input[type="radio"]')
-    if (radio?.disabled) return null
+    if (radio?.disabled || radio?.matches?.(':disabled')) return null
     return 'select'
   }
   const element = target.closest<HTMLElement>("button, a, [role='button'], [role='switch'], [role='checkbox'], [aria-checked], [aria-pressed]")

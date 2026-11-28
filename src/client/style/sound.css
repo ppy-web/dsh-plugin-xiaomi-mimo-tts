@@ -15,7 +15,6 @@
   min-height: 0;
   overflow: hidden;
   gap: var(--xmimo-ui-space-3);
-  padding: 6px var(--xmimo-ui-module-padding) var(--xmimo-ui-module-padding);
 }
 
 .xmimo-tts-sound-body > * {

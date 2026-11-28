@@ -350,6 +350,15 @@
   min-width: 0;
 }
 
+:is(.xmimo-tts-details-body, .xmimo-tts-broadcast-body, .xmimo-tts-sound-body) {
+  margin: 2px var(--xmimo-ui-module-padding) var(--xmimo-ui-module-padding);
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--xmimo-ui-border) 82%, transparent);
+  border-radius: var(--xmimo-ui-control-radius);
+  background: var(--xmimo-skeuo-well-bg, var(--xmimo-ui-surface-subtle));
+  box-shadow: var(--xmimo-skeuo-well-shadow, none);
+}
+
 /* ---------- Shared fields and controls ---------- */
 .xmimo-ui-module input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.xmimo-tts-voice-id-edit),
 .xmimo-ui-module select,
@@ -415,11 +424,6 @@
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 72%),
     0 1px 3px rgb(0 0 0 / 28%);
-}
-/* ---------- Module-specific placement using shared dimensions ---------- */
-.xmimo-ui-module .xmimo-tts-details-body > * {
-  padding-right: var(--xmimo-ui-module-padding);
-  padding-left: var(--xmimo-ui-module-padding);
 }
 
 @media (max-width: 480px) {

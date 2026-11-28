@@ -15,7 +15,6 @@
   min-height: 0;
   overflow: hidden;
   column-gap: 12px;
-  padding-bottom: var(--xmimo-ui-space-2, 6px)
 }
 
 .xmimo-tts-details-body>* {
